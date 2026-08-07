@@ -1,6 +1,8 @@
 package com.guille.media.reproductor.uploader.storage.domain.ports;
 
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageException;
 import com.guille.media.reproductor.uploader.storage.domain.vos.*;
+
 import reactor.core.publisher.Mono;
 
 import java.util.List;
@@ -16,13 +18,13 @@ public interface ObjectStorageService {
 
     Mono<Boolean> bucketExists(BucketName bucketName);
 
-    Mono<Void> delete(String key);
+    void delete(String key);
 
-    Mono<Void> copy(String sourceKey, String targetKey);
+    void copy(String sourceKey, String targetKey);
 
-    Mono<Void> move(String sourceKey, String targetKey);
+    void move(String sourceKey, String targetKey);
 
-    Mono<List<StoredObjectSummary>> list(String prefix);
+    List<StoredObjectSummary> list(String prefix);
 
-    Mono<Void> createBucket(String nameBucket);
+    Mono<Void> createBucket(String nameBucket) throws StorageException;
 }
