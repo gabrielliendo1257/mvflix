@@ -14,11 +14,15 @@ spring:
       ddl-auto: create-drop
     defer-datasource-initialization: true
 
+  sql:
+    init:
+      mode: always
+
 
 eureka:
   client:
     service-url:
-      defaultZone: ${EUREKA_URL}
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka}
 
 logging:
   level:
@@ -36,8 +40,8 @@ authorization:
       registration-id: movie-app
       client-id: movie-bff
       client-password: super-secret
-      redirect: ${BFF_ADDRESS}${BFF_PATH_REDIRECT}
-      logout-redirect: ${FRONTEND_ADDRESS}${PATH_LOGOUT_REDIRECT}
+      redirect: ${BFF_ADDRESS:http://127.0.0.1:9090}${BFF_PATH_REDIRECT:/login/oauth2/movietv}
+      logout-redirect: ${FRONTEND_ADDRESS:http://localhost:9090}${PATH_LOGOUT_REDIRECT:/}
     # jwk:
     #   uri: "lb://authorization-service/oauth2/jwks"
     api:

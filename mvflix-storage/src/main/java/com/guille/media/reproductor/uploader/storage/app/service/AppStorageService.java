@@ -24,7 +24,6 @@ import com.guille.media.reproductor.uploader.storage.domain.service.StorageServi
 import com.guille.media.reproductor.uploader.storage.domain.service.UploadPolicy;
 import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
-import com.guille.media.reproductor.uploader.storage.domain.vos.PermissionUrl;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
@@ -79,13 +78,14 @@ public class AppStorageService implements StorageService {
                 .flatMap(user -> this.userStorageRepository.findByOwnerUsername(user.subject()))
                 .switchIfEmpty(Mono.error(
                         new UserStorageNotFoundException("No storage registered for the user")))
-                .flatMap(userStorage -> {
-                    if (!this.objectStoragePort.bucketExists(userStorage.getBucketName())) {
-                        return Mono.error(new BucketNotFoundException(
-                                "Bucket not found: " + userStorage.getBucketName()));
-                    }
-                    return this.createSession(userStorage, command);
-                })
+                .flatMap(userStorage -> this.objectStoragePort.bucketExists(userStorage.getBucketName())
+                        .flatMap(exists -> {
+                            if (!exists) {
+                                return Mono.error(new BucketNotFoundException(
+                                        "Bucket not found: " + userStorage.getBucketName()));
+                            }
+                            return this.createSession(userStorage, command);
+                        }))
                 .doOnNext(session ->
                         log.info("Upload session created: uploadId={}", session.uploadId()));
     }
@@ -100,8 +100,6 @@ public class AppStorageService implements StorageService {
         PresignedUploadRequest presignedRequest =
                 new PresignedUploadRequest(configuration.expiration());
         presignedRequest.setContentType(command.mimeType());
-        PermissionUrl permissionUrl =
-                this.objectStoragePort.createUploadUrl(presignedRequest, location);
 
         StorageMetadata metadata = new StorageMetadata(
                 command.mimeType().value(), command.size(), null, Instant.now());
@@ -112,20 +110,22 @@ public class AppStorageService implements StorageService {
                 null,
                 StorageSessionStatus.PENDING);
 
-        return this.userStorageRepository.consumeStorage(userStorage.getOwnerUsername(), command.size())
-                .filter(rowsUpdated -> rowsUpdated == 1)
-                .switchIfEmpty(Mono.error(new ExceededQuotaException(
-                        "Storage quota exceeded for user: " + userStorage.getOwnerUsername())))
-                .then(this.storageRepository.save(object))
-                .map(saved -> new UploadSession(
-                        String.valueOf(saved.getStorageId()),
-                        permissionUrl.presignedUrl(),
-                        key,
-                        permissionUrl.method(),
-                        Instant.now().plus(configuration.expiration()),
-                        saved.getStorageObjectStatus(),
-                        new ExpectedObjectData(
-                                saved.sizeInBytes(), command.mimeType().value())));
+        return this.objectStoragePort.createUploadUrl(presignedRequest, location)
+                .flatMap(permissionUrl ->
+                        this.userStorageRepository.consumeStorage(userStorage.getOwnerUsername(), command.size())
+                                .filter(rowsUpdated -> rowsUpdated == 1)
+                                .switchIfEmpty(Mono.error(new ExceededQuotaException(
+                                        "Storage quota exceeded for user: " + userStorage.getOwnerUsername())))
+                                .then(this.storageRepository.save(object))
+                                .map(saved -> new UploadSession(
+                                        String.valueOf(saved.getStorageId()),
+                                        permissionUrl.presignedUrl(),
+                                        key,
+                                        permissionUrl.method(),
+                                        Instant.now().plus(configuration.expiration()),
+                                        saved.getStorageObjectStatus(),
+                                        new ExpectedObjectData(
+                                                saved.sizeInBytes(), command.mimeType().value()))));
     }
 
     @Override
@@ -153,20 +153,19 @@ public class AppStorageService implements StorageService {
         return this.userStorageRepository.findByOwnerUsername(object.getOwnerUsername())
                 .switchIfEmpty(Mono.error(new UserStorageNotFoundException(
                         "No storage registered for user: " + object.getOwnerUsername())))
-                .map(userStorage -> {
+                .flatMap(userStorage -> {
                     StorageLocation location =
                             new StorageLocation(userStorage.getBucketName(), object.getStorageKey());
                     PresignedUploadRequest request =
                             new PresignedUploadRequest(configuration.expiration());
-                    PermissionUrl permissionUrl =
-                            this.objectStoragePort.createStreamingUrl(request, location);
 
-                    return new StreamingSession(
-                            String.valueOf(object.getStorageId()),
-                            permissionUrl.presignedUrl(),
-                            object.getStorageKey(),
-                            Instant.now().plus(configuration.expiration()),
-                            permissionUrl.method());
+                    return this.objectStoragePort.createStreamingUrl(request, location)
+                            .map(permissionUrl -> new StreamingSession(
+                                    String.valueOf(object.getStorageId()),
+                                    permissionUrl.presignedUrl(),
+                                    object.getStorageKey(),
+                                    Instant.now().plus(configuration.expiration()),
+                                    permissionUrl.method()));
                 });
     }
 
@@ -189,12 +188,14 @@ public class AppStorageService implements StorageService {
     private Mono<StoreObject> validateUploadedObject(StoreObject object, BucketName bucket) {
         StorageLocation location = new StorageLocation(bucket, object.getStorageKey());
 
-        if (!this.objectStoragePort.objectExists(location)) {
-            return Mono.error(new StorageObjectNotAvailable(
-                    "Storage object not available: " + object.getStorageId()));
-        }
-
-        return Mono.fromCallable(() -> this.objectStoragePort.getMetadata(location))
+        return this.objectStoragePort.objectExists(location)
+                .flatMap(exists -> {
+                    if (!exists) {
+                        return Mono.error(new StorageObjectNotAvailable(
+                                "Storage object not available: " + object.getStorageId()));
+                    }
+                    return this.objectStoragePort.getMetadata(location);
+                })
                 .flatMap(metadata -> {
                     if (metadata.contentLength() != object.sizeInBytes()) {
                         return Mono.error(new InvalidObjectContentError());

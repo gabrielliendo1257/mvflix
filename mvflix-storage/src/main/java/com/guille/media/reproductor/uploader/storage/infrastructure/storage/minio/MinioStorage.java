@@ -22,6 +22,8 @@ import io.minio.StatObjectResponse;
 import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 @Slf4j
 @Service
@@ -45,121 +47,127 @@ public class MinioStorage implements ObjectStorageService {
 			presigned.extraHeaders(request.getHeaders());
 		}
 
-		return this.minioClient.getPresignedObjectUrl(
-				presigned.build());
+		return this.minioClient.getPresignedObjectUrl(presigned.build());
 	}
 
 	@Override
-	public PermissionUrl createUploadUrl(PresignedUploadRequest request, StorageLocation location) {
-		Method method = Method.PUT;
-		try {
+	public Mono<PermissionUrl> createUploadUrl(PresignedUploadRequest request, StorageLocation location) {
+		return Mono.fromCallable(() -> {
+			Method method = Method.PUT;
 			String presignedUrl = this.getPresignedUrl(request, location, method);
-
 			return new PermissionUrl(presignedUrl, method.name(), request.getHeaders());
-		} catch (Exception e) {
-			throw new StorageException(e.getMessage(), e.getCause());
-		}
+		})
+		.subscribeOn(Schedulers.boundedElastic())
+		.onErrorMap(e -> new StorageException("Error creando URL presignada de carga: " + e.getMessage(), e));
 	}
 
 	@Override
-	public PermissionUrl createStreamingUrl(PresignedUploadRequest request, StorageLocation location) {
-		Method method = Method.GET;
-		try {
+	public Mono<PermissionUrl> createStreamingUrl(PresignedUploadRequest request, StorageLocation location) {
+		return Mono.fromCallable(() -> {
+			Method method = Method.GET;
 			String presignedUrl = this.getPresignedUrl(request, location, method);
-
 			return new PermissionUrl(presignedUrl, method.name(), request.getHeaders());
-		} catch (Exception e) {
-			throw new StorageException(e.getMessage(), e.getCause());
-		}
+		})
+		.subscribeOn(Schedulers.boundedElastic())
+		.onErrorMap(e -> new StorageException("Error creando URL presignada de streaming: " + e.getMessage(), e));
 	}
 
 	@Override
-	public boolean objectExists(StorageLocation location) {
-		try {
-			StatObjectResponse response = this.minioClient.statObject(
-					StatObjectArgs.builder()
-							.bucket(location.bucket().bucketName())
-							.object(location.storageKey().key())
-							.build());
-			return response != null;
-		} catch (ErrorResponseException e) {
-			if ("NoSuchKey".equals(e.errorResponse().code())) {
+	public Mono<Boolean> objectExists(StorageLocation location) {
+		return Mono.fromCallable(() -> {
+			try {
+				StatObjectResponse response = this.minioClient.statObject(
+						StatObjectArgs.builder()
+								.bucket(location.bucket().bucketName())
+								.object(location.storageKey().key())
+								.build());
+				return response != null;
+			} catch (ErrorResponseException e) {
+				if ("NoSuchKey".equals(e.errorResponse().code())) {
+					return false;
+				}
+				if ("NoSuchBucket".equals(e.errorResponse().code())) {
+					throw new StorageException("El bucket '" + location.bucket() + "' no existe.", e);
+				}
+				throw new StorageException("Error consultando MinIO: " + e.getMessage(), e);
+			} catch (Exception e) {
+				throw new StorageException("Error inesperado verificando objeto.", e);
+			}
+		})
+		.subscribeOn(Schedulers.boundedElastic());
+	}
+
+	@Override
+	public Mono<StorageMetadata> getMetadata(StorageLocation location) {
+		return Mono.fromCallable(() -> {
+			try {
+				StatObjectResponse metadata = this.minioClient.statObject(
+						StatObjectArgs.builder()
+								.bucket(location.bucket().bucketName())
+								.object(location.storageKey().key())
+								.build());
+				return new StorageMetadata(
+						metadata.contentType(),
+						metadata.size(),
+						metadata.etag(),
+						metadata.lastModified().toInstant());
+			} catch (Exception e) {
+				log.error("Error al obtener la metadata", e);
+				throw new StorageException(e.getMessage(), e.getCause());
+			}
+		})
+		.subscribeOn(Schedulers.boundedElastic());
+	}
+
+	@Override
+	public Mono<Boolean> bucketExists(BucketName bucketName) {
+		return Mono.fromCallable(() -> {
+			try {
+				return this.minioClient.bucketExists(
+						BucketExistsArgs.builder()
+								.bucket(bucketName.bucketName())
+								.build());
+			} catch (Exception e) {
+				log.error("Error al verificar el bucket {}", bucketName.bucketName(), e);
 				return false;
 			}
+		})
+		.subscribeOn(Schedulers.boundedElastic());
+	}
 
-			if ("NoSuchBucket".equals(e.errorResponse().code())) {
-				throw new RuntimeException("El bucket '" + location.bucket() + "' no existe.", e);
+	@Override
+	public Mono<Void> delete(String key) {
+		return Mono.error(new UnsupportedOperationException("Operación 'delete' no implementada aún."));
+	}
+
+	@Override
+	public Mono<Void> copy(String sourceKey, String targetKey) {
+		return Mono.error(new UnsupportedOperationException("Operación 'copy' no implementada aún."));
+	}
+
+	@Override
+	public Mono<Void> move(String sourceKey, String targetKey) {
+		return Mono.error(new UnsupportedOperationException("Operación 'move' no implementada aún."));
+	}
+
+	@Override
+	public Mono<List<StoredObjectSummary>> list(String prefix) {
+		return Mono.just(List.of());
+	}
+
+	@Override
+	public Mono<Void> createBucket(String nameBucket) {
+		return Mono.<Void>fromRunnable(() -> {
+			try {
+				this.minioClient.makeBucket(
+						MakeBucketArgs.builder()
+								.bucket(nameBucket)
+								.build());
+			} catch (Exception ex) {
+				log.error("Error al crear el bucket {}", nameBucket, ex);
+				throw new StorageException(ex.getMessage(), ex.getCause());
 			}
-
-			throw new RuntimeException("Error consultando MinIO.", e);
-		} catch (Exception e) {
-			throw new RuntimeException("Error inesperado verificando objeto.", e);
-		}
-
-	}
-
-	@Override
-	public StorageMetadata getMetadata(StorageLocation location) {
-		try {
-			StatObjectResponse metadata = this.minioClient.statObject(
-					StatObjectArgs.builder()
-							.bucket(location.bucket().bucketName())
-							.object(location.storageKey().key())
-							.build());
-			return new StorageMetadata(
-					metadata.contentType(),
-					metadata.size(),
-					metadata.etag(),
-					metadata.lastModified().toInstant());
-		} catch (Exception e) {
-			log.error("Error al obtener la metadata", e);
-			throw new StorageException(e.getMessage(), e.getCause());
-		}
-	}
-
-	@Override
-	public boolean bucketExists(BucketName bucketName) {
-		try {
-			return this.minioClient.bucketExists(
-					BucketExistsArgs.builder()
-							.bucket(bucketName.bucketName())
-							.build());
-		} catch (Exception e) {
-			log.error("Error al verificar el bucket {}", bucketName.bucketName(), e);
-			return false;
-		}
-	}
-
-	@Override
-	public void delete(String key) {
-
-	}
-
-	@Override
-	public void copy(String sourceKey, String targetKey) {
-
-	}
-
-	@Override
-	public void move(String sourceKey, String targetKey) {
-
-	}
-
-	@Override
-	public List<StoredObjectSummary> list(String prefix) {
-		return List.of();
-	}
-
-	@Override
-	public void createBucket(String nameBucket) {
-		try {
-			this.minioClient.makeBucket(
-					MakeBucketArgs.builder()
-							.bucket(nameBucket)
-							.build());
-		} catch (Exception ex) {
-			log.error("Error al crear el bucket {}", nameBucket, ex);
-			throw new StorageException(ex.getMessage(), ex.getCause());
-		}
+		})
+		.subscribeOn(Schedulers.boundedElastic());
 	}
 }

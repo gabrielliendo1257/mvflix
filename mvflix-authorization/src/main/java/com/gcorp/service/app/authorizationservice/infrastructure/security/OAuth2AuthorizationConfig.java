@@ -9,16 +9,21 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
-import org.springframework.security.config.annotation.web.configurers.oauth2.server.authorization.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
-import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.JdbcOAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationConsentService;
+import org.springframework.security.oauth2.server.authorization.OAuth2AuthorizationService;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
@@ -59,48 +64,68 @@ public class OAuth2AuthorizationConfig {
 
 	@Bean
 	RegisteredClientRepository registeredClientRepository(
+			JdbcTemplate jdbcTemplate,
 			PasswordEncoder passwordEncoder) {
-		log.info("oautg2 logout tedirect: {}", this.oauth2PropertiesConfig.getOauth2LogOutRedirect());
-		var movieFrontRegisteredClient = RegisteredClient.withId(
-				this.oauth2PropertiesConfig.getRegistrationId())
-				.clientId(this.oauth2PropertiesConfig.getOauth2ClientId())
-				.clientSecret(
-						passwordEncoder.encode(
-								this.oauth2PropertiesConfig.getFrontClientSecret()))
-				.scope(OidcScopes.PROFILE)
-				.scope(OidcScopes.OPENID)
-				.clientAuthenticationMethod(
-						ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-				.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-				.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-				.redirectUri(this.oauth2PropertiesConfig.getOauth2Redirect())
-				.postLogoutRedirectUri(
-						this.oauth2PropertiesConfig.getOauth2LogOutRedirect())
-				.tokenSettings(
-						TokenSettings.builder()
-								.reuseRefreshTokens(false)
-								.accessTokenTimeToLive(Duration.ofMinutes(7))
-								.refreshTokenTimeToLive(Duration.ofDays(5))
-								.build())
-				.clientSettings(
-						ClientSettings.builder()
-								.requireAuthorizationConsent(false)
-								.requireProofKey(true)
-								.build())
-				.build();
+		var repository = new JdbcRegisteredClientRepository(jdbcTemplate);
 
-		var storageServiceRegisteredClient = RegisteredClient.withId("storage-app")
-				.clientId("storage-service")
-				.clientSecret(passwordEncoder.encode(
-						this.oauth2PropertiesConfig.getFrontClientSecret()))
-				.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-				.scope("users.read")
-				.scope("users.write")
-				.build();
-		log.info("Authorization service configuration register movie/storage: {}/{}", movieFrontRegisteredClient,
-				storageServiceRegisteredClient);
+		if (repository.findByClientId(this.oauth2PropertiesConfig.getOauth2ClientId()) == null) {
+			var movieFrontRegisteredClient = RegisteredClient.withId(
+					this.oauth2PropertiesConfig.getRegistrationId())
+					.clientId(this.oauth2PropertiesConfig.getOauth2ClientId())
+					.clientSecret(
+							passwordEncoder.encode(
+									this.oauth2PropertiesConfig.getFrontClientSecret()))
+					.scope(OidcScopes.PROFILE)
+					.scope(OidcScopes.OPENID)
+					.clientAuthenticationMethod(
+							ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+					.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+					.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+					.redirectUri(this.oauth2PropertiesConfig.getOauth2Redirect())
+					.postLogoutRedirectUri(
+							this.oauth2PropertiesConfig.getOauth2LogOutRedirect())
+					.tokenSettings(
+							TokenSettings.builder()
+									.reuseRefreshTokens(false)
+									.accessTokenTimeToLive(Duration.ofMinutes(7))
+									.refreshTokenTimeToLive(Duration.ofDays(5))
+									.build())
+					.clientSettings(
+							ClientSettings.builder()
+									.requireAuthorizationConsent(false)
+									.requireProofKey(true)
+									.build())
+					.build();
+			repository.save(movieFrontRegisteredClient);
+		}
 
-		return new InMemoryRegisteredClientRepository(movieFrontRegisteredClient, storageServiceRegisteredClient);
+		if (repository.findByClientId("storage-service") == null) {
+			var storageServiceRegisteredClient = RegisteredClient.withId("storage-app")
+					.clientId("storage-service")
+					.clientSecret(passwordEncoder.encode(
+							this.oauth2PropertiesConfig.getFrontClientSecret()))
+					.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+					.scope("users.read")
+					.scope("users.write")
+					.build();
+			repository.save(storageServiceRegisteredClient);
+		}
+
+		return repository;
+	}
+
+	@Bean
+	OAuth2AuthorizationService authorizationService(
+			JdbcTemplate jdbcTemplate,
+			RegisteredClientRepository registeredClientRepository) {
+		return new JdbcOAuth2AuthorizationService(jdbcTemplate, registeredClientRepository);
+	}
+
+	@Bean
+	OAuth2AuthorizationConsentService authorizationConsentService(
+			JdbcTemplate jdbcTemplate,
+			RegisteredClientRepository registeredClientRepository) {
+		return new JdbcOAuth2AuthorizationConsentService(jdbcTemplate, registeredClientRepository);
 	}
 
 	@Bean

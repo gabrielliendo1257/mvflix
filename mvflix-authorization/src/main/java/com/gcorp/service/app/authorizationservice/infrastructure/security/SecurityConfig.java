@@ -61,7 +61,7 @@ public class SecurityConfig {
 
     @Bean
     @Order(value = 2)
-    SecurityFilterChain configuration(HttpSecurity http) {
+    SecurityFilterChain configuration(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
             // .oauth2ResourceServer(resourceServer ->
             //     resourceServer.jwt(jwtConfig ->
@@ -81,8 +81,8 @@ public class SecurityConfig {
         PasswordEncoder passwordEncoder,
         @Qualifier("userDetailService") UserDetailsService userDetailsService
     ) {
-        DaoAuthenticationProvider daoAuthenticationProvider =
-            new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
+        daoAuthenticationProvider.setUserDetailsService(userDetailsService);
         daoAuthenticationProvider.setPasswordEncoder(passwordEncoder);
 
         return new ProviderManager(daoAuthenticationProvider);

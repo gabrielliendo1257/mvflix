@@ -3,14 +3,19 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.security;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
-import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
 
-import com.guille.media.reproductor.uploader.storage.app.service.ServiceLocator;
+import reactor.core.publisher.Mono;
 
 /**
  * Resource server configuration.
@@ -24,7 +29,7 @@ import com.guille.media.reproductor.uploader.storage.app.service.ServiceLocator;
 @EnableWebFluxSecurity
 public class SecurityConfiguration {
 
-    private final ServiceLocator serviceLocator;
+    private final DiscoveryClient discoveryClient;
 
     @Value("${api.path.base}")
     private String apiPathBase;
@@ -32,8 +37,8 @@ public class SecurityConfiguration {
     @Value("${security.oauth2.jwk-set-uri:}")
     private String jwkSetUriOverride;
 
-    public SecurityConfiguration(ServiceLocator serviceLocator) {
-        this.serviceLocator = serviceLocator;
+    public SecurityConfiguration(DiscoveryClient discoveryClient) {
+        this.discoveryClient = discoveryClient;
     }
 
     @Bean
@@ -57,21 +62,25 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    ReactiveJwtAuthenticationConverter jwtAuthenticationConverter() {
-        var authoritiesConverter = new ReactiveJwtGrantedAuthoritiesConverter();
+    Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
+        var authoritiesConverter = new JwtGrantedAuthoritiesConverter();
         authoritiesConverter.setAuthoritiesClaimName("roles");
         authoritiesConverter.setAuthorityPrefix("");
 
-        var jwtAuthenticationConverter = new ReactiveJwtAuthenticationConverter();
+        var jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
 
-        return jwtAuthenticationConverter;
+        return new ReactiveJwtAuthenticationConverterAdapter(jwtAuthenticationConverter);
     }
 
     private String resolveJwkSetUri() {
         if (this.jwkSetUriOverride != null && !this.jwkSetUriOverride.isBlank()) {
             return this.jwkSetUriOverride;
         }
-        return this.serviceLocator.authorizationServer() + "/oauth2/jwks";
+        var instances = this.discoveryClient.getInstances("authorization-service");
+        if (instances.isEmpty()) {
+            throw new IllegalStateException("No instances registered for authorization-service");
+        }
+        return instances.get(0).getUri() + "/oauth2/jwks";
     }
 }

@@ -3,19 +3,19 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.http;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProvider;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientProviderBuilder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.DefaultOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.ClientRegistrations;
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 
-import com.guille.media.reproductor.uploader.storage.app.service.ServiceLocator;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
 
 /**
  * Cliente OAuth2 usado por Feign para llamar al user-service.
@@ -27,7 +27,7 @@ import com.guille.media.reproductor.uploader.storage.app.service.ServiceLocator;
 @Configuration
 public class OAuth2ClientConfiguration {
 
-    private final ServiceLocator serviceLocator;
+    private final DiscoveryClient discoveryClient;
 
     @Value("${security.oauth2.client-registration-id:storage-app}")
     private String registrationId;
@@ -38,14 +38,14 @@ public class OAuth2ClientConfiguration {
     @Value("${security.oauth2.client-secret}")
     private String clientSecret;
 
-    public OAuth2ClientConfiguration(ServiceLocator serviceLocator) {
-        this.serviceLocator = serviceLocator;
+    public OAuth2ClientConfiguration(DiscoveryClient discoveryClient) {
+        this.discoveryClient = discoveryClient;
     }
 
     @Bean
     ClientRegistrationRepository clientRegistrationRepository() {
         ClientRegistration storageClient = ClientRegistrations
-                .fromIssuerLocation(this.serviceLocator.authorizationServer().toString())
+                .fromIssuerLocation(this.discoveryClient.getInstances("authorization-service").get(0).getUri().toString())
                 .registrationId(this.registrationId)
                 .clientId(this.clientId)
                 .clientSecret(this.clientSecret)
@@ -71,7 +71,7 @@ public class OAuth2ClientConfiguration {
                         .clientCredentials()
                         .build();
 
-        var authorizedClientManager = new DefaultOAuth2AuthorizedClientManager(
+        var authorizedClientManager = new AuthorizedClientServiceOAuth2AuthorizedClientManager(
                 clientRegistrationRepository, authorizedClientService);
         authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
 
