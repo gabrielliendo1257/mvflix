@@ -18,7 +18,7 @@ public class ServiceLocator {
     public URI authorizationServer() {
         ServiceInstance instance = discoveryClient
                 .getInstances("authorization-service")
-                .getFirst();
+                .get(0);
 
         return instance.getUri();
     }

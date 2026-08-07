@@ -3,7 +3,6 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.database.us
 import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
 
-import com.guille.media.reproductor.uploader.storage.infrastructure.database.storage.StoreObjectJpaEntity;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -23,24 +22,23 @@ public class SpringDataUserStorageRepository implements UserStorageRepository {
                 .sql(
                         """
 	INSERT INTO user_storage (
-		user_storage_id,
 		owner_username,
 		bucket_name,
 		storage_quota,
 		storage_usage
-		createdAt
 	)
 	VALUES (
-		:userStorageId,
 		:ownerUsername,
 		:bucketName,
 		:storageQuota,
-		:storageUsage,
-		:createdAt
+		:storageUsage
 	)
 	RETURNING *
 	""")
-                .bindProperties(entity)
+                .bind("ownerUsername", entity.getOwnerUsername())
+                .bind("bucketName", entity.getBucketName())
+                .bind("storageQuota", entity.getStorageQuota())
+                .bind("storageUsage", entity.getStorageUsage())
                 .mapProperties(UserStorageEntity.class)
                 .one()
                 .map(this.userStorageMapper::toDomain);
@@ -64,11 +62,27 @@ public class SpringDataUserStorageRepository implements UserStorageRepository {
 		return this.databaseClient
 			.sql(
 				"""
-		SELECT * FROM users WHERE owner_username = :owner_username
+		SELECT * FROM user_storage WHERE owner_username = :owner_username
 		""")
 			.bind("owner_username", ownerUsername)
 			.mapProperties(UserStorageEntity.class)
 			.one()
 			.map(this.userStorageMapper::toDomain);
+    }
+
+    @Override
+    public Mono<Long> consumeStorage(String ownerUsername, long bytes) {
+        return this.databaseClient
+                .sql(
+                        """
+		UPDATE user_storage
+		SET storage_usage = storage_usage + :bytes
+		WHERE owner_username = :owner_username
+		  AND storage_usage + :bytes <= storage_quota
+		""")
+                .bind("owner_username", ownerUsername)
+                .bind("bytes", bytes)
+                .fetch()
+                .rowsUpdated();
     }
 }

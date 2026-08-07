@@ -11,9 +11,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.guille.media.reproductor.uploader.storage.domain.service.StorageService;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.request.StreamingRequest;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.request.UploadRequest;
+import com.guille.media.reproductor.uploader.storage.presenter.dto.response.StreamingSessionResponse;
+import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadResponse;
 import com.guille.media.reproductor.uploader.storage.presenter.mapper.UploadMapper;
 
 import jakarta.validation.Valid;
+
+import reactor.core.publisher.Mono;
 
 @RestController
 @RequestMapping(value = "/api/v1/movie/storage", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -28,30 +32,22 @@ public class StorageRestController {
 	}
 
 	@PostMapping(value = "/upload")
-	public ResponseEntity<?> uploadSession(@Valid @RequestBody UploadRequest uploadRequest) {
-		var uploadCommand = this.uploadMapper.toUploadCommand(uploadRequest);
-		var sessionCreatedResponse = this.storageService.createUploadSession(uploadCommand);
-		var response = this.uploadMapper.toUploadResponse(sessionCreatedResponse);
-
-		return ResponseEntity.ok(response);
+	public Mono<ResponseEntity<UploadResponse>> uploadSession(@Valid @RequestBody UploadRequest uploadRequest) {
+		return this.storageService.createUploadSession(this.uploadMapper.toUploadCommand(uploadRequest))
+				.map(this.uploadMapper::toUploadResponse)
+				.map(ResponseEntity::ok);
 	}
 
-	/**
-	 * Verifica dentro del bucket "uploads" la existencia de ese archivo,
-	 * utilizando el uploadId
-	 */
 	@PostMapping(value = "/upload/{uploadId}/complete")
-	public ResponseEntity<?> completeUpload(@PathVariable String uploadId) {
-		this.storageService.completeUpload(uploadId);
-		return ResponseEntity.ok().build();
+	public Mono<ResponseEntity<Void>> completeUpload(@PathVariable Long uploadId) {
+		return this.storageService.completeUpload(uploadId)
+				.thenReturn(ResponseEntity.ok().build());
 	}
 
 	@PostMapping(value = "/streaming")
-	public ResponseEntity<?> streaming(@Valid @RequestBody StreamingRequest streamingRequest) {
-		var streamingrequest = this.uploadMapper.toStreamingCommand(streamingRequest);
-		var createdStreamingResponse = this.storageService.generateStreamingSession(streamingrequest);
-		var response = this.uploadMapper.toStreamingSessionResponse(createdStreamingResponse);
-
-		return ResponseEntity.ok(response);
+	public Mono<ResponseEntity<StreamingSessionResponse>> streaming(@Valid @RequestBody StreamingRequest streamingRequest) {
+		return this.storageService.generateStreamingSession(this.uploadMapper.toStreamingCommand(streamingRequest))
+				.map(this.uploadMapper::toStreamingSessionResponse)
+				.map(ResponseEntity::ok);
 	}
 }

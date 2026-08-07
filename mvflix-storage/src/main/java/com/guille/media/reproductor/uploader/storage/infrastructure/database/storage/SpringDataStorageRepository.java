@@ -22,7 +22,7 @@ public class SpringDataStorageRepository implements StorageRepository {
                 .sql(
                         """
 			INSERT INTO store_objects (
-				storage_id,
+				owner_username,
 				object_key,
 				status,
 				content_type,
@@ -31,7 +31,7 @@ public class SpringDataStorageRepository implements StorageRepository {
 				last_modified_at
 			)
 			VALUES (
-				:storageId,
+				:ownerUsername,
 				:objectKey,
 				:status,
 				:contentType,
@@ -41,7 +41,13 @@ public class SpringDataStorageRepository implements StorageRepository {
 			)
 			RETURNING *
 			""")
-                .bindProperties(entity)
+                .bind("ownerUsername", entity.getOwnerUsername())
+                .bind("objectKey", entity.getObjectKey())
+                .bind("status", entity.getStatus())
+                .bind("contentType", entity.getContentType())
+                .bind("contentLength", entity.getContentLength())
+                .bind("checksum", entity.getChecksum())
+                .bind("lastModifiedAt", entity.getLastModifiedAt())
                 .mapProperties(StoreObjectJpaEntity.class)
                 .one()
                 .map(this.storageMapper::toDomain);
@@ -52,11 +58,28 @@ public class SpringDataStorageRepository implements StorageRepository {
 		return this.databaseClient
 			.sql(
 				"""
-		SELECT * FROM users WHERE id = :user_id
+		SELECT * FROM store_objects WHERE storage_id = :storage_id
 		""")
-			.bind("user_id", storageId)
+			.bind("storage_id", storageId)
 			.mapProperties(StoreObjectJpaEntity.class)
 			.one()
 			.map(this.storageMapper::toDomain);
+    }
+
+    @Override
+    public Mono<StoreObject> markCompleted(Long storageId) {
+        return this.databaseClient
+                .sql(
+                        """
+			UPDATE store_objects
+			SET status = 'COMPLETED'
+			WHERE storage_id = :storage_id
+			  AND status = 'PENDING'
+			RETURNING *
+			""")
+                .bind("storage_id", storageId)
+                .mapProperties(StoreObjectJpaEntity.class)
+                .one()
+                .map(this.storageMapper::toDomain);
     }
 }

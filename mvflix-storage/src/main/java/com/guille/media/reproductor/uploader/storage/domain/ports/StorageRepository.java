@@ -7,4 +7,6 @@ public interface StorageRepository {
     Mono<StoreObject> save(StoreObject storageObject);
 
     Mono<StoreObject> findById(Long storageId);
+
+    Mono<StoreObject> markCompleted(Long storageId);
 }

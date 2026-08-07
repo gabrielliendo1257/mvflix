@@ -1,7 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.domain.models;
 
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
-import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 
 import lombok.Getter;
@@ -23,8 +22,8 @@ import java.util.Objects;
  * <p>Esta entidad une:
  *
  * <ul>
+ *   <li>El propietario del objeto.
  *   <li>La clave lógica del objeto ({@link StorageKey}).
- *   <li>La ubicación física ({@link StorageLocation}).
  *   <li>Los metadatos descriptivos ({@link StorageMetadata}).
  * </ul>
  *
@@ -34,20 +33,22 @@ import java.util.Objects;
 public final class StoreObject {
 
     private final Long storageId;
+    private final String ownerUsername;
     private final StorageKey storageKey;
     private final StorageMetadata metadata;
-    private final StorageObjectStatus storageObjectStatus;
-
+    private final StorageSessionStatus storageObjectStatus;
 
     public StoreObject(
+            String ownerUsername,
             StorageKey storageKey,
             StorageMetadata metadata,
             Long storageId,
             StorageSessionStatus storageSessionStatus) {
+        this.ownerUsername = Objects.requireNonNull(ownerUsername);
         this.storageKey = Objects.requireNonNull(storageKey);
-        this.metadata = metadata;
+        this.metadata = Objects.requireNonNull(metadata);
         this.storageId = storageId;
-        this.storageObjectStatus = storageSessionStatus;
+        this.storageObjectStatus = Objects.requireNonNull(storageSessionStatus);
     }
 
     /**

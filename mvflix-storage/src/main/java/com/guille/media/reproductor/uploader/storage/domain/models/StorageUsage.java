@@ -6,6 +6,10 @@ import lombok.Getter;
 public class StorageUsage {
     private long currentBytesUsage;
 
+    public StorageUsage(long currentBytesUsage) {
+        this.currentBytesUsage = currentBytesUsage;
+    }
+
     public StorageUsage addBytes(long bytes) {
         this.currentBytesUsage = this.currentBytesUsage + bytes;
         return this;

@@ -41,9 +41,9 @@ public class MinioStorage implements ObjectStorageService {
 				.object(location.storageKey().key())
 				.expiry((int) request.getExpiration().toMinutes());
 
-		if (request.getHeaders() != null) {
+		if (request.getHeaders() != null && !request.getHeaders().isEmpty()) {
+			presigned.extraHeaders(request.getHeaders());
 		}
-		presigned.extraHeaders(request.getHeaders());
 
 		return this.minioClient.getPresignedObjectUrl(
 				presigned.build());
@@ -112,7 +112,7 @@ public class MinioStorage implements ObjectStorageService {
 					metadata.etag(),
 					metadata.lastModified().toInstant());
 		} catch (Exception e) {
-			log.error("Error al obtener la metadata con ex - {}", e.getCause().toString());
+			log.error("Error al obtener la metadata", e);
 			throw new StorageException(e.getMessage(), e.getCause());
 		}
 	}
@@ -120,13 +120,12 @@ public class MinioStorage implements ObjectStorageService {
 	@Override
 	public boolean bucketExists(BucketName bucketName) {
 		try {
-			this.minioClient.bucketExists(
+			return this.minioClient.bucketExists(
 					BucketExistsArgs.builder()
 							.bucket(bucketName.bucketName())
 							.build());
-			return true;
 		} catch (Exception e) {
-			log.error("Error con ex - {}", e.toString());
+			log.error("Error al verificar el bucket {}", bucketName.bucketName(), e);
 			return false;
 		}
 	}
@@ -159,7 +158,7 @@ public class MinioStorage implements ObjectStorageService {
 							.bucket(nameBucket)
 							.build());
 		} catch (Exception ex) {
-			log.error("Error al crear el bucket ex - {}", ex.getCause().toString());
+			log.error("Error al crear el bucket {}", nameBucket, ex);
 			throw new StorageException(ex.getMessage(), ex.getCause());
 		}
 	}

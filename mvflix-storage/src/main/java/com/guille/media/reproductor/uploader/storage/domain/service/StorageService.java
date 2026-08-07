@@ -5,10 +5,12 @@ import com.guille.media.reproductor.uploader.storage.app.commands.requets.Stream
 import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
 
+import reactor.core.publisher.Mono;
+
 public interface StorageService {
-	UploadSession createUploadSession(CreateUploadCommand command);
+	Mono<UploadSession> createUploadSession(CreateUploadCommand command);
 
-	StreamingSession generateStreamingSession(StreamingCommand command);
+	Mono<StreamingSession> generateStreamingSession(StreamingCommand command);
 
-	void completeUpload(String uploadId);
+	Mono<Void> completeUpload(Long uploadId);
 }
