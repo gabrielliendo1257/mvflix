@@ -1,0 +1,20 @@
+[
+  {
+    "AllowedOrigins": [
+      "http://192.168.1.106:4200",
+      "http://localhost:4200",
+      "http://localhost:9090"
+    ],
+    "AllowedMethods": [
+      "PUT",
+      "GET"
+    ],
+    "AllowedHeaders": [
+      "Content-Type"
+    ],
+    "ExposeHeaders": [
+      "ETag"
+    ],
+    "MaxAgeSeconds": 300
+  }
+]

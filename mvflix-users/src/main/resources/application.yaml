@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: mvflix-users
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/mvflix_users_db
+    username: db_rw
+    password: 12345678
+
+  flyway:
+    enabled: true
+    url: jdbc:postgresql://localhost:5432/mvflix_users_db
+    user: db_migrator
+    password: 12345678

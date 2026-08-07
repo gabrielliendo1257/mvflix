@@ -1,0 +1,48 @@
+spring:
+  datasource:
+    username: admin
+    password: admin
+    url: jdbc:h2:mem:authorization_service_dev;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+
+  h2:
+    console:
+      enabled: true
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
+    defer-datasource-initialization: true
+
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL}
+
+logging:
+  level:
+    root: info
+    '[org.springframework.web]': debug
+    org.springframework.security: debug
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: trace
+    org.springframework.security.oauth2: debug
+    org.springframework.data.redis: debug
+    jakarta.jms: debug
+
+authorization:
+  env:
+    oauth2:
+      registration-id: movie-app
+      client-id: movie-bff
+      client-password: super-secret
+      redirect: ${BFF_ADDRESS}${BFF_PATH_REDIRECT}
+      logout-redirect: ${FRONTEND_ADDRESS}${PATH_LOGOUT_REDIRECT}
+    # jwk:
+    #   uri: "lb://authorization-service/oauth2/jwks"
+    api:
+      path-base: /api/v1/authorization
+
+server:
+  address: 0.0.0.0
+  port: 9090
