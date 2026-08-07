@@ -4,69 +4,74 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.security.config.Customizer;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
-import org.springframework.security.oauth2.client.registration.ClientRegistrations;
-import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
-import org.springframework.security.oauth2.core.AuthorizationGrantType;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
+import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtGrantedAuthoritiesConverter;
+import org.springframework.security.web.server.SecurityWebFilterChain;
 
 import com.guille.media.reproductor.uploader.storage.app.service.ServiceLocator;
 
+/**
+ * Resource server configuration.
+ *
+ * <p>Valida los JWT emitidos por el authorization-service (endpoint
+ * {@code /oauth2/jwks} resuelto vía discovery) y traduce el claim
+ * {@code roles} a autoridades. El claim ya contiene el prefijo {@code ROLE_}
+ * (por ejemplo {@code ROLE_ADMIN}), por lo que el converter no añade prefijo.
+ */
 @Configuration
+@EnableWebFluxSecurity
 public class SecurityConfiguration {
 
     private final ServiceLocator serviceLocator;
 
-    @Value(value = "${api.v2.path.base}")
-    private String apiV2PathBase;
+    @Value("${api.path.base}")
+    private String apiPathBase;
+
+    @Value("${security.oauth2.jwk-set-uri:}")
+    private String jwkSetUriOverride;
 
     public SecurityConfiguration(ServiceLocator serviceLocator) {
         this.serviceLocator = serviceLocator;
     }
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) {
-        http.csrf(AbstractHttpConfigurer::disable)
-                .oauth2ResourceServer(oauth2ResourceConfigurer -> oauth2ResourceConfigurer
-                        .jwt(jwtConfigurer -> jwtConfigurer
-                                .jwkSetUri(this.serviceLocator + "/oauth2/jwks"))) // TODO Not hardcoding path jwks
-                .authorizeHttpRequests(authorizaConfig -> authorizaConfig
-                        .requestMatchers(HttpMethod.POST, this.apiV2PathBase + "/storage/upload").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.POST, this.apiV2PathBase + "/storage/streaming").permitAll())
-                .oauth2Login(Customizer.withDefaults());
+    SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+        http.csrf(ServerHttpSecurity.CsrfSpec::disable)
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/ws").permitAll()
+                        .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload")
+                        .hasRole("ADMIN")
+                        .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload/*/complete")
+                        .authenticated()
+                        .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/streaming")
+                        .authenticated()
+                        .anyExchange().denyAll())
+                .oauth2ResourceServer(resourceServer -> resourceServer
+                        .jwt(jwt -> jwt
+                                .jwkSetUri(this.resolveJwkSetUri())
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
         return http.build();
     }
 
     @Bean
-    JwtAuthenticationConverter authenticationConverter() {
-        var jwtConverter = new JwtGrantedAuthoritiesConverter();
-        jwtConverter.setAuthorityPrefix("");
-        jwtConverter.setAuthoritiesClaimName("roles");
+    ReactiveJwtAuthenticationConverter jwtAuthenticationConverter() {
+        var authoritiesConverter = new ReactiveJwtGrantedAuthoritiesConverter();
+        authoritiesConverter.setAuthoritiesClaimName("roles");
+        authoritiesConverter.setAuthorityPrefix("");
 
-        var jwtAuthConverter = new JwtAuthenticationConverter();
-        jwtAuthConverter.setJwtGrantedAuthoritiesConverter(jwtConverter);
+        var jwtAuthenticationConverter = new ReactiveJwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
 
-        return jwtAuthConverter;
+        return jwtAuthenticationConverter;
     }
 
-    @Bean
-    ClientRegistrationRepository clientRegistrationRepository(ServiceLocator serviceLocator) {
-        ClientRegistration movieClient = ClientRegistrations.fromIssuerLocation(
-                serviceLocator.authorizationServer().toString())
-                .registrationId("storage-app")
-                .clientId("storage-service")
-                .clientSecret("super-secret")
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope("users.read", "users.write")
-                .build();
-
-        return new InMemoryClientRegistrationRepository(movieClient);
+    private String resolveJwkSetUri() {
+        if (this.jwkSetUriOverride != null && !this.jwkSetUriOverride.isBlank()) {
+            return this.jwkSetUriOverride;
+        }
+        return this.serviceLocator.authorizationServer() + "/oauth2/jwks";
     }
 }

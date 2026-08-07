@@ -5,6 +5,7 @@ import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.stereotype.Service;
 
 import java.net.URI;
+import java.util.List;
 
 @Service
 public class ServiceLocator {
@@ -16,10 +17,17 @@ public class ServiceLocator {
     }
 
     public URI authorizationServer() {
-        ServiceInstance instance = discoveryClient
-                .getInstances("authorization-service")
-                .get(0);
+        return this.getInstance("authorization-service");
+    }
 
-        return instance.getUri();
+    private URI getInstance(String serviceId) {
+        List<ServiceInstance> instances = this.discoveryClient.getInstances(serviceId);
+
+        if (instances.isEmpty()) {
+            throw new IllegalStateException(
+                    "No instances registered for service: " + serviceId);
+        }
+
+        return instances.get(0).getUri();
     }
 }
