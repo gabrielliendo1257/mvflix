@@ -174,10 +174,7 @@ public class AppStorageService implements StorageService {
   }
 
   private Mono<StreamingSession> createStreamingSession(StoreObject object) {
-    if (!object.isAvailable()) {
-      return Mono.error(
-          new StorageObjectNotAvailable("Storage object not available: " + object.getStorageId()));
-    }
+    object.ensureAvailable();
 
     UploadConfiguration configuration =
         this.uploadPolicy.resolve(object.sizeInBytes(), MimeType.of(object.contentType()));
@@ -267,15 +264,16 @@ public class AppStorageService implements StorageService {
               return this.objectStoragePort.getMetadata(location);
             })
         .flatMap(
-            metadata -> {
-              if (metadata.contentLength() != object.sizeInBytes()) {
-                return this.releaseAndFail(
-                    object,
-                    new InvalidObjectContentError(
-                        "Object size mismatch for upload: " + object.getStorageId()));
-              }
-              return this.storageRepository.markCompleted(object.getStorageId());
-            });
+            metadata ->
+                Mono.fromCallable(
+                        () -> {
+                          object.ensureValidContentLength(metadata.contentLength());
+                          return object;
+                        })
+                    .onErrorResume(
+                        InvalidObjectContentError.class,
+                        contentError -> this.releaseAndFail(object, contentError))
+                    .then(this.storageRepository.markCompleted(object.getStorageId())));
   }
 
   private <T> Mono<T> releaseAndFail(StoreObject object, RuntimeException error) {
@@ -317,11 +315,7 @@ public class AppStorageService implements StorageService {
                                 "Storage object not available: " + storageId)))
                     .flatMap(
                         object -> {
-                          if (!object.getOwnerUsername().equals(user.subject())) {
-                            return Mono.error(
-                                new StorageObjectNotAvailable(
-                                    "Storage object not available: " + storageId));
-                          }
+                          object.ensureOwnedBy(user.subject());
                           return this.deleteOwnedObject(object);
                         }));
   }

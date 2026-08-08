@@ -1,5 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.domain.models;
 
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 
@@ -98,6 +100,42 @@ public final class StoreObject {
 
   public boolean isAvailable() {
     return this.storageObjectStatus == StorageSessionStatus.COMPLETED;
+  }
+
+  /**
+   * Comprueba que el objeto está disponible para su consumo.
+   *
+   * @throws StorageObjectNotAvailable si el objeto aún no está completado.
+   */
+  public void ensureAvailable() {
+    if (!isAvailable()) {
+      throw new StorageObjectNotAvailable("Storage object not available: " + this.storageId);
+    }
+  }
+
+  /**
+   * Comprueba que el objeto pertenece al usuario indicado.
+   *
+   * @param username propietario esperado.
+   * @throws StorageObjectNotAvailable si el usuario no es el propietario (no se filtra la
+   *     existencia del objeto por privacidad).
+   */
+  public void ensureOwnedBy(String username) {
+    if (!Objects.equals(this.ownerUsername, username)) {
+      throw new StorageObjectNotAvailable("Storage object not available: " + this.storageId);
+    }
+  }
+
+  /**
+   * Valida que el tamaño del objeto subido coincide con el tamaño esperado.
+   *
+   * @param contentLength tamaño real obtenido del proveedor de almacenamiento.
+   * @throws InvalidObjectContentError si hay discrepancia de tamaño.
+   */
+  public void ensureValidContentLength(long contentLength) {
+    if (contentLength != this.metadata.contentLength()) {
+      throw new InvalidObjectContentError("Object size mismatch for upload: " + this.storageId);
+    }
   }
 
   public enum StorageSessionStatus {
