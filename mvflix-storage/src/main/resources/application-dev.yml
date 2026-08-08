@@ -48,6 +48,11 @@ minio:
   secret-key: admin123
   bucket: uploads
 
+storage:
+  session:
+    time-to-live: 60m
+    expiration-check-ms: 60000
+
 logging:
   level:
     root: info

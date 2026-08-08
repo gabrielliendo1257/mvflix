@@ -1,7 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
-import com.guille.media.reproductor.uploader.storage.app.commands.requets.CreateUploadCommand;
-import com.guille.media.reproductor.uploader.storage.app.commands.requets.StreamingCommand;
+import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
+import com.guille.media.reproductor.uploader.storage.app.commands.requests.StreamingCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
@@ -222,7 +222,8 @@ public class AppStorageService implements StorageService {
         .flatMap(
             exists -> {
               if (!exists) {
-                return Mono.error(
+                return this.releaseAndFail(
+                    object,
                     new StorageObjectNotAvailable(
                         "Storage object not available: " + object.getStorageId()));
               }
@@ -231,9 +232,30 @@ public class AppStorageService implements StorageService {
         .flatMap(
             metadata -> {
               if (metadata.contentLength() != object.sizeInBytes()) {
-                return Mono.error(new InvalidObjectContentError());
+                return this.releaseAndFail(
+                    object,
+                    new InvalidObjectContentError(
+                        "Object size mismatch for upload: " + object.getStorageId()));
               }
               return this.storageRepository.markCompleted(object.getStorageId());
             });
+  }
+
+  private <T> Mono<T> releaseAndFail(StoreObject object, RuntimeException error) {
+    return this.userStorageRepository
+        .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
+        .then(Mono.error(error));
+  }
+
+  @Override
+  public Mono<Long> expireStaleSessions(Instant cutoff) {
+    return this.storageRepository
+        .findPendingCreatedBefore(cutoff)
+        .flatMapSequential(
+            object ->
+                this.userStorageRepository
+                    .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
+                    .then(this.storageRepository.markExpired(object.getStorageId())))
+        .count();
   }
 }

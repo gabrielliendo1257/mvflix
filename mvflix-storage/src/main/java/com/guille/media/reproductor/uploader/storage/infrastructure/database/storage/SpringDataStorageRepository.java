@@ -7,7 +7,10 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.time.Instant;
 
 @RequiredArgsConstructor
 public class SpringDataStorageRepository implements StorageRepository {
@@ -71,15 +74,47 @@ public class SpringDataStorageRepository implements StorageRepository {
         return this.databaseClient
                 .sql(
                         """
-			UPDATE store_objects
-			SET status = 'COMPLETED'
-			WHERE storage_id = :storage_id
-			  AND status = 'PENDING'
-			RETURNING *
-			""")
+		UPDATE store_objects
+		SET status = 'COMPLETED'
+		WHERE storage_id = :storage_id
+		  AND status = 'PENDING'
+		RETURNING *
+		""")
                 .bind("storage_id", storageId)
                 .mapProperties(StoreObjectJpaEntity.class)
                 .one()
+                .map(this.storageMapper::toDomain);
+    }
+
+    @Override
+    public Mono<StoreObject> markExpired(Long storageId) {
+        return this.databaseClient
+                .sql(
+                        """
+		UPDATE store_objects
+		SET status = 'EXPIRED'
+		WHERE storage_id = :storage_id
+		  AND status = 'PENDING'
+		RETURNING *
+		""")
+                .bind("storage_id", storageId)
+                .mapProperties(StoreObjectJpaEntity.class)
+                .one()
+                .map(this.storageMapper::toDomain);
+    }
+
+    @Override
+    public Flux<StoreObject> findPendingCreatedBefore(Instant cutoff) {
+        return this.databaseClient
+                .sql(
+                        """
+		SELECT * FROM store_objects
+		WHERE status = 'PENDING'
+		  AND last_modified_at < :cutoff
+		""")
+                .bind("cutoff", cutoff)
+                .mapProperties(StoreObjectJpaEntity.class)
+                .all()
                 .map(this.storageMapper::toDomain);
     }
 }

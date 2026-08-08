@@ -1,7 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.presenter.mapper;
 
-import com.guille.media.reproductor.uploader.storage.app.commands.requets.CreateUploadCommand;
-import com.guille.media.reproductor.uploader.storage.app.commands.requets.StreamingCommand;
+import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
+import com.guille.media.reproductor.uploader.storage.app.commands.requests.StreamingCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
 import com.guille.media.reproductor.uploader.storage.app.converters.InstantToString;

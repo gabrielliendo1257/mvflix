@@ -98,8 +98,9 @@ public final class StoreObject {
 
   public enum StorageSessionStatus {
     PROCESSING,
-    DELETED,
+    PENDING,
     COMPLETED,
-    PENDING
+    EXPIRED,
+    DELETED
   }
 }

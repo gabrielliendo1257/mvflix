@@ -1,4 +1,4 @@
-package com.guille.media.reproductor.uploader.storage.app.commands.requets;
+package com.guille.media.reproductor.uploader.storage.app.commands.requests;
 
 import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
 

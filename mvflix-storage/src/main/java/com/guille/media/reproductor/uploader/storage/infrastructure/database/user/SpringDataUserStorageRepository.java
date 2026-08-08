@@ -85,4 +85,19 @@ public class SpringDataUserStorageRepository implements UserStorageRepository {
                 .fetch()
                 .rowsUpdated();
     }
+
+    @Override
+    public Mono<Long> releaseStorage(String ownerUsername, long bytes) {
+        return this.databaseClient
+                .sql(
+                        """
+		UPDATE user_storage
+		SET storage_usage = GREATEST(storage_usage - :bytes, 0)
+		WHERE owner_username = :owner_username
+		""")
+                .bind("owner_username", ownerUsername)
+                .bind("bytes", bytes)
+                .fetch()
+                .rowsUpdated();
+    }
 }
