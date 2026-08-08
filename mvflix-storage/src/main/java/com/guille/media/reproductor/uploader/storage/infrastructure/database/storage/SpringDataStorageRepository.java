@@ -124,6 +124,23 @@ public class SpringDataStorageRepository implements StorageRepository {
     }
 
     @Override
+    public Mono<StoreObject> markDeleted(Long storageId) {
+        return this.databaseClient
+                .sql(
+                        """
+		UPDATE store_objects
+		SET status = 'DELETED'
+		WHERE storage_id = :storage_id
+		  AND status = 'COMPLETED'
+		RETURNING *
+		""")
+                .bind("storage_id", storageId)
+                .mapProperties(StoreObjectJpaEntity.class)
+                .one()
+                .map(this.storageMapper::toDomain);
+    }
+
+    @Override
     public Mono<Void> touchLastSeen(Long storageId, Instant seenAt) {
         return this.databaseClient
                 .sql(

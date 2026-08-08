@@ -4,6 +4,7 @@ import com.guille.media.reproductor.uploader.storage.app.commands.requests.Creat
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.StreamingCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
+import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
 
 import reactor.core.publisher.Mono;
 
@@ -21,4 +22,15 @@ public interface StorageService {
 	 * la cuota reservada. Devuelve el número de sesiones expiradas.
 	 */
 	Mono<Long> expireStaleSessions(Instant cutoff);
+
+	/**
+	 * Devuelve el storage (cuota y uso) del usuario autenticado.
+	 */
+	Mono<UserStorage> getUserStorage();
+
+	/**
+	 * Elimina el objeto (y su blob) del que el usuario autenticado es dueño,
+	 * liberando la cuota asociada.
+	 */
+	Mono<Void> deleteObject(Long storageId);
 }

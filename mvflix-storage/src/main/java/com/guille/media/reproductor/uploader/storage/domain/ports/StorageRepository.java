@@ -18,6 +18,9 @@ public interface StorageRepository {
 
   Flux<StoreObject> findPendingCreatedBefore(Instant cutoff);
 
+  /** Marca un objeto completado como {@code DELETED} (borrado lógico). */
+  Mono<StoreObject> markDeleted(Long storageId);
+
   /**
    * Actualiza {@code last_modified_at} como historial de "última actividad"
    * (p. ej. cuando se genera una sesión de streaming).

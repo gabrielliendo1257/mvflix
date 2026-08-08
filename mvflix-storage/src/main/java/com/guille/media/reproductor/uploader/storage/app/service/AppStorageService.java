@@ -4,6 +4,7 @@ import com.guille.media.reproductor.uploader.storage.app.commands.requests.Creat
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.StreamingCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
+import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
@@ -288,5 +289,60 @@ public class AppStorageService implements StorageService {
                     .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
                     .then(this.storageRepository.markExpired(object.getStorageId())))
         .count();
+  }
+
+  @Override
+  public Mono<UserStorage> getUserStorage() {
+    return this.authenticatedUser()
+        .flatMap(user -> this.userStorageRepository.findByOwnerUsername(user.subject()))
+        .switchIfEmpty(
+            Mono.error(new UserStorageNotFoundException("No storage registered for the user")));
+  }
+
+  @Override
+  public Mono<Void> deleteObject(Long storageId) {
+    return this.authenticatedUser()
+        .flatMap(
+            user ->
+                this.storageRepository
+                    .findById(storageId)
+                    .switchIfEmpty(
+                        Mono.error(
+                            new StorageObjectNotAvailable(
+                                "Storage object not available: " + storageId)))
+                    .flatMap(
+                        object -> {
+                          if (!object.getOwnerUsername().equals(user.subject())) {
+                            return Mono.error(
+                                new StorageObjectNotAvailable(
+                                    "Storage object not available: " + storageId));
+                          }
+                          return this.deleteOwnedObject(object);
+                        }));
+  }
+
+  private Mono<Void> deleteOwnedObject(StoreObject object) {
+    return this.userStorageRepository
+        .findByOwnerUsername(object.getOwnerUsername())
+        .switchIfEmpty(
+            Mono.error(
+                new UserStorageNotFoundException(
+                    "No storage registered for user: " + object.getOwnerUsername())))
+        .flatMap(
+            userStorage ->
+                Mono.fromRunnable(
+                        () ->
+                            this.objectStoragePort.delete(
+                                new StorageLocation(
+                                    userStorage.getBucketName(), object.getStorageKey())))
+                    .then(
+                        this.userStorageRepository.releaseStorage(
+                            object.getOwnerUsername(), object.sizeInBytes()))
+                    .then(this.storageRepository.markDeleted(object.getStorageId()))
+                    .then());
+  }
+
+  private Mono<AuthenticatedUser> authenticatedUser() {
+    return this.userProvider.getAuthenticatedUser();
   }
 }
