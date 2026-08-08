@@ -1,0 +1,67 @@
+openapi: 3.0.3
+info:
+  title: mvflix authorization-service
+  version: 1.0.0
+  description: |
+    Authorization Server OAuth2 / OIDC (Spring Authorization Server).
+    Emite los JWT que firman users y storage. Los clientes (BFF, storage)
+    se registran en la configuracion de cada servicio.
+servers:
+  - url: http://localhost:9090
+paths:
+  /oauth2/authorize:
+    get:
+      summary: Endpoint de autorizacion (code flow / authorize code + PKCE).
+      responses:
+        "200":
+          description: Pagina de login/consent o redireccion con code.
+  /oauth2/token:
+    post:
+      summary: Emite un token (authorization_code, refresh_token, client_credentials).
+      responses:
+        "200":
+          description: Respuesta de token (access_token, refresh_token, id_token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          description: Grant invalido (bad request).
+  /oauth2/jwks:
+    get:
+      summary: Clave publica (JWKS) que firma los JWT.
+      description: |
+        La consumen los resource servers para validar las firmas, p.ej.
+        `spring.security.oauth2.resourceserver.jwt.jwk-set-uri`.
+      responses:
+        "200":
+          description: JWKSet JSON.
+  /oauth2/device_authorization:
+    post:
+      summary: Endpoint de authorization de dispositivo (OAuth2 Device Flow).
+      responses:
+        "200":
+          description: device_code + verification_uri.
+  /login:
+    get:
+      summary: Pagina de login del formulario HTML.
+      responses:
+        "200":
+          description: Pagina de login.
+  /logout:
+    get:
+      summary: Cierre de sesion (logout endpoint).
+      responses:
+        "200":
+          description: Redireccion tras logout.
+components:
+  schemas:
+    TokenResponse:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, example: Bearer }
+        expires_in: { type: integer }
+        refresh_token: { type: string }
+        id_token: { type: string }
+        scope: { type: string }

@@ -1,0 +1,176 @@
+openapi: 3.0.3
+info:
+  title: mvflix storage-service
+  version: 1.0.0
+  description: |
+    Uploads, streaming y uso real del almacenamiento (MinIO + Postgres).
+    Reserva/libera bytes de forma atomica (fuente de verdad del uso); la
+    cuota valida contra users-service.
+servers:
+  - url: http://localhost:6060
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/movie/storage/upload:
+    post:
+      summary: Crea una sesion de subida (URL prefirmada para subir a MinIO).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadRequest"
+      responses:
+        "200":
+          description: Sesion de subida creada.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Cuota excedida del usuario (validada contra users-service).
+  /api/v1/movie/storage/upload/{uploadId}/complete:
+    post:
+      tags: [upload]
+      summary: Completa la subida y marca el objeto como COMPLETED.
+      parameters:
+        - in: path
+          name: uploadId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Objeto confirmado.
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/movie/storage/streaming:
+    post:
+      tags: [streaming]
+      summary: Genera una URL de streaming firmada para un objeto.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StreamingRequest"
+      responses:
+        "200":
+          description: Sesion de streaming.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreamingSessionResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+  /api/v1/movie/storage/quota:
+    get:
+      tags: [users]
+      summary: Cuota y uso del usuario autenticado.
+      responses:
+        "200":
+          description: Estado de cuota/uso.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotaResponse"
+        "404":
+          description: El usuario no tiene storage registrado.
+  /api/v1/movie/storage/users/{username}/provision:
+    post:
+      tags: [users]
+      summary: Provisiona el storage de un usuario (fila user_storage + bucket).
+      description: Invocado por el flujo de registro/login.
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProvisionRequest"
+      responses:
+        "200":
+          description: Storage provisionado.
+  /api/v1/movie/storage/{storageId}:
+    delete:
+      tags: [objects]
+      summary: Elimina un objeto (blob + registro; transicion DELETEED).
+      parameters:
+        - in: path
+          name: storageId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "204":
+          description: Objeto eliminado.
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          description: Ya estaba en estado terminal.
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UploadRequest:
+      type: object
+      required: [filename, file_size, mime_type]
+      properties:
+        filename: { type: string, example: "pelicula.mp4" }
+        file_size: { type: integer, format: int64, example: 10485760 }
+        mime_type: { type: string, example: "video/mp4" }
+    UploadResponse:
+      type: object
+      properties:
+        uploadId: { type: string }
+        uploadUrl: { type: string }
+        storageKey: { type: string }
+        method: { type: string, example: PUT }
+        object:
+          $ref: "#/components/schemas/ExpectedObjectData"
+    ExpectedObjectData:
+      type: object
+      properties:
+        expectedSize: { type: integer, format: int64 }
+        expectedMime: { type: string }
+    StreamingRequest:
+      type: object
+      required: [objectId]
+      properties:
+        objectId: { type: string }
+    StreamingSessionResponse:
+      type: object
+      properties:
+        uploadId: { type: string }
+        streamingUrl: { type: string }
+        storageKey: { type: string }
+        expiresAt: { type: string }
+        method: { type: string }
+    ProvisionRequest:
+      type: object
+      properties:
+        quota_bytes: { type: integer, format: int64 }
+    QuotaResponse:
+      type: object
+      properties:
+        ownerUsername: { type: string }
+        bucketName: { type: string }
+        quotaBytes: { type: integer, format: int64 }
+        usedBytes: { type: integer, format: int64 }
+        remainingBytes: { type: integer, format: int64 }
+  responses:
+    BadRequest:
+      description: Peticion invalida o fechas superadas.
+    NotFound:
+      description: Recurso no encontrado.
+    Conflict:
+      description: Transicion de estado ilegal (optimistic lock fallo).

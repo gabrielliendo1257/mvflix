@@ -1,0 +1,118 @@
+openapi: 3.0.3
+info:
+  title: mvflix users-service
+  version: 1.0.0
+  description: |
+    Identidad, plan y politica de cuota. La cuota se deriva del plan; el uso
+    real lo mantiene storage-service (fuente de verdad del uso).
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/users:
+    post:
+      summary: Registra un usuario nuevo (por defecto plan FREE y habilitado).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserData"
+      responses:
+        "200":
+          description: Usuario creado.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+  /api/v1/users/me:
+    get:
+      summary: Usuario autenticado (identidad tomada del claim sub del JWT).
+      responses:
+        "200":
+          description: Usuario actual.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /api/v1/users/quota:
+    post:
+      summary: |
+        Contrato con storage-service. Valida que la cuota propuesta por el
+        storage (bytes) no exceda el limite del plan del usuario.
+      description: |
+        Requiere token client_credentials con scope `users.write` (es el
+        storage quien invoca). 204 si cabe, 409 si excede el plan, 404 si el
+        usuario no existe.
+      parameters:
+        - in: query
+          name: subject
+          required: true
+          schema: { type: string }
+          description: username del usuario.
+        - in: query
+          name: quota
+          required: true
+          schema: { type: integer, format: int64 }
+          description: Bytes de cuota propuesta.
+      responses:
+        "204":
+          description: La cuota cabe en el plan.
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: La cuota excede el limite del plan (ExceededQuotaException).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    UserData:
+      type: object
+      required: [username, email]
+      properties:
+        username: { type: string, example: "pepe" }
+        email: { type: string, example: "pepe@example.com" }
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string }
+        plan: { type: string, enum: [FREE, PRO, ENTERPRISE] }
+        enabled: { type: boolean }
+    ApiError:
+      type: object
+      properties:
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        timestamp: { type: string, format: date-time }
+  responses:
+    BadRequest:
+      description: Peticion invalida.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
+    Unauthorized:
+      description: Sin token o token invalido.
+    Forbidden:
+      description: Token valido pero sin el scope requerido.
+    NotFound:
+      description: Usuario no encontrado.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ApiError" }
