@@ -1,5 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.domain.models;
 
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
@@ -40,7 +41,7 @@ public final class StoreObject {
   private final StorageKey storageKey;
   private final StorageMetadata metadata;
   private final Instant createdAt;
-  private final StorageSessionStatus storageObjectStatus;
+  private StorageSessionStatus storageObjectStatus;
 
   public StoreObject(
       String ownerUsername,
@@ -110,6 +111,59 @@ public final class StoreObject {
   public void ensureAvailable() {
     if (!isAvailable()) {
       throw new StorageObjectNotAvailable("Storage object not available: " + this.storageId);
+    }
+  }
+
+  /**
+   * Transición a {@code COMPLETED}: el upload terminó y el objeto es consumible.
+   *
+   * <p>Idempotente si el objeto ya está completado.
+   *
+   * @throws IllegalStateTransitionException si el objeto no está en {@code PENDING}.
+   */
+  public void complete() {
+    if (this.storageObjectStatus == StorageSessionStatus.COMPLETED) {
+      return;
+    }
+    requireStatus(StorageSessionStatus.PENDING, "complete");
+    this.storageObjectStatus = StorageSessionStatus.COMPLETED;
+  }
+
+  /**
+   * Transición a {@code EXPIRED}: la sesión de subida caducó.
+   *
+   * <p>Idempotente si el objeto ya está expirado.
+   *
+   * @throws IllegalStateTransitionException si el objeto no está en {@code PENDING}.
+   */
+  public void expire() {
+    if (this.storageObjectStatus == StorageSessionStatus.EXPIRED) {
+      return;
+    }
+    requireStatus(StorageSessionStatus.PENDING, "expire");
+    this.storageObjectStatus = StorageSessionStatus.EXPIRED;
+  }
+
+  /**
+   * Borrado lógico a {@code DELETED}.
+   *
+   * <p>Idempotente si el objeto ya está eliminado.
+   *
+   * @throws IllegalStateTransitionException si el objeto no está en {@code COMPLETED}.
+   */
+  public void markDeleted() {
+    if (this.storageObjectStatus == StorageSessionStatus.DELETED) {
+      return;
+    }
+    requireStatus(StorageSessionStatus.COMPLETED, "delete");
+    this.storageObjectStatus = StorageSessionStatus.DELETED;
+  }
+
+  private void requireStatus(StorageSessionStatus expected, String transition) {
+    if (this.storageObjectStatus != expected) {
+      throw new IllegalStateTransitionException(
+          "Cannot " + transition + " object " + this.storageId + ": current status is "
+              + this.storageObjectStatus);
     }
   }
 

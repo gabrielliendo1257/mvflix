@@ -12,14 +12,10 @@ public interface StorageRepository {
 
   Mono<StoreObject> findById(Long storageId);
 
-  Mono<StoreObject> markCompleted(Long storageId);
-
-  Mono<StoreObject> markExpired(Long storageId);
+  /** Persiste el estado transicionado por el dominio ({@link StoreObject}). */
+  Mono<StoreObject> updateStatus(StoreObject storageObject);
 
   Flux<StoreObject> findPendingCreatedBefore(Instant cutoff);
-
-  /** Marca un objeto completado como {@code DELETED} (borrado lógico). */
-  Mono<StoreObject> markDeleted(Long storageId);
 
   /**
    * Actualiza {@code last_modified_at} como historial de "última actividad"

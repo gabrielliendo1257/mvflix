@@ -82,34 +82,17 @@ public class SpringDataStorageRepository implements StorageRepository {
     }
 
     @Override
-    public Mono<StoreObject> markCompleted(Long storageId) {
+    public Mono<StoreObject> updateStatus(StoreObject storageObject) {
         return this.databaseClient
                 .sql(
                         """
 		UPDATE store_objects
-		SET status = 'COMPLETED'
+		SET status = :status
 		WHERE storage_id = :storage_id
-		  AND status = 'PENDING'
 		RETURNING *
 		""")
-                .bind("storage_id", storageId)
-                .mapProperties(StoreObjectJpaEntity.class)
-                .one()
-                .map(this.storageMapper::toDomain);
-    }
-
-    @Override
-    public Mono<StoreObject> markExpired(Long storageId) {
-        return this.databaseClient
-                .sql(
-                        """
-		UPDATE store_objects
-		SET status = 'EXPIRED'
-		WHERE storage_id = :storage_id
-		  AND status = 'PENDING'
-		RETURNING *
-		""")
-                .bind("storage_id", storageId)
+                .bind("status", storageObject.getStorageObjectStatus().name())
+                .bind("storage_id", storageObject.getStorageId())
                 .mapProperties(StoreObjectJpaEntity.class)
                 .one()
                 .map(this.storageMapper::toDomain);
@@ -127,23 +110,6 @@ public class SpringDataStorageRepository implements StorageRepository {
                 .bind("cutoff", cutoff)
                 .mapProperties(StoreObjectJpaEntity.class)
                 .all()
-                .map(this.storageMapper::toDomain);
-    }
-
-    @Override
-    public Mono<StoreObject> markDeleted(Long storageId) {
-        return this.databaseClient
-                .sql(
-                        """
-		UPDATE store_objects
-		SET status = 'DELETED'
-		WHERE storage_id = :storage_id
-		  AND status = 'COMPLETED'
-		RETURNING *
-		""")
-                .bind("storage_id", storageId)
-                .mapProperties(StoreObjectJpaEntity.class)
-                .one()
                 .map(this.storageMapper::toDomain);
     }
 

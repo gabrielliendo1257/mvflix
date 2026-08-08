@@ -3,6 +3,7 @@ package com.guille.media.reproductor.uploader.storage.domain.models;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
@@ -50,6 +51,72 @@ class StoreObjectTest {
     StoreObject object = object(StorageSessionStatus.COMPLETED);
     assertThatThrownBy(() -> object.ensureOwnedBy("other"))
         .isInstanceOf(StorageObjectNotAvailable.class)
+        .hasMessageContaining(String.valueOf(object.getStorageId()));
+  }
+
+  @Test
+  void completeTransitionsFromPendingToCompleted() {
+    StoreObject object = object(StorageSessionStatus.PENDING);
+    object.complete();
+    assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
+  }
+
+  @Test
+  void completeIsIdempotentWhenAlreadyCompleted() {
+    StoreObject object = object(StorageSessionStatus.COMPLETED);
+    object.complete();
+    assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
+  }
+
+  @Test
+  void completeRejectsExpiredObjects() {
+    StoreObject object = object(StorageSessionStatus.EXPIRED);
+    assertThatThrownBy(object::complete)
+        .isInstanceOf(IllegalStateTransitionException.class)
+        .hasMessageContaining(String.valueOf(object.getStorageId()));
+  }
+
+  @Test
+  void expireTransitionsFromPendingToExpired() {
+    StoreObject object = object(StorageSessionStatus.PENDING);
+    object.expire();
+    assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.EXPIRED);
+  }
+
+  @Test
+  void expireIsIdempotentWhenAlreadyExpired() {
+    StoreObject object = object(StorageSessionStatus.EXPIRED);
+    object.expire();
+    assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.EXPIRED);
+  }
+
+  @Test
+  void expireRejectsCompletedObjects() {
+    StoreObject object = object(StorageSessionStatus.COMPLETED);
+    assertThatThrownBy(object::expire)
+        .isInstanceOf(IllegalStateTransitionException.class)
+        .hasMessageContaining(String.valueOf(object.getStorageId()));
+  }
+
+  @Test
+  void markDeletedTransitionsFromCompletedToDeleted() {
+    StoreObject object = object(StorageSessionStatus.COMPLETED);
+    object.markDeleted();
+    assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.DELETED);
+  }
+
+  @Test
+  void markDeletedIsIdempotentWhenAlreadyDeleted() {
+    StoreObject object = object(StorageSessionStatus.DELETED);
+    object.markDeleted();
+    assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.DELETED);
+  }
+
+  @Test
+  void markDeletedRejectsPendingObjects() {
+    StoreObject object = object(StorageSessionStatus.PENDING);
+    assertThatThrownBy(object::markDeleted)
+        .isInstanceOf(IllegalStateTransitionException.class)
         .hasMessageContaining(String.valueOf(object.getStorageId()));
   }
 
