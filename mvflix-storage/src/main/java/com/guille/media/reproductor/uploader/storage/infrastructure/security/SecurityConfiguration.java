@@ -1,7 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.infrastructure.security;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
@@ -19,25 +18,23 @@ import reactor.core.publisher.Mono;
 /**
  * Resource server configuration.
  *
- * <p>Valida los JWT emitidos por el authorization-service (endpoint {@code /oauth2/jwks} resuelto
- * vía discovery) y traduce el claim {@code roles} a autoridades. El claim ya contiene el prefijo
- * {@code ROLE_} (por ejemplo {@code ROLE_ADMIN}), por lo que el converter no añade prefijo.
+ * <p>Valida los JWT emitidos por el authorization-service (endpoint {@code /oauth2/jwks} cuya
+ * URL se resuelve desde {@code services.authorization.url}, red interna de docker-compose) y
+ * traduce el claim {@code roles} a autoridades. El claim ya contiene el prefijo {@code ROLE_}
+ * (por ejemplo {@code ROLE_ADMIN}), por lo que el converter no añade prefijo.
  */
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfiguration {
 
-  private final DiscoveryClient discoveryClient;
+  @Value("${services.authorization.url}")
+  private String authorizationUrl;
 
   @Value("${api.path.base}")
   private String apiPathBase;
 
   @Value("${security.oauth2.jwk-set-uri:}")
   private String jwkSetUriOverride;
-
-  public SecurityConfiguration(DiscoveryClient discoveryClient) {
-    this.discoveryClient = discoveryClient;
-  }
 
   @Bean
   SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
@@ -81,10 +78,6 @@ public class SecurityConfiguration {
     if (this.jwkSetUriOverride != null && !this.jwkSetUriOverride.isBlank()) {
       return this.jwkSetUriOverride;
     }
-    var instances = this.discoveryClient.getInstances("authorization-service");
-    if (instances.isEmpty()) {
-      throw new IllegalStateException("No instances registered for authorization-service");
-    }
-    return instances.get(0).getUri() + "/oauth2/jwks";
+    return this.authorizationUrl + "/oauth2/jwks";
   }
 }

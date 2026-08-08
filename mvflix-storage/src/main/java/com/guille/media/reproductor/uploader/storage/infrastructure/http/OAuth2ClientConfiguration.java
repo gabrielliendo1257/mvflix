@@ -16,8 +16,6 @@ import org.springframework.security.oauth2.client.registration.InMemoryClientReg
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 
-import org.springframework.cloud.client.discovery.DiscoveryClient;
-
 /**
  * Cliente OAuth2 usado por Feign para llamar al user-service.
  *
@@ -28,8 +26,6 @@ import org.springframework.cloud.client.discovery.DiscoveryClient;
 @Configuration
 public class OAuth2ClientConfiguration {
 
-    private final DiscoveryClient discoveryClient;
-
     @Value("${security.oauth2.client-registration-id:storage-app}")
     private String registrationId;
 
@@ -39,14 +35,13 @@ public class OAuth2ClientConfiguration {
     @Value("${security.oauth2.client-secret}")
     private String clientSecret;
 
-    public OAuth2ClientConfiguration(DiscoveryClient discoveryClient) {
-        this.discoveryClient = discoveryClient;
-    }
+    @Value("${services.authorization.url}")
+    private String authorizationUrl;
 
     @Bean
     ClientRegistrationRepository clientRegistrationRepository() {
         ClientRegistration storageClient = ClientRegistrations
-                .fromIssuerLocation(this.discoveryClient.getInstances("authorization-service").get(0).getUri().toString())
+                .fromIssuerLocation(this.authorizationUrl)
                 .registrationId(this.registrationId)
                 .clientId(this.clientId)
                 .clientSecret(this.clientSecret)
