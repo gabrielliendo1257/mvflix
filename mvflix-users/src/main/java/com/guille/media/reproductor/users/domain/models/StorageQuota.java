@@ -20,6 +20,9 @@ public class StorageQuota {
     private static final long FREE_MAX_UPLOAD_SIZE = 500L * MB;
 
     public StorageQuota(long userBytesQuota) {
+        if (userBytesQuota < 0) {
+            throw new IllegalArgumentException("Quota must not be negative: " + userBytesQuota);
+        }
         this.userBytesQuota = userBytesQuota;
     }
 

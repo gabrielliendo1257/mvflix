@@ -7,13 +7,11 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.r2dbc.core.DatabaseClient;
 
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.Plan;
-import com.guille.media.reproductor.users.domain.models.StorageQuota;
 import com.guille.media.reproductor.users.domain.models.User;
 import com.guille.media.reproductor.users.domain.models.UserId;
 import com.guille.media.reproductor.users.domain.models.Username;
@@ -24,12 +22,11 @@ import com.guille.media.reproductor.users.infra.db.users.UserMapperImpl;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-@DataR2dbcTest
 @Import({
         SpringDataUserRepository.class,
         UserMapperImpl.class
 })
-class SpringDataUserRepositoryTest {
+class SpringDataUserRepositoryTest extends AbstractR2dbcIntegrationTest {
 
     @Autowired
     UserMapper userMapper;

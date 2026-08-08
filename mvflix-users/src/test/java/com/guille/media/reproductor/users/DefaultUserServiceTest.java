@@ -2,11 +2,9 @@ package com.guille.media.reproductor.users;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.guille.media.reproductor.users.app.errors.UserNotFoundException;
 import com.guille.media.reproductor.users.app.services.DefaultUserService;
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.Plan;
-import com.guille.media.reproductor.users.domain.models.StorageQuota;
 import com.guille.media.reproductor.users.domain.models.User;
 import com.guille.media.reproductor.users.domain.models.UserId;
 import com.guille.media.reproductor.users.domain.models.Username;
@@ -16,12 +14,10 @@ import com.guille.media.reproductor.users.infra.db.users.SpringDataUserRepositor
 import com.guille.media.reproductor.users.infra.db.users.UserMapper;
 import com.guille.media.reproductor.users.infra.db.users.UserMapperImpl;
 
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.r2dbc.core.DatabaseClient;
 
@@ -31,10 +27,8 @@ import reactor.test.StepVerifier;
 
 import java.util.UUID;
 
-@Slf4j
-@DataR2dbcTest
 @Import({SpringDataUserRepository.class, UserMapperImpl.class, DefaultUserService.class})
-class DefaultUserServiceTest {
+class DefaultUserServiceTest extends AbstractR2dbcIntegrationTest {
 
     @Autowired UserService userService;
 
@@ -90,8 +84,29 @@ class DefaultUserServiceTest {
                 .verifyComplete();
     }
 
+    @Test
+    void shouldApplyQuotaWithinPlanLimit() {
+        long freeQuota = this.user.quota().getUserBytesQuota();
 
+        StepVerifier.create(this.userService.applyQuota("Francis", freeQuota))
+                .verifyComplete();
+    }
 
+    @Test
+    void shouldRejectQuotaAbovePlanLimit() {
+        long overQuota = this.user.quota().getUserBytesQuota() + 1;
+
+        StepVerifier.create(this.userService.applyQuota("Francis", overQuota))
+                .expectError(com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldRejectQuotaForUnknownUser() {
+        StepVerifier.create(this.userService.applyQuota("Ghost", 1L))
+                .expectError(com.guille.media.reproductor.users.app.errors.UserNotFoundException.class)
+                .verify();
+    }
 
     @Test
     void shouldCreateStorage() {
