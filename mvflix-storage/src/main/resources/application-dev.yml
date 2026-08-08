@@ -35,7 +35,6 @@ security:
     client-registration-id: storage-app
     client-id: storage-service
     client-secret: ${SECURITY_OAUTH2_CLIENT_SECRET:super-secret}
-    client-principal: storage-service
     jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://localhost:9090/oauth2/jwks}
 
 minio:
