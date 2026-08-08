@@ -6,14 +6,11 @@ import com.guille.media.reproductor.users.domain.exceptions.SizeVariableExceptio
 public record Username(String value) {
 
     public Username {
-        if(value == null)
+        if (value == null)
             throw new EmptyVariableException("El username no puede ser null.", "username");
-
-        if(value.isBlank() || value.isBlank())
+        if (value.isBlank())
             throw new EmptyVariableException("El username no puede estar en blanco.", "username");
-
-        if(value.length() < 4 || value.length() > 30)
+        if (value.length() < 4 || value.length() > 30)
             throw new SizeVariableException("username", 30, 4);
     }
-
 }

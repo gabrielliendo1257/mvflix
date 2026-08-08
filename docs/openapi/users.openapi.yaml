@@ -13,6 +13,10 @@ paths:
   /api/v1/users:
     post:
       summary: Registra un usuario nuevo (por defecto plan FREE y habilitado).
+      description: |
+        Endpoint publico (permitAll). 200 si se crea, 400 si el payload no
+        valida (email o username fuera de rango o mal formados), 409 si ya
+        existe un usuario con ese username (UserAlreadyExistsException).
       requestBody:
         required: true
         content:
@@ -22,8 +26,17 @@ paths:
       responses:
         "200":
           description: Usuario creado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Ya existe un usuario con ese username.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
   /api/v1/users/me:
     get:
       summary: Usuario autenticado (identidad tomada del claim sub del JWT).

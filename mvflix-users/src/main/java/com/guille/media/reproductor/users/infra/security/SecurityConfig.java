@@ -2,6 +2,7 @@ package com.guille.media.reproductor.users.infra.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -21,6 +22,8 @@ public class SecurityConfig {
                 .authorizeExchange(
                         authorizeSpec ->
                                 authorizeSpec
+                                        .pathMatchers(HttpMethod.POST, "/api/v1/users")
+                                        .permitAll()
                                         .pathMatchers("/api/v1/users/me")
                                         .authenticated()
                                         .pathMatchers("/api/v1/users/quota")

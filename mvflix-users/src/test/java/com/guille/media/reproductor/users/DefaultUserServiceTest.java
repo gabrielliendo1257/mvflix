@@ -118,4 +118,16 @@ class DefaultUserServiceTest extends AbstractR2dbcIntegrationTest {
                                 assertEquals("Pedro", created.getUsername().value()))
                 .verifyComplete();
     }
+
+    @Test
+    void shouldRejectDuplicateUsername() {
+        this.userService
+                .createStorageByNewUsers("Pedro", "pedro@gmail.com")
+                .then(this.userService.createStorageByNewUsers("Pedro", "otro@gmail.com"))
+                .as(StepVerifier::create)
+                .expectError(
+                        com.guille.media.reproductor.users.domain.exceptions
+                                .UserAlreadyExistsException.class)
+                .verify();
+    }
 }

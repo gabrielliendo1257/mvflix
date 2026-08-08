@@ -18,7 +18,7 @@ public class UserExceptionHandler {
     @ExceptionHandler(UserAlreadyExistsException.class)
     public ResponseEntity<ApiError> userAlreadyExistExceptionHandler(UserAlreadyExistsException ex,
             ServerHttpRequest request) {
-        return buildError(400, ex, request);
+        return buildError(409, ex, request);
     }
 
     @ExceptionHandler(UserNotFoundException.class)

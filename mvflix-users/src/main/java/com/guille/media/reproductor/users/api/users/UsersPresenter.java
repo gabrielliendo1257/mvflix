@@ -31,7 +31,7 @@ public class UsersPresenter {
     public Mono<ResponseEntity<?>> createNewStorage(@RequestBody UserData userData) {
         return this.userService
                 .createStorageByNewUsers(userData.username(), userData.email())
-                .map(ResponseEntity::ok);
+                .map(user -> ResponseEntity.ok(UserResponse.from(user)));
     }
 
     @GetMapping(value = "/me")
