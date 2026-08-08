@@ -12,22 +12,22 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 public class UserStorage {
-    private final Long id;
-    private final BucketName bucketName;
-    private final String ownerUsername;
-    private StorageQuota storageQuota;
-    private StorageUsage storageUsage;
+  private final Long id;
+  private final BucketName bucketName;
+  private final String ownerUsername;
+  private StorageQuota storageQuota;
+  private StorageUsage storageUsage;
 
-    public void consumeStorage(long bytes) {
-        if (bytes <= 0) {
-            throw new IllegalConsumeBytes("Los bytes deben ser mayores que cero");
-        }
-        StorageUsage nextUsage = this.storageUsage.addBytes(bytes);
-
-        if (this.storageQuota.isExceeded(nextUsage)) {
-            throw new ExceededQuotaException("Excede el storage permitido.");
-        }
-
-        this.storageUsage = nextUsage;
+  public void consumeStorage(long bytes) {
+    if (bytes <= 0) {
+      throw new IllegalConsumeBytes("Los bytes deben ser mayores que cero");
     }
+    StorageUsage nextUsage = this.storageUsage.addBytes(bytes);
+
+    if (this.storageQuota.isExceeded(nextUsage)) {
+      throw new ExceededQuotaException("Excede el storage permitido.");
+    }
+
+    this.storageUsage = nextUsage;
+  }
 }

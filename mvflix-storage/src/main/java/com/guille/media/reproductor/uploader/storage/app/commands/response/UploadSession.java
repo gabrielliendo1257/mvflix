@@ -6,12 +6,10 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import java.time.Instant;
 
 public record UploadSession(
-		String uploadId,
-		String uploadUrl,
-		StorageKey storageKey,
-		String method,
-		Instant expiresAt,
-		StorageSessionStatus currentStatus,
-		ExpectedObjectData objectData) {
-
-}
+    String uploadId,
+    String uploadUrl,
+    StorageKey storageKey,
+    String method,
+    Instant expiresAt,
+    StorageSessionStatus currentStatus,
+    ExpectedObjectData objectData) {}
