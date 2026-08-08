@@ -14,19 +14,10 @@ spring:
       #- org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       #- org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 
-  datasource:
-    url: jdbc:postgresql://localhost:5432/mvflix_db #;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/mvflix_db #;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
     username: admin
     password: admin123
-
-  h2:
-    console:
-      enabled: true
-
-  jpa:
-    show-sql: true
-    hibernate:
-      ddl-auto: create-drop
 
 services:
   authorization:
@@ -43,7 +34,7 @@ security:
     refresh-token-expiration: 30d
 
 minio:
-  url: ${MINIO_URL}
+  url: ${MINIO_URL:http://127.0.0.1:9090}
   access-key: admin
   secret-key: admin123
   bucket: uploads

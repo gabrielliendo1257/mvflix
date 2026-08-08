@@ -16,10 +16,12 @@ import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.errors.ErrorResponseException;
 import io.minio.http.Method;
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +29,8 @@ import java.util.concurrent.CompletionException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
+
+import com.guille.media.reproductor.uploader.storage.domain.vos.StorageFolder;
 
 @Slf4j
 @Service
@@ -262,6 +266,39 @@ public class MinioStorage implements ObjectStorageService {
             error -> {
               log.error("Error creating bucket {}", nameBucket, error);
               return new StorageException("Error creating bucket: " + nameBucket, error);
+            })
+        .then();
+  }
+
+  @Override
+  public Mono<Void> ensureBucket(BucketName bucketName) {
+    return this.bucketExists(bucketName)
+        .flatMap(exists -> exists ? Mono.empty() : this.createBucket(bucketName.bucketName()));
+  }
+
+  @Override
+  public Mono<Void> ensureUserStorageLayout(BucketName bucketName, String username) {
+    return Mono.when(
+        java.util.Arrays.stream(StorageFolder.values())
+            .map(folder -> this.putEmptyFolder(bucketName, username + "/" + folder.path()))
+            .toList());
+  }
+
+  private Mono<Void> putEmptyFolder(BucketName bucketName, String objectKey) {
+    return Mono.fromFuture(
+            run(
+                () ->
+                    this.minioAsyncClient.putObject(
+                        PutObjectArgs.builder()
+                            .bucket(bucketName.bucketName())
+                            .object(objectKey)
+                            .stream(new ByteArrayInputStream(new byte[0]), 0, -1)
+                            .build())))
+        .onErrorMap(
+            error -> {
+              log.error("Error ensuring storage folder {}/{}", bucketName, objectKey, error);
+              return new StorageException(
+                  "Error ensuring storage folder: " + objectKey, error);
             })
         .then();
   }

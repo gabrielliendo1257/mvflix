@@ -33,4 +33,12 @@ public interface StorageService {
 	 * liberando la cuota asociada.
 	 */
 	Mono<Void> deleteObject(Long storageId);
+
+	/**
+	 * Asegura que el usuario tiene su espacio en el bucket dedicado:
+	 * crea la fila de {@code user_storage} si no existe y materializa las
+	 * subcarpetas en el objeto storage. Idempotente. Se invoca al registrar
+	 * o loguear el usuario.
+	 */
+	Mono<Void> ensureUserStorage(String username, long quotaBytes);
 }

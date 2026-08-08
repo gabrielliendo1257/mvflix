@@ -1,14 +1,14 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
-import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
-import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGenerator;
@@ -28,7 +28,9 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -41,7 +43,6 @@ class AppStorageServiceTest {
   private final StorageKeyGenerator storageKeyGenerator = new StorageKeyGenerator();
   private final UploadPolicy uploadPolicy = mock(UploadPolicy.class);
   private final StorageRepository storageRepository = mock(StorageRepository.class);
-  private final UserServiceCommandPort userServiceQueryPort = mock(UserServiceCommandPort.class);
   private final UserProvider userProvider = mock(UserProvider.class);
   private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
   private final StorageEventPublisher eventPublisher = mock(StorageEventPublisher.class);
@@ -52,12 +53,16 @@ class AppStorageServiceTest {
           storageKeyGenerator,
           uploadPolicy,
           storageRepository,
-          userServiceQueryPort,
           userProvider,
           userStorageRepository,
           eventPublisher);
 
   private static final AuthenticatedUser PEPE = new AuthenticatedUser("pepe", "pepe@mvflix.dev");
+
+  @BeforeEach
+  void setUp() {
+    ReflectionTestUtils.setField(service, "usersBucket", "usuarios");
+  }
 
   private static final UserStorage PEPE_STORAGE =
       new UserStorage(
@@ -134,5 +139,32 @@ class AppStorageServiceTest {
     StepVerifier.create(service.deleteObject(99L))
         .expectError(StorageObjectNotAvailable.class)
         .verify();
+  }
+
+  @Test
+  void ensureUserStorage_createsRowAndLayoutWhenUserDoesNotExist() {
+    when(userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.empty());
+    UserStorage provisioned =
+        new UserStorage(
+            null, BucketName.of("usuarios"), "pepe", new StorageQuota(2048), new StorageUsage(0));
+    when(userStorageRepository.save(any(UserStorage.class))).thenReturn(Mono.just(provisioned));
+    when(objectStoragePort.ensureUserStorageLayout(BucketName.of("usuarios"), "pepe"))
+        .thenReturn(Mono.empty());
+
+    StepVerifier.create(service.ensureUserStorage("pepe", 2048)).verifyComplete();
+
+    verify(userStorageRepository).save(any(UserStorage.class));
+    verify(objectStoragePort).ensureUserStorageLayout(BucketName.of("usuarios"), "pepe");
+  }
+
+  @Test
+  void ensureUserStorage_skipsRowCreationWhenUserAlreadyExists() {
+    when(userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(objectStoragePort.ensureUserStorageLayout(BucketName.of("movies"), "pepe"))
+        .thenReturn(Mono.empty());
+
+    StepVerifier.create(service.ensureUserStorage("pepe", 2048)).verifyComplete();
+
+    verify(userStorageRepository, never()).save(any(UserStorage.class));
   }
 }

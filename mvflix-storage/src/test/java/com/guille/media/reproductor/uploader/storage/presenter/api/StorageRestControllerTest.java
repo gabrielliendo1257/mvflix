@@ -61,6 +61,7 @@ class StorageRestControllerTest {
         .post()
         .uri(BASE + "/upload")
         .contentType(MediaType.APPLICATION_JSON)
+				.accept(MediaType.APPLICATION_JSON)
         .bodyValue("{\"filename\":\"a.mp4\",\"file_size\":100,\"mime_type\":\"video/mp4\"}")
         .exchange()
         .expectStatus()
@@ -155,5 +156,26 @@ class StorageRestControllerTest {
         .thenReturn(Mono.error(new StorageObjectNotAvailable("Storage object not available: 99")));
 
     client.delete().uri(BASE + "/99").exchange().expectStatus().is5xxServerError();
+  }
+
+  @Test
+  void provisionUserStorageCallsEnsureAndReturns200() {
+    when(storageService.ensureUserStorage("pepe", 2048L)).thenReturn(Mono.empty());
+
+    client
+        .post()
+        .uri(BASE + "/users/pepe/provision")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"quota_bytes\":2048}")
+        .exchange()
+        .expectStatus()
+        .isOk();
+  }
+
+  @Test
+  void provisionUserStorageWithDefaultQuotaWhenNoBody() {
+    when(storageService.ensureUserStorage("pepe", 0L)).thenReturn(Mono.empty());
+
+    client.post().uri(BASE + "/users/pepe/provision").exchange().expectStatus().isOk();
   }
 }

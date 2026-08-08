@@ -6,7 +6,6 @@ import com.guille.media.reproductor.uploader.storage.app.commands.response.Strea
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
 import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
-import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
@@ -14,6 +13,8 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidOb
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.models.ExpectedObjectData;
+import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
+import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGenerator;
@@ -28,12 +29,14 @@ import com.guille.media.reproductor.uploader.storage.domain.service.UploadPolicy
 import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
+import com.guille.media.reproductor.uploader.storage.domain.vos.StorageFolder;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -49,17 +52,18 @@ public class AppStorageService implements StorageService {
   private final StorageKeyGenerator storageKeyGenerator;
   private final UploadPolicy uploadPolicy;
   private final StorageRepository storageRepository;
-  private final UserServiceCommandPort userServiceQueryPort;
   private final UserProvider userProvider;
   private final UserStorageRepository userStorageRepository;
   private final StorageEventPublisher eventPublisher;
+
+  @Value("${minio.bucket}")
+  private String usersBucket;
 
   public AppStorageService(
       ObjectStorageService objectStorageService,
       StorageKeyGenerator storageKeyGenerator,
       UploadPolicy uploadPolicy,
       StorageRepository storageRepository,
-      UserServiceCommandPort userServiceQueryPort,
       UserProvider userProvider,
       UserStorageRepository userStorageRepository,
       StorageEventPublisher eventPublisher) {
@@ -67,7 +71,6 @@ public class AppStorageService implements StorageService {
     this.storageKeyGenerator = storageKeyGenerator;
     this.uploadPolicy = uploadPolicy;
     this.storageRepository = storageRepository;
-    this.userServiceQueryPort = userServiceQueryPort;
     this.userProvider = userProvider;
     this.userStorageRepository = userStorageRepository;
     this.eventPublisher = eventPublisher;
@@ -108,7 +111,9 @@ public class AppStorageService implements StorageService {
     UploadConfiguration configuration =
         this.uploadPolicy.resolve(command.size(), command.mimeType());
 
-    StorageKey key = this.storageKeyGenerator.generate();
+    StorageKey key =
+        this.storageKeyGenerator.generate(
+            userStorage.getOwnerUsername(), StorageFolder.from(command.mimeType()));
     StorageLocation location = new StorageLocation(userStorage.getBucketName(), key);
 
     PresignedUploadRequest presignedRequest =
@@ -340,6 +345,27 @@ public class AppStorageService implements StorageService {
                             object.getOwnerUsername(), object.sizeInBytes()))
                     .then(this.storageRepository.markDeleted(object.getStorageId()))
                     .then());
+  }
+
+  @Override
+  public Mono<Void> ensureUserStorage(String username, long quotaBytes) {
+    return this.userStorageRepository
+        .findByOwnerUsername(username)
+        .switchIfEmpty(
+            Mono.defer(
+                () ->
+                    this.userStorageRepository.save(
+                        new UserStorage(
+                            null,
+                            BucketName.of(this.usersBucket),
+                            username,
+                            new StorageQuota(quotaBytes),
+                            new StorageUsage(0)))))
+        .flatMap(
+            userStorage ->
+                this.objectStoragePort.ensureUserStorageLayout(
+                    userStorage.getBucketName(), username))
+        .then();
   }
 
   private Mono<AuthenticatedUser> authenticatedUser() {

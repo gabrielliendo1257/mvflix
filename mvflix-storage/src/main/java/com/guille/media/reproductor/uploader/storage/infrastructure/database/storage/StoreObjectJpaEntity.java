@@ -14,7 +14,6 @@ import java.time.Instant;
 @Data
 @Table(name = "storage")
 @Builder
-@ToString
 @NoArgsConstructor
 @AllArgsConstructor
 public class StoreObjectJpaEntity {

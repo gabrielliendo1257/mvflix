@@ -26,4 +26,15 @@ public interface ObjectStorageService {
     List<StoredObjectSummary> list(BucketName bucketName, String prefix);
 
     Mono<Void> createBucket(String nameBucket);
+
+    /**
+     * Crea el bucket si no existe (idempotente).
+     */
+    Mono<Void> ensureBucket(BucketName bucketName);
+
+    /**
+     * Crea la estructura de carpetas del usuario ({@code <username>/images/}, ...)
+     * dentro del bucket si no existe (idempotente).
+     */
+    Mono<Void> ensureUserStorageLayout(BucketName bucketName, String username);
 }

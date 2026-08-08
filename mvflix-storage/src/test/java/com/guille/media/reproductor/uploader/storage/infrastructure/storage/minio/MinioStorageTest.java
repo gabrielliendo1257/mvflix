@@ -88,6 +88,35 @@ class MinioStorageTest {
   }
 
   @Test
+  void ensureBucket_isIdempotent() {
+    BucketName bucket = BucketName.of("test-ensure-bucket");
+
+    storage.ensureBucket(bucket).block();
+    storage.ensureBucket(bucket).block();
+
+    assertThat(storage.bucketExists(bucket).block()).isTrue();
+  }
+
+  @Test
+  void ensureUserStorageLayout_materializesAllFolders() {
+    BucketName bucket = BucketName.of("test-layout-bucket");
+    storage.ensureBucket(bucket).block();
+    String username = "pepe";
+
+    storage.ensureUserStorageLayout(bucket, username).block();
+
+    List<StoredObjectSummary> objects = storage.list(bucket, username + "/");
+    assertThat(objects)
+        .extracting(StoredObjectSummary::objectName)
+        .containsExactlyInAnyOrder(
+            username + "/images/",
+            username + "/videos/",
+            username + "/compressed/",
+            username + "/executables/",
+            username + "/private/");
+  }
+
+  @Test
   void objectExists_existingObject_returnsTrue_andReadsMetadata() throws Exception {
     BucketName bucket = BucketName.of("test-metadata-bucket");
     storage.createBucket(bucket.bucketName()).block();
