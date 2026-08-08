@@ -23,10 +23,11 @@ public class SpringDataStorageRepository implements StorageRepository {
     @Override
     public Mono<StoreObject> save(StoreObject storageObject) {
         StoreObjectJpaEntity entity = this.storageMapper.toEntity(storageObject);
-        return this.databaseClient
-                .sql(
-                        """
-			INSERT INTO store_objects (
+        var spec =
+                this.databaseClient
+                        .sql(
+                                """
+		 INSERT INTO store_objects (
 				owner_username,
 				object_key,
 				status,
@@ -48,15 +49,21 @@ public class SpringDataStorageRepository implements StorageRepository {
 			)
 			RETURNING *
 			""")
-                .bind("ownerUsername", entity.getOwnerUsername())
-                .bind("objectKey", entity.getObjectKey())
-                .bind("status", entity.getStatus())
-                .bind("contentType", entity.getContentType())
-                .bind("contentLength", entity.getContentLength())
-                .bind("checksum", entity.getChecksum())
-                .bind("createdAt", entity.getCreatedAt())
-                .bind("lastModifiedAt", entity.getLastModifiedAt())
-                .mapProperties(StoreObjectJpaEntity.class)
+                        .bind("ownerUsername", entity.getOwnerUsername())
+                        .bind("objectKey", entity.getObjectKey())
+                        .bind("status", entity.getStatus())
+                        .bind("contentType", entity.getContentType())
+                        .bind("contentLength", entity.getContentLength())
+                        .bind("createdAt", entity.getCreatedAt())
+                        .bind("lastModifiedAt", entity.getLastModifiedAt());
+
+        if (entity.getChecksum() == null) {
+            spec = spec.bindNull("checksum", String.class);
+        } else {
+            spec = spec.bind("checksum", entity.getChecksum());
+        }
+
+        return spec.mapProperties(StoreObjectJpaEntity.class)
                 .one()
                 .map(this.storageMapper::toDomain);
     }

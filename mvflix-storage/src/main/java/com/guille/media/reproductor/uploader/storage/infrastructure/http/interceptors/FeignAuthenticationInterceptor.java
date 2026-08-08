@@ -5,12 +5,14 @@ import feign.RequestTemplate;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.oauth2.client.OAuth2AuthorizeRequest;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("!sandbox")
 @RequiredArgsConstructor
 public class FeignAuthenticationInterceptor implements RequestInterceptor {
 

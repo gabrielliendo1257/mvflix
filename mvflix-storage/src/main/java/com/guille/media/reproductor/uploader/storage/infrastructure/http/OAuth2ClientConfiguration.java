@@ -3,6 +3,7 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.http;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.oauth2.client.AuthorizedClientServiceOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.InMemoryOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientManager;
@@ -24,6 +25,7 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
  * con el client id {@code storage-service}.
  */
 @Configuration
+@Profile("!sandbox")
 public class OAuth2ClientConfiguration {
 
     @Value("${security.oauth2.client-registration-id:storage-app}")

@@ -3,6 +3,7 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.security;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -24,6 +25,7 @@ import reactor.core.publisher.Mono;
  * (por ejemplo {@code ROLE_ADMIN}), por lo que el converter no añade prefijo.
  */
 @Configuration
+@Profile("!sandbox")
 @EnableWebFluxSecurity
 public class SecurityConfiguration {
 

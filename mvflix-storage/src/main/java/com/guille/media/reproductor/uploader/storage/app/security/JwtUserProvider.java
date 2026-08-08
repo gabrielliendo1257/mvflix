@@ -2,6 +2,7 @@ package com.guille.media.reproductor.uploader.storage.app.security;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
@@ -20,6 +21,7 @@ import reactor.core.publisher.Mono;
  * los dos, falla rápido en lugar de devolver vacío.
  */
 @Component
+@Profile("!sandbox")
 @RequiredArgsConstructor
 public class JwtUserProvider implements UserProvider {
 

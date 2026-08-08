@@ -14,8 +14,8 @@ spring:
       #- org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       #- org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 
-  r2dbc:
-    url: r2dbc:postgresql://localhost:5432/mvflix_db #;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mvflix_app
     username: admin
     password: admin123
 

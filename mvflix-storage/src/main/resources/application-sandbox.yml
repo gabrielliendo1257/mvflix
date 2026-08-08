@@ -1,0 +1,21 @@
+# Perfil de desarrollo/sandbox: sin authorization-service.
+# Postgres y MinIO se levantan con: make up-dev  (docker compose)
+spring:
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/mvflix_uploads_db
+    username: admin
+    password: admin123
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mvflix_uploads_db
+    username: admin
+    password: admin123
+
+minio:
+  url: ${MINIO_URL:http://localhost:9000}
+  access-key: admin
+  secret-key: admin123
+  bucket: uploads
+
+logging:
+  level:
+    org.springframework.security: debug
