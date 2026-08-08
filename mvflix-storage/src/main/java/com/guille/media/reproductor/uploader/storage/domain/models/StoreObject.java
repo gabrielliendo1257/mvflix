@@ -5,6 +5,7 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 
 import lombok.Getter;
 
+import java.time.Instant;
 import java.util.Objects;
 
 /**
@@ -36,17 +37,20 @@ public final class StoreObject {
   private final String ownerUsername;
   private final StorageKey storageKey;
   private final StorageMetadata metadata;
+  private final Instant createdAt;
   private final StorageSessionStatus storageObjectStatus;
 
   public StoreObject(
       String ownerUsername,
       StorageKey storageKey,
       StorageMetadata metadata,
+      Instant createdAt,
       Long storageId,
       StorageSessionStatus storageSessionStatus) {
     this.ownerUsername = Objects.requireNonNull(ownerUsername);
     this.storageKey = Objects.requireNonNull(storageKey);
     this.metadata = Objects.requireNonNull(metadata);
+    this.createdAt = Objects.requireNonNull(createdAt);
     this.storageId = storageId;
     this.storageObjectStatus = Objects.requireNonNull(storageSessionStatus);
   }

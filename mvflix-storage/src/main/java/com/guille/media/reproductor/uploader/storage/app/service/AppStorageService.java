@@ -113,7 +113,12 @@ public class AppStorageService implements StorageService {
         new StorageMetadata(command.mimeType().value(), command.size(), null, Instant.now());
     StoreObject object =
         new StoreObject(
-            userStorage.getOwnerUsername(), key, metadata, null, StorageSessionStatus.PENDING);
+            userStorage.getOwnerUsername(),
+            key,
+            metadata,
+            Instant.now(),
+            null,
+            StorageSessionStatus.PENDING);
 
     return this.objectStoragePort
         .createUploadUrl(presignedRequest, location)

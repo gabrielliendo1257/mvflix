@@ -15,6 +15,7 @@ public interface StorageMapper {
     @Mapping(target = "contentLength", source = "metadata.contentLength")
     @Mapping(target = "checksum", source = "metadata.checksum")
     @Mapping(target = "lastModifiedAt", source = "metadata.lastModifiedAt")
+    @Mapping(target = "createdAt", source = "createdAt")
     @Mapping(target = "status", source = "storageObjectStatus")
     StoreObjectJpaEntity toEntity(StoreObject storageObject);
 

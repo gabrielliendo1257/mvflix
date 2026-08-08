@@ -31,6 +31,7 @@ public class SpringDataStorageRepository implements StorageRepository {
 				content_type,
 				content_length,
 				checksum,
+				created_at,
 				last_modified_at
 			)
 			VALUES (
@@ -40,6 +41,7 @@ public class SpringDataStorageRepository implements StorageRepository {
 				:contentType,
 				:contentLength,
 				:checksum,
+				:createdAt,
 				:lastModifiedAt
 			)
 			RETURNING *
@@ -50,6 +52,7 @@ public class SpringDataStorageRepository implements StorageRepository {
                 .bind("contentType", entity.getContentType())
                 .bind("contentLength", entity.getContentLength())
                 .bind("checksum", entity.getChecksum())
+                .bind("createdAt", entity.getCreatedAt())
                 .bind("lastModifiedAt", entity.getLastModifiedAt())
                 .mapProperties(StoreObjectJpaEntity.class)
                 .one()
@@ -110,7 +113,7 @@ public class SpringDataStorageRepository implements StorageRepository {
                         """
 		SELECT * FROM store_objects
 		WHERE status = 'PENDING'
-		  AND last_modified_at < :cutoff
+		  AND created_at < :cutoff
 		""")
                 .bind("cutoff", cutoff)
                 .mapProperties(StoreObjectJpaEntity.class)

@@ -33,5 +33,7 @@ public class StoreObjectJpaEntity {
 
     private String checksum;
 
+    private Instant createdAt;
+
     private Instant lastModifiedAt;
 }
