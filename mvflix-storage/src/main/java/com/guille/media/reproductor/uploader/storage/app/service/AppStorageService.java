@@ -6,6 +6,7 @@ import com.guille.media.reproductor.uploader.storage.app.commands.response.Strea
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
+import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
@@ -18,6 +19,7 @@ import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGen
 import com.guille.media.reproductor.uploader.storage.domain.models.UploadConfiguration;
 import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
 import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageService;
+import com.guille.media.reproductor.uploader.storage.domain.ports.StorageEventPublisher;
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.service.StorageService;
@@ -49,6 +51,7 @@ public class AppStorageService implements StorageService {
   private final UserServiceCommandPort userServiceQueryPort;
   private final UserProvider userProvider;
   private final UserStorageRepository userStorageRepository;
+  private final StorageEventPublisher eventPublisher;
 
   public AppStorageService(
       ObjectStorageService objectStorageService,
@@ -57,7 +60,8 @@ public class AppStorageService implements StorageService {
       StorageRepository storageRepository,
       UserServiceCommandPort userServiceQueryPort,
       UserProvider userProvider,
-      UserStorageRepository userStorageRepository) {
+      UserStorageRepository userStorageRepository,
+      StorageEventPublisher eventPublisher) {
     this.objectStoragePort = objectStorageService;
     this.storageKeyGenerator = storageKeyGenerator;
     this.uploadPolicy = uploadPolicy;
@@ -65,6 +69,7 @@ public class AppStorageService implements StorageService {
     this.userServiceQueryPort = userServiceQueryPort;
     this.userProvider = userProvider;
     this.userStorageRepository = userStorageRepository;
+    this.eventPublisher = eventPublisher;
   }
 
   @Override
@@ -186,14 +191,25 @@ public class AppStorageService implements StorageService {
 
               return this.objectStoragePort
                   .createStreamingUrl(request, location)
-                  .map(
+                  .flatMap(
                       permissionUrl ->
-                          new StreamingSession(
-                              String.valueOf(object.getStorageId()),
-                              permissionUrl.presignedUrl(),
-                              object.getStorageKey(),
-                              Instant.now().plus(configuration.expiration()),
-                              permissionUrl.method()));
+                          this.storageRepository
+                              .touchLastSeen(object.getStorageId(), Instant.now())
+                              .onErrorResume(
+                                  error -> {
+                                    log.warn(
+                                        "Failed to record last-seen for storageId={}",
+                                        object.getStorageId(),
+                                        error);
+                                    return Mono.empty();
+                                  })
+                              .thenReturn(
+                                  new StreamingSession(
+                                      String.valueOf(object.getStorageId()),
+                                      permissionUrl.presignedUrl(),
+                                      object.getStorageKey(),
+                                      Instant.now().plus(configuration.expiration()),
+                                      permissionUrl.method())));
             });
   }
 
@@ -216,6 +232,16 @@ public class AppStorageService implements StorageService {
                     .flatMap(
                         userStorage ->
                             this.validateUploadedObject(object, userStorage.getBucketName())))
+        .doOnNext(
+            completed ->
+                this.eventPublisher.publish(
+                    new UploadCompletedEvent(
+                        completed.getStorageId(),
+                        completed.getOwnerUsername(),
+                        completed.getStorageKey().key(),
+                        completed.contentType(),
+                        completed.sizeInBytes(),
+                        Instant.now())))
         .then();
   }
 

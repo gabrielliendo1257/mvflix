@@ -6,9 +6,11 @@ import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRep
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.stereotype.Repository;
 
 import reactor.core.publisher.Mono;
 
+@Repository
 @RequiredArgsConstructor
 public class SpringDataUserStorageRepository implements UserStorageRepository {
 

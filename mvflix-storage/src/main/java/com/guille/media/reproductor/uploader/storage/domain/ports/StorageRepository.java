@@ -17,4 +17,10 @@ public interface StorageRepository {
   Mono<StoreObject> markExpired(Long storageId);
 
   Flux<StoreObject> findPendingCreatedBefore(Instant cutoff);
+
+  /**
+   * Actualiza {@code last_modified_at} como historial de "última actividad"
+   * (p. ej. cuando se genera una sesión de streaming).
+   */
+  Mono<Void> touchLastSeen(Long storageId, Instant seenAt);
 }

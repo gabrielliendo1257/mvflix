@@ -6,12 +6,14 @@ import com.guille.media.reproductor.uploader.storage.domain.ports.StorageReposit
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.stereotype.Repository;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 
+@Repository
 @RequiredArgsConstructor
 public class SpringDataStorageRepository implements StorageRepository {
 
@@ -119,5 +121,19 @@ public class SpringDataStorageRepository implements StorageRepository {
                 .mapProperties(StoreObjectJpaEntity.class)
                 .all()
                 .map(this.storageMapper::toDomain);
+    }
+
+    @Override
+    public Mono<Void> touchLastSeen(Long storageId, Instant seenAt) {
+        return this.databaseClient
+                .sql(
+                        """
+		UPDATE store_objects
+		SET last_modified_at = :seenAt
+		WHERE storage_id = :storageId
+		""")
+                .bind("storageId", storageId)
+                .bind("seenAt", seenAt)
+                .then();
     }
 }
