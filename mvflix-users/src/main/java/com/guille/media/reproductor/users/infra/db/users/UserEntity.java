@@ -18,8 +18,6 @@ public class UserEntity {
     private final String email;
     private final String plan;
     private final boolean enabled;
-    private final long storageUsed; // TODO Deleted
-    private final long storageQuota; // TODO Deleted
     private final Instant createdAt;
     private final Instant updatedAt;
 }

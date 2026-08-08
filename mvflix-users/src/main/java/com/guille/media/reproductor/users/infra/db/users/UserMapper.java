@@ -5,8 +5,6 @@ import java.util.UUID;
 import org.mapstruct.Mapper;
 
 import com.guille.media.reproductor.users.domain.models.Email;
-import com.guille.media.reproductor.users.domain.models.StorageQuota;
-import com.guille.media.reproductor.users.domain.models.StorageUsage;
 import com.guille.media.reproductor.users.domain.models.User;
 import com.guille.media.reproductor.users.domain.models.UserId;
 import com.guille.media.reproductor.users.domain.models.Username;
@@ -46,25 +44,5 @@ public interface UserMapper {
 
     default String map(Email email) {
         return email == null ? null : email.value();
-    }
-
-    /* ---------- StorageQuota ---------- */
-
-    default StorageQuota mapQuota(long quota) {
-        return new StorageQuota(quota);
-    }
-
-    default long map(StorageQuota quota) {
-        return quota.getUserBytesQuota();
-    }
-
-    /* ---------- StorageUsage ---------- */
-
-    default StorageUsage mapUsage(long usage) {
-        return new StorageUsage(usage);
-    }
-
-    default long map(StorageUsage usage) {
-        return usage.getUserCurrentBytesUsage();
     }
 }

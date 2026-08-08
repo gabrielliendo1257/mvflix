@@ -32,18 +32,14 @@ public class SpringDataUserRepository implements SimpleUserRepository {
                     username,
                     email,
                     plan,
-                    enabled,
-                    storage_used,
-                    storage_quota
+                    enabled
                 )
                 VALUES (
                     :id,
                     :username,
                     :email,
                     :plan,
-                    :enabled,
-                    :storageUsed,
-                    :storageQuota
+                    :enabled
                 )
                 RETURNING *
                 """)
@@ -52,8 +48,6 @@ public class SpringDataUserRepository implements SimpleUserRepository {
                 .bind("email", user.getEmail().value())
                 .bind("plan", user.getPlan().name())
                 .bind("enabled", user.isEnabled())
-                .bind("storageUsed", user.getStorageUsed().getUserCurrentBytesUsage())
-                .bind("storageQuota", user.getStorageQuota().getUserBytesQuota())
                 .mapProperties(UserEntity.class)
                 .one()
                 .map(this.userMapper::toDomain);
@@ -81,12 +75,10 @@ public class SpringDataUserRepository implements SimpleUserRepository {
                         """
                 UPDATE users
                 SET
-                    username = :username,
                     email = :email,
                     plan = :plan,
                     enabled = :enabled,
-                    storage_used = :storageUsed,
-                    storage_quota = :storageQuota,
+                    username = :username,
                     updated_at = NOW()
                 WHERE id = :id
                 RETURNING *
@@ -96,13 +88,9 @@ public class SpringDataUserRepository implements SimpleUserRepository {
                 .bind("email", entity.getEmail())
                 .bind("plan", entity.getPlan())
                 .bind("enabled", entity.isEnabled())
-                .bind("storageUsed", entity.getStorageUsed())
-                .bind("storageQuota", entity.getStorageQuota())
                 .mapProperties(UserEntity.class)
                 .one()
                 .map(this.userMapper::toDomain);
-        // this.databaseClient.sql("UPDATE users SET ")
-        // return this.save(user);
     }
 
     @Override
@@ -121,12 +109,12 @@ public class SpringDataUserRepository implements SimpleUserRepository {
 
     @Override
     public Mono<User> findByUsername(String username) {
-		log.info("Finding by username: {}", username);
+        log.info("Finding by username: {}", username);
         return this.databaseClient
                 .sql(
                         """
-				SELECT * FROM users WHERE username = :username
-				""")
+                SELECT * FROM users WHERE username = :username
+                """)
                 .bind("username", username)
                 .mapProperties(UserEntity.class)
                 .one()

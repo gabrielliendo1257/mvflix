@@ -23,8 +23,12 @@ public class StorageQuota {
         this.userBytesQuota = userBytesQuota;
     }
 
-    public boolean isExceeded(StorageUsage storageUsage) {
-        return userBytesQuota < storageUsage.getUserCurrentBytesUsage();
+    public boolean isExceeded(long usedBytes) {
+        return userBytesQuota < usedBytes;
+    }
+
+    public long remaining(long usedBytes) {
+        return Math.max(0, userBytesQuota - usedBytes);
     }
 
     public static StorageQuota getQuota(Plan plan) {

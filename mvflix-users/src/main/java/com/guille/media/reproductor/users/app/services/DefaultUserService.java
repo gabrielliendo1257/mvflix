@@ -4,7 +4,6 @@ import com.guille.media.reproductor.users.app.errors.UnauthorizedException;
 import com.guille.media.reproductor.users.app.errors.UserNotFoundException;
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.User;
-import com.guille.media.reproductor.users.domain.models.UserId;
 import com.guille.media.reproductor.users.domain.models.Username;
 import com.guille.media.reproductor.users.domain.ports.SimpleUserRepository;
 import com.guille.media.reproductor.users.domain.ports.UserService;
@@ -24,23 +23,6 @@ public class DefaultUserService implements UserService {
 
     public DefaultUserService(SimpleUserRepository simpleUserRepository) {
         this.simpleUserRepository = simpleUserRepository;
-    }
-
-    @Override
-    public Mono<Void> reserveStorage(long bytes, String userId) {
-        return this.simpleUserRepository
-                .findById(UserId.from(userId))
-                .switchIfEmpty(
-                        Mono.error(
-                                new UserNotFoundException(
-                                        "Usuario con id " + userId + " no existe.")))
-                .doOnNext(
-                        user -> {
-                            log.info("Apply consume by: {}", user.getId());
-                            user.consumeStorage(bytes);
-                        })
-                .flatMap(this.simpleUserRepository::update)
-                .then();
     }
 
     @Override

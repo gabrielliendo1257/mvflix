@@ -2,14 +2,11 @@ package com.guille.media.reproductor.users;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
-import com.guille.media.reproductor.users.domain.exceptions.InvalidUserIdException;
 import com.guille.media.reproductor.users.app.errors.UserNotFoundException;
 import com.guille.media.reproductor.users.app.services.DefaultUserService;
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.Plan;
 import com.guille.media.reproductor.users.domain.models.StorageQuota;
-import com.guille.media.reproductor.users.domain.models.StorageUsage;
 import com.guille.media.reproductor.users.domain.models.User;
 import com.guille.media.reproductor.users.domain.models.UserId;
 import com.guille.media.reproductor.users.domain.models.Username;
@@ -63,8 +60,6 @@ class DefaultUserServiceTest {
                         new Username("Francis"),
                         new Email("francis@gmail.com"),
                         Plan.FREE,
-                        new StorageQuota(100L),
-                        new StorageUsage(10L),
                         true);
 
         databaseClient
@@ -95,35 +90,8 @@ class DefaultUserServiceTest {
                 .verifyComplete();
     }
 
-    @Test
-    void shouldReserveStorageWithExceededQuotaException() {
-        System.out.println("Current user: " + this.user);
-        var processReserveStorage =
-                this.userService.reserveStorage(100L, this.user.getId().value().toString());
 
-        StepVerifier.create(processReserveStorage)
-                .expectError(ExceededQuotaException.class)
-                .verify();
-    }
 
-    @Test
-    void shouldReserveStorageWithUserNotFoundException() {
-        var processReserveStorage =
-                this.userService.reserveStorage(100L, UUID.randomUUID().toString());
-        StepVerifier.create(processReserveStorage)
-                .expectError(UserNotFoundException.class)
-                .verify();
-    }
-
-    @Test
-    void shouldReserveStorageWithInvalidUserIdException() {
-        try {
-            var processReserveStorage = this.userService.reserveStorage(100L, "invalid_id");
-            StepVerifier.create(processReserveStorage).verifyComplete();
-        } catch (InvalidUserIdException ex) {
-            log.info("InvalidUserIdException: {}", ex.getMessage());
-        }
-    }
 
     @Test
     void shouldCreateStorage() {
