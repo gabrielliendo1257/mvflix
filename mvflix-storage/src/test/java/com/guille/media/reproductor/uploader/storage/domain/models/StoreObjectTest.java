@@ -57,14 +57,14 @@ class StoreObjectTest {
   @Test
   void completeTransitionsFromPendingToCompleted() {
     StoreObject object = object(StorageSessionStatus.PENDING);
-    object.complete();
+    assertThat(object.complete()).isTrue();
     assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
   }
 
   @Test
   void completeIsIdempotentWhenAlreadyCompleted() {
     StoreObject object = object(StorageSessionStatus.COMPLETED);
-    object.complete();
+    assertThat(object.complete()).isFalse();
     assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
   }
 
@@ -79,14 +79,14 @@ class StoreObjectTest {
   @Test
   void expireTransitionsFromPendingToExpired() {
     StoreObject object = object(StorageSessionStatus.PENDING);
-    object.expire();
+    assertThat(object.expire()).isTrue();
     assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.EXPIRED);
   }
 
   @Test
   void expireIsIdempotentWhenAlreadyExpired() {
     StoreObject object = object(StorageSessionStatus.EXPIRED);
-    object.expire();
+    assertThat(object.expire()).isFalse();
     assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.EXPIRED);
   }
 
@@ -101,14 +101,14 @@ class StoreObjectTest {
   @Test
   void markDeletedTransitionsFromCompletedToDeleted() {
     StoreObject object = object(StorageSessionStatus.COMPLETED);
-    object.markDeleted();
+    assertThat(object.markDeleted()).isTrue();
     assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.DELETED);
   }
 
   @Test
   void markDeletedIsIdempotentWhenAlreadyDeleted() {
     StoreObject object = object(StorageSessionStatus.DELETED);
-    object.markDeleted();
+    assertThat(object.markDeleted()).isFalse();
     assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.DELETED);
   }
 

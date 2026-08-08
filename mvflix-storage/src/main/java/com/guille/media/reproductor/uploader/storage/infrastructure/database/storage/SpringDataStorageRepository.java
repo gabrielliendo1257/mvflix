@@ -1,6 +1,8 @@
 package com.guille.media.reproductor.uploader.storage.infrastructure.database.storage;
 
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject;
+import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -82,19 +84,29 @@ public class SpringDataStorageRepository implements StorageRepository {
     }
 
     @Override
-    public Mono<StoreObject> updateStatus(StoreObject storageObject) {
+    public Mono<StoreObject> updateStatus(
+        StoreObject storageObject, StorageSessionStatus expectedStatus) {
         return this.databaseClient
                 .sql(
                         """
 		UPDATE store_objects
 		SET status = :status
 		WHERE storage_id = :storage_id
+		  AND status = :expected_status
 		RETURNING *
 		""")
                 .bind("status", storageObject.getStorageObjectStatus().name())
                 .bind("storage_id", storageObject.getStorageId())
+                .bind("expected_status", expectedStatus.name())
                 .mapProperties(StoreObjectJpaEntity.class)
                 .one()
+                .switchIfEmpty(
+                        Mono.error(
+                                new IllegalStateTransitionException(
+                                        "Cannot transition object " + storageObject.getStorageId()
+                                                + ": expected status " + expectedStatus
+                                                + " in database, concurrent modification"
+                                                + " detected")))
                 .map(this.storageMapper::toDomain);
     }
 

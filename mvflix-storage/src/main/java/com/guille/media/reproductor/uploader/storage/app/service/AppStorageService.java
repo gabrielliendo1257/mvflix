@@ -268,13 +268,17 @@ public class AppStorageService implements StorageService {
                 Mono.fromCallable(
                         () -> {
                           object.ensureValidContentLength(metadata.contentLength());
-                          object.complete();
-                          return object;
+                          return object.complete();
                         })
                     .onErrorResume(
                         InvalidObjectContentError.class,
                         contentError -> this.releaseAndFail(object, contentError))
-                    .flatMap(this.storageRepository::updateStatus));
+                    .flatMap(
+                        transitioned ->
+                            transitioned
+                                ? this.storageRepository.updateStatus(
+                                    object, StorageSessionStatus.PENDING)
+                                : Mono.just(object)));
   }
 
   private <T> Mono<T> releaseAndFail(StoreObject object, RuntimeException error) {
@@ -289,10 +293,12 @@ public class AppStorageService implements StorageService {
         .findPendingCreatedBefore(cutoff)
         .flatMapSequential(
             object -> {
-              object.expire();
+              if (!object.expire()) {
+                return Mono.empty();
+              }
               return this.userStorageRepository
                   .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
-                  .then(this.storageRepository.updateStatus(object));
+                  .then(this.storageRepository.updateStatus(object, StorageSessionStatus.PENDING));
             })
         .count();
   }
@@ -332,7 +338,9 @@ public class AppStorageService implements StorageService {
                     "No storage registered for user: " + object.getOwnerUsername())))
         .flatMap(
             userStorage -> {
-              object.markDeleted();
+              if (!object.markDeleted()) {
+                return Mono.empty();
+              }
               return Mono.fromRunnable(
                       () ->
                           this.objectStoragePort.delete(
@@ -341,7 +349,9 @@ public class AppStorageService implements StorageService {
                   .then(
                       this.userStorageRepository.releaseStorage(
                           object.getOwnerUsername(), object.sizeInBytes()))
-                  .then(this.storageRepository.updateStatus(object))
+                  .then(
+                      this.storageRepository.updateStatus(
+                          object, StorageSessionStatus.COMPLETED))
                   .then();
             });
   }

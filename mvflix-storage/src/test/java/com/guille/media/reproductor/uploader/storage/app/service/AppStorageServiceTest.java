@@ -107,14 +107,15 @@ class AppStorageServiceTest {
     when(storageRepository.findById(7L)).thenReturn(Mono.just(object));
     when(userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
     when(userStorageRepository.releaseStorage("pepe", 1024)).thenReturn(Mono.just(1L));
-    when(storageRepository.updateStatus(object)).thenReturn(Mono.just(object));
+    when(storageRepository.updateStatus(object, StorageSessionStatus.COMPLETED))
+        .thenReturn(Mono.just(object));
 
     StepVerifier.create(service.deleteObject(7L)).verifyComplete();
 
     verify(objectStoragePort)
         .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
     verify(userStorageRepository).releaseStorage("pepe", 1024);
-    verify(storageRepository).updateStatus(object);
+    verify(storageRepository).updateStatus(object, StorageSessionStatus.COMPLETED);
     assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.DELETED);
   }
 

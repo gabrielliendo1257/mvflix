@@ -117,46 +117,52 @@ public final class StoreObject {
   /**
    * Transición a {@code COMPLETED}: el upload terminó y el objeto es consumible.
    *
-   * <p>Idempotente si el objeto ya está completado.
+   * <p>Idempotente si el objeto ya está completado (devuelve {@code false}).
    *
+   * @return {@code true} si se produjo la transición PENDING → COMPLETED.
    * @throws IllegalStateTransitionException si el objeto no está en {@code PENDING}.
    */
-  public void complete() {
+  public boolean complete() {
     if (this.storageObjectStatus == StorageSessionStatus.COMPLETED) {
-      return;
+      return false;
     }
     requireStatus(StorageSessionStatus.PENDING, "complete");
     this.storageObjectStatus = StorageSessionStatus.COMPLETED;
+    return true;
   }
 
   /**
    * Transición a {@code EXPIRED}: la sesión de subida caducó.
    *
-   * <p>Idempotente si el objeto ya está expirado.
+   * <p>Idempotente si el objeto ya está expirado (devuelve {@code false}).
    *
+   * @return {@code true} si se realizó la transición PENDING → EXPIRED.
    * @throws IllegalStateTransitionException si el objeto no está en {@code PENDING}.
    */
-  public void expire() {
+  public boolean expire() {
     if (this.storageObjectStatus == StorageSessionStatus.EXPIRED) {
-      return;
+      return false;
     }
     requireStatus(StorageSessionStatus.PENDING, "expire");
     this.storageObjectStatus = StorageSessionStatus.EXPIRED;
+    return true;
   }
 
   /**
    * Borrado lógico a {@code DELETED}.
    *
-   * <p>Idempotente si el objeto ya está eliminado.
+   * <p>Idempotente si el objeto ya está eliminado (devuelve {@code false}).
    *
+   * @return {@code true} si se realizó la transición COMPLETED → DELETED.
    * @throws IllegalStateTransitionException si el objeto no está en {@code COMPLETED}.
    */
-  public void markDeleted() {
+  public boolean markDeleted() {
     if (this.storageObjectStatus == StorageSessionStatus.DELETED) {
-      return;
+      return false;
     }
     requireStatus(StorageSessionStatus.COMPLETED, "delete");
     this.storageObjectStatus = StorageSessionStatus.DELETED;
+    return true;
   }
 
   private void requireStatus(StorageSessionStatus expected, String transition) {
