@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Mono;
@@ -36,5 +37,18 @@ public class UsersPresenter {
     @GetMapping(value = "/me")
     public Mono<ResponseEntity<?>> me() {
         return this.userService.getMe().map(user -> ResponseEntity.ok(UserResponse.from(user)));
+    }
+
+    /**
+     * Validación de la cuota a aplicar a un usuario. La cuota es política del
+     * usuario (derivada del plan); este endpoint rechaza un intento de cuota
+     * que exceda el límite del plan.
+     */
+    @PostMapping(value = "/quota")
+    public Mono<ResponseEntity<Void>> applyQuota(
+            @RequestParam("subject") String subject, @RequestParam("quota") long quota) {
+        return this.userService
+                .applyQuota(subject, quota)
+                .thenReturn(ResponseEntity.noContent().build());
     }
 }

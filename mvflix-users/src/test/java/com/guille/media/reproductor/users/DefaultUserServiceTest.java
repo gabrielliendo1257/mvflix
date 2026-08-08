@@ -97,6 +97,10 @@ class DefaultUserServiceTest {
     void shouldCreateStorage() {
         var processCreateStorage =
                 this.userService.createStorageByNewUsers("Pedro", "pedro@gmail.com");
-        StepVerifier.create(processCreateStorage).verifyComplete();
+        StepVerifier.create(processCreateStorage)
+                .assertNext(
+                        created ->
+                                assertEquals("Pedro", created.getUsername().value()))
+                .verifyComplete();
     }
 }

@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.TimeUnit;
 
+import lombok.Data;
+
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -38,13 +40,13 @@ class UserServiceWebClientAdapterTest {
 
     @Test
     void applyQuotaPostsSubjectAndQuotaAsQueryParams() throws Exception {
-        this.server.enqueue(new MockResponse().setResponseCode(200));
+        this.server.enqueue(new MockResponse().setResponseCode(204));
 
         this.adapter.applyQuota("user-1", 5_242_880L);
 
         RecordedRequest request = this.server.takeRequest(5, TimeUnit.SECONDS);
         assertEquals("POST", request.getMethod());
-        assertEquals("/?subject=user-1&quota=5242880", request.getPath());
+        assertEquals("/api/v1/users/quota?subject=user-1&quota=5242880", request.getPath());
     }
 
     @Test

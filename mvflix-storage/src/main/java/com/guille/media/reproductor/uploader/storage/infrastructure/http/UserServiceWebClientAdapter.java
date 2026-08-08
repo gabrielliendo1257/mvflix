@@ -29,9 +29,7 @@ public class UserServiceWebClientAdapter implements UserServiceCommandPort {
   @Override
   public void applyQuota(String subject, Long quota) {
     this.userServiceWebClient.post()
-        .uri(uriBuilder -> uriBuilder.queryParam("subject", subject)
-            .queryParam("quota", quota)
-            .build())
+        .uri("/api/v1/users/quota?subject={subject}&quota={quota}", subject, quota)
         .retrieve()
         .toBodilessEntity()
         .subscribe(

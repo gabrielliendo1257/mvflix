@@ -8,4 +8,6 @@ public interface UserService {
     Mono<User> createStorageByNewUsers(String username, String email);
 
     Mono<User> getMe();
+
+    Mono<Void> applyQuota(String username, long quotaBytes);
 }

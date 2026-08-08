@@ -8,9 +8,6 @@ CREATE TABLE users (
 
     enabled BOOLEAN NOT NULL DEFAULT TRUE,
 
-    storage_used BIGINT NOT NULL DEFAULT 0,
-    storage_quota BIGINT NOT NULL,
-
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 

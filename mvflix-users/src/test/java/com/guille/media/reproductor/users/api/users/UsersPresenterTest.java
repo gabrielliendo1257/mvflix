@@ -1,8 +1,12 @@
 package com.guille.media.reproductor.users.api.users;
 
 import com.guille.media.reproductor.users.api.dto.response.UserResponse;
-import com.guille.media.reproductor.users.app.services.DefaultUserService;
+import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
+import com.guille.media.reproductor.users.domain.models.Email;
+import com.guille.media.reproductor.users.domain.models.User;
+import com.guille.media.reproductor.users.domain.models.Username;
 import com.guille.media.reproductor.users.domain.ports.UserService;
+import com.guille.media.reproductor.users.infra.security.SecurityConfig;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,10 +14,12 @@ import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
 import org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -24,6 +30,7 @@ import reactor.core.publisher.Mono;
 @WebFluxTest(controllers = UsersPresenter.class)
 //@DataR2dbcTest
 @AutoConfigureWebTestClient
+@Import(SecurityConfig.class)
 class UsersPresenterTest {
 
     @MockitoBean ReactiveJwtDecoder jwtDecoder;
@@ -36,6 +43,8 @@ class UsersPresenterTest {
         Jwt jwt = Jwt.withTokenValue("token").header("alg", "none").claim("sub", "user").build();
 
         Mockito.when(jwtDecoder.decode(Mockito.anyString())).thenReturn(Mono.just(jwt));
+        User user = User.createNew(new Username("user"), new Email("user@example.com"));
+        Mockito.when(defaultUserService.getMe()).thenReturn(Mono.just(user));
     }
 
     @Test
@@ -54,9 +63,55 @@ class UsersPresenterTest {
 				.header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
 				.accept(MediaType.APPLICATION_JSON)
                 .exchange()
-                .expectStatus()
-                .isOk()
                 .expectBody(UserResponse.class)
                 .value(response -> response.username().equals("user"));
+    }
+
+    @Test
+    void shouldApplyQuotaForStorage() {
+        Mockito.when(defaultUserService.applyQuota("user", 1024L)).thenReturn(Mono.empty());
+
+        Jwt storageJwt =
+                Jwt.withTokenValue("token")
+                        .header("alg", "none")
+                        .subject("storage-service")
+                        .claim("sub", "storage-service")
+                        .claim("scope", "users.write")
+                        .build();
+
+        this.webTestClient
+                .mutateWith(SecurityMockServerConfigurers.mockJwt().jwt(storageJwt))
+                .post()
+                .uri("/api/v1/users/quota?subject=user&quota=1024")
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .exchange()
+                .expectStatus()
+                .isNoContent();
+    }
+
+    @Test
+    void shouldRejectQuotaWhenPlanLimitExceeded() {
+        Mockito.when(defaultUserService.applyQuota("user", 999999999L))
+                .thenReturn(
+                        Mono.error(
+                                new ExceededQuotaException(
+                                        "Quota 999999999 exceeds the plan limit")));
+
+        Jwt storageJwt =
+                Jwt.withTokenValue("token")
+                        .header("alg", "none")
+                        .subject("storage-service")
+                        .claim("sub", "storage-service")
+                        .claim("scope", "users.write")
+                        .build();
+
+        this.webTestClient
+                .mutateWith(SecurityMockServerConfigurers.mockJwt().jwt(storageJwt))
+                .post()
+                .uri("/api/v1/users/quota?subject=user&quota=999999999")
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .exchange()
+                .expectStatus()
+                .isEqualTo(409);
     }
 }
