@@ -2,11 +2,11 @@ package com.guille.media.reproductor.users.domain.exceptions;
 
 import lombok.Getter;
 
-public class EmptyVaribleException extends RuntimeException {
+public class EmptyVariableException extends RuntimeException {
     @Getter
     private final String varibleName;
 
-    public EmptyVaribleException(String message, String variableName) {
+    public EmptyVariableException(String message, String variableName) {
         super(message);
         this.varibleName = variableName;
     }

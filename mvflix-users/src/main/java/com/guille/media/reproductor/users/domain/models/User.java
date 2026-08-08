@@ -1,7 +1,7 @@
 package com.guille.media.reproductor.users.domain.models;
 
-import com.guille.media.reproductor.users.app.errors.ExceededQuotaException;
-import com.guille.media.reproductor.users.domain.exceptions.UserIsDisableException;
+import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
+import com.guille.media.reproductor.users.domain.exceptions.UserDisabledException;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -35,7 +35,7 @@ public class User {
 
     public void consumeStorage(long bytes) {
 		if (!this.canUpload(bytes)) {
-			throw new UserIsDisableException("User is disabled.");
+			throw new UserDisabledException("User is disabled.");
 		}
 
         StorageUsage nextUsage = this.storageUsed.addBytes(bytes);

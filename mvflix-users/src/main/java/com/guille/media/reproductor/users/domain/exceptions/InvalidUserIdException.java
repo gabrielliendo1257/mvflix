@@ -1,4 +1,4 @@
-package com.guille.media.reproductor.users.app.errors;
+package com.guille.media.reproductor.users.domain.exceptions;
 
 public class InvalidUserIdException extends RuntimeException {
 

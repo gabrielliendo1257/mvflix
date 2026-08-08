@@ -2,8 +2,8 @@ package com.guille.media.reproductor.users;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.guille.media.reproductor.users.app.errors.ExceededQuotaException;
-import com.guille.media.reproductor.users.app.errors.InvalidUserIdException;
+import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
+import com.guille.media.reproductor.users.domain.exceptions.InvalidUserIdException;
 import com.guille.media.reproductor.users.app.errors.UserNotFoundException;
 import com.guille.media.reproductor.users.app.services.DefaultUserService;
 import com.guille.media.reproductor.users.domain.models.Email;

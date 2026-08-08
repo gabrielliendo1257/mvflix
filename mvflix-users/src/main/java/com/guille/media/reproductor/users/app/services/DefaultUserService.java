@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.users.app.services;
 
-import com.guille.media.reproductor.users.app.errors.UnAuthorizedException;
+import com.guille.media.reproductor.users.app.errors.UnauthorizedException;
 import com.guille.media.reproductor.users.app.errors.UserNotFoundException;
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.User;
@@ -53,7 +53,7 @@ public class DefaultUserService implements UserService {
     public Mono<User> getMe() {
         return ReactiveSecurityContextHolder.getContext()
                 .map(ctx -> ctx.getAuthentication().getName())
-                .switchIfEmpty(Mono.error(new UnAuthorizedException("Authentication is null")))
+                .switchIfEmpty(Mono.error(new UnauthorizedException("Authentication is null")))
                 .flatMap(
                         username ->
                                 simpleUserRepository

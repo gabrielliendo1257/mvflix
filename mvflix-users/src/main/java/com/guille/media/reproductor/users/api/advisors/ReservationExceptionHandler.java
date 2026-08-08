@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.guille.media.reproductor.users.api.dto.ApiError;
-import com.guille.media.reproductor.users.app.errors.ExceededQuotaException;
+import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
 
 @RestControllerAdvice
-public class ReservationExceptionhandler {
+public class ReservationExceptionHandler {
 
     @ExceptionHandler(ExceededQuotaException.class)
     public ResponseEntity<ApiError> reservationExceptionHandler(ExceededQuotaException ex, ServerHttpRequest request) {

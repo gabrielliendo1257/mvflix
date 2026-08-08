@@ -8,13 +8,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.guille.media.reproductor.users.api.dto.ApiError;
-import com.guille.media.reproductor.users.domain.exceptions.UserAlreadyExistException;
+import com.guille.media.reproductor.users.domain.exceptions.UserAlreadyExistsException;
 
 @RestControllerAdvice
 public class UserExceptionHandler {
 
-    @ExceptionHandler(UserAlreadyExistException.class)
-    public ResponseEntity<ApiError> userAlreadyExistExceptionHandler(UserAlreadyExistException ex,
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ApiError> userAlreadyExistExceptionHandler(UserAlreadyExistsException ex,
             ServerHttpRequest request) {
         ApiError apiError = ApiError.builder()
                 .status(400)
