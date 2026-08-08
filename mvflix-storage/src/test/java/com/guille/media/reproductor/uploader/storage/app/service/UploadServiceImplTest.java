@@ -1,0 +1,182 @@
+package com.guille.media.reproductor.uploader.storage.app.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
+import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
+import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGenerator;
+import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
+import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
+import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject;
+import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.domain.models.UploadConfiguration;
+import com.guille.media.reproductor.uploader.storage.domain.models.UploadType;
+import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
+import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageService;
+import com.guille.media.reproductor.uploader.storage.domain.ports.StorageEventPublisher;
+import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
+import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
+import com.guille.media.reproductor.uploader.storage.domain.service.UploadPolicy;
+import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
+import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
+import com.guille.media.reproductor.uploader.storage.domain.vos.PermissionUrl;
+import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
+import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
+import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
+import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Map;
+
+class UploadServiceImplTest {
+
+  private final ObjectStorageService objectStoragePort = mock(ObjectStorageService.class);
+  private final StorageKeyGenerator storageKeyGenerator = new StorageKeyGenerator();
+  private final UploadPolicy uploadPolicy = mock(UploadPolicy.class);
+  private final StorageRepository storageRepository = mock(StorageRepository.class);
+  private final UserProvider userProvider = mock(UserProvider.class);
+  private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
+  private final StorageEventPublisher eventPublisher = mock(StorageEventPublisher.class);
+
+  private final UploadServiceImpl service =
+      new UploadServiceImpl(
+          objectStoragePort,
+          storageKeyGenerator,
+          uploadPolicy,
+          storageRepository,
+          userProvider,
+          userStorageRepository,
+          eventPublisher);
+
+  private static final AuthenticatedUser PEPE = new AuthenticatedUser("pepe", "pepe@mvflix.dev");
+
+  private static final UserStorage PEPE_STORAGE =
+      new UserStorage(
+          1L, BucketName.of("movies"), "pepe", StorageQuota.ofGigabytes(10), new StorageUsage(0));
+
+  @BeforeEach
+  void setUp() {
+    when(this.uploadPolicy.resolve(anyLong(), any(MimeType.class)))
+        .thenReturn(
+            new UploadConfiguration(
+                Duration.ofMinutes(15), UploadType.SIMPLE, null, MimeType.of("video/mp4")));
+  }
+
+  private StoreObject pendingObject(long storageId) {
+    return new StoreObject(
+        "pepe",
+        new StorageKeyGenerator().generate("pepe", com.guille.media.reproductor.uploader.storage.domain.vos.StorageFolder.from(MimeType.of("video/mp4"))),
+        new StorageMetadata("video/mp4", 1024, null, Instant.now()),
+        Instant.now(),
+        storageId,
+        StorageSessionStatus.PENDING);
+  }
+
+  @Test
+  void createUploadSessionReservesQuotaAndReturnsPresignedUrl() {
+    StoreObject saved = this.pendingObject(1L);
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.bucketExists(BucketName.of("movies"))).thenReturn(Mono.just(true));
+    when(this.objectStoragePort.createUploadUrl(any(PresignedUploadRequest.class), any(StorageLocation.class)))
+        .thenReturn(Mono.just(new PermissionUrl("http://minio/upload", "PUT", Map.of())));
+    when(this.userStorageRepository.consumeStorage(any(String.class), anyLong())).thenReturn(Mono.just(1L));
+    when(this.storageRepository.save(any(StoreObject.class))).thenReturn(Mono.just(saved));
+
+    StepVerifier.create(
+            this.service.createUploadSession(new CreateUploadCommand("a.mp4", 1024, MimeType.of("video/mp4"))))
+        .assertNext(session -> {
+          assertThat(session.uploadId()).isEqualTo("1");
+          assertThat(session.storageKey().key()).startsWith("pepe/videos/");
+          assertThat(session.uploadUrl()).isEqualTo("http://minio/upload");
+          assertThat(session.method()).isEqualTo("PUT");
+          assertThat(session.currentStatus()).isEqualTo(StorageSessionStatus.PENDING);
+        })
+        .verifyComplete();
+
+    verify(this.userStorageRepository).consumeStorage("pepe", 1024L);
+  }
+
+  @Test
+  void createUploadSessionFailsWhenBucketDoesNotExist() {
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.bucketExists(BucketName.of("movies"))).thenReturn(Mono.just(false));
+
+    StepVerifier.create(
+            this.service.createUploadSession(new CreateUploadCommand("a.mp4", 1024, MimeType.of("video/mp4"))))
+        .expectError(BucketNotFoundException.class)
+        .verify();
+  }
+
+  @Test
+  void createUploadSessionFailsWhenQuotaExceeded() {
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.bucketExists(BucketName.of("movies"))).thenReturn(Mono.just(true));
+    when(this.objectStoragePort.createUploadUrl(any(PresignedUploadRequest.class), any(StorageLocation.class)))
+        .thenReturn(Mono.just(new PermissionUrl("http://minio/upload", "PUT", Map.of())));
+    when(this.userStorageRepository.consumeStorage(any(String.class), anyLong())).thenReturn(Mono.just(0L));
+    when(this.storageRepository.save(any(StoreObject.class)))
+        .thenReturn(Mono.just(this.pendingObject(1L)));
+
+    StepVerifier.create(
+            this.service.createUploadSession(new CreateUploadCommand("a.mp4", 1024, MimeType.of("video/mp4"))))
+        .expectError(ExceededQuotaException.class)
+        .verify();
+  }
+
+  @Test
+  void completeUploadTransitionsToCompletedAndPublishesEvent() {
+    StoreObject pending = this.pendingObject(7L);
+
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.objectExists(any(StorageLocation.class))).thenReturn(Mono.just(true));
+    when(this.objectStoragePort.getMetadata(any(StorageLocation.class)))
+        .thenReturn(Mono.just(new StorageMetadata("video/mp4", 1024, null, Instant.now())));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
+        .thenReturn(Mono.just(pending));
+
+    StepVerifier.create(this.service.completeUpload(7L)).verifyComplete();
+
+    assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
+    verify(this.eventPublisher).publish(any(UploadCompletedEvent.class));
+  }
+
+  @Test
+  void completeUploadReleasesQuotaWhenObjectSizeMismatch() {
+    StoreObject pending = this.pendingObject(7L);
+
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.objectExists(any(StorageLocation.class))).thenReturn(Mono.just(true));
+    when(this.objectStoragePort.getMetadata(any(StorageLocation.class)))
+        .thenReturn(Mono.just(new StorageMetadata("video/mp4", 42, null, Instant.now())));
+    when(this.userStorageRepository.releaseStorage(any(String.class), anyLong()))
+        .thenReturn(Mono.just(1L));
+
+    StepVerifier.create(this.service.completeUpload(7L))
+        .expectError(InvalidObjectContentError.class)
+        .verify();
+
+    verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
+  }
+}

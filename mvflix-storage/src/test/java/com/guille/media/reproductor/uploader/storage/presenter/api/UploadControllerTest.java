@@ -1,0 +1,81 @@
+package com.guille.media.reproductor.uploader.storage.presenter.api;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.guille.media.reproductor.uploader.advisors.GlobalExceptionHandler;
+import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
+import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
+import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
+import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadResponse;
+import com.guille.media.reproductor.uploader.storage.presenter.mapper.UploadMapper;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.reactive.server.WebTestClient;
+
+import reactor.core.publisher.Mono;
+
+import java.time.Instant;
+
+class UploadControllerTest {
+
+  private static final String BASE = "/api/v1/movie/storage";
+
+  private final UploadService uploadService = mock(UploadService.class);
+  private final UploadMapper uploadMapper = mock(UploadMapper.class);
+  private final UploadController controller = new UploadController(uploadService, uploadMapper);
+
+  private final WebTestClient client =
+      WebTestClient.bindToController(controller)
+          .controllerAdvice(new GlobalExceptionHandler())
+          .build();
+
+  @Test
+  void uploadSessionDelegateAndReturns200() {
+    UploadSession session =
+        new UploadSession(
+            "1",
+            "http://minio/upload",
+            new StorageKey("k1"),
+            "PUT",
+            Instant.now(),
+            StorageSessionStatus.PENDING,
+            null);
+    when(this.uploadService.createUploadSession(any())).thenReturn(Mono.just(session));
+    when(this.uploadMapper.toUploadResponse(session))
+        .thenReturn(new UploadResponse("1", "http://minio/upload", "k1", "PUT", null));
+
+    this.client
+        .post()
+        .uri(BASE + "/upload")
+        .contentType(MediaType.APPLICATION_JSON)
+        .accept(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"filename\":\"a.mp4\",\"file_size\":100,\"mime_type\":\"video/mp4\"}")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.uploadId")
+        .isEqualTo("1")
+        .jsonPath("$.storageKey")
+        .isEqualTo("k1");
+
+    verify(this.uploadService).createUploadSession(any());
+  }
+
+  @Test
+  void completeUploadReturns200() {
+    when(this.uploadService.completeUpload(42L)).thenReturn(Mono.empty());
+
+    client
+        .post()
+        .uri(BASE + "/upload/42/complete")
+        .exchange()
+        .expectStatus()
+        .isOk();
+  }
+}

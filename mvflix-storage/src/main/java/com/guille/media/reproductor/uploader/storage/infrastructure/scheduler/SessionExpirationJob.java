@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.guille.media.reproductor.uploader.storage.domain.service.StorageService;
+import com.guille.media.reproductor.uploader.storage.domain.service.ObjectCleanupService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class SessionExpirationJob {
 
-  private final StorageService storageService;
+  private final ObjectCleanupService objectCleanupService;
 
   @Value("${storage.session.time-to-live:60m}")
   private Duration timeToLive;
@@ -30,7 +30,7 @@ public class SessionExpirationJob {
   public void expireStaleSessions() {
     Instant cutoff = Instant.now().minus(this.timeToLive);
 
-    this.storageService
+    this.objectCleanupService
         .expireStaleSessions(cutoff)
         .subscribe(
             expired ->

@@ -1,10 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
-import com.guille.media.reproductor.uploader.storage.app.commands.requests.StreamingCommand;
-import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
-import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
@@ -13,21 +10,18 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidOb
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.models.ExpectedObjectData;
-import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
-import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
+import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGenerator;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
-import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGenerator;
 import com.guille.media.reproductor.uploader.storage.domain.models.UploadConfiguration;
 import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
 import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageEventPublisher;
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
-import com.guille.media.reproductor.uploader.storage.domain.service.StorageService;
 import com.guille.media.reproductor.uploader.storage.domain.service.UploadPolicy;
+import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
-import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageFolder;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
@@ -36,7 +30,6 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 
@@ -46,7 +39,7 @@ import java.time.Instant;
 
 @Slf4j
 @Service
-public class AppStorageService implements StorageService {
+public class UploadServiceImpl implements UploadService {
 
   private final ObjectStorageService objectStoragePort;
   private final StorageKeyGenerator storageKeyGenerator;
@@ -56,10 +49,7 @@ public class AppStorageService implements StorageService {
   private final UserStorageRepository userStorageRepository;
   private final StorageEventPublisher eventPublisher;
 
-  @Value("${minio.bucket}")
-  private String usersBucket;
-
-  public AppStorageService(
+  public UploadServiceImpl(
       ObjectStorageService objectStorageService,
       StorageKeyGenerator storageKeyGenerator,
       UploadPolicy uploadPolicy,
@@ -158,65 +148,6 @@ public class AppStorageService implements StorageService {
   }
 
   @Override
-  public Mono<StreamingSession> generateStreamingSession(StreamingCommand command) {
-    return Mono.fromCallable(() -> Long.parseLong(command.objectId()))
-        .onErrorMap(
-            NumberFormatException.class,
-            ex -> new IllegalArgumentException("Invalid objectId: " + command.objectId()))
-        .flatMap(this.storageRepository::findById)
-        .switchIfEmpty(
-            Mono.error(
-                new StorageObjectNotAvailable(
-                    "Storage object not available: " + command.objectId())))
-        .flatMap(this::createStreamingSession)
-        .doOnNext(
-            session -> log.info("Streaming session created: uploadId={}", session.uploadId()));
-  }
-
-  private Mono<StreamingSession> createStreamingSession(StoreObject object) {
-    object.ensureAvailable();
-
-    UploadConfiguration configuration =
-        this.uploadPolicy.resolve(object.sizeInBytes(), MimeType.of(object.contentType()));
-
-    return this.userStorageRepository
-        .findByOwnerUsername(object.getOwnerUsername())
-        .switchIfEmpty(
-            Mono.error(
-                new UserStorageNotFoundException(
-                    "No storage registered for user: " + object.getOwnerUsername())))
-        .flatMap(
-            userStorage -> {
-              StorageLocation location =
-                  new StorageLocation(userStorage.getBucketName(), object.getStorageKey());
-              PresignedUploadRequest request =
-                  new PresignedUploadRequest(configuration.expiration());
-
-              return this.objectStoragePort
-                  .createStreamingUrl(request, location)
-                  .flatMap(
-                      permissionUrl ->
-                          this.storageRepository
-                              .touchLastSeen(object.getStorageId(), Instant.now())
-                              .onErrorResume(
-                                  error -> {
-                                    log.warn(
-                                        "Failed to record last-seen for storageId={}",
-                                        object.getStorageId(),
-                                        error);
-                                    return Mono.empty();
-                                  })
-                              .thenReturn(
-                                  new StreamingSession(
-                                      String.valueOf(object.getStorageId()),
-                                      permissionUrl.presignedUrl(),
-                                      object.getStorageKey(),
-                                      Instant.now().plus(configuration.expiration()),
-                                      permissionUrl.method())));
-            });
-  }
-
-  @Override
   public Mono<Void> completeUpload(Long uploadId) {
     log.info("Completing upload: uploadId={}", uploadId);
 
@@ -285,99 +216,5 @@ public class AppStorageService implements StorageService {
     return this.userStorageRepository
         .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
         .then(Mono.error(error));
-  }
-
-  @Override
-  public Mono<Long> expireStaleSessions(Instant cutoff) {
-    return this.storageRepository
-        .findPendingCreatedBefore(cutoff)
-        .flatMapSequential(
-            object -> {
-              if (!object.expire()) {
-                return Mono.empty();
-              }
-              return this.userStorageRepository
-                  .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
-                  .then(this.storageRepository.updateStatus(object, StorageSessionStatus.PENDING));
-            })
-        .count();
-  }
-
-  @Override
-  public Mono<UserStorage> getUserStorage() {
-    return this.authenticatedUser()
-        .flatMap(user -> this.userStorageRepository.findByOwnerUsername(user.subject()))
-        .switchIfEmpty(
-            Mono.error(new UserStorageNotFoundException("No storage registered for the user")));
-  }
-
-  @Override
-  public Mono<Void> deleteObject(Long storageId) {
-    return this.authenticatedUser()
-        .flatMap(
-            user ->
-                this.storageRepository
-                    .findById(storageId)
-                    .switchIfEmpty(
-                        Mono.error(
-                            new StorageObjectNotAvailable(
-                                "Storage object not available: " + storageId)))
-                    .flatMap(
-                        object -> {
-                          object.ensureOwnedBy(user.subject());
-                          return this.deleteOwnedObject(object);
-                        }));
-  }
-
-  private Mono<Void> deleteOwnedObject(StoreObject object) {
-    return this.userStorageRepository
-        .findByOwnerUsername(object.getOwnerUsername())
-        .switchIfEmpty(
-            Mono.error(
-                new UserStorageNotFoundException(
-                    "No storage registered for user: " + object.getOwnerUsername())))
-        .flatMap(
-            userStorage -> {
-              if (!object.markDeleted()) {
-                return Mono.empty();
-              }
-              return Mono.fromRunnable(
-                      () ->
-                          this.objectStoragePort.delete(
-                              new StorageLocation(
-                                  userStorage.getBucketName(), object.getStorageKey())))
-                  .then(
-                      this.userStorageRepository.releaseStorage(
-                          object.getOwnerUsername(), object.sizeInBytes()))
-                  .then(
-                      this.storageRepository.updateStatus(
-                          object, StorageSessionStatus.COMPLETED))
-                  .then();
-            });
-  }
-
-  @Override
-  public Mono<Void> ensureUserStorage(String username, long quotaBytes) {
-    return this.userStorageRepository
-        .findByOwnerUsername(username)
-        .switchIfEmpty(
-            Mono.defer(
-                () ->
-                    this.userStorageRepository.save(
-                        new UserStorage(
-                            null,
-                            BucketName.of(this.usersBucket),
-                            username,
-                            new StorageQuota(quotaBytes),
-                            new StorageUsage(0)))))
-        .flatMap(
-            userStorage ->
-                this.objectStoragePort.ensureUserStorageLayout(
-                    userStorage.getBucketName(), username))
-        .then();
-  }
-
-  private Mono<AuthenticatedUser> authenticatedUser() {
-    return this.userProvider.getAuthenticatedUser();
   }
 }
