@@ -1,22 +1,18 @@
 spring:
   datasource:
-    username: admin
-    password: admin
-    url: jdbc:h2:mem:authorization_service_dev;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    url: jdbc:postgresql://localhost:5432/mvflix_authorized_db
+    username: db_rw
+    password: 12345678
 
-  h2:
-    console:
-      enabled: true
+  flyway:
+    enabled: true
+    user: db_migrator
+    password: 12345678
 
   jpa:
     show-sql: true
     hibernate:
-      ddl-auto: create-drop
-    defer-datasource-initialization: true
-
-  sql:
-    init:
-      mode: always
+      ddl-auto: none
 
 logging:
   level:

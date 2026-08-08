@@ -3,12 +3,12 @@
 spring:
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/mvflix_uploads_db
-    username: admin
-    password: admin123
+    username: db_rw
+    password: 12345678
   datasource:
     url: jdbc:postgresql://localhost:5432/mvflix_uploads_db
-    username: admin
-    password: admin123
+    username: db_migrator
+    password: 12345678
 
 minio:
   url: ${MINIO_URL:http://localhost:9000}

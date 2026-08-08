@@ -14,10 +14,15 @@ spring:
       #- org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
       #- org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/mvflix_uploads_db
+    username: db_rw
+    password: 12345678
+
   datasource:
-    url: jdbc:postgresql://localhost:5432/mvflix_app
-    username: admin
-    password: admin123
+    url: jdbc:postgresql://localhost:5432/mvflix_uploads_db
+    username: db_migrator
+    password: 12345678
 
 services:
   authorization:
