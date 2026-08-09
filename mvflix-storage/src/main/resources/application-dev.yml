@@ -38,7 +38,7 @@ security:
     jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://localhost:9090/oauth2/jwks}
 
 minio:
-  url: ${MINIO_URL:http://127.0.0.1:9090}
+  url: ${MINIO_URL:http://localhost:9000}
   access-key: admin
   secret-key: admin123
   bucket: uploads

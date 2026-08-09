@@ -20,8 +20,11 @@ spring:
             user-info-uri: ${AUTHORIZATION_ISSUER_URL:http://localhost:9090}/userinfo
             jwk-set-uri: ${AUTHORIZATION_ISSUER_URL:http://localhost:9090}/oauth2/jwks
 
+server:
+  port: 9091
+
 services:
   users:
-    url: ${SERVICES_USERS_URL:http://localhost:8081}
+    url: ${SERVICES_USERS_URL:http://localhost:8080}
   storage:
-    url: ${SERVICES_STORAGE_URL:http://localhost:8082}
+    url: ${SERVICES_STORAGE_URL:http://localhost:6060}
