@@ -1,5 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.presenter.api;
 
+import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
 import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.request.UploadRequest;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadResponse;
@@ -52,6 +53,12 @@ public class UploadController {
 
   @PostMapping(value = "/upload/{uploadId}/complete")
   public Mono<ResponseEntity<Void>> completeUpload(@PathVariable Long uploadId) {
-    return this.uploadService.completeUpload(uploadId).thenReturn(ResponseEntity.ok().build());
+    return this.uploadService
+        .completeUpload(uploadId)
+        .map(
+            result ->
+                result.status() == UploadCompletionResult.UploadCompletionStatus.PENDING_VERIFICATION
+                    ? ResponseEntity.accepted().build()
+                    : ResponseEntity.ok().build());
   }
 }

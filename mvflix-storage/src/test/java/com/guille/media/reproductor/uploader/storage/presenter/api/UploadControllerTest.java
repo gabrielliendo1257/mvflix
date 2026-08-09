@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.advisors.GlobalExceptionHandler;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
+import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
@@ -108,4 +109,17 @@ class UploadControllerTest {
         .expectStatus()
         .isOk();
   }
+  @Test
+  void completeUploadReturns202WhenVerificationIsPending() {
+    when(this.uploadService.completeUpload(42L))
+        .thenReturn(Mono.just(UploadCompletionResult.pendingVerification()));
+
+    client
+        .post()
+        .uri(BASE + "/upload/42/complete")
+        .exchange()
+        .expectStatus()
+        .isAccepted();
+  }
+
 }

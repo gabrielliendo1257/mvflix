@@ -2,6 +2,7 @@ package com.guille.media.reproductor.uploader.storage.app.service;
 
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
+import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
@@ -150,7 +151,7 @@ public class UploadServiceImpl implements UploadService {
   }
 
   @Override
-  public Mono<Void> completeUpload(Long uploadId) {
+  public Mono<UploadCompletionResult> completeUpload(Long uploadId) {
     log.info("Completing upload: uploadId={}", uploadId);
 
     return this.storageRepository
@@ -167,16 +168,29 @@ public class UploadServiceImpl implements UploadService {
                                 "No storage registered for user: " + object.getOwnerUsername())))
                     .flatMap(
                         userStorage ->
-                            this.completeUploadedObject(object, userStorage.getBucketName())))
+                            this.completeUploadedObject(
+                                object, userStorage.getBucketName(), true)))
         .doOnNext(
             completion -> {
               if (completion.transitioned()) {
                 this.publishCompleted(completion.object());
+              } else if (completion.pendingVerification()) {
+                log.info(
+                    "Upload confirmation arrived before the object exists, "
+                        + "leaving session pending for webhook reconciliation: uploadId={}",
+                    uploadId);
               } else {
                 log.info("Upload already completed, skipping: uploadId={}", uploadId);
               }
             })
-        .then();
+        .map(this::toCompletionResult);
+  }
+
+  private UploadCompletionResult toCompletionResult(Completion completion) {
+    if (completion.pendingVerification()) {
+      return UploadCompletionResult.pendingVerification();
+    }
+    return UploadCompletionResult.completed();
   }
 
   @Override
@@ -225,7 +239,8 @@ public class UploadServiceImpl implements UploadService {
                                     + object.getOwnerUsername())))
                     .flatMap(
                         userStorage ->
-                            this.completeUploadedObject(object, userStorage.getBucketName())))
+                            this.completeUploadedObject(
+                                object, userStorage.getBucketName(), false)))
         .doOnNext(
             completion -> {
               if (completion.transitioned()) {
@@ -256,7 +271,8 @@ public class UploadServiceImpl implements UploadService {
             Instant.now()));
   }
 
-  private Mono<Completion> completeUploadedObject(StoreObject object, BucketName bucket) {
+  private Mono<Completion> completeUploadedObject(
+      StoreObject object, BucketName bucket, boolean clientConfirmation) {
     StorageLocation location = new StorageLocation(bucket, object.getStorageKey());
 
     return this.objectStoragePort
@@ -264,13 +280,22 @@ public class UploadServiceImpl implements UploadService {
         .flatMap(
             exists -> {
               if (!exists) {
+                if (clientConfirmation) {
+                  return Mono.just(new Completion(object, false, true));
+                }
                 return this.releaseAndFail(
                     object,
                     new StorageObjectNotAvailable(
                         "Storage object not available: " + object.getStorageId()));
               }
-              return this.objectStoragePort.getMetadata(location);
-            })
+              return this.verifyMetadataAndComplete(object, location);
+            });
+  }
+
+  private Mono<Completion> verifyMetadataAndComplete(
+      StoreObject object, StorageLocation location) {
+    return this.objectStoragePort
+        .getMetadata(location)
         .flatMap(
             metadata ->
                 Mono.fromCallable(
@@ -280,14 +305,14 @@ public class UploadServiceImpl implements UploadService {
                         })
                     .onErrorResume(
                         InvalidObjectContentError.class,
-                        contentError -> this.releaseAndFail(object, contentError))
-                    .flatMap(
-                        transitioned ->
-                            transitioned
-                                ? this.storageRepository
-                                    .updateStatus(object, StorageSessionStatus.PENDING)
-                                    .map(saved -> new Completion(saved, true))
-                                : Mono.just(new Completion(object, false))));
+                        contentError -> this.releaseAndFail(object, contentError)))
+        .flatMap(
+            transitioned ->
+                transitioned
+                    ? this.storageRepository
+                        .updateStatus(object, StorageSessionStatus.PENDING)
+                        .map(saved -> new Completion(saved, true, false))
+                    : Mono.just(new Completion(object, false, false)));
   }
 
   private <T> Mono<T> releaseAndFail(StoreObject object, RuntimeException error) {
@@ -314,5 +339,6 @@ public class UploadServiceImpl implements UploadService {
             Instant.now()));
   }
 
-  private record Completion(StoreObject object, boolean transitioned) {}
+  private record Completion(
+      StoreObject object, boolean transitioned, boolean pendingVerification) {}
 }

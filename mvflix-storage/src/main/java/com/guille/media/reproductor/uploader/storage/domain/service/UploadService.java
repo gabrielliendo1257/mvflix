@@ -2,6 +2,7 @@ package com.guille.media.reproductor.uploader.storage.domain.service;
 
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
+import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
 
 import reactor.core.publisher.Mono;
 
@@ -9,7 +10,14 @@ import reactor.core.publisher.Mono;
 public interface UploadService {
   Mono<UploadSession> createUploadSession(CreateUploadCommand command);
 
-  Mono<Void> completeUpload(Long uploadId);
+
+  /**
+   * Confirma el cierre de una sesión de {@code clientes confirm}). Si el objeto aún
+   * no está en el object store devuelve {@code PENDING_VERIFICATION} sin estados
+   * destructivos; la reconciliación la hace el webhook (MinIO es la fuente de
+   * verdad de que los bytes llegaron).
+   */
+  Mono<UploadCompletionResult> completeUpload(Long uploadId);
 
   /**
    * Devuelve el estado actual de la sesión ({@code PENDING}/{@code COMPLETED}/{@code FAILED}/
