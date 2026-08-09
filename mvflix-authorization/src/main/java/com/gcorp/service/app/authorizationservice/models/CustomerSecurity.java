@@ -1,5 +1,8 @@
 package com.gcorp.service.app.authorizationservice.models;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,13 +19,19 @@ import java.util.List;
 @Setter
 @Builder
 @ToString
+@JsonIgnoreProperties({"authorities", "enabled", "accountNonExpired", "accountNonLocked", "credentialsNonExpired"})
 public class CustomerSecurity implements UserDetails
 {
     private String username;
     private String password;
     private Role role;
 
-    public CustomerSecurity(String username, String password, Role role)
+    @JsonCreator
+    public CustomerSecurity(
+        @JsonProperty("username") String username,
+        @JsonProperty("password") String password,
+        @JsonProperty("role") Role role
+    )
     {
         this.username = username;
         this.password = password;

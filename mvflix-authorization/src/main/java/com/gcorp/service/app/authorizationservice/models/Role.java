@@ -3,21 +3,31 @@ package com.gcorp.service.app.authorizationservice.models;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gcorp.service.app.authorizationservice.erros.RoleHasEmptyAuthorizations;
 
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
 @Getter
 @Setter
+@NoArgsConstructor
 @ToString
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Role {
 
     private String roleName;
     private Set<Authorization> authorizations = new HashSet<>();
 
-    public Role(String roleName, Set<Authorization> authorizations) {
+    @JsonCreator
+    public Role(
+        @JsonProperty("roleName") String roleName,
+        @JsonProperty("authorizations") Set<Authorization> authorizations
+    ) {
         this.roleName = roleName;
         this.authorizations = authorizations;
     }

@@ -95,6 +95,7 @@ public class OAuth2AuthorizationConfig {
 					.clientSettings(
 							ClientSettings.builder()
 									.requireAuthorizationConsent(false)
+									.requireProofKey(true)
 									.build())
 					.build();
 			repository.save(movieFrontRegisteredClient);
