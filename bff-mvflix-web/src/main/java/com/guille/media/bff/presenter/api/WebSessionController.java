@@ -23,8 +23,10 @@ public class WebSessionController {
   }
 
   @GetMapping("/session")
-  public Mono<Map<String, String>> session(
-      @RequestHeader(value = "Authorization", required = false) String bearer) {
-    return this.webSessionService.subject(bearer).map(subject -> Map.of("subject", subject));
+  public Mono<Map<String, Object>> session() {
+    return this.webSessionService
+        .currentSubject()
+        .map(subject -> Map.<String, Object>of("authenticated", true, "subject", subject))
+        .defaultIfEmpty(Map.of("authenticated", false));
   }
 }

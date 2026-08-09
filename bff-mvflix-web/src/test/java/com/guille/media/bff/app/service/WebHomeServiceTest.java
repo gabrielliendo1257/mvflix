@@ -29,16 +29,16 @@ class WebHomeServiceTest {
 
   @Test
   void homeCombinesProfileQuotaAndRecentUploads() {
-    when(usersWebClient.me("Bearer x"))
+    when(usersWebClient.me())
         .thenReturn(Mono.just(new UserProfile("1", "pepe", "pepe@mvflix.dev", "PRO", true)));
-    when(storageWebClient.quota("Bearer x"))
+    when(storageWebClient.quota())
         .thenReturn(Mono.just(new QuotaSnapshot("pepe", 1_073_741_824L, 2048L, 1_073_739_776L)));
-    when(storageWebClient.listUploads("Bearer x", 10))
+    when(storageWebClient.listUploads(10))
         .thenReturn(
             Flux.just(
                 new UploadListItem(1L, "pepe/videos/a.mp4", "COMPLETED", 1024L, "2026-01-01T00:00:00Z")));
 
-    StepVerifier.create(service.home("Bearer x"))
+    StepVerifier.create(service.home())
         .assertNext(
             home -> {
               org.assertj.core.api.Assertions.assertThat(home.profile().username()).isEqualTo("pepe");

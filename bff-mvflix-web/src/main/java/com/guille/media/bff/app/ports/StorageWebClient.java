@@ -14,15 +14,15 @@ import reactor.core.publisher.Mono;
 /** Contrato hacia mvflix-storage (sesiones de subida y cuota del usuario). */
 public interface StorageWebClient {
 
-  Mono<QuotaSnapshot> quota(String bearer);
+  Mono<QuotaSnapshot> quota();
 
-  Flux<UploadListItem> listUploads(String bearer, int limit);
+  Flux<UploadListItem> listUploads(int limit);
 
-  Mono<UploadSessionDto> createUpload(String bearer, UploadCreateRequest request);
+  Mono<UploadSessionDto> createUpload(UploadCreateRequest request);
 
-  Mono<UploadStatusDto> uploadStatus(String bearer, Long uploadId);
+  Mono<UploadStatusDto> uploadStatus(Long uploadId);
 
-  Mono<Void> cancelUpload(String bearer, Long uploadId);
+  Mono<Void> cancelUpload(Long uploadId);
 
-  Mono<HttpStatus> completeUpload(String bearer, Long uploadId);
+  Mono<HttpStatus> completeUpload(Long uploadId);
 }

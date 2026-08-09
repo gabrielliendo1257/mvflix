@@ -21,8 +21,7 @@ public class WebHomeController {
   }
 
   @GetMapping("/home")
-  public Mono<WebHomeService.HomeView> home(
-      @RequestHeader(value = "Authorization", required = false) String bearer) {
-    return this.webHomeService.home(bearer);
+  public Mono<WebHomeService.HomeView> home() {
+    return this.webHomeService.home();
   }
 }

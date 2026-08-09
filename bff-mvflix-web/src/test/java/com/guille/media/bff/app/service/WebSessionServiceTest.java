@@ -1,54 +1,44 @@
 package com.guille.media.bff.app.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import com.guille.media.bff.app.dto.UserProfile;
-import com.guille.media.bff.app.ports.UsersWebPort;
-
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.web.server.ResponseStatusException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 class WebSessionServiceTest {
 
-  private final UsersWebPort usersWebClient = mock(UsersWebPort.class);
-  private WebSessionService service;
-
-  @BeforeEach
-  void setUp() {
-    this.service = new WebSessionService(this.usersWebClient);
-  }
+  private final WebSessionService service = new WebSessionService();
 
   @Test
-  void subjectIsTakenFromAuthenticatedUserProfiles() {
-    when(usersWebClient.me("Bearer x")).thenReturn(Mono.just(new UserProfile("1", "pepe", "pepe@mvflix.dev", "PRO", true)));
+  void subjectIsTakenFromAuthenticatedSession() {
+    var auth =
+        new UsernamePasswordAuthenticationToken("pepe", null, java.util.List.of());
 
-    StepVerifier.create(service.subject("Bearer x"))
-        .expectNext("pepe")
+    StepVerifier.create(
+            service.currentSubject().contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth)))
+        .assertNext(subject -> assertThat(subject).isEqualTo("pepe"))
         .verifyComplete();
   }
 
   @Test
-  void rejectsMissingToken() {
-    StepVerifier.create(service.subject(null))
-        .expectError(ResponseStatusException.class)
-        .verify();
-    StepVerifier.create(service.subject("  "))
-        .expectError(ResponseStatusException.class)
-        .verify();
+  void emptyWhenThereIsNoSession() {
+    StepVerifier.create(service.currentSubject()).verifyComplete();
   }
 
   @Test
-  void rejectsInvalidTokenWhenUsersServiceHasNoProfile() {
-    when(usersWebClient.me("Bearer malo")).thenReturn(Mono.empty());
+  void emptyWhenPrincipalIsAnonymous() {
+    var anon =
+        new org.springframework.security.authentication.AnonymousAuthenticationToken(
+            "anonymous",
+            "anonymousUser",
+            java.util.List.of(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ANONYMOUS")));
 
-    StepVerifier.create(service.subject("Bearer malo"))
-        .expectError(ResponseStatusException.class)
-        .verify();
+    StepVerifier.create(
+            service.currentSubject().contextWrite(ReactiveSecurityContextHolder.withAuthentication(anon)))
+        .verifyComplete();
   }
 }

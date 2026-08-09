@@ -1,7 +1,7 @@
 package com.guille.media.bff.presenter.api;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -20,15 +20,13 @@ import reactor.core.publisher.Mono;
 
 class WebUploadsControllerTest {
 
-  private static final String BEARER = "Bearer token";
-
   private final WebUploadsService webUploadsService = mock(WebUploadsService.class);
   private final WebUploadsController controller = new WebUploadsController(this.webUploadsService);
   private final WebTestClient client = WebTestClient.bindToController(controller).build();
 
   @Test
   void listReturnsUploadSummaries() {
-    when(webUploadsService.list(BEARER, 20))
+    when(webUploadsService.list(20))
         .thenReturn(
             Flux.just(
                 new UploadListItem(7L, "pepe/a.mp4", "COMPLETED", 1024L, "2026-01-01T00:00:00Z")));
@@ -36,7 +34,6 @@ class WebUploadsControllerTest {
     client
         .get()
         .uri("/web/uploads")
-        .header("Authorization", BEARER)
         .exchange()
         .expectStatus()
         .isOk()
@@ -47,7 +44,7 @@ class WebUploadsControllerTest {
 
   @Test
   void createDelegatesAndReturnsStorageSession() {
-    when(webUploadsService.create(eq(BEARER), any(UploadCreateRequest.class)))
+    when(webUploadsService.create(any(UploadCreateRequest.class)))
         .thenReturn(
             Mono.just(
                 new UploadSessionDto(
@@ -56,7 +53,6 @@ class WebUploadsControllerTest {
     client
         .post()
         .uri("/web/uploads")
-        .header("Authorization", BEARER)
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue("{\"filename\":\"a.mp4\",\"file_size\":1024,\"mime_type\":\"video/mp4\"}")
         .exchange()
@@ -69,12 +65,11 @@ class WebUploadsControllerTest {
 
   @Test
   void completeForwards202WhenStorageIsStillVerifying() {
-    when(webUploadsService.complete(BEARER, 42L)).thenReturn(Mono.just(HttpStatus.ACCEPTED));
+    when(webUploadsService.complete(42L)).thenReturn(Mono.just(HttpStatus.ACCEPTED));
 
     client
         .post()
         .uri("/web/uploads/42/complete")
-        .header("Authorization", BEARER)
         .exchange()
         .expectStatus()
         .isAccepted();
@@ -82,12 +77,11 @@ class WebUploadsControllerTest {
 
   @Test
   void cancelDelegatesAndReturnsOk() {
-    when(webUploadsService.cancel(BEARER, 42L)).thenReturn(Mono.empty());
+    when(webUploadsService.cancel(42L)).thenReturn(Mono.empty());
 
     client
         .post()
         .uri("/web/uploads/42/cancel")
-        .header("Authorization", BEARER)
         .exchange()
         .expectStatus()
         .isOk();

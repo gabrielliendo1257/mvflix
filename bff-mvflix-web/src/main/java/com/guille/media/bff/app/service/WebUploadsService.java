@@ -20,23 +20,23 @@ public class WebUploadsService {
 
   private final StorageWebClient storageWebClient;
 
-  public Flux<UploadListItem> list(String bearerToken, int limit) {
-    return this.storageWebClient.listUploads(bearerToken, limit);
+  public Flux<UploadListItem> list(int limit) {
+    return this.storageWebClient.listUploads(limit);
   }
 
-  public Mono<UploadSessionDto> create(String bearerToken, UploadCreateRequest request) {
-    return this.storageWebClient.createUpload(bearerToken, request);
+  public Mono<UploadSessionDto> create(UploadCreateRequest request) {
+    return this.storageWebClient.createUpload(request);
   }
 
-  public Mono<UploadStatusDto> status(String bearerToken, Long uploadId) {
-    return this.storageWebClient.uploadStatus(bearerToken, uploadId);
+  public Mono<UploadStatusDto> status(Long uploadId) {
+    return this.storageWebClient.uploadStatus(uploadId);
   }
 
-  public Mono<Void> cancel(String bearerToken, Long uploadId) {
-    return this.storageWebClient.cancelUpload(bearerToken, uploadId);
+  public Mono<Void> cancel(Long uploadId) {
+    return this.storageWebClient.cancelUpload(uploadId);
   }
 
-  public Mono<HttpStatus> complete(String bearerToken, Long uploadId) {
-    return this.storageWebClient.completeUpload(bearerToken, uploadId);
+  public Mono<HttpStatus> complete(Long uploadId) {
+    return this.storageWebClient.completeUpload(uploadId);
   }
 }

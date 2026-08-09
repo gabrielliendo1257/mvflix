@@ -58,6 +58,17 @@ public class SecurityConfiguration {
                     .authenticated()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/streaming")
                     .authenticated()
+                    .pathMatchers(
+                        HttpMethod.GET,
+                        this.apiPathBase + "/storage/uploads",
+                        this.apiPathBase + "/storage/upload/*",
+                        this.apiPathBase + "/storage/quota")
+                    .authenticated()
+                    .pathMatchers(
+                        HttpMethod.POST,
+                        this.apiPathBase + "/storage/upload",
+                        this.apiPathBase + "/storage/upload/*/cancel")
+                    .authenticated()
                     .anyExchange()
                     .denyAll())
         .oauth2ResourceServer(

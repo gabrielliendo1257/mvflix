@@ -77,6 +77,8 @@ public class OAuth2AuthorizationConfig {
 									this.oauth2PropertiesConfig.getFrontClientSecret()))
 					.scope(OidcScopes.PROFILE)
 					.scope(OidcScopes.OPENID)
+					.scope("users.read")
+					.scope("users.write")
 					.clientAuthenticationMethod(
 							ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
 					.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
@@ -93,7 +95,6 @@ public class OAuth2AuthorizationConfig {
 					.clientSettings(
 							ClientSettings.builder()
 									.requireAuthorizationConsent(false)
-									.requireProofKey(true)
 									.build())
 					.build();
 			repository.save(movieFrontRegisteredClient);

@@ -11,7 +11,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -30,41 +29,29 @@ public class WebUploadsController {
   }
 
   @GetMapping
-  public Flux<UploadListItem> list(
-      @RequestHeader(value = "Authorization", required = false) String bearer,
-      @RequestParam(defaultValue = "20") int limit) {
-    return this.webUploadsService.list(bearer, limit);
+  public Flux<UploadListItem> list(@RequestParam(defaultValue = "20") int limit) {
+    return this.webUploadsService.list(limit);
   }
 
   @PostMapping
-  public Mono<ResponseEntity<UploadSessionDto>> create(
-      @RequestHeader(value = "Authorization", required = false) String bearer,
-      @RequestBody UploadCreateRequest request) {
-    return this.webUploadsService
-        .create(bearer, request)
-        .map(ResponseEntity::ok);
+  public Mono<ResponseEntity<UploadSessionDto>> create(@RequestBody UploadCreateRequest request) {
+    return this.webUploadsService.create(request).map(ResponseEntity::ok);
   }
 
   @GetMapping("/{uploadId}")
-  public Mono<ResponseEntity<UploadStatusDto>> status(
-      @RequestHeader(value = "Authorization", required = false) String bearer,
-      @PathVariable Long uploadId) {
-    return this.webUploadsService.status(bearer, uploadId).map(ResponseEntity::ok);
+  public Mono<ResponseEntity<UploadStatusDto>> status(@PathVariable Long uploadId) {
+    return this.webUploadsService.status(uploadId).map(ResponseEntity::ok);
   }
 
   @PostMapping("/{uploadId}/cancel")
-  public Mono<ResponseEntity<Void>> cancel(
-      @RequestHeader(value = "Authorization", required = false) String bearer,
-      @PathVariable Long uploadId) {
-    return this.webUploadsService.cancel(bearer, uploadId).thenReturn(ResponseEntity.ok().build());
+  public Mono<ResponseEntity<Void>> cancel(@PathVariable Long uploadId) {
+    return this.webUploadsService.cancel(uploadId).thenReturn(ResponseEntity.ok().build());
   }
 
   @PostMapping("/{uploadId}/complete")
-  public Mono<ResponseEntity<Void>> complete(
-      @RequestHeader(value = "Authorization", required = false) String bearer,
-      @PathVariable Long uploadId) {
+  public Mono<ResponseEntity<Void>> complete(@PathVariable Long uploadId) {
     return this.webUploadsService
-        .complete(bearer, uploadId)
+        .complete(uploadId)
         .map(status -> ResponseEntity.status(status).build());
   }
 }
