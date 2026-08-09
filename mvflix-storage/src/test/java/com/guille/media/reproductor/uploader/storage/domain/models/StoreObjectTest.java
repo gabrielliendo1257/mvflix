@@ -121,6 +121,28 @@ class StoreObjectTest {
   }
 
   @Test
+  void markFailedTransitionsFromPendingToFailed() {
+    StoreObject object = object(StorageSessionStatus.PENDING);
+    assertThat(object.markFailed()).isTrue();
+    assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
+  }
+
+  @Test
+  void markFailedIsIdempotentWhenAlreadyFailed() {
+    StoreObject object = object(StorageSessionStatus.FAILED);
+    assertThat(object.markFailed()).isFalse();
+    assertThat(object.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
+  }
+
+  @Test
+  void markFailedRejectsCompletedObjects() {
+    StoreObject object = object(StorageSessionStatus.COMPLETED);
+    assertThatThrownBy(object::markFailed)
+        .isInstanceOf(IllegalStateTransitionException.class)
+        .hasMessageContaining(String.valueOf(object.getStorageId()));
+  }
+
+  @Test
   void ensureValidContentLengthAcceptsExpectedSize() {
     StoreObject object = object(StorageSessionStatus.COMPLETED);
     object.ensureValidContentLength(object.sizeInBytes());

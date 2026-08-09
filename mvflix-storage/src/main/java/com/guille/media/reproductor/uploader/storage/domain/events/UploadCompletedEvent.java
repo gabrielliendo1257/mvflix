@@ -8,4 +8,16 @@ import java.time.Instant;
  * de películas) pueden reaccionar al alta real del contenido.
  */
 public record UploadCompletedEvent(
-    Long storageId, String ownerUsername, String objectKey, String contentType, Long contentLength, Instant completedAt) {}
+    Long storageId,
+    String ownerUsername,
+    String objectKey,
+    String contentType,
+    Long contentLength,
+    Instant completedAt)
+    implements UploadEvent {
+
+  @Override
+  public Instant occurredAt() {
+    return completedAt();
+  }
+}

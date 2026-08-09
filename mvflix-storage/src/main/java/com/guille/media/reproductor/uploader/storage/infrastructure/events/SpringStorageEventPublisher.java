@@ -1,9 +1,11 @@
 package com.guille.media.reproductor.uploader.storage.infrastructure.events;
+import com.guille.media.reproductor.uploader.storage.domain.events.UploadEvent;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
+import com.guille.media.reproductor.uploader.storage.domain.events.UploadFailedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageEventPublisher;
 
 import lombok.RequiredArgsConstructor;
@@ -21,12 +23,19 @@ public class SpringStorageEventPublisher implements StorageEventPublisher {
   private final ApplicationEventPublisher applicationEventPublisher;
 
   @Override
-  public void publish(UploadCompletedEvent event) {
+  public void publish(UploadEvent event) {
     try {
       this.applicationEventPublisher.publishEvent(event);
-      log.info("Published upload completed event: storageId={}", event.storageId());
+      log.info(
+          "Published upload event: type={}, storageId={}",
+          event.getClass().getSimpleName(),
+          event.storageId());
     } catch (RuntimeException error) {
-      log.error("Failed to publish uploadCompleted event: storageId={}", event.storageId(), error);
+      log.error(
+          "Failed to publish upload event: type={}, storageId={}",
+          event.getClass().getSimpleName(),
+          event.storageId(),
+          error);
     }
   }
 }

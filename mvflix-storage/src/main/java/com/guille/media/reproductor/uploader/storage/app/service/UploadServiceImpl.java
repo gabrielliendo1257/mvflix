@@ -3,7 +3,9 @@ package com.guille.media.reproductor.uploader.storage.app.service;
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
+import com.guille.media.reproductor.uploader.storage.domain.events.UploadFailedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
@@ -178,6 +180,35 @@ public class UploadServiceImpl implements UploadService {
   }
 
   @Override
+  public Mono<UploadSession> getUploadStatus(Long uploadId) {
+    log.info("Querying upload status: uploadId={}", uploadId);
+
+    return this.storageRepository
+        .findById(uploadId)
+        .switchIfEmpty(
+            Mono.error(new StorageObjectNotAvailable("Storage object not available: " + uploadId)))
+        .flatMap(
+            object ->
+                this.userProvider
+                    .getAuthenticatedUser()
+                    .map(user -> {
+                      object.ensureOwnedBy(user.subject());
+                      return object;
+                    }))
+        .map(
+            object ->
+                new UploadSession(
+                    String.valueOf(object.getStorageId()),
+                    null,
+                    object.getStorageKey(),
+                    null,
+                    null,
+                    object.getStorageObjectStatus(),
+                    new ExpectedObjectData(
+                        object.sizeInBytes(), object.contentType())));
+  }
+
+  @Override
   public Mono<Void> completeUploadByKey(String objectKey) {
     log.info("Reconciling upload from object store event: key={}", objectKey);
 
@@ -262,7 +293,25 @@ public class UploadServiceImpl implements UploadService {
   private <T> Mono<T> releaseAndFail(StoreObject object, RuntimeException error) {
     return this.userStorageRepository
         .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
+        .then(
+            Mono.fromCallable(
+                () -> {
+                  object.markFailed();
+                  return object;
+                }))
+        .flatMap(failed -> this.storageRepository.updateStatus(failed, StorageSessionStatus.PENDING))
+        .doOnNext(failed -> this.publishFailed(failed, error))
         .then(Mono.error(error));
+  }
+
+  private void publishFailed(StoreObject failed, RuntimeException error) {
+    this.eventPublisher.publish(
+        new UploadFailedEvent(
+            failed.getStorageId(),
+            failed.getOwnerUsername(),
+            failed.getStorageKey().key(),
+            error.getMessage(),
+            Instant.now()));
   }
 
   private record Completion(StoreObject object, boolean transitioned) {}

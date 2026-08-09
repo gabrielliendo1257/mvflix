@@ -9,9 +9,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
+import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
+import com.guille.media.reproductor.uploader.storage.domain.events.UploadFailedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
@@ -34,7 +37,6 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.PermissionUrl;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
-import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -184,12 +186,17 @@ class UploadServiceImplTest {
         .thenReturn(Mono.just(new StorageMetadata("video/mp4", 42, null, Instant.now())));
     when(this.userStorageRepository.releaseStorage(any(String.class), anyLong()))
         .thenReturn(Mono.just(1L));
+    when(this.storageRepository.updateStatus(any(StoreObject.class), any(StorageSessionStatus.class)))
+        .thenReturn(Mono.just(pending));
 
     StepVerifier.create(this.service.completeUpload(7L))
         .expectError(InvalidObjectContentError.class)
         .verify();
 
     verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
+    verify(this.storageRepository).updateStatus(any(StoreObject.class), any(StorageSessionStatus.class));
+    verify(this.eventPublisher).publish(any(UploadFailedEvent.class));
+    assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
   }
 
   @Test
@@ -225,6 +232,32 @@ class UploadServiceImplTest {
 
     assertThat(completed.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
     verify(this.storageRepository, never()).updateStatus(any(StoreObject.class), any());
+    verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
+  }
+
+  @Test
+  void completeUploadByKeyReportsFailureAndReleasesQuotaWithoutNotifying() {
+    StoreObject pending = this.pendingObject(7L);
+
+    when(this.storageRepository.findByObjectKey("pepe/videos/a.mp4"))
+        .thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe"))
+        .thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.objectExists(any(StorageLocation.class)))
+        .thenReturn(Mono.just(true));
+    when(this.objectStoragePort.getMetadata(any(StorageLocation.class)))
+        .thenReturn(Mono.just(new StorageMetadata("video/mp4", 42, null, Instant.now())));
+    when(this.userStorageRepository.releaseStorage(any(String.class), anyLong()))
+        .thenReturn(Mono.just(1L));
+    when(this.storageRepository.updateStatus(any(StoreObject.class), any(StorageSessionStatus.class)))
+        .thenReturn(Mono.just(pending));
+
+    StepVerifier.create(this.service.completeUploadByKey("pepe/videos/a.mp4")).verifyComplete();
+
+    assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
+    verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
+    verify(this.storageRepository).updateStatus(
+        any(StoreObject.class), any(StorageSessionStatus.class));
     verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
   }
 

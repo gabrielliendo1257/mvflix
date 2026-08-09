@@ -12,6 +12,13 @@ public interface UploadService {
   Mono<Void> completeUpload(Long uploadId);
 
   /**
+   * Devuelve el estado actual de la sesión ({@code PENDING}/{@code COMPLETED}/{@code FAILED}/
+   * {@code EXPIRED}). Lo consulta el cliente para conocer el resultado de su subida, incluido
+   * el error de verificación ({@code FAILED}: el objeto no se completó pero se liberó la cuota).
+   */
+  Mono<UploadSession> getUploadStatus(Long uploadId);
+
+  /**
    * Completa un upload identificado por la clave del objeto en el object store.
    *
    * <p>Camino de reconciliación: lo invoca el webhook de eventos de MinIO ({@code

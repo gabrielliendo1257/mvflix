@@ -149,6 +149,25 @@ public final class StoreObject {
   }
 
   /**
+   * Transición a {@code FAILED}: la verificación de la subida falló (tamaño inválido,
+   * objeto inexistente, etc.). La cuota reservada se libera y se emite la notificación
+   * de error para que el usuario sea consciente de que la subida no se completó.
+   *
+   * <p>Idempotente si el objeto ya está en {@code FAILED} (devuelve {@code false}).
+   *
+   * @return {@code true} si se realizó la transición PENDING → FAILED.
+   * @throws IllegalStateTransitionException si el objeto no está en {@code PENDING}.
+   */
+  public boolean markFailed() {
+    if (this.storageObjectStatus == StorageSessionStatus.FAILED) {
+      return false;
+    }
+    requireStatus(StorageSessionStatus.PENDING, "fail");
+    this.storageObjectStatus = StorageSessionStatus.FAILED;
+    return true;
+  }
+
+  /**
    * Borrado lógico a {@code DELETED}.
    *
    * <p>Idempotente si el objeto ya está eliminado (devuelve {@code false}).
@@ -202,6 +221,7 @@ public final class StoreObject {
     PROCESSING,
     PENDING,
     COMPLETED,
+    FAILED,
     EXPIRED,
     DELETED
   }

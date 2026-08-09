@@ -68,6 +68,36 @@ class UploadControllerTest {
   }
 
   @Test
+  void uploadStatusReturns200() {
+    UploadSession session =
+        new UploadSession(
+            "42",
+            null,
+            new StorageKey("k42"),
+            null,
+            null,
+            StorageSessionStatus.FAILED,
+            null);
+    when(this.uploadService.getUploadStatus(42L)).thenReturn(Mono.just(session));
+    when(this.uploadMapper.toUploadResponse(session))
+        .thenReturn(new UploadResponse("42", null, "k42", null, null));
+
+    this.client
+        .get()
+        .uri(BASE + "/upload/42")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.uploadId")
+        .isEqualTo("42")
+        .jsonPath("$.storageKey")
+        .isEqualTo("k42");
+
+    verify(this.uploadService).getUploadStatus(42L);
+  }
+
+  @Test
   void completeUploadReturns200() {
     when(this.uploadService.completeUpload(42L)).thenReturn(Mono.empty());
 

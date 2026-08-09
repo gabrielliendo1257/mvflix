@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,6 +38,14 @@ public class UploadController {
       @Valid @RequestBody UploadRequest uploadRequest) {
     return this.uploadService
         .createUploadSession(this.uploadMapper.toUploadCommand(uploadRequest))
+        .map(this.uploadMapper::toUploadResponse)
+        .map(ResponseEntity::ok);
+  }
+
+  @GetMapping(value = "/upload/{uploadId}")
+  public Mono<ResponseEntity<UploadResponse>> uploadStatus(@PathVariable Long uploadId) {
+    return this.uploadService
+        .getUploadStatus(uploadId)
         .map(this.uploadMapper::toUploadResponse)
         .map(ResponseEntity::ok);
   }

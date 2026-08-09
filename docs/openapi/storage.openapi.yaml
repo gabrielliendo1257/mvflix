@@ -31,6 +31,28 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "409":
           description: Cuota excedida del usuario (validada contra users-service).
+  /api/v1/movie/storage/upload/{uploadId}:
+    get:
+      tags: [upload]
+      summary: Estado actual de la sesion de subida (PENDING, COMPLETED, FAILED, EXPIRED...).
+      description: |
+        El cliente lo consulta para conocer el resultado de su subida. FAILED indica
+        que la verificacion fallo (la cuota reservada ya fue liberada) y el usuario
+        puede reintentar creando una nueva sesion.
+      parameters:
+        - in: path
+          name: uploadId
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200":
+          description: Estado de la sesion.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /api/v1/movie/storage/upload/{uploadId}/complete:
     post:
       tags: [upload]
