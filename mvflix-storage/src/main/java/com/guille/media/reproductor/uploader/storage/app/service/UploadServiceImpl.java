@@ -11,6 +11,7 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNot
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.UploadCancelledByUserException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.models.ExpectedObjectData;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGenerator;
@@ -148,6 +149,34 @@ public class UploadServiceImpl implements UploadService {
                                 saved.getStorageObjectStatus(),
                                 new ExpectedObjectData(
                                     saved.sizeInBytes(), command.mimeType().value()))));
+  }
+
+  @Override
+  public Mono<Void> cancelUpload(Long uploadId) {
+    log.info("Cancelling upload: uploadId={}", uploadId);
+
+    return this.storageRepository
+        .findById(uploadId)
+        .switchIfEmpty(
+            Mono.error(new StorageObjectNotAvailable("Storage object not available: " + uploadId)))
+        .flatMap(
+            object -> {
+              if (object.getStorageObjectStatus() != StorageSessionStatus.PENDING) {
+                log.info(
+                    "Upload is no longer cancellable (not PENDING), skipping: uploadId={}, status={}",
+                    uploadId,
+                    object.getStorageObjectStatus());
+                return Mono.<StoreObject>empty();
+              }
+              object.markFailed();
+              return this.userStorageRepository
+                  .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
+                  .then(
+                      this.storageRepository.updateStatus(
+                          object, StorageSessionStatus.FAILED));
+            })
+        .doOnNext(failed -> this.publishFailed(failed, new UploadCancelledByUserException()))
+        .then();
   }
 
   @Override
@@ -324,7 +353,7 @@ public class UploadServiceImpl implements UploadService {
                   object.markFailed();
                   return object;
                 }))
-        .flatMap(failed -> this.storageRepository.updateStatus(failed, StorageSessionStatus.PENDING))
+        .flatMap(failed -> this.storageRepository.updateStatus(failed, StorageSessionStatus.FAILED))
         .doOnNext(failed -> this.publishFailed(failed, error))
         .then(Mono.error(error));
   }

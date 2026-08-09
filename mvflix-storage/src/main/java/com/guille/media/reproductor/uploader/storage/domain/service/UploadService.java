@@ -27,6 +27,16 @@ public interface UploadService {
   Mono<UploadSession> getUploadStatus(Long uploadId);
 
   /**
+   * Cancela una sesión de subida explícitamente por el usuario: libera la cuota
+   * reservada y la marca {@code FAILED} con motivo de cancelación.
+   *
+   * <p>No-op si la sesión ya no está en {@code PENDING} (por ejemplo, el objeto
+   * llegó y el webhook la completó). El object store queda a cargo de lo que
+   * haga con los bytes parciales.
+   */
+  Mono<Void> cancelUpload(Long uploadId);
+
+  /**
    * Completa un upload identificado por la clave del objeto en el object store.
    *
    * <p>Camino de reconciliación: lo invoca el webhook de eventos de MinIO ({@code

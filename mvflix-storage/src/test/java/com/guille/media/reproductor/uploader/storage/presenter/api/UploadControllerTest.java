@@ -122,4 +122,16 @@ class UploadControllerTest {
         .isAccepted();
   }
 
+  @Test
+  void cancelUploadReturns200() {
+    when(this.uploadService.cancelUpload(42L)).thenReturn(Mono.empty());
+
+    client
+        .post()
+        .uri(BASE + "/upload/42/cancel")
+        .exchange()
+        .expectStatus()
+        .isOk();
+  }
+
 }

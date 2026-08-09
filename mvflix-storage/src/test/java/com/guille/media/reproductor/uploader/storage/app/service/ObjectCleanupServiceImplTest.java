@@ -116,13 +116,13 @@ class ObjectCleanupServiceImplTest {
     Instant cutoff = Instant.parse("2026-01-01T00:00:00Z");
     when(this.storageRepository.findPendingCreatedBefore(cutoff)).thenReturn(Flux.just(pending));
     when(this.userStorageRepository.releaseStorage("pepe", 1024)).thenReturn(Mono.just(1L));
-    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.EXPIRED))
         .thenReturn(Mono.just(pending));
 
     StepVerifier.create(this.service.expireStaleSessions(cutoff)).expectNext(1L).verifyComplete();
 
     verify(this.userStorageRepository).releaseStorage("pepe", 1024);
-    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.PENDING);
+    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.EXPIRED);
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.EXPIRED);
   }
 }

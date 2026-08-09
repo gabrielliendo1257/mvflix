@@ -95,7 +95,7 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
                   .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
                   .then(
                       this.storageRepository.updateStatus(
-                          object, StorageSessionStatus.PENDING));
+                          object, StorageSessionStatus.EXPIRED));
             })
         .count();
   }

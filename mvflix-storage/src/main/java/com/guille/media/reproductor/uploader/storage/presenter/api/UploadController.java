@@ -51,6 +51,11 @@ public class UploadController {
         .map(ResponseEntity::ok);
   }
 
+  @PostMapping(value = "/upload/{uploadId}/cancel")
+  public Mono<ResponseEntity<Void>> cancelUpload(@PathVariable Long uploadId) {
+    return this.uploadService.cancelUpload(uploadId).thenReturn(ResponseEntity.ok().build());
+  }
+
   @PostMapping(value = "/upload/{uploadId}/complete")
   public Mono<ResponseEntity<Void>> completeUpload(@PathVariable Long uploadId) {
     return this.uploadService
