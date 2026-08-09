@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
+import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSummary;
 import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
@@ -42,6 +43,7 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -349,6 +351,24 @@ class UploadServiceImplTest {
     assertThat(completed.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
     verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
     verify(this.eventPublisher, never()).publish(any());
+  }
+
+  @Test
+  void listUploadsReturnsRecentSessionsOfAuthenticatedUser() {
+    StoreObject pending = this.pendingObject(7L);
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findRecentByOwner("pepe", 20)).thenReturn(Flux.just(pending));
+
+    StepVerifier.create(this.service.listUploads(20))
+        .expectNext(
+            new UploadSummary(
+                7L,
+                pending.getStorageKey().key(),
+                StorageSessionStatus.PENDING,
+                1024L,
+                pending.getCreatedAt()))
+        .verifyComplete();
   }
 
 }

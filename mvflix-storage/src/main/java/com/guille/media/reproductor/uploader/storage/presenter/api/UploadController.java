@@ -4,6 +4,7 @@ import com.guille.media.reproductor.uploader.storage.app.commands.response.Uploa
 import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.request.UploadRequest;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadResponse;
+import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadSummaryResponse;
 import com.guille.media.reproductor.uploader.storage.presenter.mapper.UploadMapper;
 
 import jakarta.validation.Valid;
@@ -15,8 +16,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @RestController
@@ -29,6 +32,12 @@ public class UploadController {
   public UploadController(UploadService uploadService, UploadMapper uploadMapper) {
     this.uploadService = uploadService;
     this.uploadMapper = uploadMapper;
+  }
+
+  @GetMapping(value = "/uploads")
+  public Flux<UploadSummaryResponse> uploads(
+      @RequestParam(defaultValue = "20") int limit) {
+    return this.uploadService.listUploads(limit).map(this.uploadMapper::toUploadSummaryResponse);
   }
 
   @PostMapping(

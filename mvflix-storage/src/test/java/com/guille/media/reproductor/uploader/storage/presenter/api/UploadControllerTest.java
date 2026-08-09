@@ -7,17 +7,20 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.advisors.GlobalExceptionHandler;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
+import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSummary;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadResponse;
+import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadSummaryResponse;
 import com.guille.media.reproductor.uploader.storage.presenter.mapper.UploadMapper;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -48,7 +51,7 @@ class UploadControllerTest {
             null);
     when(this.uploadService.createUploadSession(any())).thenReturn(Mono.just(session));
     when(this.uploadMapper.toUploadResponse(session))
-        .thenReturn(new UploadResponse("1", "http://minio/upload", "k1", "PUT", null));
+        .thenReturn(new UploadResponse("1", "http://minio/upload", "k1", "PUT", StorageSessionStatus.PENDING, null));
 
     this.client
         .post()
@@ -81,7 +84,7 @@ class UploadControllerTest {
             null);
     when(this.uploadService.getUploadStatus(42L)).thenReturn(Mono.just(session));
     when(this.uploadMapper.toUploadResponse(session))
-        .thenReturn(new UploadResponse("42", null, "k42", null, null));
+        .thenReturn(new UploadResponse("42", null, "k42", null, StorageSessionStatus.FAILED, null));
 
     this.client
         .get()
@@ -132,6 +135,26 @@ class UploadControllerTest {
         .exchange()
         .expectStatus()
         .isOk();
+  }
+
+  @Test
+  void uploadsListReturnsUploadSummaries() {
+    UploadSummary summary =
+        new UploadSummary(42L, "pepe/videos/a.mp4", StorageSessionStatus.PENDING, 1024L, Instant.now());
+    when(this.uploadService.listUploads(20)).thenReturn(Flux.just(summary));
+    when(this.uploadMapper.toUploadSummaryResponse(summary))
+        .thenReturn(
+            new UploadSummaryResponse(42L, "pepe/videos/a.mp4", StorageSessionStatus.PENDING, 1024L, Instant.now()));
+
+    client
+        .get()
+        .uri(BASE + "/uploads")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$[0].storageId")
+        .isEqualTo(42);
   }
 
 }

@@ -3,6 +3,7 @@ package com.guille.media.reproductor.uploader.storage.app.service;
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
+import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSummary;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
@@ -38,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
@@ -184,6 +186,24 @@ public class UploadServiceImpl implements UploadService {
               return Mono.empty();
             })
         .then();
+  }
+
+  @Override
+  public Flux<UploadSummary> listUploads(int limit) {
+    return this.userProvider
+        .getAuthenticatedUser()
+        .flatMapMany(
+            user ->
+                this.storageRepository
+                    .findRecentByOwner(user.subject(), Math.min(limit, 50))
+                    .map(
+                        object ->
+                            new UploadSummary(
+                                object.getStorageId(),
+                                object.getStorageKey().key(),
+                                object.getStorageObjectStatus(),
+                                object.sizeInBytes(),
+                                object.getCreatedAt())));
   }
 
   @Override

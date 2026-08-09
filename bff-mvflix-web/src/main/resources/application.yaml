@@ -1,3 +1,9 @@
 spring:
   application:
     name: bff-mvflix-web
+
+services:
+  users:
+    url: ${SERVICES_USERS_URL:http://localhost:8081}
+  storage:
+    url: ${SERVICES_STORAGE_URL:http://localhost:8082}

@@ -140,6 +140,23 @@ public class SpringDataStorageRepository implements StorageRepository {
     }
 
     @Override
+    public Flux<StoreObject> findRecentByOwner(String ownerUsername, int limit) {
+        return this.databaseClient
+                .sql(
+                        """
+		SELECT * FROM store_objects
+		WHERE owner_username = :owner_username
+		ORDER BY created_at DESC
+		LIMIT :limit
+		""")
+                .bind("owner_username", ownerUsername)
+                .bind("limit", limit)
+                .mapProperties(StoreObjectJpaEntity.class)
+                .all()
+                .map(this.storageMapper::toDomain);
+    }
+
+    @Override
     public Mono<Void> touchLastSeen(Long storageId, Instant seenAt) {
         return this.databaseClient
                 .sql(

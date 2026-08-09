@@ -31,6 +31,9 @@ public interface StorageRepository {
 
   Flux<StoreObject> findPendingCreatedBefore(Instant cutoff);
 
+  /** Últimas sesiones de subida de un usuario, más recientes primero. */
+  Flux<StoreObject> findRecentByOwner(String ownerUsername, int limit);
+
   /**
    * Actualiza {@code last_modified_at} como historial de "última actividad"
    * (p. ej. cuando se genera una sesión de streaming).
