@@ -1,6 +1,7 @@
 package com.guille.media.reproductor.users.api.users;
 
 import com.guille.media.reproductor.users.api.dto.request.UserData;
+import com.guille.media.reproductor.users.api.dto.request.PlanData;
 import com.guille.media.reproductor.users.api.dto.response.UserResponse;
 import com.guille.media.reproductor.users.domain.ports.UserService;
 
@@ -9,8 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,5 +52,18 @@ public class UsersPresenter {
         return this.userService
                 .applyQuota(subject, quota)
                 .thenReturn(ResponseEntity.noContent().build());
+    }
+
+    /**
+     * Cambio de plan (contrato M2M, scope {@code users.write}). Aplica la
+     * política de facturación: el downgrade consulta el uso real del
+     * storage-service y se rechaza con 409 si excede la cuota del plan pedido.
+     */
+    @PatchMapping(value = "/{username}/plan", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<?>> changePlan(@PathVariable String username,
+            @RequestBody PlanData planData) {
+        return this.userService
+                .changePlan(username, planData.plan())
+                .map(user -> ResponseEntity.ok(UserResponse.from(user)));
     }
 }

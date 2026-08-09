@@ -44,6 +44,16 @@ public class UserStorageServiceImpl implements UserStorageService {
   }
 
   @Override
+  public Mono<UserStorage> getUserStorageBy(String username) {
+    return this.userStorageRepository
+        .findByOwnerUsername(username)
+        .switchIfEmpty(
+            Mono.error(
+                new UserStorageNotFoundException(
+                    "No storage registered for the user " + username)));
+  }
+
+  @Override
   public Mono<Void> ensureUserStorage(String username, long quotaBytes) {
     return this.userStorageRepository
         .findByOwnerUsername(username)

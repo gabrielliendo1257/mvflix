@@ -22,5 +22,17 @@ spring:
           issuer-uri: http://localhost:9090
           jwk-set-uri: http://localhost:9090/oauth2/jwks
 
+security:
+  oauth2:
+    client-registration-id: users-app
+    client-id: users-service
+    client-secret: ${SECURITY_OAUTH2_CLIENT_SECRET:super-secret}
+
+services:
+  authorization:
+    url: ${AUTHORIZATION_URL:http://localhost:9090}
+  storage:
+    url: ${STORAGE_URL:http://localhost:6060}
+
 server:
   port: 8080

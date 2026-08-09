@@ -3,6 +3,7 @@ package com.guille.media.reproductor.users.api.users;
 import com.guille.media.reproductor.users.api.dto.response.UserResponse;
 import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.users.domain.models.Email;
+import com.guille.media.reproductor.users.domain.models.Plan;
 import com.guille.media.reproductor.users.domain.models.User;
 import com.guille.media.reproductor.users.domain.models.Username;
 import com.guille.media.reproductor.users.domain.ports.UserService;
@@ -19,7 +20,6 @@ import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.ReactiveJwtDecoder;
 import org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
@@ -89,7 +89,7 @@ class UsersPresenterTest {
                 .isNoContent();
     }
 
-    @Test
+@Test
     void shouldRejectQuotaWhenPlanLimitExceeded() {
         Mockito.when(defaultUserService.applyQuota("user", 999999999L))
                 .thenReturn(
@@ -113,5 +113,52 @@ class UsersPresenterTest {
                 .exchange()
                 .expectStatus()
                 .isEqualTo(409);
+    }
+
+    @Test
+    void shouldChangePlanWithUsersWriteScope() {
+        User proUser = User.createNew(new Username("user"), new Email("user@example.com"));
+        proUser.changePlan(Plan.PRO);
+        Mockito.when(defaultUserService.changePlan("user", Plan.PRO)).thenReturn(Mono.just(proUser));
+
+        Jwt m2mJwt =
+                Jwt.withTokenValue("token")
+                        .header("alg", "none")
+                        .subject("backoffice")
+                        .claim("sub", "backoffice")
+                        .claim("scope", "users.write")
+                        .build();
+
+        this.webTestClient
+                .mutateWith(SecurityMockServerConfigurers.mockJwt().jwt(m2mJwt))
+                .patch()
+                .uri("/api/v1/users/user/plan")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"plan\":\"PRO\"}")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody(UserResponse.class)
+                .value(response -> response.plan().equals("PRO"));
+    }
+
+    @Test
+    void shouldRejectPlanChangeWithoutScope() {
+        Jwt userJwt =
+                Jwt.withTokenValue("token")
+                        .header("alg", "none")
+                        .subject("user")
+                        .claim("sub", "user")
+                        .build();
+
+        this.webTestClient
+                .mutateWith(SecurityMockServerConfigurers.mockJwt().jwt(userJwt))
+                .patch()
+                .uri("/api/v1/users/user/plan")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue("{\"plan\":\"PRO\"}")
+                .exchange()
+                .expectStatus()
+                .isForbidden();
     }
 }

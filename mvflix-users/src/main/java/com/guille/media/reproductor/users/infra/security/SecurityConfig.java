@@ -28,6 +28,8 @@ public class SecurityConfig {
                                         .authenticated()
                                         .pathMatchers("/api/v1/users/quota")
                                         .hasAuthority("SCOPE_users.write")
+                                        .pathMatchers("/api/v1/users/*/plan")
+                                        .hasAuthority("SCOPE_users.write")
                                         .anyExchange()
                                         .denyAll());
 

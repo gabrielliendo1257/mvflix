@@ -48,6 +48,10 @@ public class SecurityConfiguration {
                     .permitAll()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload")
                     .hasRole("ADMIN")
+                    .pathMatchers(
+                        HttpMethod.GET,
+                        this.apiPathBase + "/storage/users/*/quota")
+                    .hasAuthority("SCOPE_storage.read")
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload/*/complete")
                     .authenticated()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/streaming")
@@ -66,14 +70,29 @@ public class SecurityConfiguration {
 
   @Bean
   Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
-    var authoritiesConverter = new JwtGrantedAuthoritiesConverter();
-    authoritiesConverter.setAuthoritiesClaimName("roles");
-    authoritiesConverter.setAuthorityPrefix("");
+    var authoritiesConverter = new JwtGrantedAuthoritiesConverter(); // claim "scope" -> SCOPE_*
+    var rolesConverter = new JwtGrantedAuthoritiesConverter();
+    rolesConverter.setAuthoritiesClaimName("roles");
+    rolesConverter.setAuthorityPrefix("");
 
-    var jwtAuthenticationConverter = new JwtAuthenticationConverter();
-    jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+    return jwt ->
+        Mono.just(
+            new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(
+                jwt, mergeAuthorities(authoritiesConverter, rolesConverter, jwt)));
+  }
 
-    return new ReactiveJwtAuthenticationConverterAdapter(jwtAuthenticationConverter);
+  private java.util.List<org.springframework.security.core.GrantedAuthority> mergeAuthorities(
+      JwtGrantedAuthoritiesConverter scopeConverter,
+      JwtGrantedAuthoritiesConverter rolesConverter,
+      Jwt jwt) {
+    var authorities = new java.util.ArrayList<org.springframework.security.core.GrantedAuthority>();
+    if (scopeConverter.convert(jwt) != null) {
+      authorities.addAll(scopeConverter.convert(jwt));
+    }
+    if (rolesConverter.convert(jwt) != null) {
+      authorities.addAll(rolesConverter.convert(jwt));
+    }
+    return authorities;
   }
 
   private String resolveJwkSetUri() {

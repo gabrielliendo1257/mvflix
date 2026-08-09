@@ -8,6 +8,9 @@ import reactor.core.publisher.Mono;
 public interface UserStorageService {
   Mono<UserStorage> getUserStorage();
 
+  /** Consulta el uso real de un usuario concreto (contrato M2M con user-service). */
+  Mono<UserStorage> getUserStorageBy(String username);
+
   /**
    * Asegura que el usuario tiene su espacio en el bucket dedicado:
    * crea la fila de {@code user_storage} si no existe y materializa las

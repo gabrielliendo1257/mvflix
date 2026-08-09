@@ -4,10 +4,16 @@ import com.guille.media.reproductor.users.app.errors.UnauthorizedException;
 import com.guille.media.reproductor.users.app.errors.UserNotFoundException;
 import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.users.domain.exceptions.UserAlreadyExistsException;
+import com.guille.media.reproductor.users.domain.models.BillingCycle;
+import com.guille.media.reproductor.users.domain.models.DowngradePolicy;
 import com.guille.media.reproductor.users.domain.models.Email;
+import com.guille.media.reproductor.users.domain.models.Plan;
+import com.guille.media.reproductor.users.domain.models.PlanChangeDecision;
+import com.guille.media.reproductor.users.domain.models.StorageQuota;
 import com.guille.media.reproductor.users.domain.models.User;
 import com.guille.media.reproductor.users.domain.models.Username;
 import com.guille.media.reproductor.users.domain.ports.SimpleUserRepository;
+import com.guille.media.reproductor.users.domain.ports.StorageUsagePort;
 import com.guille.media.reproductor.users.domain.ports.UserService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -22,9 +28,12 @@ import reactor.core.publisher.Mono;
 public class DefaultUserService implements UserService {
 
   private final SimpleUserRepository simpleUserRepository;
+  private final StorageUsagePort storageUsagePort;
 
-  public DefaultUserService(SimpleUserRepository simpleUserRepository) {
+  public DefaultUserService(
+      SimpleUserRepository simpleUserRepository, StorageUsagePort storageUsagePort) {
     this.simpleUserRepository = simpleUserRepository;
+    this.storageUsagePort = storageUsagePort;
   }
 
   @Override
@@ -59,10 +68,7 @@ public class DefaultUserService implements UserService {
 
   @Override
   public Mono<Void> applyQuota(String username, long quotaBytes) {
-    return simpleUserRepository
-        .findByUsername(username)
-        .switchIfEmpty(
-            Mono.error(new UserNotFoundException("Not exist user by username " + username)))
+    return getByUsername(username)
         .flatMap(
             user -> {
               if (user.quota().isExceeded(quotaBytes)) {
@@ -77,5 +83,43 @@ public class DefaultUserService implements UserService {
               }
               return Mono.empty();
             });
+  }
+
+  @Override
+  public Mono<User> changePlan(String username, Plan requested) {
+    return getByUsername(username)
+        .flatMap(
+            user -> {
+              PlanChangeDecision decision =
+                  PlanChangeDecision.evaluate(user.getPlan(), requested);
+              if (decision == PlanChangeDecision.NO_CHANGE) {
+                return Mono.just(user);
+              }
+              if (decision == PlanChangeDecision.UPGRADE_IMMEDIATE) {
+                log.info("Upgrade inmediato a {} para {}", requested, username);
+                user.changePlan(requested);
+                return this.simpleUserRepository.update(user);
+              }
+              return this.storageUsagePort
+                  .usedBytesBy(username)
+                  .flatMap(
+                      usedBytes -> {
+                        DowngradePolicy.evaluate(user.getPlan(), requested, usedBytes);
+                        log.info(
+                            "Downgrade a {} para {} con uso real {} bytes: se aplica al fin de ciclo",
+                            requested,
+                            username,
+                            usedBytes);
+                        user.changePlan(requested);
+                        return this.simpleUserRepository.update(user);
+                      });
+            });
+  }
+
+  private Mono<User> getByUsername(String username) {
+    return this.simpleUserRepository
+        .findByUsername(username)
+        .switchIfEmpty(
+            Mono.error(new UserNotFoundException("Not exist user by username " + username)));
   }
 }

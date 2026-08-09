@@ -79,6 +79,28 @@ paths:
                 $ref: "#/components/schemas/QuotaResponse"
         "404":
           description: El usuario no tiene storage registrado.
+  /api/v1/movie/storage/users/{username}/quota:
+    get:
+      tags: [users]
+      summary: Uso real de un usuario (contrato M2M con user-service).
+      description: |
+        Fuente de verdad del consumo (scope storage.read): el contador se
+        persiste en user_storage y se actualiza de forma atomica al
+        reservar/liberar bytes.
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Uso actual del usuario.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuotaResponse"
+        "404":
+          description: El usuario no tiene storage provisionado.
   /api/v1/movie/storage/users/{username}/provision:
     post:
       tags: [users]

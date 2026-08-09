@@ -3,12 +3,14 @@ package com.guille.media.reproductor.users;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.guille.media.reproductor.users.app.services.DefaultUserService;
+import com.guille.media.reproductor.users.domain.exceptions.DowngradeBlockedByUsageException;
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.Plan;
 import com.guille.media.reproductor.users.domain.models.User;
 import com.guille.media.reproductor.users.domain.models.UserId;
 import com.guille.media.reproductor.users.domain.models.Username;
 import com.guille.media.reproductor.users.domain.ports.SimpleUserRepository;
+import com.guille.media.reproductor.users.domain.ports.StorageUsagePort;
 import com.guille.media.reproductor.users.domain.ports.UserService;
 import com.guille.media.reproductor.users.infra.db.users.SpringDataUserRepository;
 import com.guille.media.reproductor.users.infra.db.users.UserMapper;
@@ -22,6 +24,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.r2dbc.core.DatabaseClient;
 
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -37,6 +40,8 @@ class DefaultUserServiceTest extends AbstractR2dbcIntegrationTest {
     @Autowired DatabaseClient databaseClient;
 
     @Autowired SimpleUserRepository simpleUserRepository;
+
+    @MockitoBean StorageUsagePort storageUsagePort;
 
     User user = null;
 
@@ -128,6 +133,56 @@ class DefaultUserServiceTest extends AbstractR2dbcIntegrationTest {
                 .expectError(
                         com.guille.media.reproductor.users.domain.exceptions
                                 .UserAlreadyExistsException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldUpgradePlanImmediately() {
+        StepVerifier.create(this.userService.changePlan("Francis", Plan.PRO))
+                .assertNext(updated -> assertEquals(Plan.PRO, updated.getPlan()))
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldRejectDowngradeWhenUsageExceedsNewPlanQuota() {
+        long freeQuota =
+                com.guille.media.reproductor.users.domain.models.StorageQuota.getQuota(Plan.FREE)
+                        .getUserBytesQuota();
+        org.mockito.Mockito.when(this.storageUsagePort.usedBytesBy("Francis"))
+                .thenReturn(Mono.just(freeQuota + 1));
+
+        StepVerifier.create(
+                        this.userService
+                                .changePlan("Francis", Plan.PRO)
+                                .then(this.userService.changePlan("Francis", Plan.FREE)))
+                .expectError(DowngradeBlockedByUsageException.class)
+                .verify();
+    }
+
+    @Test
+    void shouldApplyDowngradeWhenUsageFitsNewPlanQuota() {
+        org.mockito.Mockito.when(this.storageUsagePort.usedBytesBy("Francis"))
+                .thenReturn(Mono.just(10_000L));
+
+        StepVerifier.create(
+                        this.userService
+                                .changePlan("Francis", Plan.PRO)
+                                .then(this.userService.changePlan("Francis", Plan.FREE)))
+                .assertNext(updated -> assertEquals(Plan.FREE, updated.getPlan()))
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldKeepCurrentPlanOnNoChange() {
+        StepVerifier.create(this.userService.changePlan("Francis", Plan.FREE))
+                .assertNext(updated -> assertEquals(Plan.FREE, updated.getPlan()))
+                .verifyComplete();
+    }
+
+    @Test
+    void shouldRejectChangePlanForUnknownUser() {
+        StepVerifier.create(this.userService.changePlan("Ghost", Plan.PRO))
+                .expectError(com.guille.media.reproductor.users.app.errors.UserNotFoundException.class)
                 .verify();
     }
 }

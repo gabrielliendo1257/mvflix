@@ -80,4 +80,28 @@ class UserStorageControllerTest {
 
     client.post().uri(BASE + "/users/pepe/provision").exchange().expectStatus().isOk();
   }
+
+  @Test
+  void quotaByUsernameReturnsRealUsageForM2m() {
+    UserStorage userStorage =
+        new UserStorage(
+            1L,
+            BucketName.of("movies"),
+            "pepe",
+            StorageQuota.ofGigabytes(10),
+            new StorageUsage(2048));
+    when(this.userStorageService.getUserStorageBy("pepe")).thenReturn(Mono.just(userStorage));
+
+    client
+        .get()
+        .uri(BASE + "/users/pepe/quota")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.ownerUsername")
+        .isEqualTo("pepe")
+        .jsonPath("$.usedBytes")
+        .isEqualTo(2048);
+  }
 }

@@ -51,6 +51,47 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+  /api/v1/users/{username}/plan:
+    patch:
+      summary: Cambia el plan de un usuario (contrato M2M, scope users.write).
+      description: |
+        Aplica la politica de facturacion: el upgrade es inmediato; el downgrade
+        consulta el uso real al storage-service y se rechaza (409) si excede la
+        cuota del plan pedido. 404 si el usuario no existe.
+      parameters:
+        - in: path
+          name: username
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan: { type: string, enum: [FREE, PRO, ENTERPRISE] }
+      responses:
+        "200":
+          description: Plan actualizado.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: |
+            El downgrade excede la cuota del plan pedido según el uso real
+            (DowngradeBlockedByUsageException).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
   /api/v1/users/quota:
     post:
       summary: |

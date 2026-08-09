@@ -29,17 +29,31 @@ public class UserStorageController {
   public Mono<ResponseEntity<QuotaResponse>> quota() {
     return this.userStorageService
         .getUserStorage()
-        .map(
-            userStorage ->
-                new QuotaResponse(
-                    userStorage.getOwnerUsername(),
-                    userStorage.getBucketName().bucketName(),
-                    userStorage.getStorageQuota().maxBytes(),
-                    userStorage.getStorageUsage().getCurrentBytesUsage(),
-                    userStorage
-                        .getStorageQuota()
-                        .remainingBytes(userStorage.getStorageUsage().getCurrentBytesUsage())))
+        .map(this::toQuotaResponse)
         .map(ResponseEntity::ok);
+  }
+
+  /**
+   * Uso real de un usuario concreto (contrato M2M con user-service para
+   * decisiones de plan). Devuelve los bytes realmente consumidos.
+   */
+  @GetMapping(value = "/users/{username}/quota")
+  public Mono<ResponseEntity<QuotaResponse>> quotaByUsername(@PathVariable String username) {
+    return this.userStorageService
+        .getUserStorageBy(username)
+        .map(this::toQuotaResponse)
+        .map(ResponseEntity::ok);
+  }
+
+  private QuotaResponse toQuotaResponse(com.guille.media.reproductor.uploader.storage.domain.models.UserStorage userStorage) {
+    return new QuotaResponse(
+        userStorage.getOwnerUsername(),
+        userStorage.getBucketName().bucketName(),
+        userStorage.getStorageQuota().maxBytes(),
+        userStorage.getStorageUsage().getCurrentBytesUsage(),
+        userStorage
+            .getStorageQuota()
+            .remainingBytes(userStorage.getStorageUsage().getCurrentBytesUsage()));
   }
 
   /**
