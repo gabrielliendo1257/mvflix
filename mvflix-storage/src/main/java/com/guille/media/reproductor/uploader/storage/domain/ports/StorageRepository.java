@@ -13,6 +13,9 @@ public interface StorageRepository {
 
   Mono<StoreObject> findById(Long storageId);
 
+  /** Busca por la clave lógica del objeto en el object store (camino de eventos de MinIO). */
+  Mono<StoreObject> findByObjectKey(String objectKey);
+
   /**
    * Persiste la transición de estado aplicada por el dominio ({@link StoreObject}).
    *

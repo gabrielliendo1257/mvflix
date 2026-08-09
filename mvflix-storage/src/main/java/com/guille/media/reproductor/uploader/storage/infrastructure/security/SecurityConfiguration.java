@@ -46,6 +46,8 @@ public class SecurityConfiguration {
                 exchanges
                     .pathMatchers("/ws")
                     .permitAll()
+                    .pathMatchers(HttpMethod.POST, "/internal/minio/events")
+                    .permitAll()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload")
                     .hasRole("ADMIN")
                     .pathMatchers(

@@ -84,6 +84,20 @@ public class SpringDataStorageRepository implements StorageRepository {
     }
 
     @Override
+    public Mono<StoreObject> findByObjectKey(String objectKey) {
+        return this.databaseClient
+                .sql(
+                        """
+		SELECT * FROM store_objects
+		WHERE object_key = :object_key
+		""")
+                .bind("object_key", objectKey)
+                .mapProperties(StoreObjectJpaEntity.class)
+                .one()
+                .map(this.storageMapper::toDomain);
+    }
+
+    @Override
     public Mono<StoreObject> updateStatus(
         StoreObject storageObject, StorageSessionStatus expectedStatus) {
         return this.databaseClient

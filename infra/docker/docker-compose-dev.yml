@@ -11,6 +11,12 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?define MINIO_ROOT_USER en infra/docker/.env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?define MINIO_ROOT_PASSWORD en infra/docker/.env}
       MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_CORS_ALLOW_ORIGIN:-http://localhost:4200,http://localhost:9090}
+      MINIO_NOTIFY_WEBHOOK_ENABLE_upload: "on"
+      MINIO_NOTIFY_WEBHOOK_ENDPOINT_upload: "http://host.docker.internal:6060/internal/minio/events"
+      MINIO_NOTIFY_WEBHOOK_AUTH_TOKEN_upload: ${MINIO_WEBHOOK_TOKEN:-dev-webhook-secret}
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
     command: server /data --console-address ":9001"
 
@@ -39,6 +45,8 @@ services:
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
       mc mb --ignore-existing local/users;
       mc anonymous set none local/users;
+      mc event rm --force local/users arn:minio:notification:webhook:upload;
+      mc event add local/users arn:minio:notification:webhook:upload --event 'put,complete-multipart-upload';
       exit 0;
       "
 

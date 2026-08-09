@@ -3,7 +3,9 @@ package com.guille.media.reproductor.uploader.storage.app.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -86,6 +88,16 @@ class UploadServiceImplTest {
         Instant.now(),
         storageId,
         StorageSessionStatus.PENDING);
+  }
+
+  private StoreObject completedObject(long storageId) {
+    return new StoreObject(
+        "pepe",
+        new StorageKeyGenerator().generate("pepe", com.guille.media.reproductor.uploader.storage.domain.vos.StorageFolder.from(MimeType.of("video/mp4"))),
+        new StorageMetadata("video/mp4", 1024, null, Instant.now()),
+        Instant.now(),
+        storageId,
+        StorageSessionStatus.COMPLETED);
   }
 
   @Test
@@ -178,5 +190,51 @@ class UploadServiceImplTest {
         .verify();
 
     verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
+  }
+
+  @Test
+  void completeUploadByKeyTransitionsAndPublishesEvent() {
+    StoreObject pending = this.pendingObject(7L);
+
+    when(this.storageRepository.findByObjectKey("pepe/videos/a.mp4")).thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.objectExists(any(StorageLocation.class))).thenReturn(Mono.just(true));
+    when(this.objectStoragePort.getMetadata(any(StorageLocation.class)))
+        .thenReturn(Mono.just(new StorageMetadata("video/mp4", 1024, null, Instant.now())));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
+        .thenReturn(Mono.just(pending));
+
+    StepVerifier.create(this.service.completeUploadByKey("pepe/videos/a.mp4")).verifyComplete();
+
+    assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
+    verify(this.eventPublisher).publish(any(UploadCompletedEvent.class));
+  }
+
+  @Test
+  void completeUploadByKeyDoesNotPublishWhenAlreadyCompleted() {
+    StoreObject completed = this.completedObject(7L);
+
+    when(this.storageRepository.findByObjectKey("pepe/videos/a.mp4"))
+        .thenReturn(Mono.just(completed));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.objectExists(any(StorageLocation.class))).thenReturn(Mono.just(true));
+    when(this.objectStoragePort.getMetadata(any(StorageLocation.class)))
+        .thenReturn(Mono.just(new StorageMetadata("video/mp4", 1024, null, Instant.now())));
+
+    StepVerifier.create(this.service.completeUploadByKey("pepe/videos/a.mp4")).verifyComplete();
+
+    assertThat(completed.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
+    verify(this.storageRepository, never()).updateStatus(any(StoreObject.class), any());
+    verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
+  }
+
+  @Test
+  void completeUploadByKeyIgnoresObjectsNotRegisteredInDatabase() {
+    when(this.storageRepository.findByObjectKey("stray/object.mp4")).thenReturn(Mono.empty());
+
+    StepVerifier.create(this.service.completeUploadByKey("stray/object.mp4")).verifyComplete();
+
+    verify(this.userStorageRepository, never()).findByOwnerUsername(anyString());
+    verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
   }
 }

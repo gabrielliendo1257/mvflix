@@ -165,21 +165,67 @@ public class UploadServiceImpl implements UploadService {
                                 "No storage registered for user: " + object.getOwnerUsername())))
                     .flatMap(
                         userStorage ->
-                            this.validateUploadedObject(object, userStorage.getBucketName())))
+                            this.completeUploadedObject(object, userStorage.getBucketName())))
         .doOnNext(
-            completed ->
-                this.eventPublisher.publish(
-                    new UploadCompletedEvent(
-                        completed.getStorageId(),
-                        completed.getOwnerUsername(),
-                        completed.getStorageKey().key(),
-                        completed.contentType(),
-                        completed.sizeInBytes(),
-                        Instant.now())))
+            completion -> {
+              if (completion.transitioned()) {
+                this.publishCompleted(completion.object());
+              } else {
+                log.info("Upload already completed, skipping: uploadId={}", uploadId);
+              }
+            })
         .then();
   }
 
-  private Mono<StoreObject> validateUploadedObject(StoreObject object, BucketName bucket) {
+  @Override
+  public Mono<Void> completeUploadByKey(String objectKey) {
+    log.info("Reconciling upload from object store event: key={}", objectKey);
+
+    return this.storageRepository
+        .findByObjectKey(objectKey)
+        .flatMap(
+            object ->
+                this.userStorageRepository
+                    .findByOwnerUsername(object.getOwnerUsername())
+                    .switchIfEmpty(
+                        Mono.error(
+                            new UserStorageNotFoundException(
+                                "No storage registered for user: "
+                                    + object.getOwnerUsername())))
+                    .flatMap(
+                        userStorage ->
+                            this.completeUploadedObject(object, userStorage.getBucketName())))
+        .doOnNext(
+            completion -> {
+              if (completion.transitioned()) {
+                this.publishCompleted(completion.object());
+              } else {
+                log.info("Object already completed, skipping event reconciliation: key={}", objectKey);
+              }
+            })
+        .onErrorResume(
+            error -> {
+              log.warn(
+                  "Object store event could not be reconciled, skipping: key={}, cause={}",
+                  objectKey,
+                  error.getMessage());
+              return Mono.empty();
+            })
+        .then();
+  }
+
+  private void publishCompleted(StoreObject completed) {
+    this.eventPublisher.publish(
+        new UploadCompletedEvent(
+            completed.getStorageId(),
+            completed.getOwnerUsername(),
+            completed.getStorageKey().key(),
+            completed.contentType(),
+            completed.sizeInBytes(),
+            Instant.now()));
+  }
+
+  private Mono<Completion> completeUploadedObject(StoreObject object, BucketName bucket) {
     StorageLocation location = new StorageLocation(bucket, object.getStorageKey());
 
     return this.objectStoragePort
@@ -207,9 +253,10 @@ public class UploadServiceImpl implements UploadService {
                     .flatMap(
                         transitioned ->
                             transitioned
-                                ? this.storageRepository.updateStatus(
-                                    object, StorageSessionStatus.PENDING)
-                                : Mono.just(object)));
+                                ? this.storageRepository
+                                    .updateStatus(object, StorageSessionStatus.PENDING)
+                                    .map(saved -> new Completion(saved, true))
+                                : Mono.just(new Completion(object, false))));
   }
 
   private <T> Mono<T> releaseAndFail(StoreObject object, RuntimeException error) {
@@ -217,4 +264,6 @@ public class UploadServiceImpl implements UploadService {
         .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
         .then(Mono.error(error));
   }
+
+  private record Completion(StoreObject object, boolean transitioned) {}
 }

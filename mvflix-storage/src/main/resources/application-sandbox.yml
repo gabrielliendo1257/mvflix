@@ -15,6 +15,7 @@ minio:
   access-key: admin
   secret-key: admin123
   bucket: uploads
+  webhook-token: ${MINIO_WEBHOOK_TOKEN:dev-webhook-secret}
 
 logging:
   level:
