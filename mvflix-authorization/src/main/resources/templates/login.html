@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesi&oacute;n &middot; Mvflix</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: #0b0f1a;
+      color: #e8ecf4;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #141a2b;
+      border: 1px solid #232c45;
+      border-radius: 16px;
+      padding: 40px 36px;
+      width: 340px;
+      box-shadow: 0 18px 50px rgba(0, 0, 0, .45);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+    .logo .play {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #e50914, #ff5f6d);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+    }
+    .logo span { font-size: 22px; font-weight: 700; letter-spacing: .5px; }
+    h1 { font-size: 18px; margin-bottom: 6px; }
+    p.sub { color: #8b93a7; font-size: 13px; margin-bottom: 24px; }
+    label {
+      display: block;
+      font-size: 13px;
+      color: #b6bdcc;
+      margin-bottom: 6px;
+    }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 11px 12px;
+      margin-bottom: 16px;
+      border: 1px solid #2b3557;
+      border-radius: 8px;
+      background: #0e1424;
+      color: #e8ecf4;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus { border-color: #e50914; }
+    button {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      background: #e50914;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    button:hover { background: #f6121d; }
+    .msg {
+      margin-top: 14px;
+      font-size: 13px;
+      border-radius: 8px;
+      padding: 9px 12px;
+    }
+    .msg.error { background: rgba(229, 9, 20, .12); border: 1px solid #e50914; color: #ff8a8a; }
+    .msg.success { background: rgba(46, 204, 113, .12); border: 1px solid #2ecc71; color: #7ee2a8; }
+    .footer { margin-top: 22px; font-size: 12px; color: #5c6478; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <div class="play">&#9654;</div>
+      <span>Mvflix</span>
+    </div>
+    <h1>Inicia sesi&oacute;n</h1>
+    <p class="sub">Us&aacute; tus credenciales de Mvflix para continuar</p>
+
+    <div class="msg error" th:if="${param.error}">Usuario o contrase&ntilde;a incorrectos.</div>
+    <div class="msg success" th:if="${param.logout}">Sesi&oacute;n cerrada. Volv&eacute; a iniciar sesi&oacute;n si quer&eacute;s.</div>
+
+    <form th:action="@{/login}" method="post" autocomplete="on">
+      <label for="username">Usuario</label>
+      <input type="text" id="username" name="username" required autofocus autocomplete="username">
+
+      <label for="password">Contrase&ntilde;a</label>
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+
+      <button type="submit">Ingresar</button>
+    </form>
+
+    <div class="footer">Mvflix &middot; centro de autenticaci&oacute;n</div>
+  </div>
+</body>
+</html>
