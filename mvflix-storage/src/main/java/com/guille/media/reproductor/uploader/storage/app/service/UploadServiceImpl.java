@@ -11,6 +11,7 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNot
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectRemovedException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UploadCancelledByUserException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.models.ExpectedObjectData;
@@ -149,6 +150,40 @@ public class UploadServiceImpl implements UploadService {
                                 saved.getStorageObjectStatus(),
                                 new ExpectedObjectData(
                                     saved.sizeInBytes(), command.mimeType().value()))));
+  }
+
+  @Override
+  public Mono<Void> handleObjectRemoved(String objectKey) {
+    log.info("Object removed event received from object store: key={}", objectKey);
+
+    return this.storageRepository
+        .findByObjectKey(objectKey)
+        .flatMap(
+            object -> {
+              if (object.getStorageObjectStatus() != StorageSessionStatus.PENDING) {
+                log.info(
+                    "Object removed but session is not PENDING, skipping: key={}, status={}",
+                    objectKey,
+                    object.getStorageObjectStatus());
+                return Mono.<StoreObject>empty();
+              }
+              object.markFailed();
+              return this.userStorageRepository
+                  .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
+                  .then(
+                      this.storageRepository.updateStatus(
+                          object, StorageSessionStatus.FAILED));
+            })
+        .doOnNext(failed -> this.publishFailed(failed, new StorageObjectRemovedException()))
+        .onErrorResume(
+            error -> {
+              log.warn(
+                  "Object removed event could not be reconciled, skipping: key={}, cause={}",
+                  objectKey,
+                  error.getMessage());
+              return Mono.empty();
+            })
+        .then();
   }
 
   @Override

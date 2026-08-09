@@ -113,6 +113,8 @@ class MinioWebhookControllerTest {
 
   @Test
   void ignoresEventsThatAreNotObjectCreated() {
+    when(uploadService.handleObjectRemoved(anyString())).thenReturn(Mono.empty());
+
     client
         .post()
         .uri("/internal/minio/events")
@@ -132,6 +134,7 @@ class MinioWebhookControllerTest {
         .expectStatus()
         .isOk();
 
+    verify(uploadService).handleObjectRemoved("a/1.mp4");
     verify(uploadService, never()).completeUploadByKey(anyString());
   }
 

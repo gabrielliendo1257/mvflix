@@ -43,7 +43,7 @@ public class MinioWebhookController {
   }
 
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<ResponseEntity<Void>> onObjectCreated(
+  public Mono<ResponseEntity<Void>> onEvent(
       @RequestHeader(value = "X-Minio-Token", required = false) String token,
       @RequestBody MinioEventNotification notification) {
     if (!isAuthorized(token)) {
@@ -52,12 +52,19 @@ public class MinioWebhookController {
     }
 
     return Flux.fromIterable(notification.records())
-        .filter(MinioEventNotification.Record::isObjectCreated)
         .flatMap(
             record -> {
               final String key = record.objectKey();
-              log.info("Object created event received from object store: key={}", key);
-              return this.uploadService.completeUploadByKey(key);
+              if (record.isObjectCreated()) {
+                log.info("Object created event received from object store: key={}", key);
+                return this.uploadService.completeUploadByKey(key);
+              }
+              if (record.isObjectRemoved()) {
+                log.info("Object removed event received from object store: key={}", key);
+                return this.uploadService.handleObjectRemoved(key);
+              }
+              log.info("Ignored object store event: event={}, key={}", record.eventName(), key);
+              return Mono.empty();
             })
         .then()
         .thenReturn(ResponseEntity.ok().build());

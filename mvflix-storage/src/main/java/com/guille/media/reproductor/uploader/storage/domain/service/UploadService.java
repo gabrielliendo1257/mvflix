@@ -27,6 +27,13 @@ public interface UploadService {
   Mono<UploadSession> getUploadStatus(Long uploadId);
 
   /**
+   * Reconcilia la remoción de un objeto en el object store ({@code s3:ObjectRemoved}):
+   * si la sesión aún está en {@code PENDING}, la marca {@code FAILED} y libera la cuota.
+   * No-op si ya se completó o expiró.
+   */
+  Mono<Void> handleObjectRemoved(String objectKey);
+
+  /**
    * Cancela una sesión de subida explícitamente por el usuario: libera la cuota
    * reservada y la marca {@code FAILED} con motivo de cancelación.
    *

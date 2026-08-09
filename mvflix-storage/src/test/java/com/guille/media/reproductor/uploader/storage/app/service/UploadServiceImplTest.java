@@ -321,5 +321,35 @@ class UploadServiceImplTest {
     verify(this.eventPublisher, never()).publish(any());
   }
 
+  @Test
+  void handleObjectRemovedMarksPendingAsFailedAndReleasesQuota() {
+    StoreObject pending = this.pendingObject(7L);
+
+    when(this.storageRepository.findByObjectKey(anyString())).thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.releaseStorage("pepe", 1024L)).thenReturn(Mono.just(1L));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.FAILED))
+        .thenReturn(Mono.just(pending));
+
+    StepVerifier.create(this.service.handleObjectRemoved("k1")).verifyComplete();
+
+    assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
+    verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
+    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.FAILED);
+    verify(this.eventPublisher).publish(any(UploadFailedEvent.class));
+  }
+
+  @Test
+  void handleObjectRemovedIgnoresCompletedObjects() {
+    StoreObject completed = this.completedObject(7L);
+
+    when(this.storageRepository.findByObjectKey(anyString())).thenReturn(Mono.just(completed));
+
+    StepVerifier.create(this.service.handleObjectRemoved("k1")).verifyComplete();
+
+    assertThat(completed.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
+    verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
+    verify(this.eventPublisher, never()).publish(any());
+  }
+
 }
 

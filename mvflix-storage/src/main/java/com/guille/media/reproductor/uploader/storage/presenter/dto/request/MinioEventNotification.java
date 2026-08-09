@@ -24,6 +24,10 @@ public record MinioEventNotification(
       return this.eventName != null && this.eventName.startsWith("s3:ObjectCreated:");
     }
 
+    public boolean isObjectRemoved() {
+      return this.eventName != null && this.eventName.startsWith("s3:ObjectRemoved:");
+    }
+
     public String objectKey() {
       return this.s3 != null && this.s3.object() != null ? this.s3.object().key() : null;
     }
