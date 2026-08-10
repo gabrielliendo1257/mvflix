@@ -21,11 +21,10 @@ public class WebHomeService {
   private final UsersWebPort usersWebClient;
   private final StorageWebClient storageWebClient;
 
-public Mono<HomeView> home() {
+  public Mono<HomeView> home() {
     Mono<UserProfile> me = this.usersWebClient.me();
     Mono<QuotaSnapshot> quota = this.storageWebClient.quota();
-    Mono<List<UploadListItem>> uploads =
-        this.storageWebClient.listUploads(10).collectList();
+    Mono<List<UploadListItem>> uploads = this.storageWebClient.listUploads(10).collectList();
 
     return Mono.zip(me, quota)
         .flatMap(pair -> uploads.map(items -> new HomeView(pair.getT1(), pair.getT2(), items)));

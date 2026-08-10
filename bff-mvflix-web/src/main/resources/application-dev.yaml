@@ -9,22 +9,43 @@ spring:
             provider: mvflix-auth
             client-id: movie-bff
             client-secret: super-secret
-            client-authentication-method: client_secret_basic
+            #client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
-            redirect-uri: "{baseUrl}/login/oauth2/movietv"
-            scope: users.read, users.write
+            redirect-uri: ${BFF_ADDRESS:http://127.0.0.1:9091}${BFF_PATH_REDIRECT:/login/oauth2/code/movie-app}
+            scope: users.read,users.write,openid
         provider:
           mvflix-auth:
-            authorization-uri: ${AUTHORIZATION_ISSUER_URL:http://localhost:9090}/oauth2/authorize
-            token-uri: ${AUTHORIZATION_ISSUER_URL:http://localhost:9090}/oauth2/token
-            user-info-uri: ${AUTHORIZATION_ISSUER_URL:http://localhost:9090}/userinfo
-            jwk-set-uri: ${AUTHORIZATION_ISSUER_URL:http://localhost:9090}/oauth2/jwks
+            issuer-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}
+            #authorization-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}/oauth2/authorize
+            #token-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}/oauth2/token
+            #user-info-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}/userinfo
+            #jwk-set-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}/oauth2/jwks
 
 server:
   port: 9091
 
+logging:
+  level:
+    root: info
+    com.guille.media.bff: debug
+    org.springframework.security: TRACE
+    org.springframework.security.oauth2: debug
+    org.springframework.security.oauth2.client: TRACE
+    org.springframework.security.oauth2.client.web: TRACE
+    org.springframework.security.web.server: TRACE
+    org.springframework.web: debug
+    org.springframework.web.reactive.function.client: debug
+    org.springframework.http.client.reactive: debug
+    reactor.netty.http.client: debug
+
+security:
+  oauth2:
+    jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://127.0.0.1:9090/oauth2/jwks}
+
 services:
   users:
-    url: ${SERVICES_USERS_URL:http://localhost:8080}
+    url: ${SERVICES_USERS_URL:http://127.0.0.1:8080}
   storage:
-    url: ${SERVICES_STORAGE_URL:http://localhost:6060}
+    url: ${SERVICES_STORAGE_URL:http://127.0.0.1:6060}
+  authorization:
+    url: ${AUTHORIZATION_URL:http://127.0.0.1:9090}

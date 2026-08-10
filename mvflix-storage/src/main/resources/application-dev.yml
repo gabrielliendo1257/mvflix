@@ -15,30 +15,30 @@ spring:
       #- org.springframework.boot.autoconfigure.orm.jpa.HibernateJpaAutoConfiguration
 
   r2dbc:
-    url: r2dbc:postgresql://localhost:5432/mvflix_uploads_db
+    url: r2dbc:postgresql://127.0.0.1:5432/mvflix_uploads_db
     username: db_rw
     password: 12345678
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/mvflix_uploads_db
+    url: jdbc:postgresql://127.0.0.1:5432/mvflix_uploads_db
     username: db_migrator
     password: 12345678
 
 services:
   authorization:
-    url: ${AUTHORIZATION_URL:http://localhost:9090}
+    url: ${AUTHORIZATION_URL:http://127.0.0.1:9090}
   users:
-    url: ${USERS_URL:http://localhost:8080}
+    url: ${USERS_URL:http://127.0.0.1:8080}
 
 security:
   oauth2:
     client-registration-id: storage-app
     client-id: storage-service
     client-secret: ${SECURITY_OAUTH2_CLIENT_SECRET:super-secret}
-    jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://localhost:9090/oauth2/jwks}
+    jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://127.0.0.1:9090/oauth2/jwks}
 
 minio:
-  url: ${MINIO_URL:http://localhost:9000}
+  url: ${MINIO_URL:http://127.0.0.1:9000}
   access-key: admin
   secret-key: admin123
   bucket: uploads

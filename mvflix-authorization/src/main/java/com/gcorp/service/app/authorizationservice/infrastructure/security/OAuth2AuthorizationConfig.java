@@ -95,9 +95,9 @@ public class OAuth2AuthorizationConfig {
 					.clientSettings(
 							ClientSettings.builder()
 									.requireAuthorizationConsent(false)
-									.requireProofKey(true)
 									.build())
 					.build();
+			log.info("Front registered client id: {}", this.oauth2PropertiesConfig);
 			repository.save(movieFrontRegisteredClient);
 		}
 
@@ -110,6 +110,7 @@ public class OAuth2AuthorizationConfig {
 					.scope("users.read")
 					.scope("users.write")
 					.build();
+			log.info("Front registered client id: {}", storageServiceRegisteredClient);
 			repository.save(storageServiceRegisteredClient);
 		}
 

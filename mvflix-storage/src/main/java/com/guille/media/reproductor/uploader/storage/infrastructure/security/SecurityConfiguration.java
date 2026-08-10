@@ -1,5 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.infrastructure.security;
 
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -9,8 +10,10 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -81,7 +84,8 @@ public class SecurityConfiguration {
     return http.build();
   }
 
-  @Bean
+  // No es @Bean a proposito: WebFlux registra todos los Converter beans en el
+  // webFluxConversionService y una lambda no retiene la info generica (spring-framework#22509).
   Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
     var authoritiesConverter = new JwtGrantedAuthoritiesConverter(); // claim "scope" -> SCOPE_*
     var rolesConverter = new JwtGrantedAuthoritiesConverter();
@@ -90,11 +94,11 @@ public class SecurityConfiguration {
 
     return jwt ->
         Mono.just(
-            new org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken(
+            new JwtAuthenticationToken(
                 jwt, mergeAuthorities(authoritiesConverter, rolesConverter, jwt)));
   }
 
-  private java.util.List<org.springframework.security.core.GrantedAuthority> mergeAuthorities(
+  private List<GrantedAuthority> mergeAuthorities(
       JwtGrantedAuthoritiesConverter scopeConverter,
       JwtGrantedAuthoritiesConverter rolesConverter,
       Jwt jwt) {

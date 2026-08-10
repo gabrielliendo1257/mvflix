@@ -1,5 +1,6 @@
 package com.gcorp.service.app.authorizationservice.infrastructure.security;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -102,13 +103,14 @@ public class SecurityConfig {
                     UsernamePasswordAuthenticationToken authenticationToken
             ) {
                 if (context.getTokenType() == OAuth2TokenType.ACCESS_TOKEN) {
-                    List<String> roles = authenticationToken
-                        .getAuthorities()
-                        .stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .toList();
+                    List<String> roles = new ArrayList<>(
+                        authenticationToken
+                            .getAuthorities()
+                            .stream()
+                            .map(GrantedAuthority::getAuthority)
+                            .toList());
 
-                    context.getClaims().audience(List.of(applicationName));
+                    context.getClaims().audience(new ArrayList<>(List.of(applicationName)));
                     context.getClaims().subject(authenticationToken.getName());
                     context.getClaims().claim("roles", roles);
 

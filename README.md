@@ -98,9 +98,63 @@ make sandbox-test                      # smoke test del storage (perfil sandbox)
 
 ## API
 
-- `docs/openapi/users.openapi.yaml` — endpoints del user-service
-- `docs/openapi/storage.openapi.yaml` — endpoints del storage
-- `docs/openapi/authorization.openapi.yaml` — Authorization Server
+### BFF web (`bff-mvflix-web`, puerto 9091)
+
+Unico punto de entrada del navegador. Usa el patron `oauth2-client`: el navegador solo ve la
+cookie de sesion (httpOnly) y **nunca ve tokens JWT**. El BFF valida la sesion y orquesta
+`users` (8080) y `storage` (6060) server-to-server.
+
+| Metodo | Ruta | Auth | Descripcion |
+|---|---|---|---|
+| `GET` | `/web/session` | publica | Estado de sesion: `{"authenticated":false}` o `{"authenticated":true,"subject":"<sub>"}` |
+| `GET` | `/web/home` | sesion | Home: `{profile, quota, recentUploads}` (mezcla users + storage) |
+| `GET` | `/web/uploads?limit=20` | sesion | Lista de uploads del usuario (proxy a storage) |
+| `POST` | `/web/uploads` | sesion | Crea sesion de upload. Body: `{"filename","file_size","mime_type"}` → `uploadId`, `uploadUrl` (PUT presigned directo a MinIO), `method`, `status`, `object{expectedSize,expectedMime}` |
+| `GET` | `/web/uploads/{uploadId}` | sesion | Estado del objeto: PENDING / COMPLETED / EXPIRED / DELETED |
+| `POST` | `/web/uploads/{uploadId}/cancel` | sesion | Cancela y libera la reserva de cuota |
+| `POST` | `/web/uploads/{uploadId}/complete` | sesion | Confirma el fin del upload (fast path); devuelve el status HTTP del storage (200 si quedo COMPLETED) |
+
+**Seguridad:** `/web/session`, `/login/**`, `/oauth2/**` y `/error` son publicas; `/web/**`
+requiere sesion. Para el navegador (Accept: text/html) sin sesion se redirige al authorize del
+IdP; para el resto (curl/Postman) se responde `401 {"error":"unauthorized"}` para que el front
+arranque el login.
+
+**Flujo de login (OAuth2 authorization code + PKCE):**
+1. Front llama `GET /web/session` → `{"authenticated":false}` → redirige a `/oauth2/authorization/movie-app`.
+2. El BFF (cliente `movie-bff`, PKCE obligatorio) redirige al IdP `:9090/login`; el usuario se
+   autentica en `customers`.
+3. Callback: `{baseUrl}/login/oauth2/movietv` → BFF pide token con PKCE, guarda cookie de
+   sesion httpOnly y redirige a `/web/home`. Scopes del cliente: `users.read, users.write`.
+
+**Flujo de subida (por que MinIO es la fuente de verdad):**
+```
+POST /web/uploads                → storage: reserva cuota + URL presigned PUT (SIMPLE)
+PUT  directo a MinIO             → los bytes nunca pasan por BFF ni storage
+POST /web/uploads/{id}/complete  → storage: verifica tamano en MinIO → COMPLETED (fast path, UX)
+webhook s3:ObjectCreated:Put     → storage /internal/minio/events: reconcile (camino de verdad,
+                                   idempotente; no depende de que el cliente confirme)
+scheduler expireStaleSessions    → PENDING viejos → EXPIRED + libera cuota (red de seguridad)
+```
+`COMPLETED` habilita `GET` con URL presigned de streaming. El evento de dominio
+`UploadCompletedEvent` solo se publica en la primera transicion real (sin duplicados si
+coinciden el fast path y el webhook).
+
+**Orquestacion interna (server-to-server):**
+- storage: `GET /api/v1/movie/storage/quota`, `GET /api/v1/movie/storage/uploads?limit=`, `POST /api/v1/movie/storage/upload`, `GET|POST /api/v1/movie/storage/upload/{id}` (+ `/cancel`, `/complete`).
+- users: `GET /api/v1/users/me` (perfil del usuario).
+- WebClient + OAuth2 (`client_credentials`) hacia users para el contrato de cuota.
+
+### Servicios internos (specs OpenAPI)
+
+- `docs/openapi/users.openapi.yaml` — endpoints de `mvflix-users` (:8080)
+- `docs/openapi/storage.openapi.yaml` — endpoints de `mvflix-storage` (:6060)
+- `docs/openapi/authorization.openapi.yaml` — Authorization Server (:9090)
+
+### Endpoints internos (no expuestos al navegador)
+
+| Metodo | Ruta | Auth | Descripcion |
+|---|---|---|---|
+| `POST` | `storage:/internal/minio/events` | `X-Minio-Token` (tiempo constante) | Webhook de bucket events: procesa `s3:ObjectCreated:*` y completa el objeto por `objectKey`. Config en compose (`make up-dev`): target webhook `upload` + `mc event add` (`put, complete-multipart-upload`) |
 
 ## Docs
 
