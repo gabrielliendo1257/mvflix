@@ -10,7 +10,6 @@
 		<version>1.0.1</version>
 	</parent>
 
-	<groupId>gcorp.microservicesarm.app</groupId>
 	<artifactId>bff-mvflix-web</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
