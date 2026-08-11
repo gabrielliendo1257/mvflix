@@ -1,6 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject;
@@ -11,12 +12,15 @@ import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRep
 import com.guille.media.reproductor.uploader.storage.domain.service.ObjectCleanupService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
 
+@Slf4j
 @Service
 public class ObjectCleanupServiceImpl implements ObjectCleanupService {
 
@@ -91,11 +95,21 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
               if (!object.expire()) {
                 return Mono.empty();
               }
-              return this.userStorageRepository
-                  .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
-                  .then(
-                      this.storageRepository.updateStatus(
-                          object, StorageSessionStatus.EXPIRED));
+              return this.storageRepository
+                  .updateStatus(object, StorageSessionStatus.PENDING)
+                  .flatMap(
+                      expired ->
+                          this.userStorageRepository.releaseStorage(
+                              expired.getOwnerUsername(), expired.sizeInBytes()))
+                  .onErrorResume(
+                      IllegalStateTransitionException.class,
+                      race -> {
+                        log.warn(
+                            "Expire lost a concurrent transition, skipping: uploadId={}, status={}",
+                            object.getStorageId(),
+                            object.getStorageObjectStatus());
+                        return Mono.empty();
+                      });
             })
         .count();
   }

@@ -10,6 +10,7 @@ import com.guille.media.reproductor.uploader.storage.domain.events.UploadComplet
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadFailedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectRemovedException;
@@ -224,11 +225,23 @@ public class UploadServiceImpl implements UploadService {
                 return Mono.<StoreObject>empty();
               }
               object.markFailed();
-              return this.userStorageRepository
-                  .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
-                  .then(
-                      this.storageRepository.updateStatus(
-                          object, StorageSessionStatus.FAILED));
+              return this.storageRepository
+                  .updateStatus(object, StorageSessionStatus.PENDING)
+                  .flatMap(
+                      failed ->
+                          this.userStorageRepository
+                              .releaseStorage(
+                                  failed.getOwnerUsername(), failed.sizeInBytes())
+                              .thenReturn(failed))
+                  .onErrorResume(
+                      IllegalStateTransitionException.class,
+                      race -> {
+                        log.warn(
+                            "Cancel lost a concurrent transition, skipping: uploadId={}, status={}",
+                            uploadId,
+                            object.getStorageObjectStatus());
+                        return Mono.empty();
+                      });
             })
         .doOnNext(failed -> this.publishFailed(failed, new UploadCancelledByUserException()))
         .then();
@@ -400,17 +413,29 @@ public class UploadServiceImpl implements UploadService {
   }
 
   private <T> Mono<T> releaseAndFail(StoreObject object, RuntimeException error) {
-    return this.userStorageRepository
-        .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
-        .then(
-            Mono.fromCallable(
-                () -> {
-                  object.markFailed();
-                  return object;
-                }))
-        .flatMap(failed -> this.storageRepository.updateStatus(failed, StorageSessionStatus.FAILED))
-        .doOnNext(failed -> this.publishFailed(failed, error))
-        .then(Mono.error(error));
+    return Mono.defer(
+        () -> {
+          if (!object.markFailed()) {
+            return Mono.error(error);
+          }
+          return this.storageRepository
+              .updateStatus(object, StorageSessionStatus.PENDING)
+              .flatMap(
+                  failed ->
+                      this.userStorageRepository
+                          .releaseStorage(failed.getOwnerUsername(), failed.sizeInBytes())
+                          .thenReturn(failed))
+              .doOnNext(failed -> this.publishFailed(failed, error))
+              .onErrorResume(
+                  IllegalStateTransitionException.class,
+                  race -> {
+                    log.warn(
+                        "Fail lost a concurrent transition, skipping persist and release: uploadId={}",
+                        object.getStorageId());
+                    return Mono.error(error);
+                  })
+              .then(Mono.error(error));
+        });
   }
 
   private void publishFailed(StoreObject failed, RuntimeException error) {

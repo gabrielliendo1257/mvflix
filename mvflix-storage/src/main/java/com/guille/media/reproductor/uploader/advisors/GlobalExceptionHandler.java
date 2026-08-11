@@ -3,7 +3,10 @@ package com.guille.media.reproductor.uploader.advisors;
 import com.guille.media.reproductor.uploader.advisors.models.ErrorResponse;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ObjectAlreadyExistsException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -41,6 +44,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ObjectAlreadyExistsException.class)
     public ResponseEntity<?> objectAlreadyExists(ObjectAlreadyExistsException ex) {
         return error(HttpStatus.CONFLICT, "OBJECT_ALREADY_EXISTS", ex);
+    }
+
+    @ExceptionHandler(IllegalStateTransitionException.class)
+    public ResponseEntity<?> illegalStateTransition(IllegalStateTransitionException ex) {
+        return error(HttpStatus.CONFLICT, "ILLEGAL_STATE_TRANSITION", ex);
+    }
+
+    @ExceptionHandler(InvalidObjectContentError.class)
+    public ResponseEntity<?> invalidObjectContent(InvalidObjectContentError ex) {
+        return error(HttpStatus.UNPROCESSABLE_ENTITY, "INVALID_OBJECT_CONTENT", ex);
+    }
+
+    @ExceptionHandler(StorageObjectNotAvailable.class)
+    public ResponseEntity<?> storageObjectNotAvailable(StorageObjectNotAvailable ex) {
+        return error(HttpStatus.NOT_FOUND, "STORAGE_OBJECT_NOT_AVAILABLE", ex);
     }
 
     @ExceptionHandler(Exception.class)
