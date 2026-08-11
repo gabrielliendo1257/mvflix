@@ -23,18 +23,24 @@ public class SpringDataMovieRepository implements MovieRepository {
     @Override
     public Mono<Movie> save(Movie movie) {
         MovieRow row = this.rowMapper.toRow(movie);
-        return this.databaseClient
-                .sql(
-                        """
-                        INSERT INTO movies (owner_username, title, status, object_key, metadata)
-                        VALUES (:owner_username, :title, :status, :object_key, CAST(:metadata AS jsonb))
-                        RETURNING id, owner_username, title, status, object_key, metadata::text
-                        """)
-                .bind("owner_username", row.ownerUsername())
-                .bind("title", row.title())
-                .bind("status", row.status())
-                .bind("object_key", row.objectKey())
-                .bind("metadata", row.metadata())
+        DatabaseClient.GenericExecuteSpec spec =
+                this.databaseClient
+                        .sql(
+                                """
+                                INSERT INTO movies (owner_username, title, status, object_key, metadata)
+                                VALUES (:owner_username, :title, :status, :object_key, CAST(:metadata AS jsonb))
+                                RETURNING id, owner_username, title, status, object_key, metadata::text
+                                """)
+                        .bind("owner_username", row.ownerUsername())
+                        .bind("title", row.title())
+                        .bind("status", row.status())
+                        .bind("metadata", row.metadata());
+        if (row.objectKey() != null) {
+            spec = spec.bind("object_key", row.objectKey());
+        } else {
+            spec = spec.bindNull("object_key", String.class);
+        }
+        return spec
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
