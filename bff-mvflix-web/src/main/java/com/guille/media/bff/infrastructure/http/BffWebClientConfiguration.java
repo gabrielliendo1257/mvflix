@@ -54,6 +54,16 @@ public class BffWebClientConfiguration {
         storageUrl, oauth2AuthorizedClientFilter, connectTimeoutMs, responseTimeoutMs);
   }
 
+  @Bean
+  WebClient moviesWebClient(
+      ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
+      @Value("${services.movies.url}") String moviesUrl,
+      @Value("${bff.webclient.connect-timeout-ms:2000}") int connectTimeoutMs,
+      @Value("${bff.webclient.response-timeout-ms:10000}") long responseTimeoutMs) {
+    return this.build(
+        moviesUrl, oauth2AuthorizedClientFilter, connectTimeoutMs, responseTimeoutMs);
+  }
+
   private WebClient build(
       String baseUrl,
       ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
