@@ -20,6 +20,7 @@
         <module>mvflix-authorization</module>
         <module>mvflix-storage</module>
         <module>mvflix-users</module>
+        <module>mvflix-movies</module>
         <module>bff-mvflix-web</module>
 	</modules>
 
