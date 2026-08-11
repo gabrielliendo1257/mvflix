@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class ErrorResponse {
     private Integer code;
+    private String error;
     private String message;
     private LocalDateTime timestamp;
 }
