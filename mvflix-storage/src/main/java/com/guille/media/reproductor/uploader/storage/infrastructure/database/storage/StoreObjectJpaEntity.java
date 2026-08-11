@@ -12,7 +12,7 @@ import org.springframework.data.relational.core.mapping.Table;
 import java.time.Instant;
 
 @Data
-@Table(name = "storage")
+@Table(name = "store_objects")
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
