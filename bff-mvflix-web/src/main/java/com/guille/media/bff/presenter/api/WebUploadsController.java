@@ -6,6 +6,7 @@ import com.guille.media.bff.app.dto.UploadSessionDto;
 import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.service.WebUploadsService;
 
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,17 +29,21 @@ public class WebUploadsController {
     this.webUploadsService = webUploadsService;
   }
 
-  @GetMapping
+  @GetMapping(
+      produces = MediaType.APPLICATION_JSON_VALUE,
+      consumes = MediaType.APPLICATION_JSON_VALUE)
   public Flux<UploadListItem> list(@RequestParam(defaultValue = "20") int limit) {
     return this.webUploadsService.list(limit);
   }
 
-  @PostMapping
+  @PostMapping(
+      produces = MediaType.APPLICATION_JSON_VALUE,
+      consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<UploadSessionDto>> create(@RequestBody UploadCreateRequest request) {
     return this.webUploadsService.create(request).map(ResponseEntity::ok);
   }
 
-  @GetMapping("/{uploadId}")
+  @GetMapping(value = "/{uploadId}", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<UploadStatusDto>> status(@PathVariable Long uploadId) {
     return this.webUploadsService.status(uploadId).map(ResponseEntity::ok);
   }

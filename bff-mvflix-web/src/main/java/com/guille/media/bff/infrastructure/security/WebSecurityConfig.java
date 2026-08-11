@@ -1,11 +1,12 @@
 package com.guille.media.bff.infrastructure.security;
 
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -21,53 +22,61 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtGra
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationEntryPoint;
+import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.server.ServerWebExchange;
-
 import reactor.core.publisher.Mono;
-
-import java.nio.charset.StandardCharsets;
 
 /**
  * Seguridad del BFF: patrón oauth2-client (el navegador nunca ve tokens).
  *
- * <p>Sin sesión: si el cliente espera HTML (navegador) se redirige al authorize del IdP;
- * para el resto (API/curl/Postman) se responde 401 JSON para que el front arranque el login.
+ * <p>Sin sesión: si el cliente espera HTML (navegador) se redirige al authorize del IdP; para el
+ * resto (API/curl/Postman) se responde 401 JSON para que el front arranque el login.
  */
 @Configuration
 @EnableWebFluxSecurity
 public class WebSecurityConfig {
 
-	@Value("${services.authorization.url}")
-	private String authorizationUrl;
-
-	@Value("${security.oauth2.jwk-set-uri}")
-	private String jwkSetUriOverride;
-
   private static final String AUTHORIZATION_URI = "/oauth2/authorization/movie-app";
+
+  @Value("${services.authorization.url}")
+  private String authorizationUrl;
+
+  @Value("${security.oauth2.jwk-set-uri}")
+  private String jwkSetUriOverride;
+
+  @Value("${frontend.url}")
+  private String frontendUrl;
 
   @Bean
   SecurityWebFilterChain securityWebFilterChain(
       ServerHttpSecurity http, ReactiveClientRegistrationRepository clientRegistrations) {
     return http.csrf(ServerHttpSecurity.CsrfSpec::disable)
+        .cors(Customizer.withDefaults())
         .authorizeExchange(
             exchanges ->
                 exchanges
-                    .pathMatchers("/web/session", "/login/**", "/oauth2/**", "/error", "/favicon.ico")
+                    .pathMatchers("/web/session", "/login/**", "/oauth2/**", "/error")
                     .permitAll()
+                    .pathMatchers(HttpMethod.OPTIONS, "/web/uploads")
+                    .authenticated()
                     .pathMatchers("/web/**")
                     .authenticated()
                     .anyExchange()
-                    .permitAll())
-        //.exceptionHandling(handling -> handling.authenticationEntryPoint(delegatingEntryPoint()))
-        .oauth2ResourceServer(oauth2ResourceServer -> oauth2ResourceServer
-					.jwt(jwtSpec -> jwtSpec
-						.jwkSetUri(this.resolveJwkSetUri())
-						.jwtAuthenticationConverter(this.jwtAuthenticationConverter())
-					)
-				)
-        .oauth2Login(Customizer.withDefaults())
+                    .denyAll())
+        // .exceptionHandling(handling -> handling.authenticationEntryPoint(delegatingEntryPoint()))
+        .oauth2ResourceServer(
+            oauth2ResourceServer ->
+                oauth2ResourceServer.jwt(
+                    jwtSpec ->
+                        jwtSpec
+                            .jwkSetUri(this.resolveJwkSetUri())
+                            .jwtAuthenticationConverter(this.jwtAuthenticationConverter())))
+        .oauth2Login(
+            oauth2 ->
+                oauth2.authenticationSuccessHandler(
+                    new RedirectServerAuthenticationSuccessHandler(this.frontendUrl + "/home")))
         .build();
   }
 
@@ -89,51 +98,52 @@ public class WebSecurityConfig {
     };
   }
 
-	// No es @Bean a proposito: WebFlux registra todos los Converter beans en el
-	// webFluxConversionService y una lambda no retiene la info generica (spring-framework#22509).
-	Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
-		var authoritiesConverter = new JwtGrantedAuthoritiesConverter(); // claim "scope" -> SCOPE_*
-		var rolesConverter = new JwtGrantedAuthoritiesConverter();
-		rolesConverter.setAuthoritiesClaimName("roles");
-		rolesConverter.setAuthorityPrefix("");
+  // No es @Bean a proposito: WebFlux registra todos los Converter beans en el
+  // webFluxConversionService y una lambda no retiene la info generica (spring-framework#22509).
+  Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
+    var authoritiesConverter = new JwtGrantedAuthoritiesConverter(); // claim "scope" -> SCOPE_*
+    var rolesConverter = new JwtGrantedAuthoritiesConverter();
+    rolesConverter.setAuthoritiesClaimName("roles");
+    rolesConverter.setAuthorityPrefix("");
 
-		return jwt ->
-			Mono.just(
-				new JwtAuthenticationToken(
-					jwt, mergeAuthorities(authoritiesConverter, rolesConverter, jwt)));
-	}
+    return jwt ->
+        Mono.just(
+            new JwtAuthenticationToken(
+                jwt, mergeAuthorities(authoritiesConverter, rolesConverter, jwt)));
+  }
 
-	private List<GrantedAuthority> mergeAuthorities(
-		JwtGrantedAuthoritiesConverter scopeConverter,
-		JwtGrantedAuthoritiesConverter rolesConverter,
-		Jwt jwt) {
-		var authorities = new java.util.ArrayList<org.springframework.security.core.GrantedAuthority>();
-		if (scopeConverter.convert(jwt) != null) {
-			authorities.addAll(scopeConverter.convert(jwt));
-		}
-		if (rolesConverter.convert(jwt) != null) {
-			authorities.addAll(rolesConverter.convert(jwt));
-		}
-		return authorities;
-	}
+  private List<GrantedAuthority> mergeAuthorities(
+      JwtGrantedAuthoritiesConverter scopeConverter,
+      JwtGrantedAuthoritiesConverter rolesConverter,
+      Jwt jwt) {
+    var authorities = new java.util.ArrayList<org.springframework.security.core.GrantedAuthority>();
+    if (scopeConverter.convert(jwt) != null) {
+      authorities.addAll(scopeConverter.convert(jwt));
+    }
+    if (rolesConverter.convert(jwt) != null) {
+      authorities.addAll(rolesConverter.convert(jwt));
+    }
+    return authorities;
+  }
 
-	private String resolveJwkSetUri() {
-		if (this.jwkSetUriOverride != null && !this.jwkSetUriOverride.isBlank()) {
-			return this.jwkSetUriOverride;
-		}
-		return this.authorizationUrl + "/oauth2/jwks";
-	}
+  private String resolveJwkSetUri() {
+    if (this.jwkSetUriOverride != null && !this.jwkSetUriOverride.isBlank()) {
+      return this.jwkSetUriOverride;
+    }
+    return this.authorizationUrl + "/oauth2/jwks";
+  }
 
-	@Bean
-	UrlBasedCorsConfigurationSource corsConfigurationSource() {
-		CorsConfiguration configuration = new CorsConfiguration();
-		configuration.setAllowedOrigins(Arrays.asList("http://127.0.0.1:4200"));
-		configuration.setAllowedMethods(Arrays.asList("GET","POST"));
-		configuration.setAllowCredentials(true);
-		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-		source.registerCorsConfiguration("/**", configuration);
-		return source;
-	}
+  @Bean
+  UrlBasedCorsConfigurationSource corsConfigurationSource() {
+    CorsConfiguration configuration = new CorsConfiguration();
+    configuration.setAllowedOrigins(List.of("http://127.0.0.1:4200"));
+    configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+    configuration.setAllowedHeaders(List.of("Accept", "Content-Type"));
+    configuration.setAllowCredentials(true);
+    UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+    source.registerCorsConfiguration("/**", configuration);
+    return source;
+  }
 
   /** 401 en JSON para que el front distinga "sin sesión" y arranque el login. */
   private static final class Json401EntryPoint implements ServerAuthenticationEntryPoint {

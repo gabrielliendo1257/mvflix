@@ -11,7 +11,7 @@ spring:
             client-secret: super-secret
             #client-authentication-method: client_secret_basic
             authorization-grant-type: authorization_code
-            redirect-uri: ${BFF_ADDRESS:http://127.0.0.1:9091}${BFF_PATH_REDIRECT:/login/oauth2/code/movie-app}
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}" # ${BFF_ADDRESS:http://127.0.0.1:9091}${BFF_PATH_REDIRECT:/login/oauth2/code/movie-app}
             scope: users.read,users.write,openid
         provider:
           mvflix-auth:
@@ -23,6 +23,9 @@ spring:
 
 server:
   port: 9091
+  error:
+    include-stacktrace: never
+    include-message: never
 
 logging:
   level:
@@ -49,3 +52,11 @@ services:
     url: ${SERVICES_STORAGE_URL:http://127.0.0.1:6060}
   authorization:
     url: ${AUTHORIZATION_URL:http://127.0.0.1:9090}
+
+frontend:
+  url: ${FRONTEND_URL:http://127.0.0.1:4200}
+
+bff:
+  webclient:
+    connect-timeout-ms: 2000
+    response-timeout-ms: 10000
