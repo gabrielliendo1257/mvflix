@@ -79,6 +79,7 @@ public class SpringDataUserRepository implements SimpleUserRepository {
                     plan = :plan,
                     enabled = :enabled,
                     username = :username,
+                    violations = :violations,
                     updated_at = NOW()
                 WHERE id = :id
                 RETURNING *
@@ -88,6 +89,7 @@ public class SpringDataUserRepository implements SimpleUserRepository {
                 .bind("email", entity.getEmail())
                 .bind("plan", entity.getPlan())
                 .bind("enabled", entity.isEnabled())
+                .bind("violations", entity.getViolations())
                 .mapProperties(UserEntity.class)
                 .one()
                 .map(this.userMapper::toDomain);

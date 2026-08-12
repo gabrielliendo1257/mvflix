@@ -18,14 +18,18 @@ import lombok.ToString;
 @ToString
 @AllArgsConstructor
 public class User {
+  /** A partir de este número de violaciones el usuario queda bloqueado para subidas. */
+  public static final int VIOLATION_THRESHOLD = 3;
+
   private UserId id;
   private Username username;
   private Email email;
   private Plan plan;
   private boolean enabled;
+  private int violations;
 
   public static User createNew(Username username, Email email) {
-    return new User(new UserId(UUID.randomUUID()), username, email, Plan.FREE, true);
+    return new User(new UserId(UUID.randomUUID()), username, email, Plan.FREE, true, 0);
   }
 
   /**
@@ -37,5 +41,15 @@ public class User {
 
   public void changePlan(Plan plan) {
     this.plan = Objects.requireNonNull(plan);
+  }
+
+  /** Registra una infracción (subida maliciosa o inconsistente) y devuelve si quedó bloqueado. */
+  public boolean registerViolation() {
+    this.violations++;
+    return isBlocked();
+  }
+
+  public boolean isBlocked() {
+    return this.violations >= VIOLATION_THRESHOLD;
   }
 }

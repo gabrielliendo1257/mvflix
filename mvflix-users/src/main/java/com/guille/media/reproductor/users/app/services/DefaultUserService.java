@@ -116,6 +116,29 @@ public class DefaultUserService implements UserService {
             });
   }
 
+  @Override
+  public Mono<User> registerViolation(String username, String reason) {
+    return getByUsername(username)
+        .flatMap(
+            user -> {
+              boolean blocked = user.registerViolation();
+              log.warn(
+                  "Violación registrada para {}: {} (total={}, bloqueado={})",
+                  username, reason, user.getViolations(), blocked);
+              return this.simpleUserRepository
+                  .update(user)
+                  .doOnNext(
+                      updated -> {
+                        if (blocked) {
+                          log.error(
+                              "Usuario {} BLOQUEADO: alcanzó {} violaciones",
+                              username,
+                              User.VIOLATION_THRESHOLD);
+                        }
+                      });
+            });
+  }
+
   private Mono<User> getByUsername(String username) {
     return this.simpleUserRepository
         .findByUsername(username)

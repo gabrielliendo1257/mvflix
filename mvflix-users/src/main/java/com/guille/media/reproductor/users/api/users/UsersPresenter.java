@@ -2,6 +2,7 @@ package com.guille.media.reproductor.users.api.users;
 
 import com.guille.media.reproductor.users.api.dto.request.UserData;
 import com.guille.media.reproductor.users.api.dto.request.PlanData;
+import com.guille.media.reproductor.users.api.dto.request.ViolationRequest;
 import com.guille.media.reproductor.users.api.dto.response.UserResponse;
 import com.guille.media.reproductor.users.domain.ports.UserService;
 
@@ -39,6 +40,19 @@ public class UsersPresenter {
     @GetMapping(value = "/me")
     public Mono<ResponseEntity<?>> me() {
         return this.userService.getMe().map(user -> ResponseEntity.ok(UserResponse.from(user)));
+    }
+
+    /**
+     * Registra una infracción de subida del usuario autenticado (lo invoca el BFF con el token
+     * de sesión del infractor). Al llegar al umbral el usuario queda bloqueado para subidas.
+     */
+    @PostMapping(value = "/me/violations", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<?>> reportViolation(@RequestBody ViolationRequest request) {
+        return this.userService
+                .getMe()
+                .flatMap(user -> this.userService.registerViolation(user.getUsername().value(),
+                        request.reason()))
+                .map(user -> ResponseEntity.ok(UserResponse.from(user)));
     }
 
     /**

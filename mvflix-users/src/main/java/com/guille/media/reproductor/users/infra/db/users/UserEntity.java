@@ -18,6 +18,7 @@ public class UserEntity {
     private final String email;
     private final String plan;
     private final boolean enabled;
+    private int violations;
     private final Instant createdAt;
     private final Instant updatedAt;
 }

@@ -26,6 +26,8 @@ public class SecurityConfig {
                                         .permitAll()
                                         .pathMatchers("/api/v1/users/me")
                                         .authenticated()
+                                        .pathMatchers(HttpMethod.POST, "/api/v1/users/me/violations")
+                                        .authenticated()
                                         .pathMatchers("/api/v1/users/quota")
                                         .hasAuthority("SCOPE_users.write")
                                         .pathMatchers("/api/v1/users/*/plan")

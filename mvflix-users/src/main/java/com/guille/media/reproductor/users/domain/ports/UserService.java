@@ -18,4 +18,10 @@ public interface UserService {
      * y se rechaza si excede la cuota del plan pedido ({@code DowngradeBlockedByUsageException}).
      */
     Mono<User> changePlan(String username, Plan requested);
+
+    /**
+     * Registra una infracción de subida para {@code username}. Al alcanzar el umbral
+     * ({@link User#VIOLATION_THRESHOLD}) el usuario queda bloqueado.
+     */
+    Mono<User> registerViolation(String username, String reason);
 }
