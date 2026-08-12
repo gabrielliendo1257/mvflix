@@ -9,8 +9,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.guille.media.reproductor.users.api.dto.ApiError;
 import com.guille.media.reproductor.users.app.errors.UserNotFoundException;
-import com.guille.media.reproductor.users.domain.exceptions.DowngradeBlockedByUsageException;
-import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.users.domain.exceptions.UserAlreadyExistsException;
 
 @RestControllerAdvice
@@ -22,22 +20,10 @@ public class UserExceptionHandler {
         return buildError(409, ex, request);
     }
 
-    @ExceptionHandler(DowngradeBlockedByUsageException.class)
-    public ResponseEntity<ApiError> downgradeBlockedHandler(DowngradeBlockedByUsageException ex,
-            ServerHttpRequest request) {
-        return buildError(409, ex, request);
-    }
-
     @ExceptionHandler(UserNotFoundException.class)
     public ResponseEntity<ApiError> userNotFoundExceptionHandler(UserNotFoundException ex,
             ServerHttpRequest request) {
         return buildError(404, ex, request);
-    }
-
-    @ExceptionHandler(ExceededQuotaException.class)
-    public ResponseEntity<ApiError> exceededQuotaExceptionHandler(ExceededQuotaException ex,
-            ServerHttpRequest request) {
-        return buildError(409, ex, request);
     }
 
     private ResponseEntity<ApiError> buildError(int status, RuntimeException ex, ServerHttpRequest request) {

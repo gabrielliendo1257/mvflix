@@ -27,14 +27,9 @@ spring:
 services:
   authorization:
     url: ${AUTHORIZATION_URL:http://127.0.0.1:9090}
-  users:
-    url: ${USERS_URL:http://127.0.0.1:8080}
 
 security:
   oauth2:
-    client-registration-id: storage-app
-    client-id: storage-service
-    client-secret: ${SECURITY_OAUTH2_CLIENT_SECRET:super-secret}
     jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://127.0.0.1:9090/oauth2/jwks}
 
 minio:

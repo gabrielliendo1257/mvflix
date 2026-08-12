@@ -28,8 +28,6 @@ public class SecurityConfig {
                                         .authenticated()
                                         .pathMatchers(HttpMethod.POST, "/api/v1/users/me/violations")
                                         .authenticated()
-                                        .pathMatchers("/api/v1/users/quota")
-                                        .hasAuthority("SCOPE_users.write")
                                         .pathMatchers("/api/v1/users/*/plan")
                                         .hasAuthority("SCOPE_users.write")
                                         .anyExchange()

@@ -10,12 +10,10 @@ public interface UserService {
 
     Mono<User> getMe();
 
-    Mono<Void> applyQuota(String username, long quotaBytes);
-
     /**
-     * Cambia el plan de {@code username}. Aplica la política de facturación: el
-     * upgrade es inmediato; el downgrade consulta el uso real al storage-service
-     * y se rechaza si excede la cuota del plan pedido ({@code DowngradeBlockedByUsageException}).
+     * Cambia el plan de {@code username} según la política de facturación
+     * ({@code PlanChangeDecision}). La cuota efectiva la aplica el storage-service,
+     * fuente de verdad del límite y del consumo del usuario.
      */
     Mono<User> changePlan(String username, Plan requested);
 

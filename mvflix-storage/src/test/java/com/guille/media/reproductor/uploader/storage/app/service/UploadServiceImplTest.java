@@ -12,7 +12,6 @@ import static org.mockito.Mockito.when;
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.CreateUploadCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSummary;
-import com.guille.media.reproductor.uploader.storage.app.user.UserServiceCommandPort;
 import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;

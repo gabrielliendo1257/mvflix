@@ -12,9 +12,9 @@ import org.testcontainers.utility.MountableFile;
 
 /**
  * Base de los tests de integración R2DBC: levanta un Postgres real en
- * Testcontainers, ejecuta la migración Flyway al arrancar (mediante
- * {@code /docker-entrypoint-initdb.d}) y expone las properties
- * {@code spring.r2dbc.*} apuntando al container.
+ * Testcontainers, ejecuta las migraciones SQL de {@code db/migration} al
+ * arrancar (mediante {@code /docker-entrypoint-initdb.d}) y expone las
+ * properties {@code spring.r2dbc.*} apuntando al container.
  */
 @Testcontainers
 @DataR2dbcTest
@@ -28,8 +28,8 @@ public abstract class AbstractR2dbcIntegrationTest {
                     .withPassword("test")
                     .withCopyFileToContainer(
                             MountableFile.forClasspathResource(
-                                    "db/migration/V1__create_users_table.sql"),
-                            "/docker-entrypoint-initdb.d/01-init.sql");
+                                    "db/migration"),
+                            "/docker-entrypoint-initdb.d");
 
     @DynamicPropertySource
     static void r2dbcProperties(DynamicPropertyRegistry registry) {

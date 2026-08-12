@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Mono;
@@ -56,22 +55,8 @@ public class UsersPresenter {
     }
 
     /**
-     * Validación de la cuota a aplicar a un usuario. La cuota es política del
-     * usuario (derivada del plan); este endpoint rechaza un intento de cuota
-     * que exceda el límite del plan.
-     */
-    @PostMapping(value = "/quota")
-    public Mono<ResponseEntity<Void>> applyQuota(
-            @RequestParam("subject") String subject, @RequestParam("quota") long quota) {
-        return this.userService
-                .applyQuota(subject, quota)
-                .thenReturn(ResponseEntity.noContent().build());
-    }
-
-    /**
-     * Cambio de plan (contrato M2M, scope {@code users.write}). Aplica la
-     * política de facturación: el downgrade consulta el uso real del
-     * storage-service y se rechaza con 409 si excede la cuota del plan pedido.
+     * Cambio de plan (contrato M2M, scope {@code users.write}). La cuota efectiva la
+     * aplica el storage-service (fuente de verdad del límite y el consumo).
      */
     @PatchMapping(value = "/{username}/plan", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<ResponseEntity<?>> changePlan(@PathVariable String username,

@@ -10,9 +10,9 @@ import lombok.ToString;
 /**
  * Usuario del sistema.
  *
- * <p>El dominio de users solo mantiene la política: identidad, plan y estado. El límite de
- * almacenamiento se deriva del {@link Plan} y el uso real (bytes consumidos) es responsabilidad del
- * storage-service, que es quien reserva, libera y registra el consumo de forma atómica.
+ * <p>El dominio de users solo mantiene la política: identidad, plan y estado. La cuota y el
+ * consumo de almacenamiento son responsabilidad del storage-service (fuente de verdad), que es
+ * quien reserva, libera y registra el uso de forma atómica con el límite derivado del plan.
  */
 @Data
 @ToString
@@ -30,13 +30,6 @@ public class User {
 
   public static User createNew(Username username, Email email) {
     return new User(new UserId(UUID.randomUUID()), username, email, Plan.FREE, true, 0);
-  }
-
-  /**
-   * @return cuota asignada según el {@link Plan} actual.
-   */
-  public StorageQuota quota() {
-    return StorageQuota.getQuota(this.plan);
   }
 
   public void changePlan(Plan plan) {

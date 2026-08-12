@@ -1,7 +1,6 @@
 package com.guille.media.reproductor.users.api.users;
 
 import com.guille.media.reproductor.users.api.dto.response.UserResponse;
-import com.guille.media.reproductor.users.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.Plan;
 import com.guille.media.reproductor.users.domain.models.User;
@@ -65,54 +64,6 @@ class UsersPresenterTest {
                 .exchange()
                 .expectBody(UserResponse.class)
                 .value(response -> response.username().equals("user"));
-    }
-
-    @Test
-    void shouldApplyQuotaForStorage() {
-        Mockito.when(defaultUserService.applyQuota("user", 1024L)).thenReturn(Mono.empty());
-
-        Jwt storageJwt =
-                Jwt.withTokenValue("token")
-                        .header("alg", "none")
-                        .subject("storage-service")
-                        .claim("sub", "storage-service")
-                        .claim("scope", "users.write")
-                        .build();
-
-        this.webTestClient
-                .mutateWith(SecurityMockServerConfigurers.mockJwt().jwt(storageJwt))
-                .post()
-                .uri("/api/v1/users/quota?subject=user&quota=1024")
-                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                .exchange()
-                .expectStatus()
-                .isNoContent();
-    }
-
-@Test
-    void shouldRejectQuotaWhenPlanLimitExceeded() {
-        Mockito.when(defaultUserService.applyQuota("user", 999999999L))
-                .thenReturn(
-                        Mono.error(
-                                new ExceededQuotaException(
-                                        "Quota 999999999 exceeds the plan limit")));
-
-        Jwt storageJwt =
-                Jwt.withTokenValue("token")
-                        .header("alg", "none")
-                        .subject("storage-service")
-                        .claim("sub", "storage-service")
-                        .claim("scope", "users.write")
-                        .build();
-
-        this.webTestClient
-                .mutateWith(SecurityMockServerConfigurers.mockJwt().jwt(storageJwt))
-                .post()
-                .uri("/api/v1/users/quota?subject=user&quota=999999999")
-                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
-                .exchange()
-                .expectStatus()
-                .isEqualTo(409);
     }
 
     @Test
