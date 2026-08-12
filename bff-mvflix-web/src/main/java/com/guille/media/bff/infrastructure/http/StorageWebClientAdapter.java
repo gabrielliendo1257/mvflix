@@ -70,6 +70,16 @@ public class StorageWebClientAdapter implements StorageWebClient {
         .map(entity -> (HttpStatus) entity.getStatusCode());
   }
 
+  @Override
+  public Mono<Void> deleteObject(Long storageId) {
+    return this.storageWebClient
+        .delete()
+        .uri(API + "/" + storageId)
+                .retrieve()
+        .toBodilessEntity()
+        .then();
+  }
+
   private <T> Mono<T> get(String uri, Class<T> type) {
     return this.storageWebClient
         .get()

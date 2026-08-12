@@ -1,5 +1,6 @@
 package com.guille.media.bff.presenter.api;
 
+import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.service.WebMoviesService;
@@ -42,5 +43,14 @@ public class WebMoviesController {
       consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<MovieDto>> create(@RequestBody CreateMovieRequest request) {
     return this.webMoviesService.create(request).map(ResponseEntity::ok);
+  }
+
+  @PostMapping(
+      value = "/{movieId}/complete",
+      produces = MediaType.APPLICATION_JSON_VALUE,
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<MovieDto>> complete(
+      @PathVariable Long movieId, @RequestBody CompleteMovieRequest request) {
+    return this.webMoviesService.complete(movieId, request).map(ResponseEntity::ok);
   }
 }

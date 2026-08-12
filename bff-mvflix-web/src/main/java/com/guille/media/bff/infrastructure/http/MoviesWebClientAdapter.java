@@ -2,6 +2,7 @@ package com.guille.media.bff.infrastructure.http;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
 import com.guille.media.bff.app.dto.MovieDto;
+import com.guille.media.bff.app.dto.MoviesCompletePayload;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 
 import lombok.RequiredArgsConstructor;
@@ -48,5 +49,26 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .bodyValue(request)
         .retrieve()
         .bodyToMono(MovieDto.class);
+  }
+
+  @Override
+  public Mono<MovieDto> completeMovie(Long movieId, String objectKey) {
+    return this.moviesWebClient
+        .post()
+        .uri(API + "/" + movieId + "/complete")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(new MoviesCompletePayload(objectKey))
+        .retrieve()
+        .bodyToMono(MovieDto.class);
+  }
+
+  @Override
+  public Mono<Void> deleteMovie(Long movieId) {
+    return this.moviesWebClient
+        .delete()
+        .uri(API + "/" + movieId)
+        .retrieve()
+        .toBodilessEntity()
+        .then();
   }
 }

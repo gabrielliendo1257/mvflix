@@ -9,4 +9,7 @@ public interface UsersWebPort {
 
   /** Perfil del usuario de la sesión OAuth2 del navegador. */
   Mono<UserProfile> me();
+
+  /** Registra una infracción de subida del usuario de la sesión. */
+  Mono<Void> reportViolation(String reason);
 }

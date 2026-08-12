@@ -25,4 +25,7 @@ public interface StorageWebClient {
   Mono<Void> cancelUpload(Long uploadId);
 
   Mono<HttpStatus> completeUpload(Long uploadId);
+
+  /** Rollback: borra el objeto en el object store y restaura la cuota del usuario. */
+  Mono<Void> deleteObject(Long storageId);
 }
