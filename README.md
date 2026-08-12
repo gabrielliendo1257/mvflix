@@ -113,6 +113,7 @@ cookie de sesion (httpOnly) y **nunca ve tokens JWT**. El BFF valida la sesion y
 | `GET` | `/web/uploads/{uploadId}` | sesion | Estado del objeto: PENDING / COMPLETED / EXPIRED / DELETED |
 | `POST` | `/web/uploads/{uploadId}/cancel` | sesion | Cancela y libera la reserva de cuota |
 | `POST` | `/web/uploads/{uploadId}/complete` | sesion | Confirma el fin del upload (fast path); devuelve el status HTTP del storage (200 si quedo COMPLETED) |
+| `POST` | `/web/uploads/streaming` | sesion | Sesion de streaming: body `{"objectId":"<id>"}` → `{uploadId, streamingUrl (GET presigned directo a MinIO), storageKey, expiresAt, method}`; la URL firmada soporta `Range` (206), clave para el seek del reproductor |
 
 **Seguridad:** `/web/session`, `/login/**`, `/oauth2/**` y `/error` son publicas; `/web/**`
 requiere sesion. Para el navegador (Accept: text/html) sin sesion se redirige al authorize del
@@ -135,12 +136,13 @@ webhook s3:ObjectCreated:Put     → storage /internal/minio/events: reconcile (
                                    idempotente; no depende de que el cliente confirme)
 scheduler expireStaleSessions    → PENDING viejos → EXPIRED + libera cuota (red de seguridad)
 ```
-`COMPLETED` habilita `GET` con URL presigned de streaming. El evento de dominio
+`COMPLETED` habilita el streaming: `POST /web/uploads/streaming` (proxy al storage) devuelve
+una URL presigned GET directa a MinIO. El evento de dominio
 `UploadCompletedEvent` solo se publica en la primera transicion real (sin duplicados si
 coinciden el fast path y el webhook).
 
 **Orquestacion interna (server-to-server):**
-- storage: `GET /api/v1/movie/storage/quota`, `GET /api/v1/movie/storage/uploads?limit=`, `POST /api/v1/movie/storage/upload`, `GET|POST /api/v1/movie/storage/upload/{id}` (+ `/cancel`, `/complete`).
+- storage: `GET /api/v1/movie/storage/quota`, `GET /api/v1/movie/storage/uploads?limit=`, `POST /api/v1/movie/storage/upload`, `GET|POST /api/v1/movie/storage/upload/{id}` (+ `/cancel`, `/complete`), `POST /api/v1/movie/storage/streaming`.
 - users: `GET /api/v1/users/me` (perfil del usuario).
 - WebClient + OAuth2 (`client_credentials`) hacia users para el contrato de cuota.
 
