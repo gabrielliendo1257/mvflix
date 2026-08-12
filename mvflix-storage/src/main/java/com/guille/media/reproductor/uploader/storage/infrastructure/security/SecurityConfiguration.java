@@ -70,7 +70,7 @@ public class SecurityConfiguration {
                     .pathMatchers(HttpMethod.POST, "/internal/minio/events")
                     .permitAll()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload")
-                    .authenticated()
+                    .hasRole("ADMIN")
                     .pathMatchers(
                         HttpMethod.GET,
                         this.apiPathBase + "/storage/users/*/quota")
