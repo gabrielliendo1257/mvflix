@@ -44,9 +44,10 @@ public class MinioWebhookController {
 
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<Void>> onEvent(
-      @RequestHeader(value = "X-Minio-Token", required = false) String token,
+      @RequestHeader(value = "X-Minio-Token", required = false) String xMinioToken,
+      @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestBody MinioEventNotification notification) {
-    if (!isAuthorized(token)) {
+    if (!isAuthorized(resolveToken(xMinioToken, authorization))) {
       log.warn("Rejected minio webhook event without a valid token");
       return Mono.just(ResponseEntity.status(HttpStatus.UNAUTHORIZED).build());
     }
@@ -68,6 +69,17 @@ public class MinioWebhookController {
             })
         .then()
         .thenReturn(ResponseEntity.ok().build());
+  }
+
+  /** MinIO envía el token en {@code X-Minio-Token} o como {@code Authorization: Bearer <token>}. */
+  private String resolveToken(String xMinioToken, String authorization) {
+    if (xMinioToken != null && !xMinioToken.isBlank()) {
+      return xMinioToken;
+    }
+    if (authorization != null && authorization.startsWith("Bearer ")) {
+      return authorization.substring("Bearer ".length());
+    }
+    return null;
   }
 
   private boolean isAuthorized(String token) {

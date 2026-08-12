@@ -37,6 +37,7 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PermissionUrl;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
+import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 
@@ -198,6 +199,8 @@ class UploadServiceImplTest {
         .expectError(InvalidObjectContentError.class)
         .verify();
 
+    verify(this.objectStoragePort)
+        .delete(new StorageLocation(BucketName.of("movies"), pending.getStorageKey()));
     verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
     verify(this.storageRepository).updateStatus(any(StoreObject.class), any(StorageSessionStatus.class));
     verify(this.eventPublisher).publish(any(UploadFailedEvent.class));
@@ -260,10 +263,36 @@ class UploadServiceImplTest {
     StepVerifier.create(this.service.completeUploadByKey("pepe/videos/a.mp4")).verifyComplete();
 
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
+    verify(this.objectStoragePort)
+        .delete(new StorageLocation(BucketName.of("movies"), pending.getStorageKey()));
     verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
     verify(this.storageRepository).updateStatus(
         any(StoreObject.class), any(StorageSessionStatus.class));
     verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
+  }
+
+  @Test
+  void completeUploadByKeyDeletesOrphanObjectWhenSessionExpiredOrFailed() {
+    StoreObject expired =
+        new StoreObject(
+            "pepe",
+            new StorageKey("pepe/videos/late.mp4"),
+            new StorageMetadata("video/mp4", 1024, null, Instant.now()),
+            Instant.now(),
+            7L,
+            StorageSessionStatus.EXPIRED);
+
+    when(this.storageRepository.findByObjectKey("pepe/videos/late.mp4"))
+        .thenReturn(Mono.just(expired));
+    when(this.userStorageRepository.findByOwnerUsername("pepe"))
+        .thenReturn(Mono.just(PEPE_STORAGE));
+
+    StepVerifier.create(this.service.completeUploadByKey("pepe/videos/late.mp4")).verifyComplete();
+
+    verify(this.objectStoragePort)
+        .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("pepe/videos/late.mp4")));
+    verify(this.storageRepository, never()).updateStatus(any(StoreObject.class), any());
+    verify(this.eventPublisher, never()).publish(any());
   }
 
   @Test
@@ -294,19 +323,22 @@ class UploadServiceImplTest {
         .updateStatus(any(StoreObject.class), any(StorageSessionStatus.class));
   }
   @Test
-  void cancelUploadReleasesQuotaAndMarksFailed() {
+  void cancelUploadReleasesQuotaDeletesObjectAndMarksFailed() {
     StoreObject pending = this.pendingObject(7L);
 
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
-    when(this.userStorageRepository.releaseStorage("pepe", 1024L)).thenReturn(Mono.just(1L));
-    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.FAILED))
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
         .thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.releaseStorage("pepe", 1024L)).thenReturn(Mono.just(1L));
 
     StepVerifier.create(this.service.cancelUpload(7L)).verifyComplete();
 
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
+    verify(this.objectStoragePort)
+        .delete(new StorageLocation(BucketName.of("movies"), pending.getStorageKey()));
     verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
-    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.FAILED);
+    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.PENDING);
     verify(this.eventPublisher).publish(any(UploadFailedEvent.class));
   }
 

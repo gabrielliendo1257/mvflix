@@ -10,6 +10,7 @@ import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageS
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.service.ObjectCleanupService;
+import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 
 import lombok.extern.slf4j.Slf4j;
@@ -90,27 +91,62 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
   public Mono<Long> expireStaleSessions(Instant cutoff) {
     return this.storageRepository
         .findPendingCreatedBefore(cutoff)
-        .flatMapSequential(
-            object -> {
-              if (!object.expire()) {
-                return Mono.empty();
-              }
-              return this.storageRepository
-                  .updateStatus(object, StorageSessionStatus.PENDING)
-                  .flatMap(
-                      expired ->
-                          this.userStorageRepository.releaseStorage(
-                              expired.getOwnerUsername(), expired.sizeInBytes()))
-                  .onErrorResume(
-                      IllegalStateTransitionException.class,
-                      race -> {
-                        log.warn(
-                            "Expire lost a concurrent transition, skipping: uploadId={}, status={}",
-                            object.getStorageId(),
-                            object.getStorageObjectStatus());
-                        return Mono.empty();
-                      });
-            })
+        .flatMapSequential(this::expireStaleSession)
         .count();
+  }
+
+  /**
+   * Expira una sesión PENDING caducada: persiste la transición (CAS sobre PENDING) y, solo si
+   * ganó la carrera, borra el objeto del bucket (best effort) y libera la cuota reservada.
+   */
+  private Mono<StoreObject> expireStaleSession(StoreObject object) {
+    if (!object.expire()) {
+      return Mono.empty();
+    }
+    return this.userStorageRepository
+        .findByOwnerUsername(object.getOwnerUsername())
+        .flatMap(
+            userStorage ->
+                this.storageRepository
+                    .updateStatus(object, StorageSessionStatus.PENDING)
+                    .flatMap(
+                        expired ->
+                            this.deleteObjectBestEffort(expired, userStorage.getBucketName())
+                                .then(
+                                    Mono.defer(
+                                        () ->
+                                            this.userStorageRepository
+                                                .releaseStorage(
+                                                    expired.getOwnerUsername(),
+                                                    expired.sizeInBytes())
+                                                .thenReturn(expired))))
+                    .onErrorResume(
+                        IllegalStateTransitionException.class,
+                        race -> {
+                          log.warn(
+                              "Expire lost a concurrent transition, skipping: uploadId={}, status={}",
+                              object.getStorageId(),
+                              object.getStorageObjectStatus());
+                          return Mono.empty();
+                        }));
+  }
+
+  /**
+   * Borra el objeto del bucket sin romper el flujo si el storage está caído o el objeto no
+   * existe (el DELETE de S3 es idempotente).
+   */
+  private Mono<Void> deleteObjectBestEffort(StoreObject object, BucketName bucket) {
+    return Mono.<Void>fromRunnable(
+            () ->
+                this.objectStoragePort.delete(
+                    new StorageLocation(bucket, object.getStorageKey())))
+        .onErrorResume(
+            error -> {
+              log.warn(
+                  "Could not delete object from bucket (best effort), uploadId={}, cause={}",
+                  object.getStorageId(),
+                  error.getMessage());
+              return Mono.empty();
+            });
   }
 }

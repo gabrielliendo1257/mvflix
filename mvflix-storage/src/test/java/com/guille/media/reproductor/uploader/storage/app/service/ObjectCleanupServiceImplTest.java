@@ -1,6 +1,8 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -8,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
@@ -103,7 +106,7 @@ class ObjectCleanupServiceImplTest {
   }
 
   @Test
-  void expireStaleSessionsReleasesQuotaAndExpiresPendingObjects() {
+  void expireStaleSessionsDeletesOrphanObjectReleasesQuotaAndExpiresPendingObjects() {
     StoreObject pending =
         new StoreObject(
             "pepe",
@@ -115,14 +118,43 @@ class ObjectCleanupServiceImplTest {
 
     Instant cutoff = Instant.parse("2026-01-01T00:00:00Z");
     when(this.storageRepository.findPendingCreatedBefore(cutoff)).thenReturn(Flux.just(pending));
-    when(this.userStorageRepository.releaseStorage("pepe", 1024)).thenReturn(Mono.just(1L));
-    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.EXPIRED))
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
         .thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.releaseStorage("pepe", 1024)).thenReturn(Mono.just(1L));
+
+    StepVerifier.create(this.service.expireStaleSessions(cutoff)).expectNext(1L).verifyComplete();
+
+    verify(this.objectStoragePort)
+        .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k1")));
+    verify(this.userStorageRepository).releaseStorage("pepe", 1024);
+    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.PENDING);
+    assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.EXPIRED);
+  }
+
+  @Test
+  void expireStillReleasesQuotaWhenObjectDoesNotExistInBucket() {
+    StoreObject pending =
+        new StoreObject(
+            "pepe",
+            new StorageKey("k1"),
+            new StorageMetadata("video/mp4", 1024, null, Instant.now()),
+            Instant.now(),
+            1L,
+            StorageSessionStatus.PENDING);
+
+    Instant cutoff = Instant.parse("2026-01-01T00:00:00Z");
+    when(this.storageRepository.findPendingCreatedBefore(cutoff)).thenReturn(Flux.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
+        .thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.releaseStorage("pepe", 1024)).thenReturn(Mono.just(1L));
+    doThrow(new StorageException("bucket down")).when(this.objectStoragePort)
+        .delete(any(StorageLocation.class));
 
     StepVerifier.create(this.service.expireStaleSessions(cutoff)).expectNext(1L).verifyComplete();
 
     verify(this.userStorageRepository).releaseStorage("pepe", 1024);
-    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.EXPIRED);
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.EXPIRED);
   }
 }

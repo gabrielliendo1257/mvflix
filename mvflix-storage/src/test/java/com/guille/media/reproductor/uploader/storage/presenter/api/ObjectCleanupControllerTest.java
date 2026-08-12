@@ -33,10 +33,10 @@ class ObjectCleanupControllerTest {
   }
 
   @Test
-  void deleteObjectNotFoundPropagatesError() {
+  void deleteObjectNotFoundPropagates404() {
     when(this.objectCleanupService.deleteObject(99L))
         .thenReturn(Mono.error(new StorageObjectNotAvailable("Storage object not available: 99")));
 
-    client.delete().uri(BASE + "/99").exchange().expectStatus().is5xxServerError();
+    client.delete().uri(BASE + "/99").exchange().expectStatus().isNotFound();
   }
 }

@@ -2,6 +2,8 @@ package com.guille.media.reproductor.uploader.storage.presenter.dto.request;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -28,8 +30,10 @@ public record MinioEventNotification(
       return this.eventName != null && this.eventName.startsWith("s3:ObjectRemoved:");
     }
 
+    /** MinIO entrega la key URL-encoded (el {@code /} del path llega como {@code %2F}). */
     public String objectKey() {
-      return this.s3 != null && this.s3.object() != null ? this.s3.object().key() : null;
+      String key = this.s3 != null && this.s3.object() != null ? this.s3.object().key() : null;
+      return key == null ? null : URLDecoder.decode(key, StandardCharsets.UTF_8);
     }
 
     public record S3(@JsonProperty("object") ObjectInfo object) {

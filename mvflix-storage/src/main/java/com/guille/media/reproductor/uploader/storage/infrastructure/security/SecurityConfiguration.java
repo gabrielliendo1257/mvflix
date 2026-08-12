@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
@@ -17,6 +18,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import reactor.core.publisher.Mono;
 
 /**
@@ -40,6 +42,22 @@ public class SecurityConfiguration {
 
   @Value("${security.oauth2.jwk-set-uri:}")
   private String jwkSetUriOverride;
+
+  /**
+   * Cadena para los endpoints internos ({@code /internal/**}): el webhook de MinIO no firma JWT
+   * (envía el token como {@code Authorization: Bearer <webhook-token>}) y el filtro de resource
+   * server lo rechazaría con 401 antes de llegar al controlador. Aquí no hay resource server.
+   */
+  @Bean
+  @Order(0)
+  SecurityWebFilterChain internalSecurityWebFilterChain(ServerHttpSecurity http) {
+    http.securityMatcher(ServerWebExchangeMatchers.pathMatchers("/internal/**"))
+        .csrf(ServerHttpSecurity.CsrfSpec::disable)
+        .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
+        .formLogin(ServerHttpSecurity.FormLoginSpec::disable)
+        .authorizeExchange(authorize -> authorize.anyExchange().permitAll());
+    return http.build();
+  }
 
   @Bean
   SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {

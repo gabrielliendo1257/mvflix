@@ -225,14 +225,22 @@ public class UploadServiceImpl implements UploadService {
                 return Mono.<StoreObject>empty();
               }
               object.markFailed();
-              return this.storageRepository
-                  .updateStatus(object, StorageSessionStatus.PENDING)
+              return this.userStorageRepository
+                  .findByOwnerUsername(object.getOwnerUsername())
                   .flatMap(
-                      failed ->
-                          this.userStorageRepository
-                              .releaseStorage(
-                                  failed.getOwnerUsername(), failed.sizeInBytes())
-                              .thenReturn(failed))
+                      userStorage ->
+                          this.storageRepository
+                              .updateStatus(object, StorageSessionStatus.PENDING)
+                              .flatMap(
+                                  failed ->
+                                      this.deleteObjectBestEffort(
+                                              failed, userStorage.getBucketName())
+                                          .then(
+                                              this.userStorageRepository
+                                                  .releaseStorage(
+                                                      failed.getOwnerUsername(),
+                                                      failed.sizeInBytes())
+                                                  .thenReturn(failed))))
                   .onErrorResume(
                       IllegalStateTransitionException.class,
                       race -> {
@@ -326,18 +334,29 @@ public class UploadServiceImpl implements UploadService {
     return this.storageRepository
         .findByObjectKey(objectKey)
         .flatMap(
-            object ->
-                this.userStorageRepository
-                    .findByOwnerUsername(object.getOwnerUsername())
-                    .switchIfEmpty(
-                        Mono.error(
-                            new UserStorageNotFoundException(
-                                "No storage registered for user: "
-                                    + object.getOwnerUsername())))
-                    .flatMap(
-                        userStorage ->
-                            this.completeUploadedObject(
-                                object, userStorage.getBucketName(), false)))
+            object -> {
+              StorageSessionStatus status = object.getStorageObjectStatus();
+              if (status == StorageSessionStatus.EXPIRED
+                  || status == StorageSessionStatus.FAILED) {
+                log.info(
+                    "Object store event for non-active session, removing orphan object: "
+                        + "key={}, status={}",
+                    objectKey,
+                    status);
+                return this.cleanupOrphanObject(object).then(Mono.<Completion>empty());
+              }
+              return this.userStorageRepository
+                  .findByOwnerUsername(object.getOwnerUsername())
+                  .switchIfEmpty(
+                      Mono.error(
+                          new UserStorageNotFoundException(
+                              "No storage registered for user: "
+                                  + object.getOwnerUsername())))
+                  .flatMap(
+                      userStorage ->
+                          this.completeUploadedObject(
+                              object, userStorage.getBucketName(), false));
+            })
         .doOnNext(
             completion -> {
               if (completion.transitioned()) {
@@ -368,6 +387,27 @@ public class UploadServiceImpl implements UploadService {
             Instant.now()));
   }
 
+  /**
+   * Evento tardío de MinIO para una sesión que ya no está activa (EXPIRED/FAILED): el objeto
+   * que llegó después de la expiración es basura y se borra del bucket (la fila se conserva
+   * como historial; su cuota ya fue liberada).
+   */
+  private Mono<Void> cleanupOrphanObject(StoreObject object) {
+    return this.userStorageRepository
+        .findByOwnerUsername(object.getOwnerUsername())
+        .flatMap(
+            userStorage ->
+                this.deleteObjectBestEffort(object, userStorage.getBucketName()))
+        .switchIfEmpty(
+            Mono.defer(
+                () -> {
+                  log.warn(
+                      "No user storage for orphan cleanup, skipping: uploadId={}",
+                      object.getStorageId());
+                  return Mono.empty();
+                }));
+  }
+
   private Mono<Completion> completeUploadedObject(
       StoreObject object, BucketName bucket, boolean clientConfirmation) {
     StorageLocation location = new StorageLocation(bucket, object.getStorageKey());
@@ -382,15 +422,16 @@ public class UploadServiceImpl implements UploadService {
                 }
                 return this.releaseAndFail(
                     object,
+                    bucket,
                     new StorageObjectNotAvailable(
                         "Storage object not available: " + object.getStorageId()));
               }
-              return this.verifyMetadataAndComplete(object, location);
+              return this.verifyMetadataAndComplete(object, bucket, location);
             });
   }
 
   private Mono<Completion> verifyMetadataAndComplete(
-      StoreObject object, StorageLocation location) {
+      StoreObject object, BucketName bucket, StorageLocation location) {
     return this.objectStoragePort
         .getMetadata(location)
         .flatMap(
@@ -402,7 +443,8 @@ public class UploadServiceImpl implements UploadService {
                         })
                     .onErrorResume(
                         InvalidObjectContentError.class,
-                        contentError -> this.releaseAndFail(object, contentError)))
+                        contentError ->
+                            this.releaseAndFail(object, bucket, contentError)))
         .flatMap(
             transitioned ->
                 transitioned
@@ -412,7 +454,8 @@ public class UploadServiceImpl implements UploadService {
                     : Mono.just(new Completion(object, false, false)));
   }
 
-  private <T> Mono<T> releaseAndFail(StoreObject object, RuntimeException error) {
+  private <T> Mono<T> releaseAndFail(
+      StoreObject object, BucketName bucket, RuntimeException error) {
     return Mono.defer(
         () -> {
           if (!object.markFailed()) {
@@ -422,9 +465,12 @@ public class UploadServiceImpl implements UploadService {
               .updateStatus(object, StorageSessionStatus.PENDING)
               .flatMap(
                   failed ->
-                      this.userStorageRepository
-                          .releaseStorage(failed.getOwnerUsername(), failed.sizeInBytes())
-                          .thenReturn(failed))
+                      this.deleteObjectBestEffort(failed, bucket)
+                          .then(
+                              this.userStorageRepository
+                                  .releaseStorage(
+                                      failed.getOwnerUsername(), failed.sizeInBytes())
+                                  .thenReturn(failed)))
               .doOnNext(failed -> this.publishFailed(failed, error))
               .onErrorResume(
                   IllegalStateTransitionException.class,
@@ -446,6 +492,25 @@ public class UploadServiceImpl implements UploadService {
             failed.getStorageKey().key(),
             error.getMessage(),
             Instant.now()));
+  }
+
+  /**
+   * Borra el objeto del bucket sin romper el flujo (el DELETE de S3 es idempotente). Se usa
+   * para limpiar objetos huérfanos de sesiones EXPIRED/FAILED/canceladas.
+   */
+  private Mono<Void> deleteObjectBestEffort(StoreObject object, BucketName bucket) {
+    return Mono.<Void>fromRunnable(
+            () ->
+                this.objectStoragePort.delete(
+                    new StorageLocation(bucket, object.getStorageKey())))
+        .onErrorResume(
+            error -> {
+              log.warn(
+                  "Could not delete object from bucket (best effort), uploadId={}, cause={}",
+                  object.getStorageId(),
+                  error.getMessage());
+              return Mono.empty();
+            });
   }
 
   private record Completion(
