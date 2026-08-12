@@ -47,4 +47,19 @@ public class Movie {
     public MovieMetadata getMetadata() {
         return this.metadata;
     }
+
+    public boolean isDraft() {
+        return this.status == MovieStatus.DRAFT;
+    }
+
+    /** Transición de dominio: una película en borrador pasa a lista cuando se le asigna su objeto. */
+    public Movie complete(String objectKey) {
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                this.title,
+                MovieStatus.READY,
+                objectKey,
+                this.metadata);
+    }
 }

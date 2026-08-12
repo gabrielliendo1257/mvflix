@@ -9,6 +9,8 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
+
 @Repository
 public class SpringDataMovieRepository implements MovieRepository {
 
@@ -77,6 +79,53 @@ public class SpringDataMovieRepository implements MovieRepository {
                 .map(this::toRow)
                 .all()
                 .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    public Mono<Movie> completeIfDraft(Long id, String ownerUsername, String objectKey) {
+        return this.databaseClient
+                .sql(
+                        """
+                        UPDATE movies
+                        SET status = 'READY', object_key = :object_key, updated_at = NOW()
+                        WHERE id = :id AND owner_username = :owner_username AND status = 'DRAFT'
+                        RETURNING id, owner_username, title, status, object_key, metadata::text
+                        """)
+                .bind("id", id)
+                .bind("owner_username", ownerUsername)
+                .bind("object_key", objectKey)
+                .map(this::toRow)
+                .one()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    public Mono<Boolean> deleteById(Long id, String ownerUsername) {
+        return this.databaseClient
+                .sql(
+                        """
+                        DELETE FROM movies
+                        WHERE id = :id AND owner_username = :owner_username
+                        """)
+                .bind("id", id)
+                .bind("owner_username", ownerUsername)
+                .fetch()
+                .rowsUpdated()
+                .map(rows -> rows > 0);
+    }
+
+    @Override
+    public Mono<Long> deleteDraftsCreatedBefore(Instant cutoff) {
+        return this.databaseClient
+                .sql(
+                        """
+                        DELETE FROM movies
+                        WHERE status = 'DRAFT' AND created_at < :cutoff
+                        """)
+                .bind("cutoff", cutoff)
+                .fetch()
+                .rowsUpdated()
+                .map(Long::valueOf);
     }
 
     private MovieRow toRow(io.r2dbc.spi.Row row, io.r2dbc.spi.RowMetadata ignored) {

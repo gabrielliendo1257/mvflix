@@ -19,6 +19,11 @@ services:
   authorization:
     url: ${AUTHORIZATION_URL:http://127.0.0.1:9090}
 
+movies:
+  draft:
+    time-to-live: 24h
+    cleanup-check-ms: 3600000
+
 security:
   oauth2:
     jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://127.0.0.1:9090/oauth2/jwks}

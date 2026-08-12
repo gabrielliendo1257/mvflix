@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.advisors;
 
 import com.gcorp.service.app.mvflix_movies.advisors.models.ErrorResponse;
+import com.gcorp.service.app.mvflix_movies.domain.exceptions.MovieConflictException;
 import com.gcorp.service.app.mvflix_movies.domain.exceptions.MovieNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,6 +23,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MovieNotFoundException.class)
     public ResponseEntity<ErrorResponse> movieNotFound(MovieNotFoundException ex) {
         return error(HttpStatus.NOT_FOUND, "MOVIE_NOT_FOUND", ex);
+    }
+
+    @ExceptionHandler(MovieConflictException.class)
+    public ResponseEntity<ErrorResponse> movieConflict(MovieConflictException ex) {
+        return error(HttpStatus.CONFLICT, "MOVIE_CONFLICT", ex);
     }
 
     @ExceptionHandler(Exception.class)

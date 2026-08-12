@@ -12,4 +12,10 @@ public interface MovieService {
     Mono<Movie> findById(Long id);
 
     Flux<Movie> list(int limit);
+
+    /** Transición DRAFT -> READY con asignación de object_key. Idempotente si ya está READY. */
+    Mono<Movie> complete(Long id, String objectKey);
+
+    /** Rollback: elimina la película del dueño. */
+    Mono<Void> delete(Long id);
 }
