@@ -11,8 +11,6 @@ import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageS
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.service.StreamingService;
-import com.guille.media.reproductor.uploader.storage.domain.service.UploadPolicy;
-import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 
@@ -22,24 +20,30 @@ import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.time.Instant;
 
 @Slf4j
 @Service
 public class StreamingServiceImpl implements StreamingService {
 
+  /**
+   * TTL de la URL presigned de streaming: 1 hora cubre una película completa
+   * (si se agota, el front renueva con una nueva sesión de streaming).
+   * No reutiliza el TTL de la politica de upload (30 min / 6 h): son vidas
+   * distintas (subir archivo vs. reproducir).
+   */
+  private static final Duration STREAMING_EXPIRATION = Duration.ofHours(1);
+
   private final ObjectStorageService objectStoragePort;
-  private final UploadPolicy uploadPolicy;
   private final StorageRepository storageRepository;
   private final UserStorageRepository userStorageRepository;
 
   public StreamingServiceImpl(
       ObjectStorageService objectStorageService,
-      UploadPolicy uploadPolicy,
       StorageRepository storageRepository,
       UserStorageRepository userStorageRepository) {
     this.objectStoragePort = objectStorageService;
-    this.uploadPolicy = uploadPolicy;
     this.storageRepository = storageRepository;
     this.userStorageRepository = userStorageRepository;
   }
@@ -64,9 +68,6 @@ public class StreamingServiceImpl implements StreamingService {
   private Mono<StreamingSession> createStreamingSession(StoreObject object) {
     object.ensureAvailable();
 
-    UploadConfiguration configuration =
-        this.uploadPolicy.resolve(object.sizeInBytes(), MimeType.of(object.contentType()));
-
     return this.userStorageRepository
         .findByOwnerUsername(object.getOwnerUsername())
         .switchIfEmpty(
@@ -78,7 +79,7 @@ public class StreamingServiceImpl implements StreamingService {
               StorageLocation location =
                   new StorageLocation(userStorage.getBucketName(), object.getStorageKey());
               PresignedUploadRequest request =
-                  new PresignedUploadRequest(configuration.expiration());
+                  new PresignedUploadRequest(STREAMING_EXPIRATION);
 
               return this.objectStoragePort
                   .createStreamingUrl(request, location)
@@ -99,7 +100,7 @@ public class StreamingServiceImpl implements StreamingService {
                                       String.valueOf(object.getStorageId()),
                                       permissionUrl.presignedUrl(),
                                       object.getStorageKey(),
-                                      Instant.now().plus(configuration.expiration()),
+                                      Instant.now().plus(STREAMING_EXPIRATION),
                                       permissionUrl.method())));
             });
   }
