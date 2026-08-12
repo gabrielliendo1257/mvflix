@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.guille.mvflix.devseed.DevUser;
 import com.guille.media.reproductor.uploader.storage.domain.service.UserStorageService;
 
 import org.junit.jupiter.api.Test;
@@ -21,23 +22,30 @@ class DevStorageProvisionerTest {
   private final DevStorageProvisioner provisioner = new DevStorageProvisioner(userStorageService);
 
   @Test
-  void provisionsDevUsersWithDefaultQuota() {
+  void provisionsDevUserWithConfiguredQuota() {
     when(userStorageService.ensureUserStorage(any(), anyLong())).thenReturn(Mono.empty());
+    DevUser user = devUser("Javier", TEN_GB);
 
-    provisioner.run(null);
+    provisioner.seed(user);
 
     verify(userStorageService).ensureUserStorage("Javier", TEN_GB);
-    verify(userStorageService).ensureUserStorage("Admin", TEN_GB);
   }
 
   @Test
-  void doesNotAbortBootWhenProvisioningFails() {
-    when(userStorageService.ensureUserStorage(eq("Javier"), anyLong()))
+  void doesNotFailWhenProvisioningFails() {
+    when(userStorageService.ensureUserStorage(any(), anyLong()))
         .thenReturn(Mono.error(new IllegalStateException("minio down")));
-    when(userStorageService.ensureUserStorage(eq("Admin"), anyLong())).thenReturn(Mono.empty());
+    DevUser user = devUser("Admin", TEN_GB);
 
-    provisioner.run(null);
+    provisioner.seed(user);
 
     verify(userStorageService).ensureUserStorage("Admin", TEN_GB);
+  }
+
+  private static DevUser devUser(String username, long quotaBytes) {
+    DevUser user = new DevUser();
+    user.setUsername(username);
+    user.setQuotaBytes(quotaBytes);
+    return user;
   }
 }

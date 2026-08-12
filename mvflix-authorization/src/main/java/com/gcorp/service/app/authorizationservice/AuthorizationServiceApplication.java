@@ -5,7 +5,6 @@ import java.util.Set;
 
 import com.gcorp.service.app.authorizationservice.infrastructure.persistence.jpa.customer.AuthorityEntity;
 import com.gcorp.service.app.authorizationservice.infrastructure.persistence.jpa.customer.AuthorityJpaRepository;
-import com.gcorp.service.app.authorizationservice.infrastructure.persistence.jpa.customer.CustomerEntity;
 import com.gcorp.service.app.authorizationservice.infrastructure.persistence.jpa.customer.CustomerRepository;
 import com.gcorp.service.app.authorizationservice.infrastructure.persistence.jpa.customer.RoleEntity;
 import com.gcorp.service.app.authorizationservice.infrastructure.persistence.jpa.customer.RoleJpaRepository;
@@ -45,23 +44,7 @@ public class AuthorizationServiceApplication {
             var adminRole = roleJpaRepository.findByRoleName("ADMIN")
                     .orElseGet(() -> roleJpaRepository.save(new RoleEntity("ADMIN", Instant.now(), Set.of(readMovie, deleteMovie))));
 
-            if (customerRepository.findByUsername("Javier").isEmpty()) {
-                customerRepository.save(new CustomerEntity("Javier", passwordEncoder.encode("JavierPassword"), customerRole));
-            }
-            if (customerRepository.findByUsername("Admin").isEmpty()) {
-                customerRepository.save(new CustomerEntity("Admin", passwordEncoder.encode("AdminPassword"), adminRole));
-            }
-
-            var accountSec = customerRepository.findSecurityCustomerByUsername("Javier").orElseThrow();
-
-            log.info("Customer: {} role: {}", accountSec.getUsername(),
-                    accountSec.getRole().getRoleName());
-            accountSec.getRole()
-                    .getAuthorities()
-                    .stream()
-                    .forEach(c -> {
-                        log.info("Authority: {}", c.getName());
-                    });
+            log.info("Roles/authorities dev aseguradas (los usuarios los siembra mvflix-devseed)");
         };
     }
 }

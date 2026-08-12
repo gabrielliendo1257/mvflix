@@ -1,0 +1,14 @@
+devseed:
+  users:
+    - username: Javier
+      email: javier@mvflix.dev
+      password: JavierPassword
+      role: CUSTOMER
+      plan: FREE
+      quotaBytes: 10737418240
+    - username: Admin
+      email: admin@mvflix.dev
+      password: AdminPassword
+      role: ADMIN
+      plan: FREE
+      quotaBytes: 10737418240

@@ -45,8 +45,10 @@ services:
       mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD};
       mc mb --ignore-existing local/users;
       mc anonymous set none local/users;
-      mc event rm --force local/users arn:minio:notification:webhook:upload;
-      mc event add local/users arn:minio:notification:webhook:upload --event 'put,complete-multipart-upload';
+      mc mb --ignore-existing local/uploads;
+      mc anonymous set none local/uploads;
+      mc event rm --force local/uploads arn:minio:sqs::upload:webhook;
+      mc event add local/uploads arn:minio:sqs::upload:webhook --event 'put';
       exit 0;
       "
 

@@ -17,6 +17,7 @@
 	<packaging>pom</packaging>
 
 	<modules>
+        <module>mvflix-devseed</module>
         <module>mvflix-authorization</module>
         <module>mvflix-storage</module>
         <module>mvflix-users</module>

@@ -31,4 +31,9 @@ security:
 logging:
   level:
     root: info
+    org.springframework.web: debug
     org.springframework.security: debug
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: trace
+    org.springframework.security.oauth2: debug
+    org.springframework.data.redis: debug
+    jakarta.jms: debug
