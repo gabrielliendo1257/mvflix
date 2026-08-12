@@ -1,6 +1,7 @@
 package com.guille.media.bff.app.ports;
 
 import com.guille.media.bff.app.dto.QuotaSnapshot;
+import com.guille.media.bff.app.dto.StreamingSessionDto;
 import com.guille.media.bff.app.dto.UploadCreateRequest;
 import com.guille.media.bff.app.dto.UploadListItem;
 import com.guille.media.bff.app.dto.UploadSessionDto;
@@ -25,6 +26,9 @@ public interface StorageWebClient {
   Mono<Void> cancelUpload(Long uploadId);
 
   Mono<HttpStatus> completeUpload(Long uploadId);
+
+  /** Sesión de streaming (URL firmada) del objeto ya subido al object store. */
+  Mono<StreamingSessionDto> stream(String objectId);
 
   /** Rollback: borra el objeto en el object store y restaura la cuota del usuario. */
   Mono<Void> deleteObject(Long storageId);

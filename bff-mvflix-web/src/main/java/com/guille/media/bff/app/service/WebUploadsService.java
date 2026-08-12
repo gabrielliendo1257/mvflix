@@ -1,5 +1,6 @@
 package com.guille.media.bff.app.service;
 
+import com.guille.media.bff.app.dto.StreamingSessionDto;
 import com.guille.media.bff.app.dto.UploadCreateRequest;
 import com.guille.media.bff.app.dto.UploadListItem;
 import com.guille.media.bff.app.dto.UploadSessionDto;
@@ -38,5 +39,9 @@ public class WebUploadsService {
 
   public Mono<HttpStatus> complete(Long uploadId) {
     return this.storageWebClient.completeUpload(uploadId);
+  }
+
+  public Mono<StreamingSessionDto> stream(String objectId) {
+    return this.storageWebClient.stream(objectId);
   }
 }

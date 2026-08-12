@@ -1,6 +1,8 @@
 package com.guille.media.bff.infrastructure.http;
 
 import com.guille.media.bff.app.dto.QuotaSnapshot;
+import com.guille.media.bff.app.dto.StreamingRequest;
+import com.guille.media.bff.app.dto.StreamingSessionDto;
 import com.guille.media.bff.app.dto.UploadCreateRequest;
 import com.guille.media.bff.app.dto.UploadListItem;
 import com.guille.media.bff.app.dto.UploadSessionDto;
@@ -78,6 +80,17 @@ public class StorageWebClientAdapter implements StorageWebClient {
                 .retrieve()
         .toBodilessEntity()
         .then();
+  }
+
+  @Override
+  public Mono<StreamingSessionDto> stream(String objectId) {
+    return this.storageWebClient
+        .post()
+        .uri(API + "/streaming")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(new StreamingRequest(objectId))
+        .retrieve()
+        .bodyToMono(StreamingSessionDto.class);
   }
 
   private <T> Mono<T> get(String uri, Class<T> type) {

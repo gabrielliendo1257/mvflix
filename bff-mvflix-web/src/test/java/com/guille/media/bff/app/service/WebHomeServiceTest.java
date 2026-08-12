@@ -30,7 +30,7 @@ class WebHomeServiceTest {
   @Test
   void homeCombinesProfileQuotaAndRecentUploads() {
     when(usersWebClient.me())
-        .thenReturn(Mono.just(new UserProfile("1", "pepe", "pepe@mvflix.dev", "PRO", true)));
+        .thenReturn(Mono.just(new UserProfile("1", "pepe", "pepe@mvflix.dev", "PRO", true, 0, false)));
     when(storageWebClient.quota())
         .thenReturn(Mono.just(new QuotaSnapshot("pepe", 1_073_741_824L, 2048L, 1_073_739_776L)));
     when(storageWebClient.listUploads(10))

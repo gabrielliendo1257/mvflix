@@ -1,5 +1,7 @@
 package com.guille.media.bff.presenter.api;
 
+import com.guille.media.bff.app.dto.StreamingRequest;
+import com.guille.media.bff.app.dto.StreamingSessionDto;
 import com.guille.media.bff.app.dto.UploadCreateRequest;
 import com.guille.media.bff.app.dto.UploadListItem;
 import com.guille.media.bff.app.dto.UploadSessionDto;
@@ -29,9 +31,7 @@ public class WebUploadsController {
     this.webUploadsService = webUploadsService;
   }
 
-  @GetMapping(
-      produces = MediaType.APPLICATION_JSON_VALUE,
-      consumes = MediaType.APPLICATION_JSON_VALUE)
+  @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public Flux<UploadListItem> list(@RequestParam(defaultValue = "20") int limit) {
     return this.webUploadsService.list(limit);
   }
@@ -58,5 +58,13 @@ public class WebUploadsController {
     return this.webUploadsService
         .complete(uploadId)
         .map(status -> ResponseEntity.status(status).build());
+  }
+
+  @PostMapping(
+      value = "/streaming",
+      produces = MediaType.APPLICATION_JSON_VALUE,
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<StreamingSessionDto>> stream(@RequestBody StreamingRequest request) {
+    return this.webUploadsService.stream(request.objectId()).map(ResponseEntity::ok);
   }
 }

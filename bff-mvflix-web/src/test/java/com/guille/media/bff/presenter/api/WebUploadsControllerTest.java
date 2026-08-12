@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.guille.media.bff.app.dto.StreamingSessionDto;
 import com.guille.media.bff.app.dto.UploadCreateRequest;
 import com.guille.media.bff.app.dto.UploadListItem;
 import com.guille.media.bff.app.dto.UploadSessionDto;
@@ -85,5 +86,28 @@ class WebUploadsControllerTest {
         .exchange()
         .expectStatus()
         .isOk();
+  }
+
+  @Test
+  void streamReturnsPresignedUrlFromStorage() {
+    when(webUploadsService.stream("42"))
+        .thenReturn(
+            Mono.just(
+                new StreamingSessionDto(
+                    "42", "http://minio/stream?X-Amz-Signature=abc", "pepe/a.mp4", "2026-01-01T00:00:00Z", "GET")));
+
+    client
+        .post()
+        .uri("/web/uploads/streaming")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue("{\"objectId\":\"42\"}")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.streamingUrl")
+        .isEqualTo("http://minio/stream?X-Amz-Signature=abc")
+        .jsonPath("$.method")
+        .isEqualTo("GET");
   }
 }
