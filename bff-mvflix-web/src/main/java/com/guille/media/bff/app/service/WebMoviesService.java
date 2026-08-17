@@ -2,6 +2,9 @@ package com.guille.media.bff.app.service;
 
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
+import com.guille.media.bff.app.dto.EnrichMovieSearchDto;
+import com.guille.media.bff.app.dto.MovieDetailDto;
+import com.guille.media.bff.app.dto.MovieDetailDto.PlaybackDto;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
@@ -21,6 +24,7 @@ import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.util.List;
 
 /**
  * Orquestador del flujo de alta de película. El front solo llama al complete; el BFF
@@ -43,8 +47,38 @@ public class WebMoviesService {
     return this.moviesWebClient.listMovies(limit);
   }
 
-  public Mono<MovieDto> findById(Long movieId) {
-    return this.moviesWebClient.movieById(movieId);
+  /**
+   * Detalle orientado a la vista: metadata de movies + disponibilidad de reproducción
+   * desde storage (URL firmada). Si storage no responde, la pantalla degrada a
+   * {@code playback.available=false} en lugar de romper.
+   */
+  public Mono<MovieDetailDto> detail(Long movieId) {
+    return this.moviesWebClient
+        .movieById(movieId)
+        .flatMap(movie -> this.playbackFor(movie)
+            .map(playback -> new MovieDetailDto(movie, playback)));
+  }
+
+  private Mono<PlaybackDto> playbackFor(MovieDto movie) {
+    if (movie.objectId() == null) {
+      return Mono.just(new PlaybackDto(false, null));
+    }
+    return this.storageWebClient
+        .stream(String.valueOf(movie.objectId()))
+        .map(session -> new PlaybackDto(true, session.streamingUrl()))
+        .doOnError(error -> log.warn(
+            "detail: movie={} playback no disponible: {}",
+            movie.id(), error.getMessage()))
+        .onErrorResume(error -> Mono.just(new PlaybackDto(false, null)));
+  }
+
+  public Mono<List<EnrichMovieSearchDto>> search(String query, Integer year) {
+    return this.moviesWebClient.searchCandidates(query, year).collectList();
+  }
+
+  /** Autocompletado con el candidato elegido por el usuario. */
+  public Mono<MovieDto> enrich(Long movieId, Long tmdbId) {
+    return this.moviesWebClient.enrichMovie(movieId, tmdbId);
   }
 
   public Mono<MovieDto> create(CreateMovieRequest request) {

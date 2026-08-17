@@ -1,6 +1,8 @@
 package com.guille.media.bff.infrastructure.http;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
+import com.guille.media.bff.app.dto.EnrichMovieRequest;
+import com.guille.media.bff.app.dto.EnrichMovieSearchDto;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MoviesCompletePayload;
 import com.guille.media.bff.app.ports.MoviesWebClient;
@@ -70,5 +72,29 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .retrieve()
         .toBodilessEntity()
         .then();
+  }
+
+  @Override
+  public Flux<EnrichMovieSearchDto> searchCandidates(String query, Integer year) {
+    return this.moviesWebClient
+        .get()
+        .uri(uriBuilder -> uriBuilder
+            .path(API + "/enrich/search")
+            .queryParam("query", query)
+            .queryParamIfPresent("year", java.util.Optional.ofNullable(year))
+            .build())
+        .retrieve()
+        .bodyToFlux(EnrichMovieSearchDto.class);
+  }
+
+  @Override
+  public Mono<MovieDto> enrichMovie(Long movieId, Long tmdbId) {
+    return this.moviesWebClient
+        .post()
+        .uri(API + "/" + movieId + "/enrich")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(new EnrichMovieRequest(tmdbId))
+        .retrieve()
+        .bodyToMono(MovieDto.class);
   }
 }
