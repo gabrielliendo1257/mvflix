@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.scheduler;
 
-import com.gcorp.service.app.mvflix_movies.domain.service.MovieCleanupService;
+import com.gcorp.service.app.mvflix_movies.application.cleanup.DraftCleanupUseCase;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class DraftCleanupJob {
 
-    private final MovieCleanupService movieCleanupService;
+    private final DraftCleanupUseCase draftCleanupUseCase;
 
     @Value("${movies.draft.time-to-live:24h}")
     private Duration timeToLive;
@@ -33,7 +33,7 @@ public class DraftCleanupJob {
     public void purgeStaleDrafts() {
         Instant cutoff = Instant.now().minus(this.timeToLive);
 
-        this.movieCleanupService
+        this.draftCleanupUseCase
                 .purgeDrafts(cutoff)
                 .subscribe(
                         purged ->

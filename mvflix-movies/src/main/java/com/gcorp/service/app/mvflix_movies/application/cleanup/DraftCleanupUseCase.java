@@ -1,7 +1,8 @@
-package com.gcorp.service.app.mvflix_movies.domain.service;
+package com.gcorp.service.app.mvflix_movies.application.cleanup;
 
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
@@ -12,15 +13,11 @@ import java.time.Instant;
 
 @Slf4j
 @Service
-public class MovieCleanupServiceImpl implements MovieCleanupService {
+@RequiredArgsConstructor
+public class DraftCleanupUseCase {
 
     private final MovieRepository movieRepository;
 
-    public MovieCleanupServiceImpl(MovieRepository movieRepository) {
-        this.movieRepository = movieRepository;
-    }
-
-    @Override
     public Mono<Long> purgeDrafts(Instant cutoff) {
         return this.movieRepository
                 .deleteDraftsCreatedBefore(cutoff)

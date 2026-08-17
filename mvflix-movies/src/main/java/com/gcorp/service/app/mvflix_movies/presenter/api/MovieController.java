@@ -1,8 +1,11 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.service.CreateMovieCommand;
-import com.gcorp.service.app.mvflix_movies.domain.service.MovieService;
+import com.gcorp.service.app.mvflix_movies.application.movie.CompleteMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.application.movie.CreateMovieCommand;
+import com.gcorp.service.app.mvflix_movies.application.movie.CreateMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.application.movie.DeleteMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.application.movie.GetMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.application.movie.ListMoviesUseCase;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
@@ -27,40 +30,55 @@ import reactor.core.publisher.Mono;
     produces = MediaType.APPLICATION_JSON_VALUE)
 public class MovieController {
 
-    private final MovieService movieService;
+    private final CreateMovieUseCase createMovieUseCase;
+    private final GetMovieUseCase getMovieUseCase;
+    private final ListMoviesUseCase listMoviesUseCase;
+    private final CompleteMovieUseCase completeMovieUseCase;
+    private final DeleteMovieUseCase deleteMovieUseCase;
     private final MovieApiMapper mapper;
 
-    public MovieController(MovieService movieService, MovieApiMapper mapper) {
-        this.movieService = movieService;
+    public MovieController(
+            CreateMovieUseCase createMovieUseCase,
+            GetMovieUseCase getMovieUseCase,
+            ListMoviesUseCase listMoviesUseCase,
+            CompleteMovieUseCase completeMovieUseCase,
+            DeleteMovieUseCase deleteMovieUseCase,
+            MovieApiMapper mapper) {
+        this.createMovieUseCase = createMovieUseCase;
+        this.getMovieUseCase = getMovieUseCase;
+        this.listMoviesUseCase = listMoviesUseCase;
+        this.completeMovieUseCase = completeMovieUseCase;
+        this.deleteMovieUseCase = deleteMovieUseCase;
         this.mapper = mapper;
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MovieResponse> create(@RequestBody CreateMovieRequest request) {
-        return this.movieService
-                .create(new CreateMovieCommand(this.mapper.toMetadata(request)))
+        return this.createMovieUseCase
+                .execute(new CreateMovieCommand(this.mapper.toMetadata(request)))
                 .map(this.mapper::toResponse);
     }
 
     @GetMapping("/{id}")
     public Mono<MovieResponse> findById(@PathVariable Long id) {
-        return this.movieService.findById(id).map(this.mapper::toResponse);
+        return this.getMovieUseCase.execute(id).map(this.mapper::toResponse);
     }
 
     @GetMapping
     public Flux<MovieResponse> list(@RequestParam(defaultValue = "20") int limit) {
-        return this.movieService.list(limit).map(this.mapper::toResponse);
+        return this.listMoviesUseCase.execute(limit).map(this.mapper::toResponse);
     }
 
     @PostMapping(value = "/{id}/complete", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MovieResponse> complete(
             @PathVariable Long id, @RequestBody CompleteMovieRequest request) {
-        return this.movieService.complete(id, request.objectId(), request.objectKey())
+        return this.completeMovieUseCase
+                .execute(id, request.objectId(), request.objectKey())
                 .map(this.mapper::toResponse);
     }
 
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> delete(@PathVariable Long id) {
-        return this.movieService.delete(id).thenReturn(ResponseEntity.noContent().build());
+        return this.deleteMovieUseCase.execute(id).thenReturn(ResponseEntity.noContent().build());
     }
 }
