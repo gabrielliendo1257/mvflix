@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
-import com.gcorp.service.app.mvflix_movies.domain.model.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.model.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
 import org.mapstruct.Mapper;

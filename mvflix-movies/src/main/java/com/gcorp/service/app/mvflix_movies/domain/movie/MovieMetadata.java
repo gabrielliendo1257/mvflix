@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.model;
+package com.gcorp.service.app.mvflix_movies.domain.movie;
 
 import java.util.List;
 

@@ -5,5 +5,6 @@ public record MovieRow(
     String ownerUsername,
     String title,
     String status,
+    Long objectId,
     String objectKey,
     String metadata) {}

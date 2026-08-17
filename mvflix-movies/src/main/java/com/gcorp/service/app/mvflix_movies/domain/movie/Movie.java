@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.model;
+package com.gcorp.service.app.mvflix_movies.domain.movie;
 
 public class Movie {
 
@@ -6,6 +6,7 @@ public class Movie {
     private final String ownerUsername;
     private final String title;
     private final MovieStatus status;
+    private final Long objectId;
     private final String objectKey;
     private final MovieMetadata metadata;
 
@@ -14,12 +15,14 @@ public class Movie {
         String ownerUsername,
         String title,
         MovieStatus status,
+        Long objectId,
         String objectKey,
         MovieMetadata metadata) {
         this.id = id;
         this.ownerUsername = ownerUsername;
         this.title = title;
         this.status = status;
+        this.objectId = objectId;
         this.objectKey = objectKey;
         this.metadata = metadata;
     }
@@ -30,6 +33,10 @@ public class Movie {
 
     public String getOwnerUsername() {
         return this.ownerUsername;
+    }
+
+    public Long getObjectId() {
+        return this.objectId;
     }
 
     public String getTitle() {
@@ -53,12 +60,13 @@ public class Movie {
     }
 
     /** Transición de dominio: una película en borrador pasa a lista cuando se le asigna su objeto. */
-    public Movie complete(String objectKey) {
+    public Movie complete(Long objectId, String objectKey) {
         return new Movie(
                 this.id,
                 this.ownerUsername,
                 this.title,
                 MovieStatus.READY,
+                objectId,
                 objectKey,
                 this.metadata);
     }

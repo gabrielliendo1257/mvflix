@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.domain.service;
 
-import com.gcorp.service.app.mvflix_movies.domain.ports.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 
 import lombok.extern.slf4j.Slf4j;
 

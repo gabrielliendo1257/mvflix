@@ -1,8 +1,8 @@
 package com.gcorp.service.app.mvflix_movies.advisors;
 
 import com.gcorp.service.app.mvflix_movies.advisors.models.ErrorResponse;
-import com.gcorp.service.app.mvflix_movies.domain.exceptions.MovieConflictException;
-import com.gcorp.service.app.mvflix_movies.domain.exceptions.MovieNotFoundException;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieConflictException;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

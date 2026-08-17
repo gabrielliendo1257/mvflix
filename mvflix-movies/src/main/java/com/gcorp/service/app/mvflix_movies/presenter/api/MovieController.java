@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
-import com.gcorp.service.app.mvflix_movies.domain.model.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.service.CreateMovieCommand;
 import com.gcorp.service.app.mvflix_movies.domain.service.MovieService;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
@@ -55,7 +55,8 @@ public class MovieController {
     @PostMapping(value = "/{id}/complete", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MovieResponse> complete(
             @PathVariable Long id, @RequestBody CompleteMovieRequest request) {
-        return this.movieService.complete(id, request.objectKey()).map(this.mapper::toResponse);
+        return this.movieService.complete(id, request.objectId(), request.objectKey())
+                .map(this.mapper::toResponse);
     }
 
     @DeleteMapping("/{id}")

@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.domain.service;
 
-import com.gcorp.service.app.mvflix_movies.domain.model.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -13,8 +13,8 @@ public interface MovieService {
 
     Flux<Movie> list(int limit);
 
-    /** Transición DRAFT -> READY con asignación de object_key. Idempotente si ya está READY. */
-    Mono<Movie> complete(Long id, String objectKey);
+    /** Transición DRAFT -> READY con asignación de object_id y object_key. Idempotente si ya está READY. */
+    Mono<Movie> complete(Long id, Long objectId, String objectKey);
 
     /** Rollback: elimina la película del dueño. */
     Mono<Void> delete(Long id);

@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
-import com.gcorp.service.app.mvflix_movies.domain.model.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import org.mapstruct.Mapper;
 
 /**

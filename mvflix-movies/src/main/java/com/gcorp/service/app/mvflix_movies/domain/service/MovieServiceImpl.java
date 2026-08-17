@@ -1,12 +1,11 @@
 package com.gcorp.service.app.mvflix_movies.domain.service;
 
-import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.domain.exceptions.MovieConflictException;
-import com.gcorp.service.app.mvflix_movies.domain.exceptions.MovieNotFoundException;
-import com.gcorp.service.app.mvflix_movies.domain.model.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.model.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.domain.ports.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieConflictException;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
+import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -40,6 +39,7 @@ public class MovieServiceImpl implements MovieService {
                             command.metadata().title(),
                             MovieStatus.DRAFT,
                             null,
+                            null,
                             command.metadata());
                     return this.movieRepository.save(draft);
                 })
@@ -68,15 +68,15 @@ public class MovieServiceImpl implements MovieService {
     }
 
     @Override
-    public Mono<Movie> complete(Long id, String objectKey) {
+    public Mono<Movie> complete(Long id, Long objectId, String objectKey) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
-                        .completeIfDraft(id, user.subject(), objectKey)
+                        .completeIfDraft(id, user.subject(), objectId, objectKey)
                         .doOnNext(movie -> log.info(
-                                "Pelicula completada: id={} owner={} object_key={}", id,
-                                user.subject(), objectKey))
-                        .switchIfEmpty(this.resolveConflict(id, user.subject(), objectKey)));
+                                "Pelicula completada: id={} owner={} object_id={} object_key={}",
+                                id, user.subject(), objectId, objectKey))
+                        .switchIfEmpty(this.resolveConflict(id, user.subject(), objectId, objectKey)));
     }
 
     @Override
@@ -100,7 +100,8 @@ public class MovieServiceImpl implements MovieService {
      * Reconciliación cuando el CAS no transicionó: distingue 404 (no existe / no es del dueño),
      * no-op idempotente (ya READY con el mismo object_key) y 409 (estado no completable).
      */
-    private Mono<Movie> resolveConflict(Long id, String ownerUsername, String objectKey) {
+    private Mono<Movie> resolveConflict(Long id, String ownerUsername, Long objectId,
+            String objectKey) {
         return this.movieRepository
                 .findById(id)
                 .flatMap(movie -> {

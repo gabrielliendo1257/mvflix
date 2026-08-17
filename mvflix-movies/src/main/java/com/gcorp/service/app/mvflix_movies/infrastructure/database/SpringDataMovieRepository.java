@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
-import com.gcorp.service.app.mvflix_movies.domain.model.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.ports.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -29,14 +29,19 @@ public class SpringDataMovieRepository implements MovieRepository {
                 this.databaseClient
                         .sql(
                                 """
-                                INSERT INTO movies (owner_username, title, status, object_key, metadata)
-                                VALUES (:owner_username, :title, :status, :object_key, CAST(:metadata AS jsonb))
-                                RETURNING id, owner_username, title, status, object_key, metadata::text
+                                INSERT INTO movies (owner_username, title, status, object_id, object_key, metadata)
+                                VALUES (:owner_username, :title, :status, :object_id, :object_key, CAST(:metadata AS jsonb))
+                                RETURNING id, owner_username, title, status, object_id, object_key, metadata::text
                                 """)
                         .bind("owner_username", row.ownerUsername())
                         .bind("title", row.title())
                         .bind("status", row.status())
                         .bind("metadata", row.metadata());
+        if (row.objectId() != null) {
+            spec = spec.bind("object_id", row.objectId());
+        } else {
+            spec = spec.bindNull("object_id", Long.class);
+        }
         if (row.objectKey() != null) {
             spec = spec.bind("object_key", row.objectKey());
         } else {
@@ -53,7 +58,7 @@ public class SpringDataMovieRepository implements MovieRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, owner_username, title, status, object_key, metadata::text
+                        SELECT id, owner_username, title, status, object_id, object_key, metadata::text
                         FROM movies
                         WHERE id = :id
                         """)
@@ -68,7 +73,7 @@ public class SpringDataMovieRepository implements MovieRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, owner_username, title, status, object_key, metadata::text
+                        SELECT id, owner_username, title, status, object_id, object_key, metadata::text
                         FROM movies
                         WHERE owner_username = :owner_username
                         ORDER BY id DESC
@@ -82,17 +87,18 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> completeIfDraft(Long id, String ownerUsername, String objectKey) {
+    public Mono<Movie> completeIfDraft(Long id, String ownerUsername, Long objectId, String objectKey) {
         return this.databaseClient
                 .sql(
                         """
                         UPDATE movies
-                        SET status = 'READY', object_key = :object_key, updated_at = NOW()
+                        SET status = 'READY', object_id = :object_id, object_key = :object_key, updated_at = NOW()
                         WHERE id = :id AND owner_username = :owner_username AND status = 'DRAFT'
-                        RETURNING id, owner_username, title, status, object_key, metadata::text
+                        RETURNING id, owner_username, title, status, object_id, object_key, metadata::text
                         """)
                 .bind("id", id)
                 .bind("owner_username", ownerUsername)
+                .bind("object_id", objectId)
                 .bind("object_key", objectKey)
                 .map(this::toRow)
                 .one()
@@ -134,6 +140,7 @@ public class SpringDataMovieRepository implements MovieRepository {
             row.get("owner_username", String.class),
             row.get("title", String.class),
             row.get("status", String.class),
+            row.get("object_id", Long.class),
             row.get("object_key", String.class),
             row.get("metadata", String.class));
     }
