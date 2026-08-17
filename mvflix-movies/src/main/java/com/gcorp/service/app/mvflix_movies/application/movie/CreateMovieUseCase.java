@@ -34,7 +34,6 @@ public class CreateMovieUseCase {
                                 MovieStatus.DRAFT,
                                 EnrichmentStatus.RAW,
                                 null,
-                                null,
                                 command.metadata())))
                 .doOnNext(movie -> log.info("Pelicula creada: id={} owner={}", movie.getId(),
                         movie.getOwnerUsername()));

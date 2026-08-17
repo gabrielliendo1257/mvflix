@@ -33,7 +33,7 @@ public class CompleteMovieUseCase {
                         .completeIfDraft(id, user.subject())
                         .flatMap(movie -> this.mediaRepository
                                 .save(Media.create(movie.getId(), objectId, objectKey))
-                                .thenReturn(movie.complete(objectId, objectKey)))
+                                .thenReturn(movie.complete(objectId)))
                         .doOnNext(movie -> log.info(
                                 "Pelicula completada: id={} owner={} object_id={} object_key={}",
                                 id.value(), user.subject(), objectId, objectKey))
@@ -70,8 +70,7 @@ public class CompleteMovieUseCase {
                                             "Pelicula {} ya READY con el mismo object_key: no-op",
                                             id.value());
                                     return Mono.just(
-                                            movie.complete(
-                                                    media.getObjectId(), media.getObjectKey()));
+                                            movie.complete(media.getObjectId()));
                                 }
                                 log.warn(
                                         "Pelicula {} no completable: object_key_actual={} pedido={}",

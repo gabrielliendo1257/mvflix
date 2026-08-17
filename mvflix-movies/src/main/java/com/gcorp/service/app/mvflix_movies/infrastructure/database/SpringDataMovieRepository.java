@@ -21,12 +21,6 @@ public class SpringDataMovieRepository implements MovieRepository {
              WHERE mm.movie_id = m.id ORDER BY mm.id LIMIT 1) AS object_id
             """;
 
-    private static final String MEDIA_OBJECT_KEY =
-            """
-            (SELECT mm.object_key FROM media mm
-             WHERE mm.movie_id = m.id ORDER BY mm.id LIMIT 1) AS object_key
-            """;
-
     private final DatabaseClient databaseClient;
     private final MovieRowMapper rowMapper;
 
@@ -64,8 +58,6 @@ public class SpringDataMovieRepository implements MovieRepository {
                                m.metadata::text,
                         """
                         + MEDIA_OBJECT_ID
-                        + ",\n"
-                        + MEDIA_OBJECT_KEY
                         + """
                         FROM movies m
                         WHERE m.id = :id
@@ -85,8 +77,6 @@ public class SpringDataMovieRepository implements MovieRepository {
                                m.metadata::text,
                         """
                         + MEDIA_OBJECT_ID
-                        + ",\n"
-                        + MEDIA_OBJECT_KEY
                         + """
                         FROM movies m
                         WHERE m.owner_username = :owner_username
@@ -154,7 +144,6 @@ public class SpringDataMovieRepository implements MovieRepository {
             row.get("status", String.class),
             row.get("enrichment_status", String.class),
             metadata.contains("object_id") ? row.get("object_id", Long.class) : null,
-            metadata.contains("object_key") ? row.get("object_key", String.class) : null,
             row.get("metadata", String.class));
     }
 }

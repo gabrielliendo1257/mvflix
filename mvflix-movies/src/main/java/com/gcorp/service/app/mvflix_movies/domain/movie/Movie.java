@@ -8,7 +8,6 @@ public class Movie {
     private final MovieStatus status;
     private final EnrichmentStatus enrichmentStatus;
     private final Long objectId;
-    private final String objectKey;
     private final MovieMetadata metadata;
 
     public Movie(
@@ -18,7 +17,6 @@ public class Movie {
         MovieStatus status,
         EnrichmentStatus enrichmentStatus,
         Long objectId,
-        String objectKey,
         MovieMetadata metadata) {
         this.id = id;
         this.ownerUsername = ownerUsername;
@@ -26,7 +24,6 @@ public class Movie {
         this.status = status;
         this.enrichmentStatus = enrichmentStatus;
         this.objectId = objectId;
-        this.objectKey = objectKey;
         this.metadata = metadata;
     }
 
@@ -54,10 +51,6 @@ public class Movie {
         return this.enrichmentStatus;
     }
 
-    public String getObjectKey() {
-        return this.objectKey;
-    }
-
     public MovieMetadata getMetadata() {
         return this.metadata;
     }
@@ -70,8 +63,12 @@ public class Movie {
         return this.enrichmentStatus == EnrichmentStatus.ENRICHED;
     }
 
-    /** Transición de dominio: una película en borrador pasa a lista cuando se le asigna su objeto. */
-    public Movie complete(Long objectId, String objectKey) {
+    /**
+     * Transición de dominio: una película en borrador pasa a lista cuando se le asigna su objeto.
+     * Solo el {@code objectId} (referencia publica) vive en el agregado; la key del objeto
+     * es un secreto interno que queda en {@code Media}, nunca en Movie.
+     */
+    public Movie complete(Long objectId) {
         return new Movie(
                 this.id,
                 this.ownerUsername,
@@ -79,7 +76,6 @@ public class Movie {
                 MovieStatus.READY,
                 this.enrichmentStatus,
                 objectId,
-                objectKey,
                 this.metadata);
     }
 
@@ -92,7 +88,6 @@ public class Movie {
                 this.status,
                 enrichmentStatus,
                 this.objectId,
-                this.objectKey,
                 this.metadata);
     }
 }

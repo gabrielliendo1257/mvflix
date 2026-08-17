@@ -7,5 +7,4 @@ public record MovieRow(
     String status,
     String enrichmentStatus,
     Long objectId,
-    String objectKey,
     String metadata) {}
