@@ -23,6 +23,13 @@ movies:
   draft:
     time-to-live: 24h
     cleanup-check-ms: 3600000
+  enrich:
+    check-ms: 3600000
+
+tmdb:
+  api-token: ${TMDB_API_TOKEN:}
+  base-url: https://api.themoviedb.org/3
+  image-base-url: https://image.tmdb.org/t/p
 
 security:
   oauth2:
