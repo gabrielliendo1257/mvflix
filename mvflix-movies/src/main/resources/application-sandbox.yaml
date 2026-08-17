@@ -1,0 +1,36 @@
+# Perfil de desarrollo/sandbox: sin authorization-service.
+# Todo el API queda abierto (SandboxSecurityConfiguration) y el usuario fijo es "pepe".
+# Postgres se levanta con: make up-dev (docker compose)
+server:
+  port: 4040
+
+spring:
+  application:
+    name: mvflix-movies
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/mvflix_movies_db
+    username: db_rw
+    password: 12345678
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mvflix_movies_db
+    username: db_migrator
+    password: 12345678
+
+movies:
+  draft:
+    time-to-live: 24h
+    cleanup-check-ms: 3600000
+  enrich:
+    check-ms: 3600000
+
+tmdb:
+  api-token: ${TMDB_API_TOKEN:}
+  base-url: https://api.themoviedb.org/3
+  image-base-url: https://image.tmdb.org/t/p
+
+logging:
+  level:
+    root: info
+    org.springframework.security: debug

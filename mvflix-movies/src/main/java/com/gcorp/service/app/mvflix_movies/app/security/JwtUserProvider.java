@@ -1,5 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.app.security;
 
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
@@ -10,6 +11,7 @@ import reactor.core.publisher.Mono;
 
 /** Extrae el usuario autenticado del contexto reactivo de seguridad (JWT del resource server). */
 @Component
+@Profile("!sandbox")
 public class JwtUserProvider implements UserProvider {
 
   @Override
