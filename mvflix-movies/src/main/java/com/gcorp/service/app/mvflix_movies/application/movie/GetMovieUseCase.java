@@ -2,6 +2,7 @@ package com.gcorp.service.app.mvflix_movies.application.movie;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 
@@ -20,7 +21,7 @@ public class GetMovieUseCase {
     private final MovieRepository movieRepository;
     private final UserProvider userProvider;
 
-    public Mono<Movie> execute(Long id) {
+    public Mono<Movie> execute(MovieId id) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository

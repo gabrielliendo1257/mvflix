@@ -14,6 +14,7 @@ public interface MovieApiMapper {
     MovieMetadata toMetadata(CreateMovieRequest request);
 
     @Mappings({
+        @Mapping(target = "id", expression = "java(movie.getId().value())"),
         @Mapping(target = "title", source = "metadata.title"),
         @Mapping(target = "originalTitle", source = "metadata.originalTitle"),
         @Mapping(target = "year", source = "metadata.year"),

@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -29,13 +30,14 @@ public class SpringDataMovieRepository implements MovieRepository {
                 this.databaseClient
                         .sql(
                                 """
-                                INSERT INTO movies (owner_username, title, status, object_id, object_key, metadata)
-                                VALUES (:owner_username, :title, :status, :object_id, :object_key, CAST(:metadata AS jsonb))
-                                RETURNING id, owner_username, title, status, object_id, object_key, metadata::text
+                                INSERT INTO movies (owner_username, title, status, enrichment_status, object_id, object_key, metadata)
+                                VALUES (:owner_username, :title, :status, :enrichment_status, :object_id, :object_key, CAST(:metadata AS jsonb))
+                                RETURNING id, owner_username, title, status, enrichment_status, object_id, object_key, metadata::text
                                 """)
                         .bind("owner_username", row.ownerUsername())
                         .bind("title", row.title())
                         .bind("status", row.status())
+                        .bind("enrichment_status", row.enrichmentStatus())
                         .bind("metadata", row.metadata());
         if (row.objectId() != null) {
             spec = spec.bind("object_id", row.objectId());
@@ -54,15 +56,15 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> findById(Long id) {
+    public Mono<Movie> findById(MovieId id) {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, owner_username, title, status, object_id, object_key, metadata::text
+                        SELECT id, owner_username, title, status, enrichment_status, object_id, object_key, metadata::text
                         FROM movies
                         WHERE id = :id
                         """)
-                .bind("id", id)
+                .bind("id", id.value())
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -73,7 +75,7 @@ public class SpringDataMovieRepository implements MovieRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, owner_username, title, status, object_id, object_key, metadata::text
+                        SELECT id, owner_username, title, status, enrichment_status, object_id, object_key, metadata::text
                         FROM movies
                         WHERE owner_username = :owner_username
                         ORDER BY id DESC
@@ -87,16 +89,16 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> completeIfDraft(Long id, String ownerUsername, Long objectId, String objectKey) {
+    public Mono<Movie> completeIfDraft(MovieId id, String ownerUsername, Long objectId, String objectKey) {
         return this.databaseClient
                 .sql(
                         """
                         UPDATE movies
                         SET status = 'READY', object_id = :object_id, object_key = :object_key, updated_at = NOW()
                         WHERE id = :id AND owner_username = :owner_username AND status = 'DRAFT'
-                        RETURNING id, owner_username, title, status, object_id, object_key, metadata::text
+                        RETURNING id, owner_username, title, status, enrichment_status, object_id, object_key, metadata::text
                         """)
-                .bind("id", id)
+                .bind("id", id.value())
                 .bind("owner_username", ownerUsername)
                 .bind("object_id", objectId)
                 .bind("object_key", objectKey)
@@ -106,14 +108,14 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Boolean> deleteById(Long id, String ownerUsername) {
+    public Mono<Boolean> deleteById(MovieId id, String ownerUsername) {
         return this.databaseClient
                 .sql(
                         """
                         DELETE FROM movies
                         WHERE id = :id AND owner_username = :owner_username
                         """)
-                .bind("id", id)
+                .bind("id", id.value())
                 .bind("owner_username", ownerUsername)
                 .fetch()
                 .rowsUpdated()
@@ -140,6 +142,7 @@ public class SpringDataMovieRepository implements MovieRepository {
             row.get("owner_username", String.class),
             row.get("title", String.class),
             row.get("status", String.class),
+            row.get("enrichment_status", String.class),
             row.get("object_id", Long.class),
             row.get("object_key", String.class),
             row.get("metadata", String.class));

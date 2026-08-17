@@ -3,6 +3,7 @@ package com.gcorp.service.app.mvflix_movies.application.movie;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
 
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class CreateMovieUseCase {
                                 user.subject(),
                                 command.metadata().title(),
                                 MovieStatus.DRAFT,
+                                EnrichmentStatus.RAW,
                                 null,
                                 null,
                                 command.metadata())))

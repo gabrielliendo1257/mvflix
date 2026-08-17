@@ -6,6 +6,7 @@ import com.gcorp.service.app.mvflix_movies.application.movie.CreateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.DeleteMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.GetMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.ListMoviesUseCase;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
@@ -61,7 +62,7 @@ public class MovieController {
 
     @GetMapping("/{id}")
     public Mono<MovieResponse> findById(@PathVariable Long id) {
-        return this.getMovieUseCase.execute(id).map(this.mapper::toResponse);
+        return this.getMovieUseCase.execute(MovieId.of(id)).map(this.mapper::toResponse);
     }
 
     @GetMapping
@@ -73,12 +74,12 @@ public class MovieController {
     public Mono<MovieResponse> complete(
             @PathVariable Long id, @RequestBody CompleteMovieRequest request) {
         return this.completeMovieUseCase
-                .execute(id, request.objectId(), request.objectKey())
+                .execute(MovieId.of(id), request.objectId(), request.objectKey())
                 .map(this.mapper::toResponse);
     }
 
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> delete(@PathVariable Long id) {
-        return this.deleteMovieUseCase.execute(id).thenReturn(ResponseEntity.noContent().build());
+        return this.deleteMovieUseCase.execute(MovieId.of(id)).thenReturn(ResponseEntity.noContent().build());
     }
 }

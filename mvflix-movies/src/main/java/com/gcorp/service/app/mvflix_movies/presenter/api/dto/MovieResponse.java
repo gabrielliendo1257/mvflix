@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
 
 import java.util.List;
@@ -8,6 +9,7 @@ import java.util.List;
 public record MovieResponse(
     Long id,
     MovieStatus status,
+    @JsonProperty("enrichment_status") EnrichmentStatus enrichmentStatus,
     @JsonProperty("object_id") Long objectId,
     String title,
     String originalTitle,

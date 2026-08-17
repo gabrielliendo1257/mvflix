@@ -1,7 +1,5 @@
 package com.gcorp.service.app.mvflix_movies.domain.movie;
 
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -11,7 +9,7 @@ public interface MovieRepository {
 
     Mono<Movie> save(Movie movie);
 
-    Mono<Movie> findById(Long id);
+    Mono<Movie> findById(MovieId id);
 
     Flux<Movie> findByOwner(String ownerUsername, int limit);
 
@@ -19,10 +17,10 @@ public interface MovieRepository {
      * Compare-and-set: pasa a READY solo si la película sigue en DRAFT y pertenece al dueño.
      * Vacío si no hubo fila (no existe, otro dueño o ya no está en DRAFT).
      */
-    Mono<Movie> completeIfDraft(Long id, String ownerUsername, Long objectId, String objectKey);
+    Mono<Movie> completeIfDraft(MovieId id, String ownerUsername, Long objectId, String objectKey);
 
     /** {@code true} si borró la fila del dueño. */
-    Mono<Boolean> deleteById(Long id, String ownerUsername);
+    Mono<Boolean> deleteById(MovieId id, String ownerUsername);
 
     /**
      * Purga películas DRAFT creadas antes del corte (metadata huérfana cuyo flujo de subida
