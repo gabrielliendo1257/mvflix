@@ -10,6 +10,8 @@ import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUse
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieRequest;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieSearchResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
 
 import org.springframework.http.MediaType;
@@ -25,6 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 @RestController
 @RequestMapping(
@@ -87,9 +91,21 @@ public class MovieController {
         return this.deleteMovieUseCase.execute(MovieId.of(id)).thenReturn(ResponseEntity.noContent().build());
     }
 
-    @PostMapping(value = "/{id}/enrich")
-    public Mono<MovieResponse> enrich(@PathVariable Long id) {
-        return this.enrichMovieUseCase.enrichCurrentUser(MovieId.of(id))
+    @PostMapping(value = "/{id}/enrich", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<MovieResponse> enrich(
+            @PathVariable Long id,
+            @RequestBody(required = false) EnrichMovieRequest request) {
+        return this.enrichMovieUseCase
+                .enrichCurrentUser(
+                        MovieId.of(id), request == null ? null : request.tmdbId())
                 .map(this.mapper::toResponse);
+    }
+
+    @GetMapping("/enrich/search")
+    public Mono<List<EnrichMovieSearchResponse>> search(
+            @RequestParam String query, @RequestParam(required = false) Integer year) {
+        return this.enrichMovieUseCase
+                .search(query, year)
+                .map(results -> results.stream().map(this.mapper::toSearchResponse).toList());
     }
 }

@@ -1,5 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.domain.enrichment;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
@@ -13,6 +14,12 @@ public interface MetadataSource {
      * (el use-case deja la pelicula sin enriquecer en lugar de inventar datos).
      */
     Mono<ExternalMovieSearch> search(String title, Integer year);
+
+    /**
+     * Todos los candidatos para el flujo interactivo: el usuario escribe,
+     * ve las coincidencias y elige antes de autocompletar.
+     */
+    Flux<ExternalMovieSearch> searchCandidates(String query, Integer year);
 
     /** Detalle completo de una pelicula ya matcheada (id externo estable). */
     Mono<ExternalMovieDetail> findById(long tmdbId);

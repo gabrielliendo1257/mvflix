@@ -2,6 +2,7 @@ package com.gcorp.service.app.mvflix_movies.application.enrichment;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieDetail;
+import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.MetadataSource;
 import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
@@ -17,6 +18,8 @@ import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
 
+import java.util.List;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -28,6 +31,14 @@ public class EnrichMovieUseCase {
 
     /** Variante HTTP: resuelve la pelicula del usuario autenticado y la enriquece. */
     public Mono<Movie> enrichCurrentUser(MovieId id) {
+        return this.enrichCurrentUser(id, null);
+    }
+
+    /**
+     * Como {@link #enrichCurrentUser(MovieId)} pero si {@code explicitTmdbId} viene,
+     * el usuario ya eligio el candidato en la UI y se salta el match automatico.
+     */
+    public Mono<Movie> enrichCurrentUser(MovieId id, Long explicitTmdbId) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
@@ -35,21 +46,32 @@ public class EnrichMovieUseCase {
                         .filter(movie -> movie.getOwnerUsername().equals(user.subject()))
                         .switchIfEmpty(Mono.error(
                                 new MovieNotFoundException("Movie not found: " + id.value())))
-                        .flatMap(this::enrich));
+                        .flatMap(movie -> this.enrich(movie, explicitTmdbId)));
+    }
+
+    /** Busca candidatos en la fuente externa para que el usuario elija. */
+    public Mono<List<ExternalMovieSearch>> search(String query, Integer year) {
+        return this.metadataSource.searchCandidates(query, year).collectList();
     }
 
     /**
      * Núcleo del enriquecimiento (sin seguridad, reutilizable por el scheduler):
-     * idempotente (si ya ENRICHED no toca nada), matchea por tmdbId persistido
-     * o por titulo+año, y sin match deja la pelicula en RAW sin inventar datos.
+     * idempotente (si ya ENRICHED no toca nada), matchea por tmdbId explícito,
+     * por tmdbId persistido o por titulo+año; sin match deja la pelicula en RAW.
      */
     public Mono<Movie> enrich(Movie movie) {
+        return this.enrich(movie, null);
+    }
+
+    public Mono<Movie> enrich(Movie movie, Long explicitTmdbId) {
         if (movie.isEnriched()) {
             log.info("Pelicula {} ya ENRICHED: no-op", movie.getId().value());
             return Mono.just(movie);
         }
 
-        Long tmdbId = movie.getMetadata().tmdbId();
+        Long tmdbId = explicitTmdbId != null
+                ? explicitTmdbId
+                : movie.getMetadata().tmdbId();
         Mono<ExternalMovieDetail> detail = tmdbId != null
                 ? this.metadataSource.findById(tmdbId)
                 : this.metadataSource

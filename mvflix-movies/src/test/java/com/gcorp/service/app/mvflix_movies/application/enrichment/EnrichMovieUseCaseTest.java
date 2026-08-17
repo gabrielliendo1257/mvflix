@@ -109,6 +109,24 @@ class EnrichMovieUseCaseTest {
     }
 
     @Test
+    void enrichWithExplicitTmdbIdSkipsSearchAndUsesChosenCandidate() {
+        when(this.metadataSource.findById(43020L)).thenReturn(Mono.just(TMDB_DETAIL));
+        when(this.movieRepository.updateEnrichment(
+                        eq(MovieId.of(1L)), eq("pepe"), any(MovieMetadata.class),
+                        eq(EnrichmentStatus.ENRICHED)))
+                .thenReturn(Mono.just(DRAFT_RAW.applyEnrichment(
+                        mergedMetadata(), EnrichmentStatus.ENRICHED)));
+
+        StepVerifier.create(this.useCase.enrich(DRAFT_RAW, 43020L))
+                .assertNext(movie -> assertThat(movie.getEnrichmentStatus())
+                        .isEqualTo(EnrichmentStatus.ENRICHED))
+                .verifyComplete();
+
+        verify(this.metadataSource).findById(43020L);
+        verify(this.metadataSource, never()).search(any(), any());
+    }
+
+    @Test
     void enrichWithoutMatchLeavesMovieRaw() {
         when(this.metadataSource.search("The Colossus of Rhodes", null))
                 .thenReturn(Mono.empty());

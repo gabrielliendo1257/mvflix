@@ -4,6 +4,7 @@ import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieDetail
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.MetadataSource;
 import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.MovieDetails;
+import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.MovieSummary;
 import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.SearchResponse;
 
 import lombok.extern.slf4j.Slf4j;
@@ -13,8 +14,10 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -25,6 +28,8 @@ import java.util.Optional;
 @Slf4j
 @Component
 public class TmdbClient implements MetadataSource {
+
+    private static final int MAX_CANDIDATES = 10;
 
     private final WebClient webClient;
     private final TmdbMovieMapper mapper;
@@ -41,6 +46,26 @@ public class TmdbClient implements MetadataSource {
 
     @Override
     public Mono<ExternalMovieSearch> search(String title, Integer year) {
+        return this.searchResponse(title, year)
+                .flatMap(response -> {
+                    if (response.results() == null || response.results().isEmpty()) {
+                        log.debug("TMDB sin resultados para: {} ({})", title, year);
+                        return Mono.empty();
+                    }
+                    return Mono.justOrEmpty(this.mapper.toSearch(response.results().get(0)));
+                });
+    }
+
+    @Override
+    public Flux<ExternalMovieSearch> searchCandidates(String query, Integer year) {
+        return this.searchResponse(query, year)
+                .flatMapMany(response -> Flux.fromIterable(
+                        response.results() == null ? List.<MovieSummary>of() : response.results()))
+                .take(MAX_CANDIDATES)
+                .flatMap(summary -> Mono.justOrEmpty(this.mapper.toSearch(summary)));
+    }
+
+    private Mono<SearchResponse> searchResponse(String title, Integer year) {
         this.requireToken();
         return this.webClient
                 .get()
@@ -52,14 +77,7 @@ public class TmdbClient implements MetadataSource {
                         .build())
                 .accept(MediaType.APPLICATION_JSON)
                 .retrieve()
-                .bodyToMono(SearchResponse.class)
-                .flatMap(response -> {
-                    if (response.results() == null || response.results().isEmpty()) {
-                        log.debug("TMDB sin resultados para: {} ({})", title, year);
-                        return Mono.empty();
-                    }
-                    return Mono.justOrEmpty(this.mapper.toSearch(response.results().get(0)));
-                });
+                .bodyToMono(SearchResponse.class);
     }
 
     @Override
