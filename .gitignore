@@ -34,3 +34,6 @@ build/
 
 ### Secrets ###
 **/.env
+
+### Local scripts (contienen secretos locales) ###
+scripts/*.local.sh
