@@ -90,4 +90,19 @@ public class Movie {
                 this.objectId,
                 this.metadata);
     }
+
+    /**
+     * Transición de dominio: aplica metadata externa y avanza el estado de enriquecimiento
+     * (RAW -> ENRICHED / PARTIAL).
+     */
+    public Movie applyEnrichment(MovieMetadata enrichedMetadata, EnrichmentStatus status) {
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                this.title,
+                this.status,
+                status,
+                this.objectId,
+                enrichedMetadata);
+    }
 }

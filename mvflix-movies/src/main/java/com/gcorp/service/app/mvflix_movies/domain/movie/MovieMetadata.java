@@ -16,4 +16,5 @@ public record MovieMetadata(
     String releaseDate,
     String country,
     String language,
-    List<String> awards) {}
+    List<String> awards,
+    Long tmdbId) {}
