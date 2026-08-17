@@ -28,7 +28,8 @@ public interface MovieApiMapper {
         @Mapping(target = "releaseDate", source = "metadata.releaseDate"),
         @Mapping(target = "country", source = "metadata.country"),
         @Mapping(target = "language", source = "metadata.language"),
-        @Mapping(target = "awards", source = "metadata.awards")
+        @Mapping(target = "awards", source = "metadata.awards"),
+        @Mapping(target = "tmdbId", source = "metadata.tmdbId")
     })
     MovieResponse toResponse(Movie movie);
 }

@@ -23,6 +23,13 @@ public interface MovieRepository {
     /** {@code true} si borró la fila del dueño. */
     Mono<Boolean> deleteById(MovieId id, String ownerUsername);
 
+    /** Aplica metadata enriquecida + estado de enriquecimiento (idempotente). */
+    Mono<Movie> updateEnrichment(MovieId id, String ownerUsername, MovieMetadata metadata,
+            EnrichmentStatus enrichmentStatus);
+
+    /** Catalogo pendiente de enriquecer (para el scheduler), limitado y estable. */
+    Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit);
+
     /**
      * Purga películas DRAFT creadas antes del corte (metadata huérfana cuyo flujo de subida
      * nunca se completó ni se canceló). Devuelve la cantidad de filas borradas.

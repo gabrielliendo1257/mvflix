@@ -6,6 +6,7 @@ import com.gcorp.service.app.mvflix_movies.application.movie.CreateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.DeleteMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.GetMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.ListMoviesUseCase;
+import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
@@ -36,6 +37,7 @@ public class MovieController {
     private final ListMoviesUseCase listMoviesUseCase;
     private final CompleteMovieUseCase completeMovieUseCase;
     private final DeleteMovieUseCase deleteMovieUseCase;
+    private final EnrichMovieUseCase enrichMovieUseCase;
     private final MovieApiMapper mapper;
 
     public MovieController(
@@ -44,12 +46,14 @@ public class MovieController {
             ListMoviesUseCase listMoviesUseCase,
             CompleteMovieUseCase completeMovieUseCase,
             DeleteMovieUseCase deleteMovieUseCase,
+            EnrichMovieUseCase enrichMovieUseCase,
             MovieApiMapper mapper) {
         this.createMovieUseCase = createMovieUseCase;
         this.getMovieUseCase = getMovieUseCase;
         this.listMoviesUseCase = listMoviesUseCase;
         this.completeMovieUseCase = completeMovieUseCase;
         this.deleteMovieUseCase = deleteMovieUseCase;
+        this.enrichMovieUseCase = enrichMovieUseCase;
         this.mapper = mapper;
     }
 
@@ -81,5 +85,11 @@ public class MovieController {
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> delete(@PathVariable Long id) {
         return this.deleteMovieUseCase.execute(MovieId.of(id)).thenReturn(ResponseEntity.noContent().build());
+    }
+
+    @PostMapping(value = "/{id}/enrich")
+    public Mono<MovieResponse> enrich(@PathVariable Long id) {
+        return this.enrichMovieUseCase.enrichCurrentUser(MovieId.of(id))
+                .map(this.mapper::toResponse);
     }
 }

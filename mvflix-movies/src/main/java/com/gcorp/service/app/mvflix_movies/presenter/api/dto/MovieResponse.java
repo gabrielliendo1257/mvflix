@@ -24,4 +24,5 @@ public record MovieResponse(
     @JsonProperty("release_date") String releaseDate,
     String country,
     String language,
-    List<String> awards) {}
+    List<String> awards,
+    @JsonProperty("tmdb_id") Long tmdbId) {}

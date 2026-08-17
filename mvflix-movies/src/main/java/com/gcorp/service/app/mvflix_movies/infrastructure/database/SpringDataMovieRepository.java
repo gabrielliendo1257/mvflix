@@ -1,7 +1,9 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
+import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 
 import org.springframework.r2dbc.core.DatabaseClient;
@@ -23,10 +25,13 @@ public class SpringDataMovieRepository implements MovieRepository {
 
     private final DatabaseClient databaseClient;
     private final MovieRowMapper rowMapper;
+    private final JsonCodec jsonCodec;
 
-    public SpringDataMovieRepository(DatabaseClient databaseClient, MovieRowMapper rowMapper) {
+    public SpringDataMovieRepository(
+            DatabaseClient databaseClient, MovieRowMapper rowMapper, JsonCodec jsonCodec) {
         this.databaseClient = databaseClient;
         this.rowMapper = rowMapper;
+        this.jsonCodec = jsonCodec;
     }
 
     @Override
@@ -134,6 +139,52 @@ public class SpringDataMovieRepository implements MovieRepository {
                 .fetch()
                 .rowsUpdated()
                 .map(Long::valueOf);
+    }
+
+    @Override
+    public Mono<Movie> updateEnrichment(MovieId id, String ownerUsername,
+            MovieMetadata metadata, EnrichmentStatus enrichmentStatus) {
+        return this.databaseClient
+                .sql(
+                        """
+                        UPDATE movies
+                        SET metadata = CAST(:metadata AS jsonb), enrichment_status = :enrichment_status,
+                            updated_at = NOW()
+                        WHERE id = :id AND owner_username = :owner_username
+                        RETURNING id, owner_username, title, status, enrichment_status,
+                                  metadata::text,
+                                  (SELECT mm.object_id FROM media mm
+                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id
+                        """)
+                .bind("metadata", this.jsonCodec.encode(metadata))
+                .bind("enrichment_status", enrichmentStatus.name())
+                .bind("id", id.value())
+                .bind("owner_username", ownerUsername)
+                .map(this::toRow)
+                .one()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    public Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit) {
+        return this.databaseClient
+                .sql(
+                        """
+                        SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
+                               m.metadata::text,
+                        """
+                        + MEDIA_OBJECT_ID
+                        + """
+                        FROM movies m
+                        WHERE m.enrichment_status = :enrichment_status
+                        ORDER BY m.id
+                        LIMIT :limit
+                        """)
+                .bind("enrichment_status", enrichmentStatus.name())
+                .bind("limit", limit)
+                .map(this::toRow)
+                .all()
+                .map(this.rowMapper::toDomain);
     }
 
     private MovieRow toRow(io.r2dbc.spi.Row row, io.r2dbc.spi.RowMetadata metadata) {
