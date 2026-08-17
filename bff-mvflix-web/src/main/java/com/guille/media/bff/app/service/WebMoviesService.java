@@ -139,10 +139,19 @@ public class WebMoviesService {
     log.info("complete: movie={} veredicto OK, persistiendo READY con object_key={}",
         movieId, status.storageKey());
     return this.moviesWebClient
-        .completeMovie(movieId, status.storageKey())
+        .completeMovie(movieId, this.toStorageId(status.uploadId()), status.storageKey())
         .doOnSuccess(movie -> log.info("complete: movie={} READY persistida", movieId))
         .onErrorResume(WebClientResponseException.class,
             ex -> this.onMoviesCompleteError(movieId, request, ex));
+  }
+
+  private Long toStorageId(String uploadId) {
+    try {
+      return uploadId == null ? null : Long.valueOf(uploadId);
+    } catch (NumberFormatException e) {
+      log.warn("complete: uploadId no numerico={}, object_id quedará null", uploadId);
+      return null;
+    }
   }
 
   private Mono<MovieDto> onMoviesCompleteError(Long movieId, CompleteMovieRequest request,

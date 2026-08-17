@@ -52,12 +52,12 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
-  public Mono<MovieDto> completeMovie(Long movieId, String objectKey) {
+  public Mono<MovieDto> completeMovie(Long movieId, Long objectId, String objectKey) {
     return this.moviesWebClient
         .post()
         .uri(API + "/" + movieId + "/complete")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(new MoviesCompletePayload(objectKey))
+        .bodyValue(new MoviesCompletePayload(objectId, objectKey))
         .retrieve()
         .bodyToMono(MovieDto.class);
   }

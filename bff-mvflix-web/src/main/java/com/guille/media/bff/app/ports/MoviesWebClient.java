@@ -15,8 +15,8 @@ public interface MoviesWebClient {
 
   Mono<MovieDto> createMovie(CreateMovieRequest request);
 
-  /** Transición DRAFT -> READY con el object_key final (la llama el orquestador del BFF). */
-  Mono<MovieDto> completeMovie(Long movieId, String objectKey);
+  /** Transición DRAFT -> READY con el object_id (visible al front) y object_key (solo servidores). */
+  Mono<MovieDto> completeMovie(Long movieId, Long objectId, String objectKey);
 
   /** Rollback: elimina la película del dueño. */
   Mono<Void> deleteMovie(Long movieId);
