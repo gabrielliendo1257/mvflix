@@ -15,6 +15,18 @@ import java.time.Instant;
 @Repository
 public class SpringDataMovieRepository implements MovieRepository {
 
+    private static final String MEDIA_OBJECT_ID =
+            """
+            (SELECT mm.object_id FROM media mm
+             WHERE mm.movie_id = m.id ORDER BY mm.id LIMIT 1) AS object_id
+            """;
+
+    private static final String MEDIA_OBJECT_KEY =
+            """
+            (SELECT mm.object_key FROM media mm
+             WHERE mm.movie_id = m.id ORDER BY mm.id LIMIT 1) AS object_key
+            """;
+
     private final DatabaseClient databaseClient;
     private final MovieRowMapper rowMapper;
 
@@ -26,30 +38,18 @@ public class SpringDataMovieRepository implements MovieRepository {
     @Override
     public Mono<Movie> save(Movie movie) {
         MovieRow row = this.rowMapper.toRow(movie);
-        DatabaseClient.GenericExecuteSpec spec =
-                this.databaseClient
+        return this.databaseClient
                         .sql(
                                 """
-                                INSERT INTO movies (owner_username, title, status, enrichment_status, object_id, object_key, metadata)
-                                VALUES (:owner_username, :title, :status, :enrichment_status, :object_id, :object_key, CAST(:metadata AS jsonb))
-                                RETURNING id, owner_username, title, status, enrichment_status, object_id, object_key, metadata::text
+                                INSERT INTO movies (owner_username, title, status, enrichment_status, metadata)
+                                VALUES (:owner_username, :title, :status, :enrichment_status, CAST(:metadata AS jsonb))
+                                RETURNING id, owner_username, title, status, enrichment_status, metadata::text
                                 """)
                         .bind("owner_username", row.ownerUsername())
                         .bind("title", row.title())
                         .bind("status", row.status())
                         .bind("enrichment_status", row.enrichmentStatus())
-                        .bind("metadata", row.metadata());
-        if (row.objectId() != null) {
-            spec = spec.bind("object_id", row.objectId());
-        } else {
-            spec = spec.bindNull("object_id", Long.class);
-        }
-        if (row.objectKey() != null) {
-            spec = spec.bind("object_key", row.objectKey());
-        } else {
-            spec = spec.bindNull("object_key", String.class);
-        }
-        return spec
+                        .bind("metadata", row.metadata())
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -60,9 +60,15 @@ public class SpringDataMovieRepository implements MovieRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, owner_username, title, status, enrichment_status, object_id, object_key, metadata::text
-                        FROM movies
-                        WHERE id = :id
+                        SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
+                               m.metadata::text,
+                        """
+                        + MEDIA_OBJECT_ID
+                        + ",\n"
+                        + MEDIA_OBJECT_KEY
+                        + """
+                        FROM movies m
+                        WHERE m.id = :id
                         """)
                 .bind("id", id.value())
                 .map(this::toRow)
@@ -75,10 +81,16 @@ public class SpringDataMovieRepository implements MovieRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, owner_username, title, status, enrichment_status, object_id, object_key, metadata::text
-                        FROM movies
-                        WHERE owner_username = :owner_username
-                        ORDER BY id DESC
+                        SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
+                               m.metadata::text,
+                        """
+                        + MEDIA_OBJECT_ID
+                        + ",\n"
+                        + MEDIA_OBJECT_KEY
+                        + """
+                        FROM movies m
+                        WHERE m.owner_username = :owner_username
+                        ORDER BY m.id DESC
                         LIMIT :limit
                         """)
                 .bind("owner_username", ownerUsername)
@@ -89,19 +101,17 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> completeIfDraft(MovieId id, String ownerUsername, Long objectId, String objectKey) {
+    public Mono<Movie> completeIfDraft(MovieId id, String ownerUsername) {
         return this.databaseClient
                 .sql(
                         """
                         UPDATE movies
-                        SET status = 'READY', object_id = :object_id, object_key = :object_key, updated_at = NOW()
+                        SET status = 'READY', updated_at = NOW()
                         WHERE id = :id AND owner_username = :owner_username AND status = 'DRAFT'
-                        RETURNING id, owner_username, title, status, enrichment_status, object_id, object_key, metadata::text
+                        RETURNING id, owner_username, title, status, enrichment_status, metadata::text
                         """)
                 .bind("id", id.value())
                 .bind("owner_username", ownerUsername)
-                .bind("object_id", objectId)
-                .bind("object_key", objectKey)
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -136,15 +146,15 @@ public class SpringDataMovieRepository implements MovieRepository {
                 .map(Long::valueOf);
     }
 
-    private MovieRow toRow(io.r2dbc.spi.Row row, io.r2dbc.spi.RowMetadata ignored) {
+    private MovieRow toRow(io.r2dbc.spi.Row row, io.r2dbc.spi.RowMetadata metadata) {
         return new MovieRow(
             row.get("id", Long.class),
             row.get("owner_username", String.class),
             row.get("title", String.class),
             row.get("status", String.class),
             row.get("enrichment_status", String.class),
-            row.get("object_id", Long.class),
-            row.get("object_key", String.class),
+            metadata.contains("object_id") ? row.get("object_id", Long.class) : null,
+            metadata.contains("object_key") ? row.get("object_key", String.class) : null,
             row.get("metadata", String.class));
     }
 }

@@ -1,6 +1,8 @@
 package com.gcorp.service.app.mvflix_movies.application.movie;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
+import com.gcorp.service.app.mvflix_movies.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieConflictException;
@@ -21,13 +23,17 @@ import reactor.core.publisher.Mono;
 public class CompleteMovieUseCase {
 
     private final MovieRepository movieRepository;
+    private final MediaRepository mediaRepository;
     private final UserProvider userProvider;
 
     public Mono<Movie> execute(MovieId id, Long objectId, String objectKey) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
-                        .completeIfDraft(id, user.subject(), objectId, objectKey)
+                        .completeIfDraft(id, user.subject())
+                        .flatMap(movie -> this.mediaRepository
+                                .save(Media.create(movie.getId(), objectId, objectKey))
+                                .thenReturn(movie.complete(objectId, objectKey)))
                         .doOnNext(movie -> log.info(
                                 "Pelicula completada: id={} owner={} object_id={} object_key={}",
                                 id.value(), user.subject(), objectId, objectKey))
@@ -48,18 +54,35 @@ public class CompleteMovieUseCase {
                         return Mono.error(
                                 new MovieNotFoundException("Movie not found: " + id.value()));
                     }
-                    if (movie.getStatus() == MovieStatus.READY
-                            && objectKey.equals(movie.getObjectKey())) {
-                        log.info("Pelicula {} ya READY con el mismo object_key: no-op", id.value());
-                        return Mono.just(movie);
+                    if (movie.getStatus() != MovieStatus.READY) {
+                        log.warn(
+                                "Pelicula {} no completable: status={}",
+                                id.value(), movie.getStatus());
+                        return Mono.error(new MovieConflictException(
+                                "Movie is not in DRAFT state: " + id.value()));
                     }
-                    log.warn(
-                            "Pelicula {} no completable: status={} object_key_actual={} pedido={}",
-                            id.value(), movie.getStatus(), movie.getObjectKey(), objectKey);
-                    return Mono.error(new MovieConflictException(
-                            "Movie is not in DRAFT state: " + id.value()));
+                    return this.mediaRepository
+                            .findByMovieId(id)
+                            .defaultIfEmpty(null)
+                            .flatMap(media -> {
+                                if (media != null && objectKey.equals(media.getObjectKey())) {
+                                    log.info(
+                                            "Pelicula {} ya READY con el mismo object_key: no-op",
+                                            id.value());
+                                    return Mono.just(
+                                            movie.complete(
+                                                    media.getObjectId(), media.getObjectKey()));
+                                }
+                                log.warn(
+                                        "Pelicula {} no completable: object_key_actual={} pedido={}",
+                                        id.value(),
+                                        media == null ? null : media.getObjectKey(),
+                                        objectKey);
+                                return Mono.error(new MovieConflictException(
+                                        "Movie is not in DRAFT state: " + id.value()));
+                            });
                 })
                 .switchIfEmpty(
-                        Mono.error(new MovieNotFoundException("Movie not found: " + id)));
+                        Mono.error(new MovieNotFoundException("Movie not found: " + id.value())));
     }
 }

@@ -16,8 +16,9 @@ public interface MovieRepository {
     /**
      * Compare-and-set: pasa a READY solo si la película sigue en DRAFT y pertenece al dueño.
      * Vacío si no hubo fila (no existe, otro dueño o ya no está en DRAFT).
+     * El media (object_id/object_key) lo persiste {@code MediaRepository} en el use-case.
      */
-    Mono<Movie> completeIfDraft(MovieId id, String ownerUsername, Long objectId, String objectKey);
+    Mono<Movie> completeIfDraft(MovieId id, String ownerUsername);
 
     /** {@code true} si borró la fila del dueño. */
     Mono<Boolean> deleteById(MovieId id, String ownerUsername);
