@@ -40,7 +40,7 @@ class WebMoviesServiceTest {
   private static MovieDto movie(Long id, Long objectId) {
     return new MovieDto(id, "READY", objectId, "The Colossus of Rhodes", null, 1961,
         List.of("Adventure"), 3.2, "2h 7m", "Sergio Leone", List.of("Rory Calhoun"),
-        "Overview...", null, "1961-06-15", "Italy", "Italian", null);
+        "Overview...", null, "1961-06-15", "Italy", "Italian", null, "ENRICHED");
   }
 
   @Test
