@@ -111,7 +111,7 @@ public class MovieController {
     }
 
     @GetMapping("/enrich/preview")
-    public Mono<EnrichmentPreviewResponse> preview(@RequestParam Long tmdbId) {
+    public Mono<EnrichmentPreviewResponse> preview(@RequestParam("tmdb_id") Long tmdbId) {
         return this.enrichMovieUseCase.preview(tmdbId).map(this.mapper::toPreviewResponse);
     }
 }
