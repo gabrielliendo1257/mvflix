@@ -9,12 +9,20 @@
 # exportado para que el enriquecimiento funcione.
 set -euo pipefail
 
+# Credenciales privadas de dev (TMDB, etc.). spring-dotenv tambien las carga
+# dentro de cada app, pero las dejamos en el entorno por si algo se lanza
+# fuera de Spring (scripts, curl, etc.).
+set -a
+# shellcheck disable=SC1091
+source "$(dirname "$0")/../envs/.env"
+set +a
+
 AUTH_PORT=9090
 USERS_PORT=8080
 STORAGE_PORT=6060
 MOVIES_PORT=4040
 BFF_PORT=9091
-LOG_DIR=/tmp/opencode
+LOG_DIR=/tmp/mvflix-dev
 
 declare -A SERVICES=(
   [mvflix-authorization]=$AUTH_PORT
