@@ -43,6 +43,9 @@ storage:
   session:
     time-to-live: 60m
     expiration-check-ms: 60000
+  # Bibliotecas del operador (media server). LOCAL -> directorio del filesystem.
+  library-roots:
+    - /tmp/mvflix-media
 
 logging:
   level:
