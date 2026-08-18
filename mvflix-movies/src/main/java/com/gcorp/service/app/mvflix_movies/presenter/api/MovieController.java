@@ -12,6 +12,7 @@ import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieReques
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieSearchResponse;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichmentPreviewResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
 
 import org.springframework.http.MediaType;
@@ -107,5 +108,10 @@ public class MovieController {
         return this.enrichMovieUseCase
                 .search(query, year)
                 .map(results -> results.stream().map(this.mapper::toSearchResponse).toList());
+    }
+
+    @GetMapping("/enrich/preview")
+    public Mono<EnrichmentPreviewResponse> preview(@RequestParam Long tmdbId) {
+        return this.enrichMovieUseCase.preview(tmdbId).map(this.mapper::toPreviewResponse);
     }
 }

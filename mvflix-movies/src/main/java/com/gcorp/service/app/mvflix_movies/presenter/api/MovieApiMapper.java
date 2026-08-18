@@ -5,6 +5,7 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieSearchResponse;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichmentPreviewResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -16,6 +17,24 @@ public interface MovieApiMapper {
     MovieMetadata toMetadata(CreateMovieRequest request);
 
     EnrichMovieSearchResponse toSearchResponse(ExternalMovieSearch search);
+
+    @Mappings({
+        @Mapping(target = "title", source = "title"),
+        @Mapping(target = "originalTitle", source = "originalTitle"),
+        @Mapping(target = "year", source = "year"),
+        @Mapping(target = "genres", source = "genres"),
+        @Mapping(target = "popularity", source = "popularity"),
+        @Mapping(target = "duration", source = "duration"),
+        @Mapping(target = "director", source = "director"),
+        @Mapping(target = "cast", source = "cast"),
+        @Mapping(target = "overview", source = "overview"),
+        @Mapping(target = "posterPath", source = "posterPath"),
+        @Mapping(target = "releaseDate", source = "releaseDate"),
+        @Mapping(target = "country", source = "country"),
+        @Mapping(target = "language", source = "language"),
+        @Mapping(target = "tmdbId", source = "tmdbId")
+    })
+    EnrichmentPreviewResponse toPreviewResponse(MovieMetadata metadata);
 
     @Mappings({
         @Mapping(target = "id", expression = "java(movie.getId().value())"),

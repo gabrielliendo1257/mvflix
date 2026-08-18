@@ -55,6 +55,33 @@ public class EnrichMovieUseCase {
     }
 
     /**
+     * Preview de un candidato: la metadata que la fuente externa tiene para un
+     * tmdb_id, sin persistir nada. Sirve para que el usuario confirme antes del enrich.
+     */
+    public Mono<MovieMetadata> preview(long tmdbId) {
+        return this.metadataSource
+                .findById(tmdbId)
+                .map(detail -> new MovieMetadata(
+                        detail.title(),
+                        detail.originalTitle(),
+                        detail.year(),
+                        detail.genres(),
+                        detail.popularity() > 0 ? detail.popularity() : null,
+                        detail.runtimeMinutes() > 0
+                                ? formatDuration(detail.runtimeMinutes())
+                                : null,
+                        detail.director(),
+                        detail.cast(),
+                        detail.overview(),
+                        detail.posterPath(),
+                        detail.releaseDate(),
+                        detail.country(),
+                        detail.language(),
+                        null,
+                        detail.tmdbId()));
+    }
+
+    /**
      * Núcleo del enriquecimiento (sin seguridad, reutilizable por el scheduler):
      * idempotente (si ya ENRICHED no toca nada), matchea por tmdbId explícito,
      * por tmdbId persistido o por titulo+año; sin match deja la pelicula en RAW.
