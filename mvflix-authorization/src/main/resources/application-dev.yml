@@ -39,6 +39,8 @@ authorization:
     #   uri: "lb://authorization-service/oauth2/jwks"
     api:
       path-base: /api/v1/authorization
+  dev-token:
+    enabled: true
 
 server:
   address: 0.0.0.0

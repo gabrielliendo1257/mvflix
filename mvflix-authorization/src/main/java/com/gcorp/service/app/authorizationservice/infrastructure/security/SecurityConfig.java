@@ -46,6 +46,10 @@ import lombok.extern.slf4j.Slf4j;
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    /** Dev-token habilitado solo en dev (ver application-dev.yml). */
+    @Value("${authorization.dev-token.enabled:false}")
+    private boolean devTokenEnabled;
+
     // @Value("${authorization.env.jwk.uri}")
     // private String jwkUrl;
 
@@ -68,14 +72,17 @@ public class SecurityConfig {
             //         jwtConfig.jwkSetUri(this.jwkUrl)
             //     )
             // )
-            .authorizeHttpRequests(authorize ->
+            .authorizeHttpRequests(authorize -> {
                 authorize
                     .requestMatchers("/login", "/error", "/css/**", "/js/**", "/images/**")
-                    .permitAll()
-                    .requestMatchers("/oauth2/dev-token")
-                    .permitAll()
-                    .anyRequest().authenticated()
-            )
+                    .permitAll();
+                if (this.devTokenEnabled) {
+                    // Solo dev (authorization.dev-token.enabled=true): el controller ni
+                    // siquiera existe fuera de dev, asi que no hay emision en prod.
+                    authorize.requestMatchers("/oauth2/dev-token").permitAll();
+                }
+                authorize.anyRequest().authenticated();
+            })
             .formLogin(form -> form.loginPage("/login"));
 
         return http.build();
