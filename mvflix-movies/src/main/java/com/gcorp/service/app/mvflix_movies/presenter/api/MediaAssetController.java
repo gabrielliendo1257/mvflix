@@ -1,0 +1,74 @@
+package com.gcorp.service.app.mvflix_movies.presenter.api;
+
+import com.gcorp.service.app.mvflix_movies.application.scan.IdentifyAssetUseCase;
+import com.gcorp.service.app.mvflix_movies.application.scan.ScanLibraryUseCase;
+import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
+import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetStatus;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.IdentifyAssetRequest;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MediaAssetResponse;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.ScanLibraryRequest;
+
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+@RestController
+@RequestMapping(
+    path = "/api/v1/movies",
+    produces = MediaType.APPLICATION_JSON_VALUE)
+public class MediaAssetController {
+
+    private final ScanLibraryUseCase scanLibraryUseCase;
+    private final IdentifyAssetUseCase identifyAssetUseCase;
+    private final MediaAssetRepository assetRepository;
+    private final MediaAssetApiMapper mapper;
+
+    public MediaAssetController(
+            ScanLibraryUseCase scanLibraryUseCase,
+            IdentifyAssetUseCase identifyAssetUseCase,
+            MediaAssetRepository assetRepository,
+            MediaAssetApiMapper mapper) {
+        this.scanLibraryUseCase = scanLibraryUseCase;
+        this.identifyAssetUseCase = identifyAssetUseCase;
+        this.assetRepository = assetRepository;
+        this.mapper = mapper;
+    }
+
+    /** El BFF entrega aqui los archivos que el storage descubrio en la biblioteca. */
+    @PostMapping(value = "/libraries/{storageId}/scan", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Flux<MediaAssetResponse> scan(
+            @PathVariable Long storageId, @RequestBody ScanLibraryRequest request) {
+        return this.scanLibraryUseCase
+                .execute(storageId, this.mapper.toScannedFiles(request))
+                .map(this.mapper::toResponse);
+    }
+
+    @GetMapping("/libraries/{storageId}/assets")
+    public Flux<MediaAssetResponse> assets(
+            @PathVariable Long storageId,
+            @RequestParam(required = false) String status) {
+        Flux<MediaAsset> assets = status == null || status.isBlank()
+                ? this.assetRepository.findAllByStorageId(storageId)
+                : this.assetRepository.findAllByStorageIdAndStatus(
+                        storageId, MediaAssetStatus.valueOf(status));
+        return assets.map(this.mapper::toResponse);
+    }
+
+    @PostMapping(value = "/media-assets/{id}/identify", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<MediaAssetResponse> identify(
+            @PathVariable Long id, @RequestBody IdentifyAssetRequest request) {
+        return this.identifyAssetUseCase
+                .execute(MediaAssetId.of(id), request.title())
+                .map(this.mapper::toResponse);
+    }
+}
