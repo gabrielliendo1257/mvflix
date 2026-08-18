@@ -450,7 +450,35 @@ public class UploadServiceImpl implements UploadService {
                     ? this.storageRepository
                         .updateStatus(object, StorageSessionStatus.PENDING)
                         .map(saved -> new Completion(saved, true, false))
+                        .onErrorResume(
+                            IllegalStateTransitionException.class,
+                            race -> this.raceLostToAnotherCompletion(object))
                     : Mono.just(new Completion(object, false, false)));
+  }
+
+  /**
+   * La transición perdió la carrera contra el otro camino de completado (webhook de MinIO o
+   * confirmación del cliente). Si el objeto ya quedó COMPLETED, es el mismo resultado esperado
+   * (idempotente); si quedó en otro estado (p.ej. FAILED por cancelación), se propaga el error.
+   */
+  private Mono<Completion> raceLostToAnotherCompletion(StoreObject object) {
+    return this.storageRepository
+        .findById(object.getStorageId())
+        .flatMap(
+            current -> {
+              if (current.getStorageObjectStatus() == StorageSessionStatus.COMPLETED) {
+                log.info(
+                    "Upload already completed by another path (webhook/cliente), "
+                        + "treating as success: uploadId={}",
+                    current.getStorageId());
+                return Mono.just(new Completion(current, false, false));
+              }
+              return Mono.error(
+                  new IllegalStateTransitionException(
+                      "Cannot transition object " + current.getStorageId()
+                          + ": expected status PENDING in database, concurrent modification"
+                          + " detected"));
+            });
   }
 
   private <T> Mono<T> releaseAndFail(

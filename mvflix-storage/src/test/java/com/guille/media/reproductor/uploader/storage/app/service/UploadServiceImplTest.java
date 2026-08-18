@@ -19,6 +19,7 @@ import com.guille.media.reproductor.uploader.storage.domain.events.UploadFailedE
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGenerator;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
@@ -178,6 +179,30 @@ class UploadServiceImplTest {
 
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
     verify(this.eventPublisher).publish(any(UploadCompletedEvent.class));
+  }
+
+  @Test
+  void completeUploadTreatsRaceAgainstWebhookAsSuccess() {
+    StoreObject pending = this.pendingObject(7L);
+    StoreObject completed = this.completedObject(7L);
+
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe"))
+        .thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.objectExists(any(StorageLocation.class)))
+        .thenReturn(Mono.just(true));
+    when(this.objectStoragePort.getMetadata(any(StorageLocation.class)))
+        .thenReturn(Mono.just(new StorageMetadata("video/mp4", 1024, null, Instant.now())));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
+        .thenReturn(Mono.error(new IllegalStateTransitionException("race")));
+    when(this.storageRepository.findById(7L))
+        .thenReturn(Mono.just(pending), Mono.just(completed));
+
+    StepVerifier.create(this.service.completeUpload(7L))
+        .expectNext(UploadCompletionResult.completed())
+        .verifyComplete();
+
+    verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
   }
 
   @Test
