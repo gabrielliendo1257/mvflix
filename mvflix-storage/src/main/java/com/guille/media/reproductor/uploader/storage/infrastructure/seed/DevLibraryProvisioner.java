@@ -6,9 +6,9 @@ import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRe
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
@@ -25,22 +25,33 @@ import java.util.List;
 @Slf4j
 @Component
 @Profile("dev")
+@ConfigurationProperties(prefix = "storage")
 public class DevLibraryProvisioner implements ApplicationRunner {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(30);
 
     private final MediaLibraryRepository libraryRepository;
-    private final List<String> libraryRoots;
 
-    public DevLibraryProvisioner(
-            MediaLibraryRepository libraryRepository,
-            @Value("${storage.library-roots:}") List<String> libraryRoots) {
+    private List<String> libraryRoots = List.of();
+
+    public DevLibraryProvisioner(MediaLibraryRepository libraryRepository) {
         this.libraryRepository = libraryRepository;
+    }
+
+    public List<String> getLibraryRoots() {
+        return this.libraryRoots;
+    }
+
+    public void setLibraryRoots(List<String> libraryRoots) {
         this.libraryRoots = libraryRoots == null ? List.of() : libraryRoots;
     }
 
     @Override
     public void run(ApplicationArguments args) {
+        if (this.libraryRoots.isEmpty()) {
+            log.warn("Dev library: storage.library-roots vacio, no se provisionan bibliotecas");
+            return;
+        }
         for (String root : this.libraryRoots) {
             try {
                 Path dir = Path.of(root);

@@ -40,27 +40,36 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                     .bind("size", asset.getSize())
                     .bind("mime_type", asset.getMimeType())
                     .bind("status", asset.getStatus().name())
-                    .bind("movie_id", asset.getMovieId() == null ? null : asset.getMovieId().value())
+                    .bindNull("movie_id", Long.class)
                     .map((row, metadata) -> this.toDomain(row))
                     .one();
         }
-        return this.databaseClient
-                .sql(
-                        """
-                        UPDATE media_assets
-                        SET size = :size, mime_type = :mime_type, status = :status,
-                            movie_id = :movie_id, updated_at = NOW()
-                        WHERE id = :id
-                        RETURNING id, storage_id, relative_path, size, mime_type, status,
-                                  movie_id, created_at, updated_at
-                        """)
-                .bind("size", asset.getSize())
-                .bind("mime_type", asset.getMimeType())
-                .bind("status", asset.getStatus().name())
-                .bind("movie_id", asset.getMovieId() == null ? null : asset.getMovieId().value())
-                .bind("id", asset.getId().value())
+        var spec =
+                this.databaseClient
+                        .sql(
+                                """
+                                UPDATE media_assets
+                                SET size = :size, mime_type = :mime_type, status = :status,
+                                    movie_id = :movie_id, updated_at = NOW()
+                                WHERE id = :id
+                                RETURNING id, storage_id, relative_path, size, mime_type, status,
+                                          movie_id, created_at, updated_at
+                                """)
+                        .bind("size", asset.getSize())
+                        .bind("mime_type", asset.getMimeType())
+                        .bind("status", asset.getStatus().name())
+                        .bind("id", asset.getId().value());
+        return bindMovieId(spec, asset.getMovieId())
                 .map((row, metadata) -> this.toDomain(row))
                 .one();
+    }
+
+    private static org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec bindMovieId(
+            org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec spec, MovieId movieId) {
+        if (movieId == null) {
+            return spec.bindNull("movie_id", Long.class);
+        }
+        return spec.bind("movie_id", movieId.value());
     }
 
     @Override
