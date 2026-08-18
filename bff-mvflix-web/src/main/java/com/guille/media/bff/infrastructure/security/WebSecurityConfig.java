@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -24,6 +26,7 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.ServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
 import org.springframework.web.server.ServerWebExchange;
@@ -51,7 +54,42 @@ public class WebSecurityConfig {
   @Value("${frontend.url}")
   private String frontendUrl;
 
+  /**
+   * Dev-token (Bearer) para Postman/curl en dev. En WebFlux no se pueden combinar
+   * oauth2Login + oauth2ResourceServer en la misma cadena (el filtro Bearer nunca
+   * llega a correr), asi que van en cadenas separadas: esta matchea cualquier
+   * request con header Authorization y valida el JWT contra el auth-service.
+   */
   @Bean
+  @Order(1)
+  @Profile("dev")
+  SecurityWebFilterChain bearerDevSecurityWebFilterChain(ServerHttpSecurity http) {
+    return http.securityMatcher(this::hasAuthorizationHeader)
+        .csrf(ServerHttpSecurity.CsrfSpec::disable)
+        .cors(Customizer.withDefaults())
+        .authorizeExchange(
+            exchanges ->
+                exchanges
+                    .pathMatchers("/web/session", "/login/**", "/oauth2/**", "/error")
+                    .permitAll()
+                    .pathMatchers(HttpMethod.OPTIONS, "/web/uploads")
+                    .authenticated()
+                    .pathMatchers("/web/**")
+                    .authenticated()
+                    .anyExchange()
+                    .denyAll())
+        .oauth2ResourceServer(
+            oauth2ResourceServer ->
+                oauth2ResourceServer.jwt(
+                    jwtSpec ->
+                        jwtSpec
+                            .jwkSetUri(this.resolveJwkSetUri())
+                            .jwtAuthenticationConverter(this.jwtAuthenticationConverter())))
+        .build();
+  }
+
+  @Bean
+  @Order(2)
   SecurityWebFilterChain securityWebFilterChain(
       ServerHttpSecurity http, ReactiveClientRegistrationRepository clientRegistrations) {
     return http.csrf(ServerHttpSecurity.CsrfSpec::disable)
@@ -68,18 +106,19 @@ public class WebSecurityConfig {
                     .anyExchange()
                     .denyAll())
         // .exceptionHandling(handling -> handling.authenticationEntryPoint(delegatingEntryPoint()))
-        .oauth2ResourceServer(
-            oauth2ResourceServer ->
-                oauth2ResourceServer.jwt(
-                    jwtSpec ->
-                        jwtSpec
-                            .jwkSetUri(this.resolveJwkSetUri())
-                            .jwtAuthenticationConverter(this.jwtAuthenticationConverter())))
         .oauth2Login(
             oauth2 ->
                 oauth2.authenticationSuccessHandler(
                     new RedirectServerAuthenticationSuccessHandler(this.frontendUrl + "/home")))
         .build();
+  }
+
+  private Mono<ServerWebExchangeMatcher.MatchResult> hasAuthorizationHeader(
+      ServerWebExchange exchange) {
+    boolean present = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION) != null;
+    return present
+        ? ServerWebExchangeMatcher.MatchResult.match()
+        : ServerWebExchangeMatcher.MatchResult.notMatch();
   }
 
   /** Navegador (acepta HTML) -> redirect al authorize del IdP; resto -> 401 JSON. */
