@@ -72,6 +72,8 @@ public class SecurityConfig {
                 authorize
                     .requestMatchers("/login", "/error", "/css/**", "/js/**", "/images/**")
                     .permitAll()
+                    .requestMatchers("/oauth2/dev-token")
+                    .permitAll()
                     .anyRequest().authenticated()
             )
             .formLogin(form -> form.loginPage("/login"));
