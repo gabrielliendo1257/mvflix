@@ -1,8 +1,9 @@
 package com.guille.media.bff.app.ports;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
-import com.guille.media.bff.app.dto.EnrichMovieSearchDto;
 import com.guille.media.bff.app.dto.MovieDto;
+import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
+import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -23,7 +24,10 @@ public interface MoviesWebClient {
   Mono<Void> deleteMovie(Long movieId);
 
   /** Candidatos de la fuente externa para el autocompletado interactivo. */
-  Flux<EnrichMovieSearchDto> searchCandidates(String query, Integer year);
+  Flux<MovieEnrichmentSearchDto> searchCandidates(String query, Integer year);
+
+  /** Metadata de un candidato sin persistir, para que el usuario confirme. */
+  Mono<MovieEnrichmentPreviewDto> previewCandidate(Long tmdbId);
 
   /** Autocompletado con el candidato elegido por el usuario. */
   Mono<MovieDto> enrichMovie(Long movieId, Long tmdbId);

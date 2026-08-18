@@ -1,9 +1,10 @@
 package com.guille.media.bff.infrastructure.http;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
-import com.guille.media.bff.app.dto.EnrichMovieRequest;
-import com.guille.media.bff.app.dto.EnrichMovieSearchDto;
 import com.guille.media.bff.app.dto.MovieDto;
+import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
+import com.guille.media.bff.app.dto.MovieEnrichmentRequest;
+import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 import com.guille.media.bff.app.dto.MoviesCompletePayload;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 
@@ -75,7 +76,7 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
-  public Flux<EnrichMovieSearchDto> searchCandidates(String query, Integer year) {
+  public Flux<MovieEnrichmentSearchDto> searchCandidates(String query, Integer year) {
     return this.moviesWebClient
         .get()
         .uri(uriBuilder -> uriBuilder
@@ -84,7 +85,19 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
             .queryParamIfPresent("year", java.util.Optional.ofNullable(year))
             .build())
         .retrieve()
-        .bodyToFlux(EnrichMovieSearchDto.class);
+        .bodyToFlux(MovieEnrichmentSearchDto.class);
+  }
+
+  @Override
+  public Mono<MovieEnrichmentPreviewDto> previewCandidate(Long tmdbId) {
+    return this.moviesWebClient
+        .get()
+        .uri(uriBuilder -> uriBuilder
+            .path(API + "/enrich/preview")
+            .queryParam("tmdb_id", tmdbId)
+            .build())
+        .retrieve()
+        .bodyToMono(MovieEnrichmentPreviewDto.class);
   }
 
   @Override
@@ -93,7 +106,7 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .post()
         .uri(API + "/" + movieId + "/enrich")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(new EnrichMovieRequest(tmdbId))
+        .bodyValue(new MovieEnrichmentRequest(tmdbId))
         .retrieve()
         .bodyToMono(MovieDto.class);
   }

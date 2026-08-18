@@ -92,4 +92,23 @@ class WebMoviesServiceTest {
         })
         .verifyComplete();
   }
+
+  @Test
+  void previewReturnsCandidateMetadataWithoutPersisting() {
+    when(moviesWebClient.previewCandidate(43020L))
+        .thenReturn(Mono.just(new com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto(
+            "The Colossus of Rhodes", "Il colosso di Rodi", 1961,
+            List.of("Adventure"), 3.2, "2h 7m", "Sergio Leone", List.of("Rory Calhoun"),
+            "Overview...", null, "1961-06-15", "Italy", "Italian", 43020L)));
+
+    StepVerifier.create(service.preview(43020L))
+        .assertNext(preview -> {
+          assertThat(preview.title()).isEqualTo("The Colossus of Rhodes");
+          assertThat(preview.tmdbId()).isEqualTo(43020L);
+          assertThat(preview.director()).isEqualTo("Sergio Leone");
+        })
+        .verifyComplete();
+
+    verify(moviesWebClient).previewCandidate(43020L);
+  }
 }

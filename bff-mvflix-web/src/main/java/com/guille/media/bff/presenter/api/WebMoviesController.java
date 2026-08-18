@@ -2,10 +2,12 @@ package com.guille.media.bff.presenter.api;
 
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
-import com.guille.media.bff.app.dto.EnrichMovieRequest;
-import com.guille.media.bff.app.dto.EnrichMovieSearchDto;
 import com.guille.media.bff.app.dto.MovieDetailDto;
 import com.guille.media.bff.app.dto.MovieDto;
+import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
+import com.guille.media.bff.app.dto.MovieEnrichmentRequest;
+import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
+import com.guille.media.bff.app.dto.MovieListItemDto;
 import com.guille.media.bff.app.service.WebMoviesService;
 
 import org.springframework.http.MediaType;
@@ -34,7 +36,7 @@ public class WebMoviesController {
   }
 
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-  public Flux<MovieDto> list(@RequestParam(defaultValue = "50") int limit) {
+  public Flux<MovieListItemDto> list(@RequestParam(defaultValue = "50") int limit) {
     return this.webMoviesService.list(limit);
   }
 
@@ -43,18 +45,23 @@ public class WebMoviesController {
     return this.webMoviesService.detail(movieId).map(ResponseEntity::ok);
   }
 
-  @GetMapping(value = "/enrich/search", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<List<EnrichMovieSearchDto>> search(
+  @GetMapping(value = "/enrichment/search", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<List<MovieEnrichmentSearchDto>> search(
       @RequestParam String query, @RequestParam(required = false) Integer year) {
     return this.webMoviesService.search(query, year);
   }
 
+  @GetMapping(value = "/enrichment/preview", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<MovieEnrichmentPreviewDto>> preview(@RequestParam Long tmdbId) {
+    return this.webMoviesService.preview(tmdbId).map(ResponseEntity::ok);
+  }
+
   @PostMapping(
-      value = "/{movieId}/enrich",
+      value = "/{movieId}/enrichment",
       produces = MediaType.APPLICATION_JSON_VALUE,
       consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<MovieDto>> enrich(
-      @PathVariable Long movieId, @RequestBody EnrichMovieRequest request) {
+      @PathVariable Long movieId, @RequestBody MovieEnrichmentRequest request) {
     return this.webMoviesService.enrich(movieId, request.tmdbId()).map(ResponseEntity::ok);
   }
 

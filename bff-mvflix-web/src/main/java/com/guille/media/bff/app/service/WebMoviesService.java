@@ -2,10 +2,12 @@ package com.guille.media.bff.app.service;
 
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
-import com.guille.media.bff.app.dto.EnrichMovieSearchDto;
 import com.guille.media.bff.app.dto.MovieDetailDto;
 import com.guille.media.bff.app.dto.MovieDetailDto.PlaybackDto;
 import com.guille.media.bff.app.dto.MovieDto;
+import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
+import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
+import com.guille.media.bff.app.dto.MovieListItemDto;
 import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
@@ -43,8 +45,11 @@ public class WebMoviesService {
   private final StorageWebClient storageWebClient;
   private final UsersWebPort usersWebPort;
 
-  public Flux<MovieDto> list(int limit) {
-    return this.moviesWebClient.listMovies(limit);
+  public Flux<MovieListItemDto> list(int limit) {
+    return this.moviesWebClient
+        .listMovies(limit)
+        .map(movie -> new MovieListItemDto(
+            movie.id(), movie.status(), movie.title(), movie.year(), movie.posterPath()));
   }
 
   /**
@@ -72,8 +77,13 @@ public class WebMoviesService {
         .onErrorResume(error -> Mono.just(new PlaybackDto(false, null)));
   }
 
-  public Mono<List<EnrichMovieSearchDto>> search(String query, Integer year) {
+  public Mono<List<MovieEnrichmentSearchDto>> search(String query, Integer year) {
     return this.moviesWebClient.searchCandidates(query, year).collectList();
+  }
+
+  /** Preview de un candidato sin persistir: el usuario confirma antes del enrich. */
+  public Mono<MovieEnrichmentPreviewDto> preview(Long tmdbId) {
+    return this.moviesWebClient.previewCandidate(tmdbId);
   }
 
   /** Autocompletado con el candidato elegido por el usuario. */
