@@ -1,5 +1,7 @@
 package com.guille.media.bff.app.ports;
 
+import com.guille.media.bff.app.dto.DiscoveredFileDto;
+import com.guille.media.bff.app.dto.LibraryDto;
 import com.guille.media.bff.app.dto.QuotaSnapshot;
 import com.guille.media.bff.app.dto.StreamingSessionDto;
 import com.guille.media.bff.app.dto.UploadCreateRequest;
@@ -32,4 +34,10 @@ public interface StorageWebClient {
 
   /** Rollback: borra el objeto en el object store y restaura la cuota del usuario. */
   Mono<Void> deleteObject(Long storageId);
+
+  /** Bibliotecas del operador (media server). */
+  Flux<LibraryDto> listLibraries();
+
+  /** Archivos descubiertos por el scanner en la biblioteca (media server). */
+  Flux<DiscoveredFileDto> listLibraryFiles(Long libraryId);
 }

@@ -1,12 +1,16 @@
 package com.guille.media.bff.app.ports;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
+import com.guille.media.bff.app.dto.DiscoveredFileDto;
+import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
 
 /** Contrato hacia mvflix-movies (catálogo de películas del usuario). */
 public interface MoviesWebClient {
@@ -31,4 +35,16 @@ public interface MoviesWebClient {
 
   /** Autocompletado con el candidato elegido por el usuario. */
   Mono<MovieDto> enrichMovie(Long movieId, Long tmdbId);
+
+  /** Upsert de los archivos que el storage descubrió en una biblioteca (media server). */
+  Flux<MediaAssetDto> scanLibrary(Long storageId, List<DiscoveredFileDto> files);
+
+  /** Activos de una biblioteca, opcionalmente filtrados por estado. */
+  Flux<MediaAssetDto> listAssets(Long storageId, String status);
+
+  /** Un activo por id (para derivar el título del filename al identificar). */
+  Mono<MediaAssetDto> assetById(Long assetId);
+
+  /** Vincula el activo a una película nueva (media server). */
+  Mono<MediaAssetDto> identifyAsset(Long assetId, String title);
 }

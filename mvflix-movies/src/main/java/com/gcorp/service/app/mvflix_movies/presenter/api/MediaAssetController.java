@@ -4,6 +4,7 @@ import com.gcorp.service.app.mvflix_movies.application.scan.IdentifyAssetUseCase
 import com.gcorp.service.app.mvflix_movies.application.scan.ScanLibraryUseCase;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
+import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.IdentifyAssetRequest;
@@ -62,6 +63,15 @@ public class MediaAssetController {
                 : this.assetRepository.findAllByStorageIdAndStatus(
                         storageId, MediaAssetStatus.valueOf(status));
         return assets.map(this.mapper::toResponse);
+    }
+
+    @GetMapping("/media-assets/{id}")
+    public Mono<MediaAssetResponse> assetById(@PathVariable Long id) {
+        return this.assetRepository
+                .findById(MediaAssetId.of(id))
+                .switchIfEmpty(Mono.error(
+                        new MediaAssetNotFoundException("Media asset not found: " + id)))
+                .map(this.mapper::toResponse);
     }
 
     @PostMapping(value = "/media-assets/{id}/identify", consumes = MediaType.APPLICATION_JSON_VALUE)

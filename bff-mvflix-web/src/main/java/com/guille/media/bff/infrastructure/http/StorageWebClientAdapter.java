@@ -1,5 +1,7 @@
 package com.guille.media.bff.infrastructure.http;
 
+import com.guille.media.bff.app.dto.DiscoveredFileDto;
+import com.guille.media.bff.app.dto.LibraryDto;
 import com.guille.media.bff.app.dto.QuotaSnapshot;
 import com.guille.media.bff.app.dto.StreamingRequest;
 import com.guille.media.bff.app.dto.StreamingSessionDto;
@@ -91,6 +93,24 @@ public class StorageWebClientAdapter implements StorageWebClient {
         .bodyValue(new StreamingRequest(objectId))
         .retrieve()
         .bodyToMono(StreamingSessionDto.class);
+  }
+
+  @Override
+  public Flux<LibraryDto> listLibraries() {
+    return this.storageWebClient
+        .get()
+        .uri(API + "/libraries")
+        .retrieve()
+        .bodyToFlux(LibraryDto.class);
+  }
+
+  @Override
+  public Flux<DiscoveredFileDto> listLibraryFiles(Long libraryId) {
+    return this.storageWebClient
+        .get()
+        .uri(API + "/libraries/" + libraryId + "/files")
+        .retrieve()
+        .bodyToFlux(DiscoveredFileDto.class);
   }
 
   private <T> Mono<T> get(String uri, Class<T> type) {

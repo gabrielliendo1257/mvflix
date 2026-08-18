@@ -1,6 +1,8 @@
 package com.guille.media.bff.infrastructure.http;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
+import com.guille.media.bff.app.dto.DiscoveredFileDto;
+import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentRequest;
@@ -16,6 +18,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+
+import java.util.List;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -109,5 +114,48 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .bodyValue(new MovieEnrichmentRequest(tmdbId))
         .retrieve()
         .bodyToMono(MovieDto.class);
+  }
+
+  @Override
+  public Flux<MediaAssetDto> scanLibrary(Long storageId, List<DiscoveredFileDto> files) {
+    return this.moviesWebClient
+        .post()
+        .uri(API + "/libraries/" + storageId + "/scan")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(Map.of("files", files))
+        .retrieve()
+        .bodyToFlux(MediaAssetDto.class);
+  }
+
+  @Override
+  public Flux<MediaAssetDto> listAssets(Long storageId, String status) {
+    return this.moviesWebClient
+        .get()
+        .uri(uriBuilder -> uriBuilder
+            .path(API + "/libraries/" + storageId + "/assets")
+            .queryParamIfPresent("status", java.util.Optional.ofNullable(status))
+            .build())
+        .retrieve()
+        .bodyToFlux(MediaAssetDto.class);
+  }
+
+  @Override
+  public Mono<MediaAssetDto> assetById(Long assetId) {
+    return this.moviesWebClient
+        .get()
+        .uri(API + "/media-assets/" + assetId)
+        .retrieve()
+        .bodyToMono(MediaAssetDto.class);
+  }
+
+  @Override
+  public Mono<MediaAssetDto> identifyAsset(Long assetId, String title) {
+    return this.moviesWebClient
+        .post()
+        .uri(API + "/media-assets/" + assetId + "/identify")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(Map.of("title", title))
+        .retrieve()
+        .bodyToMono(MediaAssetDto.class);
   }
 }
