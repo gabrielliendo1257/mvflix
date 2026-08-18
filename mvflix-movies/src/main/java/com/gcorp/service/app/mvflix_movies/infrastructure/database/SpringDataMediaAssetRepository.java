@@ -88,6 +88,23 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
     }
 
     @Override
+    public Mono<MediaAsset> findByMovieId(MovieId movieId) {
+        return this.databaseClient
+                .sql(
+                        """
+                        SELECT id, storage_id, relative_path, size, mime_type, status,
+                               movie_id, created_at, updated_at
+                        FROM media_assets
+                        WHERE movie_id = :movie_id
+                        ORDER BY id
+                        LIMIT 1
+                        """)
+                .bind("movie_id", movieId.value())
+                .map((row, metadata) -> this.toDomain(row))
+                .one();
+    }
+
+    @Override
     public Mono<MediaAsset> findByStorageAndPath(Long storageId, String relativePath) {
         return this.databaseClient
                 .sql(

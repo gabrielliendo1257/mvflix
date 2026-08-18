@@ -9,7 +9,9 @@ import com.guille.media.bff.app.dto.UploadListItem;
 import com.guille.media.bff.app.dto.UploadSessionDto;
 import com.guille.media.bff.app.dto.UploadStatusDto;
 
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -40,4 +42,8 @@ public interface StorageWebClient {
 
   /** Archivos descubiertos por el scanner en la biblioteca (media server). */
   Flux<DiscoveredFileDto> listLibraryFiles(Long libraryId);
+
+  /** Stream LOCAL con soporte Range: el BFF proxya status/headers/cuerpo tal cual. */
+  Mono<ResponseEntity<Flux<DataBuffer>>> streamLibraryFile(
+      Long libraryId, String relativePath, String rangeHeader);
 }

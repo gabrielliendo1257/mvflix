@@ -88,7 +88,8 @@ public class SecurityConfiguration {
                     .pathMatchers(
                         HttpMethod.GET,
                         this.apiPathBase + "/storage/libraries",
-                        this.apiPathBase + "/storage/libraries/*/files")
+                        this.apiPathBase + "/storage/libraries/*/files",
+                        this.apiPathBase + "/storage/libraries/*/files/**")
                     .authenticated()
                     .pathMatchers(
                         HttpMethod.POST,

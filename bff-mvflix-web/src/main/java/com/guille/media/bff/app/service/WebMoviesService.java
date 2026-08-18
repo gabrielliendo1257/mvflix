@@ -16,7 +16,9 @@ import com.guille.media.bff.app.ports.UsersWebPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -66,7 +68,7 @@ public class WebMoviesService {
 
   private Mono<PlaybackDto> playbackFor(MovieDto movie) {
     if (movie.objectId() == null) {
-      return Mono.just(new PlaybackDto(false, null));
+      return this.localPlaybackFor(movie);
     }
     return this.storageWebClient
         .stream(String.valueOf(movie.objectId()))
@@ -75,6 +77,40 @@ public class WebMoviesService {
             "detail: movie={} playback no disponible: {}",
             movie.id(), error.getMessage()))
         .onErrorResume(error -> Mono.just(new PlaybackDto(false, null)));
+  }
+
+  /**
+   * Playback LOCAL (movie de biblioteca del operador): el archivo vive en el
+   * filesystem del storage y se sirve con Range via el proxy del BFF.
+   * Sin asset asociado (p.ej. DRAFT sin media) degrada a no disponible.
+   */
+  private Mono<PlaybackDto> localPlaybackFor(MovieDto movie) {
+    return this.moviesWebClient
+        .assetByMovie(movie.id())
+        .map(asset -> new PlaybackDto(true, "/web/movies/" + movie.id() + "/stream"))
+        .doOnError(error -> log.warn(
+            "detail: movie={} playback LOCAL no disponible: {}",
+            movie.id(), error.getMessage()))
+        .onErrorResume(error -> Mono.just(new PlaybackDto(false, null)));
+  }
+
+  /**
+   * Proxy de stream LOCAL: resuelve el asset de la movie y delega en el
+   * storage, pasando Range y devolviendo status/headers/cuerpo tal cual.
+   */
+  public Mono<ResponseEntity<Flux<DataBuffer>>> stream(Long movieId, String rangeHeader) {
+    return this.moviesWebClient
+        .assetByMovie(movieId)
+        .flatMap(asset -> this.storageWebClient.streamLibraryFile(
+            asset.storageId(), asset.relativePath(), rangeHeader))
+        .switchIfEmpty(Mono.defer(() -> {
+          log.warn("stream: movie={} sin asset de biblioteca", movieId);
+          return Mono.just(ResponseEntity.notFound().build());
+        }))
+        .onErrorResume(error -> {
+          log.warn("stream: movie={} no disponible: {}", movieId, error.getMessage());
+          return Mono.just(ResponseEntity.notFound().build());
+        });
   }
 
   public Mono<List<MovieEnrichmentSearchDto>> search(String query, Integer year) {

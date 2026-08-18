@@ -45,6 +45,9 @@ public interface MoviesWebClient {
   /** Un activo por id (para derivar el título del filename al identificar). */
   Mono<MediaAssetDto> assetById(Long assetId);
 
+  /** Activo de una película (playback LOCAL: storageId + relativePath). */
+  Mono<MediaAssetDto> assetByMovie(Long movieId);
+
   /** Vincula el activo a una película nueva (media server). */
   Mono<MediaAssetDto> identifyAsset(Long assetId, String title);
 }

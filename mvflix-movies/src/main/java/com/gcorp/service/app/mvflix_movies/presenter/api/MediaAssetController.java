@@ -7,6 +7,7 @@ import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.IdentifyAssetRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MediaAssetResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.ScanLibraryRequest;
@@ -71,6 +72,15 @@ public class MediaAssetController {
                 .findById(MediaAssetId.of(id))
                 .switchIfEmpty(Mono.error(
                         new MediaAssetNotFoundException("Media asset not found: " + id)))
+                .map(this.mapper::toResponse);
+    }
+
+    @GetMapping("/media-assets/by-movie/{movieId}")
+    public Mono<MediaAssetResponse> assetByMovie(@PathVariable Long movieId) {
+        return this.assetRepository
+                .findByMovieId(MovieId.of(movieId))
+                .switchIfEmpty(Mono.error(
+                        new MediaAssetNotFoundException("No media asset for movie: " + movieId)))
                 .map(this.mapper::toResponse);
     }
 

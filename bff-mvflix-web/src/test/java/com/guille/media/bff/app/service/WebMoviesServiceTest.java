@@ -1,6 +1,8 @@
 package com.guille.media.bff.app.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -60,8 +62,10 @@ class WebMoviesServiceTest {
   }
 
   @Test
-  void detailWithoutObjectIdIsUnavailableWithoutCallingStorage() {
+  void detailWithoutObjectIdTriesLocalPlaybackAndDegradesWhenNoAsset() {
     when(moviesWebClient.movieById(1L)).thenReturn(Mono.just(movie(1L, null)));
+    when(moviesWebClient.assetByMovie(1L))
+        .thenReturn(Mono.error(new RuntimeException("sin asset de biblioteca")));
 
     StepVerifier.create(service.detail(1L))
         .assertNext(detail -> {
@@ -72,6 +76,47 @@ class WebMoviesServiceTest {
         .verifyComplete();
 
     verify(storageWebClient, never()).stream(org.mockito.ArgumentMatchers.anyString());
+  }
+
+  @Test
+  void libraryMoviePlaybackPointsToBffStreamProxy() {
+    when(moviesWebClient.movieById(1L)).thenReturn(Mono.just(movie(1L, null)));
+    when(moviesWebClient.assetByMovie(1L))
+        .thenReturn(Mono.just(new com.guille.media.bff.app.dto.MediaAssetDto(
+            5L, 7L, "Interstellar (2014).mkv", 100, "video/x-matroska", "IDENTIFIED", 1L)));
+
+    StepVerifier.create(service.detail(1L))
+        .assertNext(detail -> {
+          assertThat(detail.playback().available()).isTrue();
+          assertThat(detail.playback().url()).isEqualTo("/web/movies/1/stream");
+        })
+        .verifyComplete();
+
+    verify(storageWebClient, never()).stream(org.mockito.ArgumentMatchers.anyString());
+  }
+
+  @Test
+  void streamForwardsRangeToStorage() {
+    when(moviesWebClient.assetByMovie(1L))
+        .thenReturn(Mono.just(new com.guille.media.bff.app.dto.MediaAssetDto(
+            5L, 7L, "Interstellar (2014).mkv", 100, "video/x-matroska", "IDENTIFIED", 1L)));
+    when(storageWebClient.streamLibraryFile(eq(7L), eq("Interstellar (2014).mkv"), any()))
+        .thenReturn(Mono.just(org.springframework.http.ResponseEntity.ok().build()));
+
+    StepVerifier.create(service.stream(1L, "bytes=0-99"))
+        .expectNextCount(1)
+        .verifyComplete();
+
+    verify(storageWebClient).streamLibraryFile(7L, "Interstellar (2014).mkv", "bytes=0-99");
+  }
+
+  @Test
+  void streamWithoutAssetIsNotFound() {
+    when(moviesWebClient.assetByMovie(1L)).thenReturn(Mono.empty());
+
+    StepVerifier.create(service.stream(1L, null))
+        .expectNextMatches(response -> response.getStatusCode().is4xxClientError())
+        .verifyComplete();
   }
 
   @Test

@@ -13,8 +13,11 @@ import com.guille.media.bff.app.ports.StorageWebClient;
 
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.core.io.buffer.DataBuffer;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -111,6 +114,37 @@ public class StorageWebClientAdapter implements StorageWebClient {
         .uri(API + "/libraries/" + libraryId + "/files")
         .retrieve()
         .bodyToFlux(DiscoveredFileDto.class);
+  }
+
+  @Override
+  public Mono<ResponseEntity<Flux<DataBuffer>>> streamLibraryFile(
+      Long libraryId, String relativePath, String rangeHeader) {
+    String encoded = org.springframework.web.util.UriComponentsBuilder
+        .fromPath("/" + relativePath)
+        .encode()
+        .build()
+        .toString();
+    var spec =
+        this.storageWebClient
+            .get()
+            .uri(API + "/libraries/" + libraryId + "/files" + encoded);
+    if (rangeHeader != null && !rangeHeader.isBlank()) {
+      spec = spec.header(HttpHeaders.RANGE, rangeHeader);
+    }
+    return spec
+        .retrieve()
+        .toEntityFlux(DataBuffer.class)
+        .onErrorResume(
+            org.springframework.web.reactive.function.client.WebClientResponseException.class,
+            ex -> {
+              HttpHeaders headers = new HttpHeaders();
+              headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+              String contentRange = ex.getHeaders().getFirst(HttpHeaders.CONTENT_RANGE);
+              if (contentRange != null) {
+                headers.set(HttpHeaders.CONTENT_RANGE, contentRange);
+              }
+              return Mono.just(ResponseEntity.status(ex.getStatusCode()).headers(headers).build());
+            });
   }
 
   private <T> Mono<T> get(String uri, Class<T> type) {
