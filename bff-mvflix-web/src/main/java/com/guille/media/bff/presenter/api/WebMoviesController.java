@@ -52,7 +52,7 @@ public class WebMoviesController {
   }
 
   @GetMapping(value = "/enrichment/preview", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<ResponseEntity<MovieEnrichmentPreviewDto>> preview(@RequestParam Long tmdbId) {
+  public Mono<ResponseEntity<MovieEnrichmentPreviewDto>> preview(@RequestParam("tmdb_id") Long tmdbId) {
     return this.webMoviesService.preview(tmdbId).map(ResponseEntity::ok);
   }
 

@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,7 @@ import reactor.core.publisher.Mono;
  * resto (API/curl/Postman) se responde 401 JSON para que el front arranque el login.
  */
 @Configuration
+@Profile("!sandbox")
 @EnableWebFluxSecurity
 public class WebSecurityConfig {
 

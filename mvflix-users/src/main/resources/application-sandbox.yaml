@@ -1,0 +1,27 @@
+# Perfil de desarrollo/sandbox: sin authorization-service.
+# Todo el API queda abierto y el principal autenticado es "pepe".
+# Postgres se levanta con: make up-dev (docker compose)
+server:
+  port: 8080
+
+spring:
+  application:
+    name: mvflix-users
+
+  r2dbc:
+    url: r2dbc:postgresql://localhost:5432/mvflix_users_db
+    username: db_rw
+    password: 12345678
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mvflix_users_db
+    username: db_migrator
+    password: 12345678
+
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    root: info
+    org.springframework.security: debug

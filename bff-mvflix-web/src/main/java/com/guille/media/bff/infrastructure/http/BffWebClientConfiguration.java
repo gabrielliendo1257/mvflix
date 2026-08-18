@@ -5,6 +5,7 @@ import io.netty.channel.ChannelOption;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
@@ -12,6 +13,7 @@ import org.springframework.security.oauth2.client.web.server.ServerOAuth2Authori
 
 import org.springframework.web.reactive.function.client.WebClient;
 
+import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
@@ -22,8 +24,10 @@ public class BffWebClientConfiguration {
   /**
    * Filtro que inyecta el access token de la sesión OAuth2 del navegador (guardado por
    * {@link ServerOAuth2AuthorizedClientRepository} en la sesión server-side del BFF).
+   * Solo con el OAuth2-client activo (perfil no sandbox).
    */
   @Bean
+  @Profile("!sandbox")
   ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter(
       ReactiveClientRegistrationRepository clientRegistrationRepository,
       ServerOAuth2AuthorizedClientRepository authorizedClientRepository) {
@@ -32,6 +36,14 @@ public class BffWebClientConfiguration {
             clientRegistrationRepository, authorizedClientRepository);
     filter.setDefaultClientRegistrationId("movie-app");
     return filter;
+  }
+
+  /** En sandbox no hay tokens: filtro no-op para que los WebClient sigan construyendose. */
+  @Bean
+  @Profile("sandbox")
+  ServerOAuth2AuthorizedClientExchangeFilterFunction sandboxOauth2AuthorizedClientFilter() {
+    return new ServerOAuth2AuthorizedClientExchangeFilterFunction(
+        (clientRegistrationId) -> Mono.empty());
   }
 
   @Bean
