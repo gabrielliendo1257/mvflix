@@ -2,6 +2,7 @@ package com.guille.media.bff.infrastructure.http;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
 import com.guille.media.bff.app.dto.DiscoveredFileDto;
+import com.guille.media.bff.app.dto.IdentifyAssetRequest;
 import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
@@ -158,12 +159,12 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
-  public Mono<MediaAssetDto> identifyAsset(Long assetId, String title) {
+  public Mono<MediaAssetDto> identifyAsset(Long assetId, String title, Long tmdbId) {
     return this.moviesWebClient
         .post()
         .uri(API + "/media-assets/" + assetId + "/identify")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(Map.of("title", title))
+        .bodyValue(new IdentifyAssetRequest(title, tmdbId))
         .retrieve()
         .bodyToMono(MediaAssetDto.class);
   }

@@ -50,7 +50,10 @@ public class WebLibrariesController {
   public Mono<ResponseEntity<MediaAssetDto>> identify(
       @PathVariable Long assetId, @RequestBody(required = false) IdentifyAssetRequest request) {
     return this.webLibraryService
-        .identify(assetId, request == null ? null : request.title())
+        .identify(
+            assetId,
+            request == null ? null : request.title(),
+            request == null ? null : request.tmdbId())
         .map(ResponseEntity::ok);
   }
 }

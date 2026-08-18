@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 
@@ -59,6 +60,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(StorageObjectNotAvailable.class)
     public ResponseEntity<?> storageObjectNotAvailable(StorageObjectNotAvailable ex) {
         return error(HttpStatus.NOT_FOUND, "STORAGE_OBJECT_NOT_AVAILABLE", ex);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<?> responseStatus(ResponseStatusException ex) {
+        return error(HttpStatus.valueOf(ex.getStatusCode().value()), "HTTP_STATUS", ex);
     }
 
     @ExceptionHandler(Exception.class)

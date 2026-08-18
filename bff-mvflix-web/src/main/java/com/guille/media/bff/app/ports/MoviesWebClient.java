@@ -49,5 +49,5 @@ public interface MoviesWebClient {
   Mono<MediaAssetDto> assetByMovie(Long movieId);
 
   /** Vincula el activo a una película nueva (media server). */
-  Mono<MediaAssetDto> identifyAsset(Long assetId, String title);
+  Mono<MediaAssetDto> identifyAsset(Long assetId, String title, Long tmdbId);
 }

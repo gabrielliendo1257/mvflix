@@ -119,15 +119,13 @@ public class StorageWebClientAdapter implements StorageWebClient {
   @Override
   public Mono<ResponseEntity<Flux<DataBuffer>>> streamLibraryFile(
       Long libraryId, String relativePath, String rangeHeader) {
-    String encoded = org.springframework.web.util.UriComponentsBuilder
-        .fromPath("/" + relativePath)
-        .encode()
-        .build()
-        .toString();
     var spec =
         this.storageWebClient
             .get()
-            .uri(API + "/libraries/" + libraryId + "/files" + encoded);
+            .uri(uriBuilder -> uriBuilder
+                .path(API + "/libraries/" + libraryId + "/files")
+                .path("/" + relativePath)
+                .build());
     if (rangeHeader != null && !rangeHeader.isBlank()) {
       spec = spec.header(HttpHeaders.RANGE, rangeHeader);
     }

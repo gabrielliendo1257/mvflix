@@ -135,7 +135,11 @@ public class LibraryFileController {
         String rest = path.substring(marker + prefix.length());
         int afterId = rest.indexOf('/');
         int afterFiles = afterId < 0 ? -1 : rest.indexOf('/', afterId + 1);
-        return afterFiles < 0 ? "" : rest.substring(afterFiles + 1);
+        if (afterFiles < 0) {
+            return "";
+        }
+        return org.springframework.web.util.UriUtils.decode(
+                rest.substring(afterFiles + 1), java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private static final class BoundedInputStream extends java.io.FilterInputStream {

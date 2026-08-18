@@ -47,15 +47,28 @@ class WebLibraryServiceTest {
 
   @Test
   void identifyUsesExplicitTitleWhenProvided() {
-    when(this.moviesWebClient.identifyAsset(1L, "Dune"))
+    when(this.moviesWebClient.identifyAsset(1L, "Dune", null))
         .thenReturn(Mono.just(new MediaAssetDto(
             1L, 7L, "Dune.mp4", 10, "video/mp4", "IDENTIFIED", 50L)));
 
-    StepVerifier.create(this.service.identify(1L, "Dune"))
+    StepVerifier.create(this.service.identify(1L, "Dune", null))
         .expectNextMatches(asset -> "IDENTIFIED".equals(asset.status()))
         .verifyComplete();
 
-    verify(this.moviesWebClient).identifyAsset(1L, "Dune");
+    verify(this.moviesWebClient).identifyAsset(1L, "Dune", null);
+  }
+
+  @Test
+  void identifyForwardsTmdbCandidateForAutocomplete() {
+    when(this.moviesWebClient.identifyAsset(1L, "Dune", 123L))
+        .thenReturn(Mono.just(new MediaAssetDto(
+            1L, 7L, "Dune.mp4", 10, "video/mp4", "IDENTIFIED", 50L)));
+
+    StepVerifier.create(this.service.identify(1L, "Dune", 123L))
+        .expectNextMatches(asset -> "IDENTIFIED".equals(asset.status()))
+        .verifyComplete();
+
+    verify(this.moviesWebClient).identifyAsset(1L, "Dune", 123L);
   }
 
   @Test
@@ -64,16 +77,16 @@ class WebLibraryServiceTest {
         .thenReturn(Mono.just(new MediaAssetDto(
             1L, 7L, "Carpetas/Interstellar (2014).mkv", 10, "video/x-matroska",
             "UNIDENTIFIED", null)));
-    when(this.moviesWebClient.identifyAsset(1L, "Interstellar (2014)"))
+    when(this.moviesWebClient.identifyAsset(1L, "Interstellar (2014)", null))
         .thenReturn(Mono.just(new MediaAssetDto(
             1L, 7L, "Carpetas/Interstellar (2014).mkv", 10, "video/x-matroska",
             "IDENTIFIED", 50L)));
 
-    StepVerifier.create(this.service.identify(1L, null))
+    StepVerifier.create(this.service.identify(1L, null, null))
         .expectNextMatches(asset -> "IDENTIFIED".equals(asset.status()))
         .verifyComplete();
 
-    verify(this.moviesWebClient).identifyAsset(1L, "Interstellar (2014)");
+    verify(this.moviesWebClient).identifyAsset(1L, "Interstellar (2014)", null);
   }
 
   @Test
