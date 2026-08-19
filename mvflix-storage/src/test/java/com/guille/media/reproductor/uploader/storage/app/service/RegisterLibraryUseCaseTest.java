@@ -96,6 +96,27 @@ class RegisterLibraryUseCaseTest {
     }
 
     @Test
+    void allowAnyRootAcceptsPathOutsideAllowedRoots() throws Exception {
+        this.properties.setAllowAnyRoot(true);
+        this.authenticateAsJavier();
+        Path sub = Files.createDirectory(this.tempDir.resolve("usb"));
+        String realSub = sub.toRealPath().toString();
+        when(this.libraryRepository.findByRootPath(any(String.class)))
+                .thenReturn(Mono.empty());
+        when(this.libraryRepository.save(any(MediaLibrary.class)))
+                .thenAnswer(invocation ->
+                        Mono.just(invocation.<MediaLibrary>getArgument(0)));
+
+        StepVerifier.create(this.useCase.execute(sub.toString()))
+                .expectNextMatches(library ->
+                        library.isOwnedBy("Javier")
+                                && library.getRootPath().equals(realSub))
+                .verifyComplete();
+
+        verify(this.libraryRepository).save(any(MediaLibrary.class));
+    }
+
+    @Test
     void rejectsPathAlreadyRegisteredByOtherUser() {
         this.authenticateAsJavier();
         when(this.libraryRepository.findByRootPath(any(String.class)))

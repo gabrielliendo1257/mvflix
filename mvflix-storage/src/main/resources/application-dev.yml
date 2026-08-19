@@ -45,9 +45,13 @@ storage:
     expiration-check-ms: 60000
   # Bibliotecas del operador (media server). LOCAL -> directorio del filesystem.
   # Son también las raíces permitidas para las bibliotecas registradas en runtime.
+  # En dev se acepta cualquier directorio (USB, Descargas, etc.); para restringir,
+  # poner allow-any-root: false y listar raíces aquí.
+  allow-any-root: true
   allowed-roots:
     - /tmp/mvflix-media
-    - /run/media/backdev/DATA_A/bolivia
+    - /run/media/backdev/DATA_A/
+    - "/home/backdev/Descargas/Telegram Desktop"
 
 logging:
   level:

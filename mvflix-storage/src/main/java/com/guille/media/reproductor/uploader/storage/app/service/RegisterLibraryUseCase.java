@@ -73,6 +73,9 @@ public class RegisterLibraryUseCase {
     }
 
     private void assertAllowed(String realPath) {
+        if (this.properties.isAllowAnyRoot()) {
+            return;
+        }
         List<Path> roots = this.properties.getAllowedRoots().stream()
                 .map(root -> this.realPathOf(root))
                 .toList();
