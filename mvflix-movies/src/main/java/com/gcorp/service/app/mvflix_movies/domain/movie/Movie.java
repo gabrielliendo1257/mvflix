@@ -115,6 +115,20 @@ public class Movie {
                 sharedWith);
     }
 
+    /** Transición de dominio: reemplaza la metadata (edición manual del dueño). */
+    public Movie withMetadata(MovieMetadata metadata) {
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                this.title,
+                this.status,
+                this.enrichmentStatus,
+                this.objectId,
+                metadata,
+                this.visibility,
+                this.sharedWith);
+    }
+
     public boolean isDraft() {
         return this.status == MovieStatus.DRAFT;
     }

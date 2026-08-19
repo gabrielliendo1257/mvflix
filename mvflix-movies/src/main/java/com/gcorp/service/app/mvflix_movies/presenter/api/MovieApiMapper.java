@@ -1,5 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
+import com.gcorp.service.app.mvflix_movies.application.movie.UpdateMovieCommand;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
@@ -7,6 +8,7 @@ import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieSearchResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichmentPreviewResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateMovieRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
@@ -15,6 +17,8 @@ import org.mapstruct.Mappings;
 public interface MovieApiMapper {
 
     MovieMetadata toMetadata(CreateMovieRequest request);
+
+    UpdateMovieCommand toCommand(UpdateMovieRequest request);
 
     EnrichMovieSearchResponse toSearchResponse(ExternalMovieSearch search);
 

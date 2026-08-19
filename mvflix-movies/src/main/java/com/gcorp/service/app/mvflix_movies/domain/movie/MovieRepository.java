@@ -36,6 +36,12 @@ public interface MovieRepository {
     Mono<Movie> updateEnrichment(MovieId id, MovieMetadata metadata,
             EnrichmentStatus enrichmentStatus);
 
+    /**
+     * Reemplaza la metadata por edición manual del dueño, sin tocar el estado de
+     * enriquecimiento. Vacío si la fila no existe.
+     */
+    Mono<Movie> updateMetadata(MovieId id, MovieMetadata metadata);
+
     /** Cambia la visibilidad del catálogo. Vacío si la fila no existe. */
     Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility);
 

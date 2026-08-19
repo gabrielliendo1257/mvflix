@@ -6,6 +6,7 @@ import com.gcorp.service.app.mvflix_movies.application.movie.CreateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.DeleteMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.GetMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.ListMoviesUseCase;
+import com.gcorp.service.app.mvflix_movies.application.movie.UpdateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
@@ -16,6 +17,7 @@ import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichmentPreviewRe
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
 import com.gcorp.service.app.mvflix_movies.application.movie.UpdateSharesUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.UpdateVisibilityUseCase;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateSharesRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateVisibilityRequest;
 
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -46,6 +49,7 @@ public class MovieController {
     private final ListMoviesUseCase listMoviesUseCase;
     private final UpdateVisibilityUseCase updateVisibilityUseCase;
     private final UpdateSharesUseCase updateSharesUseCase;
+    private final UpdateMovieUseCase updateMovieUseCase;
     private final CompleteMovieUseCase completeMovieUseCase;
     private final DeleteMovieUseCase deleteMovieUseCase;
     private final EnrichMovieUseCase enrichMovieUseCase;
@@ -57,6 +61,7 @@ public class MovieController {
             ListMoviesUseCase listMoviesUseCase,
             UpdateVisibilityUseCase updateVisibilityUseCase,
             UpdateSharesUseCase updateSharesUseCase,
+            UpdateMovieUseCase updateMovieUseCase,
             CompleteMovieUseCase completeMovieUseCase,
             DeleteMovieUseCase deleteMovieUseCase,
             EnrichMovieUseCase enrichMovieUseCase,
@@ -66,6 +71,7 @@ public class MovieController {
         this.listMoviesUseCase = listMoviesUseCase;
         this.updateVisibilityUseCase = updateVisibilityUseCase;
         this.updateSharesUseCase = updateSharesUseCase;
+        this.updateMovieUseCase = updateMovieUseCase;
         this.completeMovieUseCase = completeMovieUseCase;
         this.deleteMovieUseCase = deleteMovieUseCase;
         this.enrichMovieUseCase = enrichMovieUseCase;
@@ -110,6 +116,15 @@ public class MovieController {
             @PathVariable Long id, @RequestBody CompleteMovieRequest request) {
         return this.completeMovieUseCase
                 .execute(MovieId.of(id), request.objectId(), request.objectKey())
+                .map(this.mapper::toResponse);
+    }
+
+    /** Edición manual de la metadata del dueño (merge: null conserva el valor actual). */
+    @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<MovieResponse> update(
+            @PathVariable Long id, @RequestBody UpdateMovieRequest request) {
+        return this.updateMovieUseCase
+                .execute(MovieId.of(id), this.mapper.toCommand(request))
                 .map(this.mapper::toResponse);
     }
 

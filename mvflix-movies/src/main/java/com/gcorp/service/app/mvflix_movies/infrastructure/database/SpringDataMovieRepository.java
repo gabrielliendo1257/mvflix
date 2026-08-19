@@ -209,6 +209,28 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
+    public Mono<Movie> updateMetadata(MovieId id, MovieMetadata metadata) {
+        return this.databaseClient
+                .sql(
+                        """
+                        UPDATE movies
+                        SET metadata = CAST(:metadata AS jsonb), updated_at = NOW()
+                        WHERE id = :id
+                        RETURNING id, owner_username, title, status, enrichment_status,
+                                  metadata::text, visibility,
+                                  (SELECT mm.object_id FROM media mm
+                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
+                                  (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
+                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
+                        """)
+                .bind("metadata", this.jsonCodec.encode(metadata))
+                .bind("id", id.value())
+                .map(this::toRow)
+                .one()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
     public Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility) {
         return this.databaseClient
                 .sql(

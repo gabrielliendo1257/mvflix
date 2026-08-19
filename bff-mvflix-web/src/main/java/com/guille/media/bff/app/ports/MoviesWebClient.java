@@ -6,6 +6,7 @@ import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
+import com.guille.media.bff.app.dto.MovieUpdateRequest;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -56,4 +57,7 @@ public interface MoviesWebClient {
 
   /** Reemplaza la lista de usuarios compartidos; solo el dueño. */
   Mono<MovieDto> updateShares(Long movieId, List<String> usernames);
+
+  /** Edición manual de la metadata (merge: null conserva el valor actual); solo el dueño. */
+  Mono<MovieDto> updateMovie(Long movieId, MovieUpdateRequest request);
 }

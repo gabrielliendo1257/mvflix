@@ -8,6 +8,7 @@ import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 import com.guille.media.bff.app.dto.MovieListItemDto;
+import com.guille.media.bff.app.dto.MovieUpdateRequest;
 import com.guille.media.bff.app.dto.StreamTicketDto;
 import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
@@ -198,6 +199,11 @@ public class WebMoviesService {
   /** Reemplaza la lista de usuarios compartidos; solo el dueño. */
   public Mono<MovieDto> shares(Long movieId, List<String> usernames) {
     return this.moviesWebClient.updateShares(movieId, usernames);
+  }
+
+  /** Edición manual de la metadata (merge: null conserva el valor actual); solo el dueño. */
+  public Mono<MovieDto> updateMovie(Long movieId, MovieUpdateRequest request) {
+    return this.moviesWebClient.updateMovie(movieId, request);
   }
 
   public Mono<MovieDto> create(CreateMovieRequest request) {

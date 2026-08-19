@@ -263,4 +263,19 @@ class WebMoviesServiceTest {
         .expectError(StreamTicketException.class)
         .verify();
   }
+
+  @Test
+  void updateMovieDelegatesToMoviesBackend() {
+    var request = new com.guille.media.bff.app.dto.MovieUpdateRequest(
+        "Dune: Part Two", null, 2024, List.of("Sci-Fi"), null, null, null, null,
+        "2024-03-01", null, null, null);
+    when(moviesWebClient.updateMovie(4L, request))
+        .thenReturn(Mono.just(movie(4L, null)));
+
+    StepVerifier.create(service.updateMovie(4L, request))
+        .assertNext(updated -> assertThat(updated.id()).isEqualTo(4L))
+        .verifyComplete();
+
+    verify(moviesWebClient).updateMovie(4L, request);
+  }
 }

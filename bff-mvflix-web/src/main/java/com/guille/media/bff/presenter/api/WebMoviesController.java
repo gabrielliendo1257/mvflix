@@ -9,6 +9,7 @@ import com.guille.media.bff.app.dto.MovieEnrichmentRequest;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 import com.guille.media.bff.app.dto.MovieListItemDto;
 import com.guille.media.bff.app.dto.MovieSharesRequest;
+import com.guille.media.bff.app.dto.MovieUpdateRequest;
 import com.guille.media.bff.app.dto.MovieVisibilityRequest;
 import com.guille.media.bff.app.service.WebMoviesService;
 
@@ -17,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -99,5 +101,15 @@ public class WebMoviesController {
   public Mono<ResponseEntity<MovieDto>> complete(
       @PathVariable Long movieId, @RequestBody CompleteMovieRequest request) {
     return this.webMoviesService.complete(movieId, request).map(ResponseEntity::ok);
+  }
+
+  /** Edición manual de la metadata (merge: null conserva el valor actual); solo el dueño. */
+  @PutMapping(
+      value = "/{movieId}",
+      produces = MediaType.APPLICATION_JSON_VALUE,
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<MovieDto>> update(
+      @PathVariable Long movieId, @RequestBody MovieUpdateRequest request) {
+    return this.webMoviesService.updateMovie(movieId, request).map(ResponseEntity::ok);
   }
 }
