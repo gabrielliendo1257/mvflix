@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.bff.app.dto.MovieDetailDto;
+import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.StreamingSessionDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
@@ -30,12 +31,13 @@ class WebMoviesServiceTest {
   private final MoviesWebClient moviesWebClient = mock(MoviesWebClient.class);
   private final StorageWebClient storageWebClient = mock(StorageWebClient.class);
   private final UsersWebPort usersWebPort = mock(UsersWebPort.class);
+  private final StreamTicketService streamTicketService = new StreamTicketService("test-secret", 300);
   private WebMoviesService service;
 
   @BeforeEach
   void setUp() {
     this.service = new WebMoviesService(this.moviesWebClient, this.storageWebClient,
-        this.usersWebPort);
+        this.usersWebPort, this.streamTicketService);
   }
 
   private static MovieDto movie(Long id, Long objectId) {
@@ -104,7 +106,7 @@ class WebMoviesServiceTest {
     when(storageWebClient.streamLibraryFile(eq(7L), eq("Interstellar (2014).mkv"), any()))
         .thenReturn(Mono.just(org.springframework.http.ResponseEntity.ok().build()));
 
-    StepVerifier.create(service.stream(1L, "bytes=0-99"))
+    StepVerifier.create(service.stream(1L, "bytes=0-99", null))
         .expectNextCount(1)
         .verifyComplete();
 
@@ -115,7 +117,7 @@ class WebMoviesServiceTest {
   void streamWithoutAssetIsNotFound() {
     when(moviesWebClient.assetByMovie(1L)).thenReturn(Mono.empty());
 
-    StepVerifier.create(service.stream(1L, null))
+    StepVerifier.create(service.stream(1L, null, null))
         .expectNextMatches(response -> response.getStatusCode().is4xxClientError())
         .verifyComplete();
   }
@@ -126,7 +128,7 @@ class WebMoviesServiceTest {
         .thenReturn(Mono.error(new WebClientResponseException(
             403, "Forbidden", org.springframework.http.HttpHeaders.EMPTY, null, null)));
 
-    StepVerifier.create(service.stream(1L, null))
+    StepVerifier.create(service.stream(1L, null, null))
         .expectError(WebClientResponseException.class)
         .verify();
   }
@@ -191,5 +193,51 @@ class WebMoviesServiceTest {
         .verifyComplete();
 
     verify(moviesWebClient).previewCandidate(43020L);
+  }
+
+  @Test
+  void streamWithValidTicketProxiesLibraryFile() {
+    String ticket = this.streamTicketService.issue(7L, "user-jwt-value");
+    when(moviesWebClient.assetByMovie(7L))
+        .thenReturn(Mono.just(new MediaAssetDto(1L, 3L, "Blade Runner 2049.mkv",
+            2097152, "video/x-matroska", "IDENTIFIED", 7L)));
+    when(storageWebClient.streamLibraryFile(3L, "Blade Runner 2049.mkv", "bytes=0-1023"))
+        .thenReturn(Mono.just(org.springframework.http.ResponseEntity.<org.springframework.core.io.buffer.DataBuffer>status(206).build()));
+
+    StepVerifier.create(service.stream(7L, "bytes=0-1023", ticket))
+        .assertNext(response -> assertThat(response.getStatusCode().value()).isEqualTo(206))
+        .verifyComplete();
+  }
+
+  @Test
+  void streamWithTicketOfAnotherMovieIsRejected() {
+    String ticket = this.streamTicketService.issue(7L, "user-jwt-value");
+
+    StepVerifier.create(service.stream(8L, "bytes=0-1023", ticket))
+        .expectError(StreamTicketException.class)
+        .verify();
+  }
+
+  @Test
+  void streamWithExpiredTicketIsRejected() {
+    StreamTicketService shortLived = new StreamTicketService("test-secret", -1);
+    String ticket = shortLived.issue(7L, "user-jwt-value");
+
+    StepVerifier.create(service.stream(7L, "bytes=0-1023", ticket))
+        .expectError(StreamTicketException.class)
+        .verify();
+  }
+
+  @Test
+  void streamWithoutTicketUsesSecurityContext() {
+    when(moviesWebClient.assetByMovie(7L))
+        .thenReturn(Mono.just(new MediaAssetDto(1L, 3L, "Blade Runner 2049.mkv",
+            2097152, "video/x-matroska", "IDENTIFIED", 7L)));
+    when(storageWebClient.streamLibraryFile(3L, "Blade Runner 2049.mkv", "bytes=0-1023"))
+        .thenReturn(Mono.just(org.springframework.http.ResponseEntity.<org.springframework.core.io.buffer.DataBuffer>status(206).build()));
+
+    StepVerifier.create(service.stream(7L, "bytes=0-1023", null))
+        .assertNext(response -> assertThat(response.getStatusCode().value()).isEqualTo(206))
+        .verifyComplete();
   }
 }

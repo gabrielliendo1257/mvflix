@@ -99,6 +99,8 @@ public class WebSecurityConfig {
                 exchanges
                     .pathMatchers("/web/session", "/login/**", "/oauth2/**", "/error")
                     .permitAll()
+                    .pathMatchers(HttpMethod.GET, "/web/movies/*/stream")
+                    .permitAll()
                     .pathMatchers(HttpMethod.OPTIONS, "/web/uploads")
                     .authenticated()
                     .pathMatchers("/web/**")

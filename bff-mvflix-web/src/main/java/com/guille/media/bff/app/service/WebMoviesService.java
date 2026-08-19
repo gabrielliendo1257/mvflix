@@ -8,6 +8,7 @@ import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 import com.guille.media.bff.app.dto.MovieListItemDto;
+import com.guille.media.bff.app.dto.StreamTicketDto;
 import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
@@ -19,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -46,6 +49,7 @@ public class WebMoviesService {
   private final MoviesWebClient moviesWebClient;
   private final StorageWebClient storageWebClient;
   private final UsersWebPort usersWebPort;
+  private final StreamTicketService streamTicketService;
 
   public Flux<MovieListItemDto> list(int limit) {
     return this.moviesWebClient
@@ -99,26 +103,81 @@ public class WebMoviesService {
    * Proxy de stream LOCAL: resuelve el asset de la movie y delega en el
    * storage, pasando Range y devolviendo status/headers/cuerpo tal cual.
    */
-  public Mono<ResponseEntity<Flux<DataBuffer>>> stream(Long movieId, String rangeHeader) {
-    return this.moviesWebClient
-        .assetByMovie(movieId)
-        .flatMap(asset -> this.storageWebClient.streamLibraryFile(
-            asset.libraryId(), asset.relativePath(), rangeHeader))
-        .switchIfEmpty(Mono.defer(() -> {
-          log.warn("stream: movie={} sin asset de biblioteca", movieId);
-          return Mono.just(ResponseEntity.notFound().build());
-        }))
-        .onErrorResume(error -> {
-          if (error instanceof WebClientResponseException responseException) {
-            if (responseException.getStatusCode().value() == HttpStatus.FORBIDDEN.value()) {
-              log.warn("stream: movie={} acceso denegado (403)", movieId);
-              return Mono.error(responseException);
-            }
-            log.warn("stream: movie={} no disponible: {}", movieId, responseException.getMessage());
-            return Mono.just(ResponseEntity.notFound().build());
+  public Mono<ResponseEntity<Flux<DataBuffer>>> stream(
+      Long movieId, String rangeHeader, String ticket) {
+    if (ticket == null || ticket.isBlank()) {
+      return this.streamAs(movieId, rangeHeader, null);
+    }
+    return Mono.defer(() -> Mono.justOrEmpty(this.streamTicketService.resolve(ticket)))
+        .flatMap(resolved -> {
+          if (!resolved.movieId().equals(movieId)) {
+            log.warn("stream: ticket de movie={} usado en movie={}", resolved.movieId(), movieId);
+            return Mono.error(new StreamTicketException("Ticket de otra movie"));
           }
-          log.warn("stream: movie={} no disponible: {}", movieId, error.getMessage());
-          return Mono.just(ResponseEntity.notFound().build());
+          return this.streamAs(movieId, rangeHeader, resolved.userJwt());
+        });
+  }
+
+  /**
+   * Stream bajo la identidad del JWT dado (ticket) o del contexto de seguridad
+   * (Bearer o sesión). Con {@code userJwt} se reenvía ese JWT a los backends
+   * metiéndolo en el contexto reactivo, donde el filtro outbound lo toma.
+   */
+  private Mono<ResponseEntity<Flux<DataBuffer>>> streamAs(
+      Long movieId, String rangeHeader, String userJwt) {
+    Mono<ResponseEntity<Flux<DataBuffer>>> stream =
+        this.moviesWebClient
+            .assetByMovie(movieId)
+            .flatMap(asset -> this.storageWebClient.streamLibraryFile(
+                asset.libraryId(), asset.relativePath(), rangeHeader))
+            .switchIfEmpty(Mono.defer(() -> {
+              log.warn("stream: movie={} sin asset de biblioteca", movieId);
+              return Mono.just(ResponseEntity.notFound().build());
+            }))
+            .onErrorResume(error -> {
+              if (error instanceof WebClientResponseException responseException) {
+                if (responseException.getStatusCode().value() == HttpStatus.FORBIDDEN.value()) {
+                  log.warn("stream: movie={} acceso denegado (403)", movieId);
+                  return Mono.error(responseException);
+                }
+                log.warn("stream: movie={} no disponible: {}", movieId, responseException.getMessage());
+                return Mono.just(ResponseEntity.notFound().build());
+              }
+              log.warn("stream: movie={} no disponible: {}", movieId, error.getMessage());
+              return Mono.just(ResponseEntity.notFound().build());
+            });
+    if (userJwt == null) {
+      return stream;
+    }
+    return stream.contextWrite(ReactiveSecurityContextHolder.withAuthentication(
+        new JwtAuthenticationToken(jwtFrom(userJwt))));
+  }
+
+  private static org.springframework.security.oauth2.jwt.Jwt jwtFrom(String userJwt) {
+    return org.springframework.security.oauth2.jwt.Jwt.withTokenValue(userJwt)
+        .header("alg", "RS256")
+        .claim("sub", "ticket")
+        .build();
+  }
+
+  /**
+   * Emite un ticket de stream (para el {@code <video>} del front, que no puede
+   * mandar el JWT en header). Exige autenticación actual y visibilidad de la
+   * movie; el ticket expira a los pocos minutos.
+   */
+  public Mono<StreamTicketDto> issueStreamTicket(Long movieId) {
+    return ReactiveSecurityContextHolder.getContext()
+        .flatMap(context -> {
+          var auth = context.getAuthentication();
+          if (auth instanceof JwtAuthenticationToken jwtAuth) {
+            return this.moviesWebClient
+                .movieById(movieId)
+                .map(movie -> new StreamTicketDto(
+                    "/web/movies/" + movie.id() + "/stream?ticket="
+                        + this.streamTicketService.issue(movie.id(), jwtAuth.getToken().getTokenValue())));
+          }
+          log.warn("stream-ticket: movie={} sin autenticación por JWT", movieId);
+          return Mono.error(new StreamTicketException("Autenticación requerida"));
         });
   }
 

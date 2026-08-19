@@ -1,10 +1,12 @@
 package com.guille.media.bff.presenter.api;
 
+import com.guille.media.bff.app.service.StreamTicketException;
 import com.guille.media.bff.app.service.UploadOrchestrationException;
 import com.guille.media.bff.presenter.api.dto.OrchestrationError;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -16,6 +18,17 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+  /** Ticket de stream inválido/expirado: el <video> debe pedir uno nuevo. */
+  @ExceptionHandler(StreamTicketException.class)
+  public Mono<ResponseEntity<OrchestrationError>> streamTicket(StreamTicketException ex) {
+    log.warn("Stream ticket rechazado: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.UNAUTHORIZED.value(), "STREAM_TICKET_INVALID", ex.getMessage())));
+  }
 
   /** Veredicto del flujo orquestado: el BFF ya ejecutó rollback/penalidad y diagnostica. */
   @ExceptionHandler(UploadOrchestrationException.class)
