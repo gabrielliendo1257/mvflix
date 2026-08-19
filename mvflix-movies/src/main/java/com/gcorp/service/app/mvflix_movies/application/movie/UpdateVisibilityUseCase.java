@@ -38,7 +38,7 @@ public class UpdateVisibilityUseCase {
                                 "Movie not owned: " + id.value())))
                         .map(movie -> movie.withVisibility(visibility))
                         .flatMap(movie -> this.movieRepository
-                                .updateVisibility(id, user.subject(), visibility))
+                                .updateVisibility(id, visibility))
                         .doOnNext(updated -> log.info(
                                 "Movie {} visibilidad {} -> {}",
                                 id.value(), visibility, updated.getVisibility())));

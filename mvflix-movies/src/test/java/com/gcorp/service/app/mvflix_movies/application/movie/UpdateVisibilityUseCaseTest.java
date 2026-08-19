@@ -49,7 +49,7 @@ class UpdateVisibilityUseCaseTest {
         when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
         when(this.movieRepository.updateVisibility(
-                MovieId.of(1L), "Javier", MovieVisibility.PUBLIC))
+                MovieId.of(1L), MovieVisibility.PUBLIC))
                 .thenReturn(Mono.just(published));
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), MovieVisibility.PUBLIC))
@@ -57,7 +57,7 @@ class UpdateVisibilityUseCaseTest {
                 .verifyComplete();
 
         verify(this.movieRepository).updateVisibility(
-                MovieId.of(1L), "Javier", MovieVisibility.PUBLIC);
+                MovieId.of(1L), MovieVisibility.PUBLIC);
     }
 
     @Test
@@ -74,7 +74,7 @@ class UpdateVisibilityUseCaseTest {
                 .verify();
 
         verify(this.movieRepository, never())
-                .updateVisibility(eq(MovieId.of(1L)), any(), any());
+                .updateVisibility(eq(MovieId.of(1L)), any());
     }
 
     @Test
@@ -89,6 +89,6 @@ class UpdateVisibilityUseCaseTest {
                 .verify();
 
         verify(this.movieRepository, never())
-                .updateVisibility(eq(MovieId.of(1L)), any(), any());
+                .updateVisibility(eq(MovieId.of(1L)), any());
     }
 }

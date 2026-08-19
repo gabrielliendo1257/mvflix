@@ -46,7 +46,7 @@ public class UpdateSharesUseCase {
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not owned: " + id.value())))
                         .flatMap(movie -> this.movieRepository
-                                .replaceShares(id, user.subject(), clean)
+                                .replaceShares(id, clean)
                                 .map(updated -> updated.withSharedWith(
                                         Set.copyOf(clean))))
                         .doOnNext(updated -> log.info(

@@ -67,7 +67,7 @@ class EnrichMovieUseCaseTest {
                         274_003L, "Il colosso di Rodi", 1961, null, "1961-06-20", "Overview...")));
         when(this.metadataSource.findById(274_003L)).thenReturn(Mono.just(TMDB_DETAIL));
         when(this.movieRepository.updateEnrichment(
-                        eq(MovieId.of(1L)), eq("pepe"), any(MovieMetadata.class),
+                        eq(MovieId.of(1L)), any(MovieMetadata.class),
                         eq(EnrichmentStatus.ENRICHED)))
                 .thenReturn(Mono.just(DRAFT_RAW.applyEnrichment(
                         mergedMetadata(), EnrichmentStatus.ENRICHED)));
@@ -80,7 +80,7 @@ class EnrichMovieUseCaseTest {
         verify(this.metadataSource).search("The Colossus of Rhodes", null);
         verify(this.metadataSource).findById(274_003L);
         verify(this.movieRepository).updateEnrichment(
-                eq(MovieId.of(1L)), eq("pepe"), any(MovieMetadata.class),
+                eq(MovieId.of(1L)), any(MovieMetadata.class),
                 eq(EnrichmentStatus.ENRICHED));
     }
 
@@ -95,7 +95,7 @@ class EnrichMovieUseCaseTest {
 
         when(this.metadataSource.findById(274_003L)).thenReturn(Mono.just(TMDB_DETAIL));
         when(this.movieRepository.updateEnrichment(
-                        eq(MovieId.of(2L)), eq("pepe"), any(MovieMetadata.class),
+                        eq(MovieId.of(2L)), any(MovieMetadata.class),
                         eq(EnrichmentStatus.ENRICHED)))
                 .thenReturn(Mono.just(movie.applyEnrichment(
                         mergedMetadata(), EnrichmentStatus.ENRICHED)));
@@ -107,7 +107,7 @@ class EnrichMovieUseCaseTest {
 
         verify(this.metadataSource, never()).search(any(), any());
         verify(this.movieRepository).updateEnrichment(
-                eq(MovieId.of(2L)), eq("pepe"), any(MovieMetadata.class),
+                eq(MovieId.of(2L)), any(MovieMetadata.class),
                 eq(EnrichmentStatus.ENRICHED));
     }
 
@@ -115,7 +115,7 @@ class EnrichMovieUseCaseTest {
     void enrichWithExplicitTmdbIdSkipsSearchAndUsesChosenCandidate() {
         when(this.metadataSource.findById(43020L)).thenReturn(Mono.just(TMDB_DETAIL));
         when(this.movieRepository.updateEnrichment(
-                        eq(MovieId.of(1L)), eq("pepe"), any(MovieMetadata.class),
+                        eq(MovieId.of(1L)), any(MovieMetadata.class),
                         eq(EnrichmentStatus.ENRICHED)))
                 .thenReturn(Mono.just(DRAFT_RAW.applyEnrichment(
                         mergedMetadata(), EnrichmentStatus.ENRICHED)));
@@ -142,7 +142,7 @@ class EnrichMovieUseCaseTest {
                 .verifyComplete();
 
         verify(this.movieRepository, never()).updateEnrichment(
-                any(), any(), any(), any());
+                any(), any(), any());
     }
 
     @Test
@@ -167,7 +167,7 @@ class EnrichMovieUseCaseTest {
                 .verifyComplete();
 
         verifyNoInteractions(this.metadataSource);
-        verify(this.movieRepository, never()).updateEnrichment(any(), any(), any(), any());
+        verify(this.movieRepository, never()).updateEnrichment(any(), any(), any());
     }
 
     private static MovieMetadata mergedMetadata() {

@@ -4,8 +4,8 @@ import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieConflictException;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
@@ -30,30 +30,33 @@ public class CompleteMovieUseCase {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
-                        .completeIfDraft(id, user.subject())
-                        .flatMap(movie -> this.mediaRepository
-                                .save(Media.create(movie.getId(), objectId, objectKey))
-                                .thenReturn(movie.complete(objectId)))
-                        .doOnNext(movie -> log.info(
-                                "Pelicula completada: id={} owner={} object_id={} object_key={}",
-                                id.value(), user.subject(), objectId, objectKey))
-                        .switchIfEmpty(
-                                this.resolveConflict(id, user.subject(), objectId, objectKey)));
+                        .findById(id)
+                        .switchIfEmpty(Mono.error(new MovieNotFoundException(
+                                "Movie not found: " + id.value())))
+                        .filter(movie -> movie.isOwnedBy(user.subject()))
+                        .switchIfEmpty(Mono.error(new MovieNotFoundException(
+                                "Movie not found: " + id.value())))
+                        .flatMap(movie -> this.movieRepository
+                                .completeIfDraft(id)
+                                .flatMap(completed -> this.mediaRepository
+                                        .save(Media.create(completed.getId(), objectId, objectKey))
+                                        .thenReturn(completed.complete(objectId)))
+                                .doOnNext(completed -> log.info(
+                                        "Pelicula completada: id={} owner={} object_id={} object_key={}",
+                                        id.value(), user.subject(), objectId, objectKey))
+                                .switchIfEmpty(
+                                        this.resolveConflict(id, objectId, objectKey))));
     }
 
     /**
-     * Reconciliación cuando el CAS no transicionó: distingue 404 (no existe / no es del dueño),
-     * no-op idempotente (ya READY con el mismo object_key) y 409 (estado no completable).
+     * Reconciliación cuando el CAS no transicionó (la película ya no está en DRAFT):
+     * distingue el no-op idempotente (ya READY con el mismo object_key) del 409
+     * (estado no completable).
      */
-    private Mono<Movie> resolveConflict(MovieId id, String ownerUsername, Long objectId,
-            String objectKey) {
+    private Mono<Movie> resolveConflict(MovieId id, Long objectId, String objectKey) {
         return this.movieRepository
                 .findById(id)
                 .flatMap(movie -> {
-                    if (!movie.getOwnerUsername().equals(ownerUsername)) {
-                        return Mono.error(
-                                new MovieNotFoundException("Movie not found: " + id.value()));
-                    }
                     if (movie.getStatus() != MovieStatus.READY) {
                         log.warn(
                                 "Pelicula {} no completable: status={}",

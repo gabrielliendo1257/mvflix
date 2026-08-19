@@ -43,7 +43,7 @@ public class EnrichMovieUseCase {
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
                         .findById(id)
-                        .filter(movie -> movie.getOwnerUsername().equals(user.subject()))
+                        .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(
                                 new MovieNotFoundException("Movie not found: " + id.value())))
                         .flatMap(movie -> this.enrich(movie, explicitTmdbId)));
@@ -109,7 +109,7 @@ public class EnrichMovieUseCase {
                 .flatMap(d -> {
                     MovieMetadata merged = this.merge(movie.getMetadata(), d);
                     return this.movieRepository.updateEnrichment(
-                            movie.getId(), movie.getOwnerUsername(), merged,
+                            movie.getId(), merged,
                             EnrichmentStatus.ENRICHED);
                 })
                 .doOnNext(enriched -> log.info(

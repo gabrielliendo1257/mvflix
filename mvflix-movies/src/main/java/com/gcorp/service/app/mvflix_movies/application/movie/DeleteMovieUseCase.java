@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.application.movie;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
+import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
@@ -24,15 +25,23 @@ public class DeleteMovieUseCase {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
-                        .deleteById(id, user.subject())
-                        .flatMap(deleted -> {
-                            if (!deleted) {
-                                return Mono.error(
-                                        new MovieNotFoundException("Movie not found: " + id));
-                            }
-                            log.info("Pelicula eliminada (rollback): id={} owner={}", id.value(),
-                                    user.subject());
-                            return Mono.empty();
-                        }));
+                        .findById(id)
+                        .switchIfEmpty(Mono.error(new MovieNotFoundException(
+                                "Movie not found: " + id)))
+                        .filter(movie -> movie.isOwnedBy(user.subject()))
+                        .switchIfEmpty(Mono.error(new MovieNotFoundException(
+                                "Movie not found: " + id)))
+                        .flatMap(movie -> this.movieRepository
+                                .deleteById(id)
+                                .flatMap(deleted -> {
+                                    if (!deleted) {
+                                        return Mono.error(
+                                                new MovieNotFoundException(
+                                                        "Movie not found: " + id));
+                                    }
+                                    log.info("Pelicula eliminada (rollback): id={} owner={}",
+                                            id.value(), user.subject());
+                                    return Mono.empty();
+                                })));
     }
 }

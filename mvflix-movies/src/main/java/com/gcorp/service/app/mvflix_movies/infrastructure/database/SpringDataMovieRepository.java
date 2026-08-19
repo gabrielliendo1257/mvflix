@@ -137,35 +137,33 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> completeIfDraft(MovieId id, String ownerUsername) {
+    public Mono<Movie> completeIfDraft(MovieId id) {
         return this.databaseClient
                 .sql(
                         """
                         UPDATE movies
                         SET status = 'READY', updated_at = NOW()
-                        WHERE id = :id AND owner_username = :owner_username AND status = 'DRAFT'
+                        WHERE id = :id AND status = 'DRAFT'
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
                 .bind("id", id.value())
-                .bind("owner_username", ownerUsername)
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
     }
 
     @Override
-    public Mono<Boolean> deleteById(MovieId id, String ownerUsername) {
+    public Mono<Boolean> deleteById(MovieId id) {
         return this.databaseClient
                 .sql(
                         """
                         DELETE FROM movies
-                        WHERE id = :id AND owner_username = :owner_username
+                        WHERE id = :id
                         """)
                 .bind("id", id.value())
-                .bind("owner_username", ownerUsername)
                 .fetch()
                 .rowsUpdated()
                 .map(rows -> rows > 0);
@@ -186,7 +184,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> updateEnrichment(MovieId id, String ownerUsername,
+    public Mono<Movie> updateEnrichment(MovieId id,
             MovieMetadata metadata, EnrichmentStatus enrichmentStatus) {
         return this.databaseClient
                 .sql(
@@ -194,7 +192,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                         UPDATE movies
                         SET metadata = CAST(:metadata AS jsonb), enrichment_status = :enrichment_status,
                             updated_at = NOW()
-                        WHERE id = :id AND owner_username = :owner_username
+                        WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility,
                                   (SELECT mm.object_id FROM media mm
@@ -205,21 +203,19 @@ public class SpringDataMovieRepository implements MovieRepository {
                 .bind("metadata", this.jsonCodec.encode(metadata))
                 .bind("enrichment_status", enrichmentStatus.name())
                 .bind("id", id.value())
-                .bind("owner_username", ownerUsername)
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
     }
 
     @Override
-    public Mono<Movie> updateVisibility(MovieId id, String ownerUsername,
-            MovieVisibility visibility) {
+    public Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility) {
         return this.databaseClient
                 .sql(
                         """
                         UPDATE movies
                         SET visibility = :visibility, updated_at = NOW()
-                        WHERE id = :id AND owner_username = :owner_username
+                        WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
@@ -227,7 +223,6 @@ public class SpringDataMovieRepository implements MovieRepository {
                         """)
                 .bind("visibility", visibility.name())
                 .bind("id", id.value())
-                .bind("owner_username", ownerUsername)
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -235,18 +230,14 @@ public class SpringDataMovieRepository implements MovieRepository {
 
     @Override
     @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
-    public Mono<Movie> replaceShares(MovieId id, String ownerUsername,
-            List<String> usernames) {
+    public Mono<Movie> replaceShares(MovieId id, List<String> usernames) {
         return this.databaseClient
                 .sql(
                         """
                         DELETE FROM movie_shares
-                        WHERE movie_id = :id AND EXISTS (
-                            SELECT 1 FROM movies m
-                            WHERE m.id = :id AND m.owner_username = :owner_username)
+                        WHERE movie_id = :id
                         """)
                 .bind("id", id.value())
-                .bind("owner_username", ownerUsername)
                 .fetch()
                 .rowsUpdated()
                 .flatMapMany(deleted ->
@@ -259,11 +250,10 @@ public class SpringDataMovieRepository implements MovieRepository {
                                             SELECT :id, :username
                                             WHERE EXISTS (
                                                 SELECT 1 FROM movies m
-                                                WHERE m.id = :id AND m.owner_username = :owner_username)
+                                                WHERE m.id = :id)
                                             """)
                                     .bind("id", id.value())
                                     .bind("username", username)
-                                    .bind("owner_username", ownerUsername)
                                     .fetch()
                                     .rowsUpdated()))
                 .then(this.databaseClient
@@ -271,14 +261,13 @@ public class SpringDataMovieRepository implements MovieRepository {
                                 """
                                 UPDATE movies
                                 SET updated_at = NOW()
-                                WHERE id = :id AND owner_username = :owner_username
+                                WHERE id = :id
                                 RETURNING id, owner_username, title, status, enrichment_status,
                                           metadata::text, visibility,
                                           (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                            FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                                 """)
                         .bind("id", id.value())
-                        .bind("owner_username", ownerUsername)
                         .map(this::toRow)
                         .one()
                         .map(this.rowMapper::toDomain));

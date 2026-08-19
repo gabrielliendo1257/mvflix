@@ -22,27 +22,27 @@ public interface MovieRepository {
     Flux<Movie> findByOwner(String ownerUsername, int limit);
 
     /**
-     * Compare-and-set: pasa a READY solo si la película sigue en DRAFT y pertenece al dueño.
-     * Vacío si no hubo fila (no existe, otro dueño o ya no está en DRAFT).
+     * Compare-and-set: pasa a READY solo si la película sigue en DRAFT.
+     * Vacío si no hubo fila (no existe o ya no está en DRAFT).
+     * La autoría la decide el use-case con {@link Movie#isOwnedBy(String)}.
      * El media (object_id/object_key) lo persiste {@code MediaRepository} en el use-case.
      */
-    Mono<Movie> completeIfDraft(MovieId id, String ownerUsername);
+    Mono<Movie> completeIfDraft(MovieId id);
 
-    /** {@code true} si borró la fila del dueño. */
-    Mono<Boolean> deleteById(MovieId id, String ownerUsername);
+    /** {@code true} si borró la fila. */
+    Mono<Boolean> deleteById(MovieId id);
 
     /** Aplica metadata enriquecida + estado de enriquecimiento (idempotente). */
-    Mono<Movie> updateEnrichment(MovieId id, String ownerUsername, MovieMetadata metadata,
+    Mono<Movie> updateEnrichment(MovieId id, MovieMetadata metadata,
             EnrichmentStatus enrichmentStatus);
 
-    /** Cambia la visibilidad (solo el dueño). Vacío si la fila no es del dueño. */
-    Mono<Movie> updateVisibility(MovieId id, String ownerUsername, MovieVisibility visibility);
+    /** Cambia la visibilidad del catálogo. Vacío si la fila no existe. */
+    Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility);
 
     /**
-     * Reemplaza la lista de compartidos (solo el dueño). Vacío si la movie
-     * no existe o no es del dueño.
+     * Reemplaza la lista de compartidos. Vacío si la movie no existe.
      */
-    Mono<Movie> replaceShares(MovieId id, String ownerUsername, List<String> usernames);
+    Mono<Movie> replaceShares(MovieId id, List<String> usernames);
 
     /** Catalogo pendiente de enriquecer (para el scheduler), limitado y estable. */
     Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit);

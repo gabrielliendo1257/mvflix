@@ -49,7 +49,7 @@ class UpdateSharesUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
-        when(this.movieRepository.replaceShares(MovieId.of(1L), "Javier", List.of("Maria", "Pedro")))
+        when(this.movieRepository.replaceShares(MovieId.of(1L), List.of("Maria", "Pedro")))
                 .thenReturn(Mono.just(movie));
 
         StepVerifier.create(this.useCase.execute(
@@ -58,7 +58,7 @@ class UpdateSharesUseCaseTest {
                 .verifyComplete();
 
         verify(this.movieRepository).replaceShares(
-                MovieId.of(1L), "Javier", List.of("Maria", "Pedro"));
+                MovieId.of(1L), List.of("Maria", "Pedro"));
     }
 
     @Test
@@ -74,6 +74,6 @@ class UpdateSharesUseCaseTest {
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never()).replaceShares(eq(MovieId.of(1L)), any(), any());
+        verify(this.movieRepository, never()).replaceShares(eq(MovieId.of(1L)), any());
     }
 }
