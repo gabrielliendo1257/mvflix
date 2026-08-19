@@ -8,19 +8,27 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.oauth2.client.OAuth2AuthorizationContext;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProvider;
+import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProviderBuilder;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
+import org.springframework.web.reactive.function.client.ExchangeFunction;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.server.ServerWebExchange;
 
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
+import java.time.Instant;
 
 @Configuration
 public class BffWebClientConfiguration {
@@ -40,6 +48,76 @@ public class BffWebClientConfiguration {
             clientRegistrationRepository, authorizedClientRepository);
     filter.setDefaultClientRegistrationId("movie-app");
     return filter;
+  }
+
+  /** Provider de refresh token para renovar el access token de la sesión OAuth2. */
+  @Bean
+  @Profile("!sandbox")
+  ReactiveOAuth2AuthorizedClientProvider oauth2RefreshTokenProvider() {
+    return ReactiveOAuth2AuthorizedClientProviderBuilder.builder().refreshToken().build();
+  }
+
+  /**
+   * Renueva el access token de la sesión antes de salir: el auth-server emite access
+   * tokens de 7 min con refresh de 5 días, y sin renovación toda llamada del BFF con
+   * sesión cookie muere a los 7 min (el <video> corta con 401 en el siguiente Range).
+   * Corre antes del filtro de autorización: si renueva, guarda el nuevo authorized
+   * client en la sesión y el siguiente filtro manda el Bearer ya fresco.
+   */
+  @Bean
+  @Profile("!sandbox")
+  ExchangeFilterFunction oauth2AccessTokenRefreshFilter(
+      ServerOAuth2AuthorizedClientRepository authorizedClientRepository,
+      ReactiveOAuth2AuthorizedClientProvider oauth2RefreshTokenProvider,
+      @Value("${bff.oauth2.client-registration-id:movie-app}") String clientRegistrationId) {
+    return (request, next) -> {
+      ServerWebExchange exchange = request
+          .attribute(ServerWebExchange.class.getName())
+          .filter(ServerWebExchange.class::isInstance)
+          .map(ServerWebExchange.class::cast)
+          .orElse(null);
+      if (exchange == null) {
+        return next.exchange(request);
+      }
+      return ReactiveSecurityContextHolder.getContext()
+          .flatMap(context -> {
+            var auth = context.getAuthentication();
+            if (auth == null) {
+              return next.exchange(request);
+            }
+            return this.refreshIfNeeded(
+                    clientRegistrationId, auth, exchange, oauth2RefreshTokenProvider,
+                    authorizedClientRepository, request, next)
+                .switchIfEmpty(Mono.defer(() -> next.exchange(request)));
+          });
+    };
+  }
+
+  private static Mono<ClientResponse> refreshIfNeeded(
+      String clientRegistrationId,
+      Authentication auth,
+      ServerWebExchange exchange,
+      ReactiveOAuth2AuthorizedClientProvider refreshTokenProvider,
+      ServerOAuth2AuthorizedClientRepository authorizedClientRepository,
+      ClientRequest request,
+      ExchangeFunction next) {
+    return authorizedClientRepository
+        .loadAuthorizedClient(clientRegistrationId, auth, exchange)
+        .flatMap(client -> {
+          if (client.getAccessToken().getExpiresAt() == null
+              || client.getAccessToken().getExpiresAt().isAfter(Instant.now().plusSeconds(60))) {
+            return next.exchange(request);
+          }
+          var context = org.springframework.security.oauth2.client.OAuth2AuthorizationContext
+              .withAuthorizedClient(client)
+              .principal(auth)
+              .build();
+          return refreshTokenProvider
+              .authorize(context)
+              .flatMap(refreshed -> authorizedClientRepository
+                  .saveAuthorizedClient(refreshed, auth, exchange)
+                  .then(Mono.defer(() -> next.exchange(request))));
+        });
   }
 
   /** En sandbox no hay tokens: filtro no-op para que los WebClient sigan construyendose. */
@@ -81,12 +159,13 @@ public class BffWebClientConfiguration {
   WebClient usersWebClient(
       ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
       ObjectProvider<ExchangeFilterFunction> devOutboundAuthFilter,
+      ObjectProvider<ExchangeFilterFunction> oauth2AccessTokenRefreshFilter,
       @Value("${services.users.url}") String usersUrl,
       @Value("${bff.webclient.connect-timeout-ms:2000}") int connectTimeoutMs,
       @Value("${bff.webclient.response-timeout-ms:10000}") long responseTimeoutMs) {
     return this.build(
         usersUrl,
-        this.outboundAuthFilter(oauth2AuthorizedClientFilter, devOutboundAuthFilter),
+        this.outboundAuthFilter(oauth2AuthorizedClientFilter, devOutboundAuthFilter, oauth2AccessTokenRefreshFilter),
         connectTimeoutMs,
         responseTimeoutMs);
   }
@@ -95,12 +174,13 @@ public class BffWebClientConfiguration {
   WebClient storageWebClient(
       ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
       ObjectProvider<ExchangeFilterFunction> devOutboundAuthFilter,
+      ObjectProvider<ExchangeFilterFunction> oauth2AccessTokenRefreshFilter,
       @Value("${services.storage.url}") String storageUrl,
       @Value("${bff.webclient.connect-timeout-ms:2000}") int connectTimeoutMs,
       @Value("${bff.webclient.response-timeout-ms:10000}") long responseTimeoutMs) {
     return this.build(
         storageUrl,
-        this.outboundAuthFilter(oauth2AuthorizedClientFilter, devOutboundAuthFilter),
+        this.outboundAuthFilter(oauth2AuthorizedClientFilter, devOutboundAuthFilter, oauth2AccessTokenRefreshFilter),
         connectTimeoutMs,
         responseTimeoutMs);
   }
@@ -109,25 +189,30 @@ public class BffWebClientConfiguration {
   WebClient moviesWebClient(
       ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
       ObjectProvider<ExchangeFilterFunction> devOutboundAuthFilter,
+      ObjectProvider<ExchangeFilterFunction> oauth2AccessTokenRefreshFilter,
       @Value("${services.movies.url}") String moviesUrl,
       @Value("${bff.webclient.connect-timeout-ms:2000}") int connectTimeoutMs,
       @Value("${bff.webclient.response-timeout-ms:10000}") long responseTimeoutMs) {
     return this.build(
         moviesUrl,
-        this.outboundAuthFilter(oauth2AuthorizedClientFilter, devOutboundAuthFilter),
+        this.outboundAuthFilter(oauth2AuthorizedClientFilter, devOutboundAuthFilter, oauth2AccessTokenRefreshFilter),
         connectTimeoutMs,
         responseTimeoutMs);
   }
 
   /**
    * En dev el filtro de salida es el compuesto (Bearer o sesion); fuera de dev no hay bean
-   * ExchangeFilterFunction propio y manda siempre el filtro oauth2 de sesion.
+   * ExchangeFilterFunction propio y manda siempre el filtro oauth2 de sesion. En ambos
+   * casos el filtro de refresh corre primero (renueva el access token de sesion si expira).
    */
   private ExchangeFilterFunction outboundAuthFilter(
       ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
-      ObjectProvider<ExchangeFilterFunction> devOutboundAuthFilter) {
+      ObjectProvider<ExchangeFilterFunction> devOutboundAuthFilter,
+      ObjectProvider<ExchangeFilterFunction> oauth2AccessTokenRefreshFilter) {
     ExchangeFilterFunction dev = devOutboundAuthFilter.getIfAvailable();
-    return dev != null ? dev : oauth2AuthorizedClientFilter;
+    ExchangeFilterFunction auth = dev != null ? dev : oauth2AuthorizedClientFilter;
+    ExchangeFilterFunction refresh = oauth2AccessTokenRefreshFilter.getIfAvailable();
+    return refresh != null ? refresh.andThen(auth) : auth;
   }
 
   private WebClient build(
