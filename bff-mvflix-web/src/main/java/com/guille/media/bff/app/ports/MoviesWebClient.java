@@ -37,15 +37,15 @@ public interface MoviesWebClient {
   Mono<MovieDto> enrichMovie(Long movieId, Long tmdbId);
 
   /** Upsert de los archivos que el storage descubrió en una biblioteca (media server). */
-  Flux<MediaAssetDto> scanLibrary(Long storageId, List<DiscoveredFileDto> files);
+  Flux<MediaAssetDto> scanLibrary(Long libraryId, List<DiscoveredFileDto> files);
 
   /** Activos de una biblioteca, opcionalmente filtrados por estado. */
-  Flux<MediaAssetDto> listAssets(Long storageId, String status);
+  Flux<MediaAssetDto> listAssets(Long libraryId, String status);
 
   /** Un activo por id (para derivar el título del filename al identificar). */
   Mono<MediaAssetDto> assetById(Long assetId);
 
-  /** Activo de una película (playback LOCAL: storageId + relativePath). */
+  /** Activo de una película (playback LOCAL: libraryId + relativePath). */
   Mono<MediaAssetDto> assetByMovie(Long movieId);
 
   /** Vincula el activo a una película nueva (media server). */

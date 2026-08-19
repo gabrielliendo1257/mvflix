@@ -56,22 +56,22 @@ public class MediaAssetController {
     }
 
     /** El BFF entrega aqui los archivos que el storage descubrio en la biblioteca. */
-    @PostMapping(value = "/libraries/{storageId}/scan", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "/libraries/{libraryId}/scan", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Flux<MediaAssetResponse> scan(
-            @PathVariable Long storageId, @RequestBody ScanLibraryRequest request) {
+            @PathVariable Long libraryId, @RequestBody ScanLibraryRequest request) {
         return this.scanLibraryUseCase
-                .execute(storageId, this.mapper.toScannedFiles(request))
+                .execute(libraryId, this.mapper.toScannedFiles(request))
                 .map(this.mapper::toResponse);
     }
 
-    @GetMapping("/libraries/{storageId}/assets")
+    @GetMapping("/libraries/{libraryId}/assets")
     public Flux<MediaAssetResponse> assets(
-            @PathVariable Long storageId,
+            @PathVariable Long libraryId,
             @RequestParam(required = false) String status) {
         Flux<MediaAsset> assets = status == null || status.isBlank()
-                ? this.assetRepository.findAllByStorageId(storageId)
-                : this.assetRepository.findAllByStorageIdAndStatus(
-                        storageId, MediaAssetStatus.valueOf(status));
+                ? this.assetRepository.findAllByLibraryId(libraryId)
+                : this.assetRepository.findAllByLibraryIdAndStatus(
+                        libraryId, MediaAssetStatus.valueOf(status));
         return assets.map(this.mapper::toResponse);
     }
 

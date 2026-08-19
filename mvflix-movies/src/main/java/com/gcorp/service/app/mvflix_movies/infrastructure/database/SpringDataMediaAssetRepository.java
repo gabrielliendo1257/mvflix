@@ -30,12 +30,12 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                     .sql(
                             """
                             INSERT INTO media_assets
-                                (storage_id, relative_path, size, mime_type, status, movie_id)
-                            VALUES (:storage_id, :relative_path, :size, :mime_type, :status, :movie_id)
-                            RETURNING id, storage_id, relative_path, size, mime_type, status,
+                                (library_id, relative_path, size, mime_type, status, movie_id)
+                            VALUES (:library_id, :relative_path, :size, :mime_type, :status, :movie_id)
+                            RETURNING id, library_id, relative_path, size, mime_type, status,
                                       movie_id, created_at, updated_at
                             """)
-                    .bind("storage_id", asset.getStorageId())
+                    .bind("library_id", asset.getLibraryId())
                     .bind("relative_path", asset.getRelativePath())
                     .bind("size", asset.getSize())
                     .bind("mime_type", asset.getMimeType())
@@ -52,7 +52,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                                 SET size = :size, mime_type = :mime_type, status = :status,
                                     movie_id = :movie_id, updated_at = NOW()
                                 WHERE id = :id
-                                RETURNING id, storage_id, relative_path, size, mime_type, status,
+                                RETURNING id, library_id, relative_path, size, mime_type, status,
                                           movie_id, created_at, updated_at
                                 """)
                         .bind("size", asset.getSize())
@@ -77,7 +77,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, storage_id, relative_path, size, mime_type, status,
+                        SELECT id, library_id, relative_path, size, mime_type, status,
                                movie_id, created_at, updated_at
                         FROM media_assets
                         WHERE id = :id
@@ -92,7 +92,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, storage_id, relative_path, size, mime_type, status,
+                        SELECT id, library_id, relative_path, size, mime_type, status,
                                movie_id, created_at, updated_at
                         FROM media_assets
                         WHERE movie_id = :movie_id
@@ -105,49 +105,49 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
     }
 
     @Override
-    public Mono<MediaAsset> findByStorageAndPath(Long storageId, String relativePath) {
+    public Mono<MediaAsset> findByLibraryAndPath(Long libraryId, String relativePath) {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, storage_id, relative_path, size, mime_type, status,
+                        SELECT id, library_id, relative_path, size, mime_type, status,
                                movie_id, created_at, updated_at
                         FROM media_assets
-                        WHERE storage_id = :storage_id AND relative_path = :relative_path
+                        WHERE library_id = :library_id AND relative_path = :relative_path
                         """)
-                .bind("storage_id", storageId)
+                .bind("library_id", libraryId)
                 .bind("relative_path", relativePath)
                 .map((row, metadata) -> this.toDomain(row))
                 .one();
     }
 
     @Override
-    public Flux<MediaAsset> findAllByStorageId(Long storageId) {
+    public Flux<MediaAsset> findAllByLibraryId(Long libraryId) {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, storage_id, relative_path, size, mime_type, status,
+                        SELECT id, library_id, relative_path, size, mime_type, status,
                                movie_id, created_at, updated_at
                         FROM media_assets
-                        WHERE storage_id = :storage_id
+                        WHERE library_id = :library_id
                         ORDER BY relative_path
                         """)
-                .bind("storage_id", storageId)
+                .bind("library_id", libraryId)
                 .map((row, metadata) -> this.toDomain(row))
                 .all();
     }
 
     @Override
-    public Flux<MediaAsset> findAllByStorageIdAndStatus(Long storageId, MediaAssetStatus status) {
+    public Flux<MediaAsset> findAllByLibraryIdAndStatus(Long libraryId, MediaAssetStatus status) {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, storage_id, relative_path, size, mime_type, status,
+                        SELECT id, library_id, relative_path, size, mime_type, status,
                                movie_id, created_at, updated_at
                         FROM media_assets
-                        WHERE storage_id = :storage_id AND status = :status
+                        WHERE library_id = :library_id AND status = :status
                         ORDER BY relative_path
                         """)
-                .bind("storage_id", storageId)
+                .bind("library_id", libraryId)
                 .bind("status", status.name())
                 .map((row, metadata) -> this.toDomain(row))
                 .all();
@@ -157,7 +157,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
         Long movieId = row.get("movie_id", Long.class);
         return new MediaAsset(
                 MediaAssetId.of(row.get("id", Long.class)),
-                row.get("storage_id", Long.class),
+                row.get("library_id", Long.class),
                 row.get("relative_path", String.class),
                 row.get("size", Long.class),
                 row.get("mime_type", String.class),

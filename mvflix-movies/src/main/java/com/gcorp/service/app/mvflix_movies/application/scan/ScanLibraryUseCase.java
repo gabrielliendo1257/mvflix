@@ -29,35 +29,35 @@ public class ScanLibraryUseCase {
 
     private final MediaAssetRepository assetRepository;
 
-    public Flux<MediaAsset> execute(Long storageId, List<ScannedFile> discovered) {
+    public Flux<MediaAsset> execute(Long libraryId, List<ScannedFile> discovered) {
         Set<String> presentPaths = new HashSet<>();
         Flux<MediaAsset> upserts =
                 Flux.fromIterable(discovered)
                         .doOnNext(file -> presentPaths.add(file.relativePath()))
-                        .concatMap(file -> this.upsert(storageId, file))
+                        .concatMap(file -> this.upsert(libraryId, file))
                         .doOnNext(asset -> log.info(
                                 "Asset presente: storage={} path={} status={}",
-                                storageId, asset.getRelativePath(), asset.getStatus()));
+                                libraryId, asset.getRelativePath(), asset.getStatus()));
 
         Flux<MediaAsset> missings =
                 this.assetRepository
-                        .findAllByStorageId(storageId)
+                        .findAllByLibraryId(libraryId)
                         .filter(asset -> !asset.isMissing())
                         .filter(asset -> !presentPaths.contains(asset.getRelativePath()))
                         .concatMap(asset -> this.assetRepository.save(asset.markMissing()))
                         .doOnNext(asset -> log.warn(
                                 "Asset desaparecido: storage={} path={}",
-                                storageId, asset.getRelativePath()));
+                                libraryId, asset.getRelativePath()));
 
         return upserts.concatWith(missings);
     }
 
-    private Mono<MediaAsset> upsert(Long storageId, ScannedFile file) {
+    private Mono<MediaAsset> upsert(Long libraryId, ScannedFile file) {
         return this.assetRepository
-                .findByStorageAndPath(storageId, file.relativePath())
+                .findByLibraryAndPath(libraryId, file.relativePath())
                 .map(asset -> asset.markPresent().refresh(file.size(), file.mimeType()))
                 .switchIfEmpty(Mono.defer(
-                        () -> Mono.just(MediaAsset.create(storageId, file))))
+                        () -> Mono.just(MediaAsset.create(libraryId, file))))
                 .flatMap(this.assetRepository::save);
     }
 }

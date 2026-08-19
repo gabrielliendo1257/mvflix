@@ -103,7 +103,7 @@ public class WebMoviesService {
     return this.moviesWebClient
         .assetByMovie(movieId)
         .flatMap(asset -> this.storageWebClient.streamLibraryFile(
-            asset.storageId(), asset.relativePath(), rangeHeader))
+            asset.libraryId(), asset.relativePath(), rangeHeader))
         .switchIfEmpty(Mono.defer(() -> {
           log.warn("stream: movie={} sin asset de biblioteca", movieId);
           return Mono.just(ResponseEntity.notFound().build());

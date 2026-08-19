@@ -24,7 +24,7 @@ public class MediaAssetApiMapper {
     public MediaAssetResponse toResponse(MediaAsset asset) {
         return new MediaAssetResponse(
                 asset.getId().value(),
-                asset.getStorageId(),
+                asset.getLibraryId(),
                 asset.getRelativePath(),
                 asset.getSize(),
                 asset.getMimeType(),

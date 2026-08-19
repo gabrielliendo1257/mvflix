@@ -13,9 +13,9 @@ public interface MediaAssetRepository {
 
     Mono<MediaAsset> findByMovieId(MovieId movieId);
 
-    Mono<MediaAsset> findByStorageAndPath(Long storageId, String relativePath);
+    Mono<MediaAsset> findByLibraryAndPath(Long libraryId, String relativePath);
 
-    Flux<MediaAsset> findAllByStorageId(Long storageId);
+    Flux<MediaAsset> findAllByLibraryId(Long libraryId);
 
-    Flux<MediaAsset> findAllByStorageIdAndStatus(Long storageId, MediaAssetStatus status);
+    Flux<MediaAsset> findAllByLibraryIdAndStatus(Long libraryId, MediaAssetStatus status);
 }

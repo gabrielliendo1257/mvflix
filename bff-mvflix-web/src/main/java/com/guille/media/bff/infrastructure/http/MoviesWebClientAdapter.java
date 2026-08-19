@@ -120,10 +120,10 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
-  public Flux<MediaAssetDto> scanLibrary(Long storageId, List<DiscoveredFileDto> files) {
+  public Flux<MediaAssetDto> scanLibrary(Long libraryId, List<DiscoveredFileDto> files) {
     return this.moviesWebClient
         .post()
-        .uri(API + "/libraries/" + storageId + "/scan")
+        .uri(API + "/libraries/" + libraryId + "/scan")
         .contentType(MediaType.APPLICATION_JSON)
         .bodyValue(Map.of("files", files))
         .retrieve()
@@ -131,11 +131,11 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
-  public Flux<MediaAssetDto> listAssets(Long storageId, String status) {
+  public Flux<MediaAssetDto> listAssets(Long libraryId, String status) {
     return this.moviesWebClient
         .get()
         .uri(uriBuilder -> uriBuilder
-            .path(API + "/libraries/" + storageId + "/assets")
+            .path(API + "/libraries/" + libraryId + "/assets")
             .queryParamIfPresent("status", java.util.Optional.ofNullable(status))
             .build())
         .retrieve()

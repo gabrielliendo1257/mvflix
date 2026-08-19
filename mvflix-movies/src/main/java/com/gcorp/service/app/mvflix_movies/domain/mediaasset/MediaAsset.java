@@ -16,7 +16,7 @@ import java.time.Instant;
 public class MediaAsset {
 
     private final MediaAssetId id;
-    private final Long storageId;
+    private final Long libraryId;
     private final String relativePath;
     private final long size;
     private final String mimeType;
@@ -27,7 +27,7 @@ public class MediaAsset {
 
     public MediaAsset(
             MediaAssetId id,
-            Long storageId,
+            Long libraryId,
             String relativePath,
             long size,
             String mimeType,
@@ -36,7 +36,7 @@ public class MediaAsset {
             Instant createdAt,
             Instant updatedAt) {
         this.id = id;
-        this.storageId = storageId;
+        this.libraryId = libraryId;
         this.relativePath = relativePath;
         this.size = size;
         this.mimeType = mimeType;
@@ -46,10 +46,10 @@ public class MediaAsset {
         this.updatedAt = updatedAt;
     }
 
-    public static MediaAsset create(Long storageId, ScannedFile file) {
+    public static MediaAsset create(Long libraryId, ScannedFile file) {
         return new MediaAsset(
                 null,
-                storageId,
+                libraryId,
                 file.relativePath(),
                 file.size(),
                 file.mimeType(),
@@ -74,7 +74,7 @@ public class MediaAsset {
         }
         return new MediaAsset(
                 this.id,
-                this.storageId,
+                this.libraryId,
                 this.relativePath,
                 this.size,
                 this.mimeType,
@@ -91,7 +91,7 @@ public class MediaAsset {
         }
         return new MediaAsset(
                 this.id,
-                this.storageId,
+                this.libraryId,
                 this.relativePath,
                 this.size,
                 this.mimeType,
@@ -108,7 +108,7 @@ public class MediaAsset {
         }
         return new MediaAsset(
                 this.id,
-                this.storageId,
+                this.libraryId,
                 this.relativePath,
                 this.size,
                 this.mimeType,
@@ -125,7 +125,7 @@ public class MediaAsset {
         }
         return new MediaAsset(
                 this.id,
-                this.storageId,
+                this.libraryId,
                 this.relativePath,
                 size,
                 mimeType,
@@ -139,8 +139,8 @@ public class MediaAsset {
         return this.id;
     }
 
-    public Long getStorageId() {
-        return this.storageId;
+    public Long getLibraryId() {
+        return this.libraryId;
     }
 
     public String getRelativePath() {
