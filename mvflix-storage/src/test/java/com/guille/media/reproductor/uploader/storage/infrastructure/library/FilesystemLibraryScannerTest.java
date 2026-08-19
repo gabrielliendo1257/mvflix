@@ -2,6 +2,7 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.library;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryRootUnavailableException;
 import com.guille.media.reproductor.uploader.storage.domain.vos.DiscoveredFile;
 
 import org.junit.jupiter.api.Test;
@@ -46,8 +47,30 @@ class FilesystemLibraryScannerTest {
     }
 
     @Test
-    void ignoresNonExistentRoot() {
+    void nonExistentRootFailsWithRootUnavailable() {
         StepVerifier.create(this.scanner.scan("/no/such/dir/here"))
+                .expectError(LibraryRootUnavailableException.class)
+                .verify();
+    }
+
+    @Test
+    void fileAsRootFailsWithRootUnavailable() throws IOException {
+        Path file = Files.createFile(this.tempDir.resolve("nota.txt"));
+
+        StepVerifier.create(this.scanner.scan(file.toString()))
+                .expectError(LibraryRootUnavailableException.class)
+                .verify();
+    }
+
+    @Test
+    void skipsPartialDownloadFiles() throws IOException {
+        Files.write(this.tempDir.resolve("pelicula.mkv"), new byte[] {1});
+        Files.write(this.tempDir.resolve("serie.mkv.part"), new byte[] {2});
+        Files.write(this.tempDir.resolve("video.mp4.crdownload"), new byte[] {3});
+        Files.write(this.tempDir.resolve("otro.mkv!qB"), new byte[] {4});
+
+        StepVerifier.create(this.scanner.scan(this.tempDir.toString()))
+                .expectNextMatches(file -> file.relativePath().equals("pelicula.mkv"))
                 .verifyComplete();
     }
 

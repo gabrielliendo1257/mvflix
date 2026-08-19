@@ -9,6 +9,7 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAc
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathInvalidException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathNotAllowedException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryRootUnavailableException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ObjectAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
@@ -80,6 +81,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(LibraryPathNotAllowedException.class)
     public ResponseEntity<?> libraryPathNotAllowed(LibraryPathNotAllowedException ex) {
         return error(HttpStatus.BAD_REQUEST, "LIBRARY_PATH_NOT_ALLOWED", ex);
+    }
+
+    @ExceptionHandler(LibraryRootUnavailableException.class)
+    public ResponseEntity<?> libraryRootUnavailable(LibraryRootUnavailableException ex) {
+        return error(HttpStatus.CONFLICT, "LIBRARY_ROOT_UNAVAILABLE", ex);
     }
 
     @ExceptionHandler(LibraryAccessDeniedException.class)

@@ -1,5 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.infrastructure.library;
 
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryRootUnavailableException;
 import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryScanner;
 import com.guille.media.reproductor.uploader.storage.domain.vos.DiscoveredFile;
 
@@ -23,6 +24,10 @@ import java.util.Set;
  *
  * <p>Frontera anti path-traversal: todo archivo se resuelve con {@code toRealPath()} y se
  * descarta si no cuelga del root real. Los symlinks que apunten fuera del root quedan fuera.
+ *
+ * <p>Si el root no es accesible (USB desmontado, carpeta borrada) el escaneo falla con
+ * {@link LibraryRootUnavailableException} en lugar de devolver un vacio silencioso; si el
+ * root desaparece a mitad del recorrido se devuelve lo ya descubierto y se registra el warn.
  */
 @Slf4j
 @Component
@@ -32,6 +37,9 @@ public class FilesystemLibraryScanner implements LibraryScanner {
 
     private static final Set<String> SUPPORTED_EXTENSIONS =
             Set.of("mkv", "mp4", "avi", "mov", "webm");
+
+    private static final Set<String> PARTIAL_DOWNLOAD_SUFFIXES =
+            Set.of(".part", ".crdownload", ".download", ".opdownload", ".tmp", ".~", "!qB");
 
     private static final Map<String, String> MIME_BY_EXTENSION =
             Map.of(
@@ -51,13 +59,13 @@ public class FilesystemLibraryScanner implements LibraryScanner {
         try {
             root = Path.of(rootPath).toAbsolutePath().normalize();
             if (!Files.isDirectory(root)) {
-                log.warn("Library root no es un directorio: {}", rootPath);
-                return List.of();
+                throw new LibraryRootUnavailableException(
+                        "Raíz de biblioteca no disponible: " + rootPath);
             }
             root = root.toRealPath();
         } catch (IOException error) {
-            log.warn("Library root inaccesible: {} cause={}", rootPath, error.getMessage());
-            return List.of();
+            throw new LibraryRootUnavailableException(
+                    "Raíz de biblioteca inaccesible: " + rootPath + " (" + error.getMessage() + ")");
         }
 
         final Path realRoot = root;
@@ -65,6 +73,7 @@ public class FilesystemLibraryScanner implements LibraryScanner {
         try (var paths = Files.walk(root, MAX_DEPTH)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> !this.isHidden(path))
+                    .filter(path -> !this.isPartialDownload(path))
                     .filter(this::isSupported)
                     .forEach(
                             path -> {
@@ -99,6 +108,15 @@ public class FilesystemLibraryScanner implements LibraryScanner {
 
     private boolean isHidden(Path path) {
         return path.getFileName() != null && path.getFileName().toString().startsWith(".");
+    }
+
+    private boolean isPartialDownload(Path path) {
+        if (path.getFileName() == null) {
+            return false;
+        }
+        String name = path.getFileName().toString();
+        return PARTIAL_DOWNLOAD_SUFFIXES.stream()
+                .anyMatch(suffix -> name.endsWith(suffix));
     }
 
     private boolean isSupported(Path path) {
