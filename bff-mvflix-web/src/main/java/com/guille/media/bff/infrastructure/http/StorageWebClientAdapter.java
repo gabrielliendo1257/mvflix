@@ -127,6 +127,16 @@ public class StorageWebClientAdapter implements StorageWebClient {
         .then();
   }
 
+  @Override
+  public Mono<Void> cancelLibraryScan(Long libraryId) {
+    return this.storageWebClient
+        .delete()
+        .uri(API + "/libraries/" + libraryId + "/scan")
+        .retrieve()
+        .toBodilessEntity()
+        .then();
+  }
+
   private record RegisterLibraryBody(String rootPath) {}
 
   @Override

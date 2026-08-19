@@ -1,20 +1,24 @@
 package com.guille.media.reproductor.uploader.storage.infrastructure.library;
 
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryRootUnavailableException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.ScanLimitExceededException;
 import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryScanner;
 import com.guille.media.reproductor.uploader.storage.domain.vos.DiscoveredFile;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,12 +32,18 @@ import java.util.Set;
  * <p>Si el root no es accesible (USB desmontado, carpeta borrada) el escaneo falla con
  * {@link LibraryRootUnavailableException} en lugar de devolver un vacio silencioso; si el
  * root desaparece a mitad del recorrido se devuelve lo ya descubierto y se registra el warn.
+ *
+ * <p>El recorrido corre en {@code boundedElastic} para no bloquear el event loop, es
+ * cancelable de forma cooperativa ({@link ScanCancellationRegistry}) y aborta con
+ * {@link ScanLimitExceededException} si supera {@code storage.scan-max-files} archivos.
  */
 @Slf4j
 @Component
 public class FilesystemLibraryScanner implements LibraryScanner {
 
     private static final int MAX_DEPTH = 32;
+
+    private static final int CANCEL_CHECK_EVERY = 200;
 
     private static final Set<String> SUPPORTED_EXTENSIONS =
             Set.of("mkv", "mp4", "avi", "mov", "webm");
@@ -49,9 +59,20 @@ public class FilesystemLibraryScanner implements LibraryScanner {
                     "mov", "video/quicktime",
                     "webm", "video/webm");
 
+    private final ScanCancellationRegistry cancellationRegistry;
+    private final int maxFiles;
+
+    public FilesystemLibraryScanner(
+            ScanCancellationRegistry cancellationRegistry,
+            @Value("${storage.scan-max-files:20000}") int maxFiles) {
+        this.cancellationRegistry = cancellationRegistry;
+        this.maxFiles = maxFiles;
+    }
+
     @Override
     public Flux<DiscoveredFile> scan(String rootPath) {
-        return Flux.defer(() -> Flux.fromIterable(this.scanBlocking(rootPath)));
+        return Flux.defer(() -> Flux.fromIterable(this.scanBlocking(rootPath)))
+                .subscribeOn(Schedulers.boundedElastic());
     }
 
     private List<DiscoveredFile> scanBlocking(String rootPath) {
@@ -68,40 +89,66 @@ public class FilesystemLibraryScanner implements LibraryScanner {
                     "Raíz de biblioteca inaccesible: " + rootPath + " (" + error.getMessage() + ")");
         }
 
-        final Path realRoot = root;
+        try {
+            return this.walk(root);
+        } finally {
+            this.cancellationRegistry.clear(root.toString());
+        }
+    }
+
+    private List<DiscoveredFile> walk(Path root) {
+        final Path realRoot;
+        try {
+            realRoot = root.toRealPath();
+        } catch (IOException error) {
+            throw new LibraryRootUnavailableException(
+                    "Raíz de biblioteca inaccesible: " + root + " (" + error.getMessage() + ")");
+        }
+
         List<DiscoveredFile> discovered = new ArrayList<>();
-        try (var paths = Files.walk(root, MAX_DEPTH)) {
-            paths.filter(Files::isRegularFile)
-                    .filter(path -> !this.isHidden(path))
-                    .filter(path -> !this.isPartialDownload(path))
-                    .filter(this::isSupported)
-                    .forEach(
-                            path -> {
-                                try {
-                                    Path real = path.toRealPath();
-                                    if (!real.startsWith(realRoot)) {
-                                        log.warn(
-                                                "Archivo fuera del root de la biblioteca, "
-                                                        + "descartado: {}",
-                                                real);
-                                        return;
-                                    }
-                                    discovered.add(
-                                            new DiscoveredFile(
-                                                    realRoot
-                                                            .relativize(real)
-                                                            .toString()
-                                                            .replace('\\', '/'),
-                                                    Files.size(real),
-                                                    this.mimeTypeOf(real)));
-                                } catch (IOException error) {
-                                    log.warn(
-                                            "Archivo no pudo inspeccionarse, descartado: {}",
-                                            path);
-                                }
-                            });
+        try (var paths = Files.walk(realRoot, MAX_DEPTH)) {
+            Iterator<Path> iterator = paths.iterator();
+            int visited = 0;
+            while (iterator.hasNext()) {
+                Path path = iterator.next();
+                visited++;
+                if (visited % this.CANCEL_CHECK_EVERY == 0
+                        && this.cancellationRegistry.isCancelled(realRoot.toString())) {
+                    log.warn(
+                            "Escaneo cancelado por el usuario: root={} descubiertos={}",
+                            realRoot, discovered.size());
+                    return discovered;
+                }
+                if (discovered.size() >= this.maxFiles) {
+                    throw new ScanLimitExceededException(
+                            "Escaneo abortado: límite de " + this.maxFiles
+                                    + " archivos superado en " + realRoot);
+                }
+                if (!Files.isRegularFile(path)
+                        || this.isHidden(path)
+                        || this.isPartialDownload(path)
+                        || !this.isSupported(path)) {
+                    continue;
+                }
+                try {
+                    Path real = path.toRealPath();
+                    if (!real.startsWith(realRoot)) {
+                        log.warn(
+                                "Archivo fuera del root de la biblioteca, descartado: {}",
+                                real);
+                        continue;
+                    }
+                    discovered.add(
+                            new DiscoveredFile(
+                                    realRoot.relativize(real).toString().replace('\\', '/'),
+                                    Files.size(real),
+                                    this.mimeTypeOf(real)));
+                } catch (IOException error) {
+                    log.warn("Archivo no pudo inspeccionarse, descartado: {}", path);
+                }
+            }
         } catch (IOException | UncheckedIOException error) {
-            log.warn("Error escaneando biblioteca: root={} cause={}", root, error.getMessage());
+            log.warn("Error escaneando biblioteca: root={} cause={}", realRoot, error.getMessage());
         }
         return discovered;
     }

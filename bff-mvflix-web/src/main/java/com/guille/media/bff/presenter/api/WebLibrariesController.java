@@ -64,6 +64,13 @@ public class WebLibrariesController {
     return this.webLibraryService.scan(libraryId, page, size);
   }
 
+  @DeleteMapping(value = "/{libraryId}/scan")
+  public Mono<ResponseEntity<Void>> cancelScan(@PathVariable Long libraryId) {
+    return this.webLibraryService
+        .cancelScan(libraryId)
+        .thenReturn(ResponseEntity.noContent().build());
+  }
+
   @GetMapping(value = "/{libraryId}/unidentified", produces = MediaType.APPLICATION_JSON_VALUE)
   public Mono<MediaAssetPageDto> unidentified(
       @PathVariable Long libraryId,

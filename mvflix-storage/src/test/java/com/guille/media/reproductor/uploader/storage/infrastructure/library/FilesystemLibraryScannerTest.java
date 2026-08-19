@@ -3,6 +3,7 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.library;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryRootUnavailableException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.ScanLimitExceededException;
 import com.guille.media.reproductor.uploader.storage.domain.vos.DiscoveredFile;
 
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,8 @@ import java.nio.file.Path;
 
 class FilesystemLibraryScannerTest {
 
-    private final FilesystemLibraryScanner scanner = new FilesystemLibraryScanner();
+    private final FilesystemLibraryScanner scanner =
+            new FilesystemLibraryScanner(new ScanCancellationRegistry(), 20_000);
 
     @TempDir Path tempDir;
 
@@ -94,5 +96,36 @@ class FilesystemLibraryScannerTest {
 
         StepVerifier.create(this.scanner.scan(this.tempDir.toString()))
                 .verifyComplete();
+    }
+
+    @Test
+    void abortsWhenMaxFilesExceeded() throws IOException {
+        FilesystemLibraryScanner tiny =
+                new FilesystemLibraryScanner(new ScanCancellationRegistry(), 3);
+        for (int i = 0; i < 5; i++) {
+            Files.write(this.tempDir.resolve("v" + i + ".mp4"), new byte[] {1});
+        }
+
+        StepVerifier.create(tiny.scan(this.tempDir.toString()))
+                .expectError(ScanLimitExceededException.class)
+                .verify();
+    }
+
+    @Test
+    void cancellationStopsWalkAndClearsFlag() throws IOException {
+        ScanCancellationRegistry registry = new ScanCancellationRegistry();
+        FilesystemLibraryScanner cancelable =
+                new FilesystemLibraryScanner(registry, 20_000);
+        for (int i = 0; i < 300; i++) {
+            Files.write(this.tempDir.resolve("v" + i + ".mp4"), new byte[] {1});
+        }
+        registry.cancel(this.tempDir.toString());
+
+        var discovered = cancelable.scan(this.tempDir.toString()).collectList().block();
+
+        assertThat(discovered).hasSizeLessThan(300);
+        assertThat(registry.isCancelled(this.tempDir.toString()))
+                .as("el flag se limpia al terminar el escaneo")
+                .isFalse();
     }
 }

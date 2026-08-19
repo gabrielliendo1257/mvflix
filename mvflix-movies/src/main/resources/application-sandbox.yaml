@@ -8,6 +8,9 @@ spring:
   application:
     name: mvflix-movies
 
+  codec:
+    max-in-memory-size: 32MB
+
   r2dbc:
     url: r2dbc:postgresql://localhost:5432/mvflix_movies_db
     username: db_rw

@@ -10,6 +10,7 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAl
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathInvalidException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathNotAllowedException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryRootUnavailableException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.ScanLimitExceededException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ObjectAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
@@ -86,6 +87,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(LibraryRootUnavailableException.class)
     public ResponseEntity<?> libraryRootUnavailable(LibraryRootUnavailableException ex) {
         return error(HttpStatus.CONFLICT, "LIBRARY_ROOT_UNAVAILABLE", ex);
+    }
+
+    @ExceptionHandler(ScanLimitExceededException.class)
+    public ResponseEntity<?> scanLimitExceeded(ScanLimitExceededException ex) {
+        return error(HttpStatus.PAYLOAD_TOO_LARGE, "SCAN_TOO_LARGE", ex);
     }
 
     @ExceptionHandler(LibraryAccessDeniedException.class)

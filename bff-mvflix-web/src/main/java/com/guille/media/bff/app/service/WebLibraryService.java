@@ -60,8 +60,13 @@ public class WebLibraryService {
         .map(all -> paginate(all, page, size));
   }
 
+  /** Cancela el escaneo en curso: el scanner corta en el siguiente archivo. */
+  public Mono<Void> cancelScan(Long libraryId) {
+    log.info("cancelScan: biblioteca={}", libraryId);
+    return this.storageWebClient.cancelLibraryScan(libraryId);
+  }
+
   private Flux<MediaAssetDto> reconcile(Long libraryId, List<DiscoveredFileDto> files) {
-    log.info("scan: biblioteca={} archivos descubiertos={}", libraryId, files.size());
     return this.moviesWebClient.scanLibrary(libraryId, files);
   }
 

@@ -70,4 +70,11 @@ public class LibraryController {
                 .scanLibrary(libraryId)
                 .map(this.libraryMapper::toDiscoveredFileResponse);
     }
+
+    @DeleteMapping(value = "/{libraryId}/scan")
+    public Mono<ResponseEntity<Void>> cancelScan(@PathVariable Long libraryId) {
+        return this.libraryService
+                .cancelScan(libraryId)
+                .thenReturn(ResponseEntity.noContent().build());
+    }
 }

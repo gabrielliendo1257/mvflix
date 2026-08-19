@@ -1,6 +1,8 @@
 spring:
   application:
     name: bff-mvflix-web
+  codec:
+    max-in-memory-size: 32MB
   security:
     oauth2:
       client:

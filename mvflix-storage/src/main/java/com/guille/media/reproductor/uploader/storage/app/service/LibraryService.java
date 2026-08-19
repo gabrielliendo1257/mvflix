@@ -13,6 +13,7 @@ import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryScanner
 import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;
 import com.guille.media.reproductor.uploader.storage.domain.vos.DiscoveredFile;
 import com.guille.media.reproductor.uploader.storage.infrastructure.errors.EntityNotFound;
+import com.guille.media.reproductor.uploader.storage.infrastructure.library.ScanCancellationRegistry;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -29,6 +30,7 @@ public class LibraryService {
     private final MediaLibraryRepository libraryRepository;
     private final LibraryScanner libraryScanner;
     private final UserProvider userProvider;
+    private final ScanCancellationRegistry cancellationRegistry;
 
     public Flux<MediaLibrary> listLibraries() {
         return this.userProvider
@@ -53,5 +55,12 @@ public class LibraryService {
                                         () -> log.info(
                                                 "Library scanned: id={} root={}",
                                                 libraryId, library.getRootPath())));
+    }
+
+    public Mono<Void> cancelScan(Long libraryId) {
+        return this.findLibrary(libraryId)
+                .doOnNext(library ->
+                        this.cancellationRegistry.cancel(library.getRootPath()))
+                .then();
     }
 }

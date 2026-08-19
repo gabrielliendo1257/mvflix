@@ -49,6 +49,9 @@ public interface StorageWebClient {
   /** Archivos descubiertos por el scanner en la biblioteca (media server). */
   Flux<DiscoveredFileDto> listLibraryFiles(Long libraryId);
 
+  /** Cancela el escaneo en curso de la biblioteca (corte cooperativo del scanner). */
+  Mono<Void> cancelLibraryScan(Long libraryId);
+
   /** Stream LOCAL con soporte Range: el BFF proxya status/headers/cuerpo tal cual. */
   Mono<ResponseEntity<Flux<DataBuffer>>> streamLibraryFile(
       Long libraryId, String relativePath, String rangeHeader);
