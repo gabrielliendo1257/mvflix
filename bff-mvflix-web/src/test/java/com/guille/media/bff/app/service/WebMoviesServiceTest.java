@@ -18,6 +18,7 @@ import com.guille.media.bff.app.ports.UsersWebPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -38,7 +39,7 @@ class WebMoviesServiceTest {
   }
 
   private static MovieDto movie(Long id, Long objectId) {
-    return new MovieDto(id, "READY", objectId, "The Colossus of Rhodes", null, 1961,
+    return new MovieDto(id, "READY", objectId, "PRIVATE", "The Colossus of Rhodes", null, 1961,
         List.of("Adventure"), 3.2, "2h 7m", "Sergio Leone", List.of("Rory Calhoun"),
         "Overview...", null, "1961-06-15", "Italy", "Italian", null, "ENRICHED");
   }
@@ -117,6 +118,41 @@ class WebMoviesServiceTest {
     StepVerifier.create(service.stream(1L, null))
         .expectNextMatches(response -> response.getStatusCode().is4xxClientError())
         .verifyComplete();
+  }
+
+  @Test
+  void streamWithDeniedAccessIsForbidden() {
+    when(moviesWebClient.assetByMovie(1L))
+        .thenReturn(Mono.error(new WebClientResponseException(
+            403, "Forbidden", org.springframework.http.HttpHeaders.EMPTY, null, null)));
+
+    StepVerifier.create(service.stream(1L, null))
+        .expectError(WebClientResponseException.class)
+        .verify();
+  }
+
+  @Test
+  void visibilityForwardsToMovies() {
+    when(moviesWebClient.updateVisibility(1L, "PUBLIC"))
+        .thenReturn(Mono.just(movie(1L, null)));
+
+    StepVerifier.create(service.visibility(1L, "PUBLIC"))
+        .expectNextCount(1)
+        .verifyComplete();
+
+    verify(moviesWebClient).updateVisibility(1L, "PUBLIC");
+  }
+
+  @Test
+  void sharesForwardsToMovies() {
+    when(moviesWebClient.updateShares(1L, List.of("Maria")))
+        .thenReturn(Mono.just(movie(1L, null)));
+
+    StepVerifier.create(service.shares(1L, List.of("Maria")))
+        .expectNextCount(1)
+        .verifyComplete();
+
+    verify(moviesWebClient).updateShares(1L, List.of("Maria"));
   }
 
   @Test

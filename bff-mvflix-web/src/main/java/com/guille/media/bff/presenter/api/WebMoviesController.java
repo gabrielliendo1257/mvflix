@@ -8,6 +8,8 @@ import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentRequest;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 import com.guille.media.bff.app.dto.MovieListItemDto;
+import com.guille.media.bff.app.dto.MovieSharesRequest;
+import com.guille.media.bff.app.dto.MovieVisibilityRequest;
 import com.guille.media.bff.app.service.WebMoviesService;
 
 import org.springframework.http.MediaType;
@@ -63,6 +65,24 @@ public class WebMoviesController {
   public Mono<ResponseEntity<MovieDto>> enrich(
       @PathVariable Long movieId, @RequestBody MovieEnrichmentRequest request) {
     return this.webMoviesService.enrich(movieId, request.tmdbId()).map(ResponseEntity::ok);
+  }
+
+  @PostMapping(
+      value = "/{movieId}/visibility",
+      produces = MediaType.APPLICATION_JSON_VALUE,
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<MovieDto>> visibility(
+      @PathVariable Long movieId, @RequestBody MovieVisibilityRequest request) {
+    return this.webMoviesService.visibility(movieId, request.visibility()).map(ResponseEntity::ok);
+  }
+
+  @PostMapping(
+      value = "/{movieId}/shares",
+      produces = MediaType.APPLICATION_JSON_VALUE,
+      consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<MovieDto>> shares(
+      @PathVariable Long movieId, @RequestBody MovieSharesRequest request) {
+    return this.webMoviesService.shares(movieId, request.usernames()).map(ResponseEntity::ok);
   }
 
   @PostMapping(

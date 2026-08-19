@@ -5,6 +5,7 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -13,6 +14,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.List;
 
 @Repository
 public class SpringDataMovieRepository implements MovieRepository {
@@ -22,6 +24,21 @@ public class SpringDataMovieRepository implements MovieRepository {
             (SELECT mm.object_id FROM media mm
              WHERE mm.movie_id = m.id ORDER BY mm.id LIMIT 1) AS object_id
             """;
+
+    private static final String VISIBLE_WHERE =
+            """
+            WHERE m.visibility = 'PUBLIC'
+               OR m.owner_username = :username
+               OR (m.visibility = 'SHARED' AND EXISTS (
+                   SELECT 1 FROM movie_shares ms
+                   WHERE ms.movie_id = m.id AND ms.shared_with = :username))
+            """;
+
+    private static final String SELECT_MOVIE_COLUMNS =
+            """
+            SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
+                   m.metadata::text, m.visibility,
+            """ + MEDIA_OBJECT_ID;
 
     private final DatabaseClient databaseClient;
     private final MovieRowMapper rowMapper;
@@ -40,15 +57,16 @@ public class SpringDataMovieRepository implements MovieRepository {
         return this.databaseClient
                         .sql(
                                 """
-                                INSERT INTO movies (owner_username, title, status, enrichment_status, metadata)
-                                VALUES (:owner_username, :title, :status, :enrichment_status, CAST(:metadata AS jsonb))
-                                RETURNING id, owner_username, title, status, enrichment_status, metadata::text
+                                INSERT INTO movies (owner_username, title, status, enrichment_status, metadata, visibility)
+                                VALUES (:owner_username, :title, :status, :enrichment_status, CAST(:metadata AS jsonb), :visibility)
+                                RETURNING id, owner_username, title, status, enrichment_status, metadata::text, visibility
                                 """)
                         .bind("owner_username", row.ownerUsername())
                         .bind("title", row.title())
                         .bind("status", row.status())
                         .bind("enrichment_status", row.enrichmentStatus())
                         .bind("metadata", row.metadata())
+                        .bind("visibility", row.visibility())
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -58,11 +76,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     public Mono<Movie> findById(MovieId id) {
         return this.databaseClient
                 .sql(
-                        """
-                        SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
-                               m.metadata::text,
-                        """
-                        + MEDIA_OBJECT_ID
+                        SELECT_MOVIE_COLUMNS
                         + """
                         FROM movies m
                         WHERE m.id = :id
@@ -74,14 +88,51 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
+    public Mono<Movie> findByIdVisible(MovieId id, String username) {
+        return this.databaseClient
+                .sql(
+                        SELECT_MOVIE_COLUMNS
+                        + """
+                        FROM movies m
+                        WHERE m.id = :id AND (
+                              m.visibility = 'PUBLIC'
+                           OR m.owner_username = :username
+                           OR (m.visibility = 'SHARED' AND EXISTS (
+                               SELECT 1 FROM movie_shares ms
+                               WHERE ms.movie_id = m.id AND ms.shared_with = :username)))
+                        """)
+                .bind("id", id.value())
+                .bind("username", username)
+                .map(this::toRow)
+                .one()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    public Flux<Movie> findVisibleMovies(String username, int limit) {
+        return this.databaseClient
+                .sql(
+                        SELECT_MOVIE_COLUMNS
+                        + """
+                        FROM movies m
+                        """
+                        + VISIBLE_WHERE
+                        + """
+                        ORDER BY m.id DESC
+                        LIMIT :limit
+                        """)
+                .bind("username", username)
+                .bind("limit", limit)
+                .map(this::toRow)
+                .all()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
     public Flux<Movie> findByOwner(String ownerUsername, int limit) {
         return this.databaseClient
                 .sql(
-                        """
-                        SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
-                               m.metadata::text,
-                        """
-                        + MEDIA_OBJECT_ID
+                        SELECT_MOVIE_COLUMNS
                         + """
                         FROM movies m
                         WHERE m.owner_username = :owner_username
@@ -103,7 +154,8 @@ public class SpringDataMovieRepository implements MovieRepository {
                         UPDATE movies
                         SET status = 'READY', updated_at = NOW()
                         WHERE id = :id AND owner_username = :owner_username AND status = 'DRAFT'
-                        RETURNING id, owner_username, title, status, enrichment_status, metadata::text
+                        RETURNING id, owner_username, title, status, enrichment_status,
+                                  metadata::text, visibility
                         """)
                 .bind("id", id.value())
                 .bind("owner_username", ownerUsername)
@@ -152,7 +204,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                             updated_at = NOW()
                         WHERE id = :id AND owner_username = :owner_username
                         RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text,
+                                  metadata::text, visibility,
                                   (SELECT mm.object_id FROM media mm
                                    WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id
                         """)
@@ -166,14 +218,79 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit) {
+    public Mono<Movie> updateVisibility(MovieId id, String ownerUsername,
+            MovieVisibility visibility) {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
-                               m.metadata::text,
+                        UPDATE movies
+                        SET visibility = :visibility, updated_at = NOW()
+                        WHERE id = :id AND owner_username = :owner_username
+                        RETURNING id, owner_username, title, status, enrichment_status,
+                                  metadata::text, visibility
+                        """)
+                .bind("visibility", visibility.name())
+                .bind("id", id.value())
+                .bind("owner_username", ownerUsername)
+                .map(this::toRow)
+                .one()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
+    public Mono<Movie> replaceShares(MovieId id, String ownerUsername,
+            List<String> usernames) {
+        return this.databaseClient
+                .sql(
                         """
-                        + MEDIA_OBJECT_ID
+                        DELETE FROM movie_shares
+                        WHERE movie_id = :id AND EXISTS (
+                            SELECT 1 FROM movies m
+                            WHERE m.id = :id AND m.owner_username = :owner_username)
+                        """)
+                .bind("id", id.value())
+                .bind("owner_username", ownerUsername)
+                .fetch()
+                .rowsUpdated()
+                .flatMapMany(deleted ->
+                        Flux.fromIterable(usernames)
+                            .distinct()
+                            .flatMap(username -> this.databaseClient
+                                    .sql(
+                                            """
+                                            INSERT INTO movie_shares (movie_id, shared_with)
+                                            SELECT :id, :username
+                                            WHERE EXISTS (
+                                                SELECT 1 FROM movies m
+                                                WHERE m.id = :id AND m.owner_username = :owner_username)
+                                            """)
+                                    .bind("id", id.value())
+                                    .bind("username", username)
+                                    .bind("owner_username", ownerUsername)
+                                    .fetch()
+                                    .rowsUpdated()))
+                .then(this.databaseClient
+                        .sql(
+                                """
+                                UPDATE movies
+                                SET updated_at = NOW()
+                                WHERE id = :id AND owner_username = :owner_username
+                                RETURNING id, owner_username, title, status, enrichment_status,
+                                          metadata::text, visibility
+                                """)
+                        .bind("id", id.value())
+                        .bind("owner_username", ownerUsername)
+                        .map(this::toRow)
+                        .one()
+                        .map(this.rowMapper::toDomain));
+    }
+
+    @Override
+    public Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit) {
+        return this.databaseClient
+                .sql(
+                        SELECT_MOVIE_COLUMNS
                         + """
                         FROM movies m
                         WHERE m.enrichment_status = :enrichment_status
@@ -195,6 +312,7 @@ public class SpringDataMovieRepository implements MovieRepository {
             row.get("status", String.class),
             row.get("enrichment_status", String.class),
             metadata.contains("object_id") ? row.get("object_id", Long.class) : null,
-            row.get("metadata", String.class));
+            row.get("metadata", String.class),
+            row.get("visibility", String.class));
     }
 }

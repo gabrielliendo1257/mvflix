@@ -51,7 +51,8 @@ public class WebMoviesService {
     return this.moviesWebClient
         .listMovies(limit)
         .map(movie -> new MovieListItemDto(
-            movie.id(), movie.status(), movie.title(), movie.year(), movie.posterPath()));
+            movie.id(), movie.status(), movie.visibility(), movie.title(),
+            movie.year(), movie.posterPath()));
   }
 
   /**
@@ -108,6 +109,14 @@ public class WebMoviesService {
           return Mono.just(ResponseEntity.notFound().build());
         }))
         .onErrorResume(error -> {
+          if (error instanceof WebClientResponseException responseException) {
+            if (responseException.getStatusCode().value() == HttpStatus.FORBIDDEN.value()) {
+              log.warn("stream: movie={} acceso denegado (403)", movieId);
+              return Mono.error(responseException);
+            }
+            log.warn("stream: movie={} no disponible: {}", movieId, responseException.getMessage());
+            return Mono.just(ResponseEntity.notFound().build());
+          }
           log.warn("stream: movie={} no disponible: {}", movieId, error.getMessage());
           return Mono.just(ResponseEntity.notFound().build());
         });
@@ -125,6 +134,16 @@ public class WebMoviesService {
   /** Autocompletado con el candidato elegido por el usuario. */
   public Mono<MovieDto> enrich(Long movieId, Long tmdbId) {
     return this.moviesWebClient.enrichMovie(movieId, tmdbId);
+  }
+
+  /** Cambia la visibilidad del catálogo (PUBLIC/PRIVATE/SHARED); solo el dueño. */
+  public Mono<MovieDto> visibility(Long movieId, String visibility) {
+    return this.moviesWebClient.updateVisibility(movieId, visibility);
+  }
+
+  /** Reemplaza la lista de usuarios compartidos; solo el dueño. */
+  public Mono<MovieDto> shares(Long movieId, List<String> usernames) {
+    return this.moviesWebClient.updateShares(movieId, usernames);
   }
 
   public Mono<MovieDto> create(CreateMovieRequest request) {

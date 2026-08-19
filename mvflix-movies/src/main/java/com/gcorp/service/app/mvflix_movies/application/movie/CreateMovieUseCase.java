@@ -5,6 +5,7 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,7 +35,8 @@ public class CreateMovieUseCase {
                                 MovieStatus.DRAFT,
                                 EnrichmentStatus.RAW,
                                 null,
-                                command.metadata())))
+                                command.metadata(),
+                                MovieVisibility.PRIVATE)))
                 .doOnNext(movie -> log.info("Pelicula creada: id={} owner={}", movie.getId(),
                         movie.getOwnerUsername()));
     }

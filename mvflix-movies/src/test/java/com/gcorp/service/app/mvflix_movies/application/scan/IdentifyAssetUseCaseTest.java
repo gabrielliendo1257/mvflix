@@ -20,6 +20,7 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,7 +65,8 @@ class IdentifyAssetUseCaseTest {
                         MovieStatus.READY,
                         EnrichmentStatus.RAW,
                         null,
-                        null);
+                        null,
+                        MovieVisibility.PRIVATE);
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
@@ -145,7 +147,8 @@ class IdentifyAssetUseCaseTest {
                         MovieStatus.READY,
                         EnrichmentStatus.RAW,
                         null,
-                        null);
+                        null,
+                        MovieVisibility.PRIVATE);
         Movie enriched =
                 new Movie(
                         MovieId.of(50L),
@@ -154,7 +157,8 @@ class IdentifyAssetUseCaseTest {
                         MovieStatus.READY,
                         EnrichmentStatus.ENRICHED,
                         null,
-                        null);
+                        null,
+                        MovieVisibility.PRIVATE);
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
@@ -195,7 +199,8 @@ class IdentifyAssetUseCaseTest {
                         MovieStatus.READY,
                         EnrichmentStatus.RAW,
                         null,
-                        null);
+                        null,
+                        MovieVisibility.PRIVATE);
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())

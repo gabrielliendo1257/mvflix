@@ -50,4 +50,10 @@ public interface MoviesWebClient {
 
   /** Vincula el activo a una película nueva (media server). */
   Mono<MediaAssetDto> identifyAsset(Long assetId, String title, Long tmdbId);
+
+  /** Cambia la visibilidad (PUBLIC/PRIVATE/SHARED); solo el dueño. */
+  Mono<MovieDto> updateVisibility(Long movieId, String visibility);
+
+  /** Reemplaza la lista de usuarios compartidos; solo el dueño. */
+  Mono<MovieDto> updateShares(Long movieId, List<String> usernames);
 }

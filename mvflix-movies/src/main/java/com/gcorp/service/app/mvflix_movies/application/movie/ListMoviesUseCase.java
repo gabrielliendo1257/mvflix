@@ -23,6 +23,7 @@ public class ListMoviesUseCase {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMapMany(
-                        user -> this.movieRepository.findByOwner(user.subject(), Math.min(limit, 50)));
+                        user -> this.movieRepository.findVisibleMovies(
+                                user.subject(), Math.min(limit, 50)));
     }
 }

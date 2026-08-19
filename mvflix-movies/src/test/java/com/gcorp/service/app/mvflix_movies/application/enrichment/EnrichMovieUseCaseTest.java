@@ -21,6 +21,7 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +46,7 @@ class EnrichMovieUseCaseTest {
     private static final Movie DRAFT_RAW =
             new Movie(
                     MovieId.of(1L), "pepe", "The Colossus of Rhodes", MovieStatus.DRAFT,
-                    EnrichmentStatus.RAW, null, RAW_METADATA);
+                    EnrichmentStatus.RAW, null, RAW_METADATA, MovieVisibility.PRIVATE);
 
     private static final ExternalMovieDetail TMDB_DETAIL =
             new ExternalMovieDetail(
@@ -88,7 +89,7 @@ class EnrichMovieUseCaseTest {
                 null, null, null, null, null, 274_003L);
         Movie movie = new Movie(
                 MovieId.of(2L), "pepe", "The Colossus of Rhodes", MovieStatus.DRAFT,
-                EnrichmentStatus.RAW, null, withTmdbId);
+                EnrichmentStatus.RAW, null, withTmdbId, MovieVisibility.PRIVATE);
 
         when(this.metadataSource.findById(274_003L)).thenReturn(Mono.just(TMDB_DETAIL));
         when(this.movieRepository.updateEnrichment(

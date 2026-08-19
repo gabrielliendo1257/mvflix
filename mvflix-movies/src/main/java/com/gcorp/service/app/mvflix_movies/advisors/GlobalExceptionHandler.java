@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.advisors;
 
 import com.gcorp.service.app.mvflix_movies.advisors.models.ErrorResponse;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieConflictException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MovieNotFoundException.class)
     public ResponseEntity<ErrorResponse> movieNotFound(MovieNotFoundException ex) {
         return error(HttpStatus.NOT_FOUND, "MOVIE_NOT_FOUND", ex);
+    }
+
+    @ExceptionHandler(MovieAccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> movieAccessDenied(MovieAccessDeniedException ex) {
+        return error(HttpStatus.FORBIDDEN, "MOVIE_ACCESS_DENIED", ex);
     }
 
     @ExceptionHandler(MovieConflictException.class)

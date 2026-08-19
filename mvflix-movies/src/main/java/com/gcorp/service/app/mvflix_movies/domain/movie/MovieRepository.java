@@ -4,12 +4,22 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.util.List;
 
 public interface MovieRepository {
 
     Mono<Movie> save(Movie movie);
 
     Mono<Movie> findById(MovieId id);
+
+    /**
+     * Pelicula visible para el usuario: PUBLIC, propia o compartida con el.
+     * Vacio si no existe o no es visible.
+     */
+    Mono<Movie> findByIdVisible(MovieId id, String username);
+
+    /** Catalogo visible para el usuario (PUBLIC + propias + compartidas). */
+    Flux<Movie> findVisibleMovies(String username, int limit);
 
     Flux<Movie> findByOwner(String ownerUsername, int limit);
 
@@ -26,6 +36,15 @@ public interface MovieRepository {
     /** Aplica metadata enriquecida + estado de enriquecimiento (idempotente). */
     Mono<Movie> updateEnrichment(MovieId id, String ownerUsername, MovieMetadata metadata,
             EnrichmentStatus enrichmentStatus);
+
+    /** Cambia la visibilidad (solo el dueño). Vacío si la fila no es del dueño. */
+    Mono<Movie> updateVisibility(MovieId id, String ownerUsername, MovieVisibility visibility);
+
+    /**
+     * Reemplaza la lista de compartidos (solo el dueño). Vacío si la movie
+     * no existe o no es del dueño.
+     */
+    Mono<Movie> replaceShares(MovieId id, String ownerUsername, List<String> usernames);
 
     /** Catalogo pendiente de enriquecer (para el scheduler), limitado y estable. */
     Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit);

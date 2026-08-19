@@ -10,6 +10,7 @@ public record MovieDto(
     Long id,
     String status,
     @JsonProperty("object_id") Long objectId,
+    String visibility,
     String title,
     String originalTitle,
     Integer year,

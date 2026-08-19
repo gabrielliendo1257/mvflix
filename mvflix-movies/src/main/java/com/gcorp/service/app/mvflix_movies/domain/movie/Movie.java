@@ -9,6 +9,7 @@ public class Movie {
     private final EnrichmentStatus enrichmentStatus;
     private final Long objectId;
     private final MovieMetadata metadata;
+    private final MovieVisibility visibility;
 
     public Movie(
         MovieId id,
@@ -17,7 +18,8 @@ public class Movie {
         MovieStatus status,
         EnrichmentStatus enrichmentStatus,
         Long objectId,
-        MovieMetadata metadata) {
+        MovieMetadata metadata,
+        MovieVisibility visibility) {
         this.id = id;
         this.ownerUsername = ownerUsername;
         this.title = title;
@@ -25,6 +27,7 @@ public class Movie {
         this.enrichmentStatus = enrichmentStatus;
         this.objectId = objectId;
         this.metadata = metadata;
+        this.visibility = visibility;
     }
 
     public MovieId getId() {
@@ -55,6 +58,23 @@ public class Movie {
         return this.metadata;
     }
 
+    public MovieVisibility getVisibility() {
+        return this.visibility;
+    }
+
+    /** Transición de dominio: cambia la visibilidad del catálogo (solo el dueño). */
+    public Movie withVisibility(MovieVisibility visibility) {
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                this.title,
+                this.status,
+                this.enrichmentStatus,
+                this.objectId,
+                this.metadata,
+                visibility);
+    }
+
     public boolean isDraft() {
         return this.status == MovieStatus.DRAFT;
     }
@@ -76,7 +96,8 @@ public class Movie {
                 MovieStatus.READY,
                 this.enrichmentStatus,
                 objectId,
-                this.metadata);
+                this.metadata,
+                this.visibility);
     }
 
     /** Transición de dominio: marca el catálogo como enriquecido (idempotente). */
@@ -88,7 +109,8 @@ public class Movie {
                 this.status,
                 enrichmentStatus,
                 this.objectId,
-                this.metadata);
+                this.metadata,
+                this.visibility);
     }
 
     /**
@@ -103,6 +125,7 @@ public class Movie {
                 this.status,
                 status,
                 this.objectId,
-                enrichedMetadata);
+                enrichedMetadata,
+                this.visibility);
     }
 }

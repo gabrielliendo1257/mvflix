@@ -12,3 +12,9 @@ devseed:
       role: ADMIN
       plan: FREE
       quotaBytes: 10737418240
+    - username: Maria
+      email: maria@mvflix.dev
+      password: MariaPassword
+      role: CUSTOMER
+      plan: FREE
+      quotaBytes: 10737418240

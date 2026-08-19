@@ -1,5 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
+import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.application.scan.IdentifyAssetUseCase;
 import com.gcorp.service.app.mvflix_movies.application.scan.ScanLibraryUseCase;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
@@ -7,7 +8,9 @@ import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.IdentifyAssetRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MediaAssetResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.ScanLibraryRequest;
@@ -33,16 +36,22 @@ public class MediaAssetController {
     private final ScanLibraryUseCase scanLibraryUseCase;
     private final IdentifyAssetUseCase identifyAssetUseCase;
     private final MediaAssetRepository assetRepository;
+    private final MovieRepository movieRepository;
+    private final UserProvider userProvider;
     private final MediaAssetApiMapper mapper;
 
     public MediaAssetController(
             ScanLibraryUseCase scanLibraryUseCase,
             IdentifyAssetUseCase identifyAssetUseCase,
             MediaAssetRepository assetRepository,
+            MovieRepository movieRepository,
+            UserProvider userProvider,
             MediaAssetApiMapper mapper) {
         this.scanLibraryUseCase = scanLibraryUseCase;
         this.identifyAssetUseCase = identifyAssetUseCase;
         this.assetRepository = assetRepository;
+        this.movieRepository = movieRepository;
+        this.userProvider = userProvider;
         this.mapper = mapper;
     }
 
@@ -77,10 +86,18 @@ public class MediaAssetController {
 
     @GetMapping("/media-assets/by-movie/{movieId}")
     public Mono<MediaAssetResponse> assetByMovie(@PathVariable Long movieId) {
-        return this.assetRepository
-                .findByMovieId(MovieId.of(movieId))
-                .switchIfEmpty(Mono.error(
-                        new MediaAssetNotFoundException("No media asset for movie: " + movieId)))
+        return this.userProvider
+                .getAuthenticatedUser()
+                .flatMap(user -> this.movieRepository
+                        .findByIdVisible(MovieId.of(movieId), user.subject())
+                        .switchIfEmpty(Mono.defer(() -> Mono.error(
+                                new MovieAccessDeniedException(
+                                        "Movie not accessible: " + movieId)))))
+                .flatMap(movie -> this.assetRepository
+                        .findByMovieId(MovieId.of(movieId))
+                        .switchIfEmpty(Mono.defer(() -> Mono.error(
+                                new MediaAssetNotFoundException(
+                                        "No media asset for movie: " + movieId)))))
                 .map(this.mapper::toResponse);
     }
 

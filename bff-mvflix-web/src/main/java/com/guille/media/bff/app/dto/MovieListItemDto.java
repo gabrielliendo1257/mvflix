@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 public record MovieListItemDto(
     Long id,
     String status,
+    String visibility,
     String title,
     Integer year,
     @JsonProperty("poster_path") String posterPath) {}

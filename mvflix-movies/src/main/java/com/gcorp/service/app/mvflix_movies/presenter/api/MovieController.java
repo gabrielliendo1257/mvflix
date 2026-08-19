@@ -14,6 +14,10 @@ import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieSearchResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichmentPreviewResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
+import com.gcorp.service.app.mvflix_movies.application.movie.UpdateSharesUseCase;
+import com.gcorp.service.app.mvflix_movies.application.movie.UpdateVisibilityUseCase;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateSharesRequest;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateVisibilityRequest;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -40,6 +44,8 @@ public class MovieController {
     private final CreateMovieUseCase createMovieUseCase;
     private final GetMovieUseCase getMovieUseCase;
     private final ListMoviesUseCase listMoviesUseCase;
+    private final UpdateVisibilityUseCase updateVisibilityUseCase;
+    private final UpdateSharesUseCase updateSharesUseCase;
     private final CompleteMovieUseCase completeMovieUseCase;
     private final DeleteMovieUseCase deleteMovieUseCase;
     private final EnrichMovieUseCase enrichMovieUseCase;
@@ -49,6 +55,8 @@ public class MovieController {
             CreateMovieUseCase createMovieUseCase,
             GetMovieUseCase getMovieUseCase,
             ListMoviesUseCase listMoviesUseCase,
+            UpdateVisibilityUseCase updateVisibilityUseCase,
+            UpdateSharesUseCase updateSharesUseCase,
             CompleteMovieUseCase completeMovieUseCase,
             DeleteMovieUseCase deleteMovieUseCase,
             EnrichMovieUseCase enrichMovieUseCase,
@@ -56,6 +64,8 @@ public class MovieController {
         this.createMovieUseCase = createMovieUseCase;
         this.getMovieUseCase = getMovieUseCase;
         this.listMoviesUseCase = listMoviesUseCase;
+        this.updateVisibilityUseCase = updateVisibilityUseCase;
+        this.updateSharesUseCase = updateSharesUseCase;
         this.completeMovieUseCase = completeMovieUseCase;
         this.deleteMovieUseCase = deleteMovieUseCase;
         this.enrichMovieUseCase = enrichMovieUseCase;
@@ -72,6 +82,22 @@ public class MovieController {
     @GetMapping("/{id}")
     public Mono<MovieResponse> findById(@PathVariable Long id) {
         return this.getMovieUseCase.execute(MovieId.of(id)).map(this.mapper::toResponse);
+    }
+
+    @PostMapping("/{id}/visibility")
+    public Mono<MovieResponse> updateVisibility(
+            @PathVariable Long id, @RequestBody UpdateVisibilityRequest request) {
+        return this.updateVisibilityUseCase
+                .execute(MovieId.of(id), request.visibility())
+                .map(this.mapper::toResponse);
+    }
+
+    @PostMapping("/{id}/shares")
+    public Mono<MovieResponse> updateShares(
+            @PathVariable Long id, @RequestBody UpdateSharesRequest request) {
+        return this.updateSharesUseCase
+                .execute(MovieId.of(id), request.usernames())
+                .map(this.mapper::toResponse);
     }
 
     @GetMapping

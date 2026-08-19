@@ -8,6 +8,8 @@ import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentRequest;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
+import com.guille.media.bff.app.dto.MovieSharesRequest;
+import com.guille.media.bff.app.dto.MovieVisibilityRequest;
 import com.guille.media.bff.app.dto.MoviesCompletePayload;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 
@@ -167,5 +169,27 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .bodyValue(new IdentifyAssetRequest(title, tmdbId))
         .retrieve()
         .bodyToMono(MediaAssetDto.class);
+  }
+
+  @Override
+  public Mono<MovieDto> updateVisibility(Long movieId, String visibility) {
+    return this.moviesWebClient
+        .post()
+        .uri(API + "/" + movieId + "/visibility")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(new MovieVisibilityRequest(visibility))
+        .retrieve()
+        .bodyToMono(MovieDto.class);
+  }
+
+  @Override
+  public Mono<MovieDto> updateShares(Long movieId, List<String> usernames) {
+    return this.moviesWebClient
+        .post()
+        .uri(API + "/" + movieId + "/shares")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(new MovieSharesRequest(usernames))
+        .retrieve()
+        .bodyToMono(MovieDto.class);
   }
 }

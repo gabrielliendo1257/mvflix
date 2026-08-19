@@ -5,6 +5,7 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,24 +14,32 @@ import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
 
+/**
+ * Cambia la visibilidad (PUBLIC/PRIVATE/SHARED) de una pelicula del catalogo.
+ * Solo el dueño; el resto ve 403.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class GetMovieUseCase {
+public class UpdateVisibilityUseCase {
 
     private final MovieRepository movieRepository;
     private final UserProvider userProvider;
 
-    /**
-     * Detalle solo si la pelicula es visible para el usuario autenticado
-     * (PUBLIC, propia o compartida); si no, 403 sin revelar la existencia.
-     */
-    public Mono<Movie> execute(MovieId id) {
+    public Mono<Movie> execute(MovieId id, MovieVisibility visibility) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
                         .findByIdVisible(id, user.subject())
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
-                                "Movie not accessible: " + id.value()))));
+                                "Movie not accessible: " + id.value())))
+                        .filter(movie -> movie.getOwnerUsername().equals(user.subject()))
+                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
+                                "Movie not owned: " + id.value())))
+                        .flatMap(movie -> this.movieRepository
+                                .updateVisibility(id, user.subject(), visibility))
+                        .doOnNext(updated -> log.info(
+                                "Movie {} visibilidad {} -> {}",
+                                id.value(), visibility, updated.getVisibility())));
     }
 }
