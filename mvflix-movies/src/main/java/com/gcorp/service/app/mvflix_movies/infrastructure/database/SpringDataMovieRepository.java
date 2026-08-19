@@ -25,6 +25,17 @@ public class SpringDataMovieRepository implements MovieRepository {
              WHERE mm.movie_id = m.id ORDER BY mm.id LIMIT 1) AS object_id
             """;
 
+    private static final String SHARED_WITH =
+            """
+            COALESCE((SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
+                      FROM movie_shares ms WHERE ms.movie_id = m.id), ARRAY[]::varchar[]) AS shared_with
+            """;
+
+    /**
+     * Traducción SQL de {@code Movie.isVisibleTo(username)}: la política de acceso
+     * se decide en el dominio; acá solo se filtra en el origen para no traer todo
+     * el catálogo a memoria.
+     */
     private static final String VISIBLE_WHERE =
             """
             WHERE m.visibility = 'PUBLIC'
@@ -38,7 +49,7 @@ public class SpringDataMovieRepository implements MovieRepository {
             """
             SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
                    m.metadata::text, m.visibility,
-            """ + MEDIA_OBJECT_ID;
+            """ + MEDIA_OBJECT_ID + ", " + SHARED_WITH;
 
     private final DatabaseClient databaseClient;
     private final MovieRowMapper rowMapper;
@@ -82,27 +93,6 @@ public class SpringDataMovieRepository implements MovieRepository {
                         WHERE m.id = :id
                         """)
                 .bind("id", id.value())
-                .map(this::toRow)
-                .one()
-                .map(this.rowMapper::toDomain);
-    }
-
-    @Override
-    public Mono<Movie> findByIdVisible(MovieId id, String username) {
-        return this.databaseClient
-                .sql(
-                        SELECT_MOVIE_COLUMNS
-                        + """
-                        FROM movies m
-                        WHERE m.id = :id AND (
-                              m.visibility = 'PUBLIC'
-                           OR m.owner_username = :username
-                           OR (m.visibility = 'SHARED' AND EXISTS (
-                               SELECT 1 FROM movie_shares ms
-                               WHERE ms.movie_id = m.id AND ms.shared_with = :username)))
-                        """)
-                .bind("id", id.value())
-                .bind("username", username)
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -155,7 +145,9 @@ public class SpringDataMovieRepository implements MovieRepository {
                         SET status = 'READY', updated_at = NOW()
                         WHERE id = :id AND owner_username = :owner_username AND status = 'DRAFT'
                         RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text, visibility
+                                  metadata::text, visibility,
+                                  (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
+                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
                 .bind("id", id.value())
                 .bind("owner_username", ownerUsername)
@@ -206,7 +198,9 @@ public class SpringDataMovieRepository implements MovieRepository {
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility,
                                   (SELECT mm.object_id FROM media mm
-                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id
+                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
+                                  (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
+                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
                 .bind("metadata", this.jsonCodec.encode(metadata))
                 .bind("enrichment_status", enrichmentStatus.name())
@@ -227,7 +221,9 @@ public class SpringDataMovieRepository implements MovieRepository {
                         SET visibility = :visibility, updated_at = NOW()
                         WHERE id = :id AND owner_username = :owner_username
                         RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text, visibility
+                                  metadata::text, visibility,
+                                  (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
+                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
                 .bind("visibility", visibility.name())
                 .bind("id", id.value())
@@ -277,7 +273,9 @@ public class SpringDataMovieRepository implements MovieRepository {
                                 SET updated_at = NOW()
                                 WHERE id = :id AND owner_username = :owner_username
                                 RETURNING id, owner_username, title, status, enrichment_status,
-                                          metadata::text, visibility
+                                          metadata::text, visibility,
+                                          (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
+                                           FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                                 """)
                         .bind("id", id.value())
                         .bind("owner_username", ownerUsername)
@@ -313,6 +311,7 @@ public class SpringDataMovieRepository implements MovieRepository {
             row.get("enrichment_status", String.class),
             metadata.contains("object_id") ? row.get("object_id", Long.class) : null,
             row.get("metadata", String.class),
-            row.get("visibility", String.class));
+            row.get("visibility", String.class),
+            metadata.contains("shared_with") ? row.get("shared_with", String[].class) : null);
     }
 }

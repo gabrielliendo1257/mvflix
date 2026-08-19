@@ -13,12 +13,10 @@ public interface MovieRepository {
     Mono<Movie> findById(MovieId id);
 
     /**
-     * Pelicula visible para el usuario: PUBLIC, propia o compartida con el.
-     * Vacio si no existe o no es visible.
+     * Catalogo visible para el usuario (PUBLIC + propias + compartidas).
+     * Traducción SQL de {@link Movie#isVisibleTo(String)}: la regla de negocio
+     * vive en el dominio; acá solo se filtra para no traer todo a memoria.
      */
-    Mono<Movie> findByIdVisible(MovieId id, String username);
-
-    /** Catalogo visible para el usuario (PUBLIC + propias + compartidas). */
     Flux<Movie> findVisibleMovies(String username, int limit);
 
     Flux<Movie> findByOwner(String ownerUsername, int limit);

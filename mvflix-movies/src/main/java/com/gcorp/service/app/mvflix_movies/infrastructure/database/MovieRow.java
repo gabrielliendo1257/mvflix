@@ -8,4 +8,5 @@ public record MovieRow(
     String enrichmentStatus,
     Long objectId,
     String metadata,
-    String visibility) {}
+    String visibility,
+    String[] sharedWith) {}

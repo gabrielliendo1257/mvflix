@@ -89,7 +89,11 @@ public class MediaAssetController {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
-                        .findByIdVisible(MovieId.of(movieId), user.subject())
+                        .findById(MovieId.of(movieId))
+                        .switchIfEmpty(Mono.defer(() -> Mono.error(
+                                new MovieAccessDeniedException(
+                                        "Movie not accessible: " + movieId))))
+                        .filter(movie -> movie.isVisibleTo(user.subject()))
                         .switchIfEmpty(Mono.defer(() -> Mono.error(
                                 new MovieAccessDeniedException(
                                         "Movie not accessible: " + movieId)))))

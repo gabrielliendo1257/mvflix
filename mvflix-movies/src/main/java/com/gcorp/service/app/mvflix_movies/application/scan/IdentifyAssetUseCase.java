@@ -68,7 +68,8 @@ public class IdentifyAssetUseCase {
                                 title, null, null, List.of(), null, null, null,
                                 List.of(), null, null, null, null, null,
                                 List.of(), null),
-                        MovieVisibility.PRIVATE)))
+                        MovieVisibility.PRIVATE,
+                        java.util.Set.of())))
                 .flatMap(movie -> this.enrichIfRequested(movie, tmdbId))
                 .flatMap(movie -> this.assetRepository.save(asset.identify(movie.getId())))
                 .doOnNext(identified -> log.info(

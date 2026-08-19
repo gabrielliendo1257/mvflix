@@ -36,7 +36,8 @@ public class CreateMovieUseCase {
                                 EnrichmentStatus.RAW,
                                 null,
                                 command.metadata(),
-                                MovieVisibility.PRIVATE)))
+                                MovieVisibility.PRIVATE,
+                                java.util.Set.of())))
                 .doOnNext(movie -> log.info("Pelicula creada: id={} owner={}", movie.getId(),
                         movie.getOwnerUsername()));
     }

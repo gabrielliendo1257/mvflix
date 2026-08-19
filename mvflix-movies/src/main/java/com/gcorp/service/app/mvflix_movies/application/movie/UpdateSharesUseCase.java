@@ -14,10 +14,12 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Reemplaza la lista de usuarios con quienes se comparte una pelicula
- * (visibilidad SHARED). Solo el dueño; el resto ve 403.
+ * (visibilidad SHARED). Solo el dueño (lo decide {@link Movie#isOwnedBy(String)});
+ * el resto ve 403.
  */
 @Slf4j
 @Service
@@ -37,14 +39,16 @@ public class UpdateSharesUseCase {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
-                        .findByIdVisible(id, user.subject())
+                        .findById(id)
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not accessible: " + id.value())))
-                        .filter(movie -> movie.getOwnerUsername().equals(user.subject()))
+                        .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not owned: " + id.value())))
                         .flatMap(movie -> this.movieRepository
-                                .replaceShares(id, user.subject(), clean))
+                                .replaceShares(id, user.subject(), clean)
+                                .map(updated -> updated.withSharedWith(
+                                        Set.copyOf(clean))))
                         .doOnNext(updated -> log.info(
                                 "Movie {} compartida con {}",
                                 id.value(), clean)));

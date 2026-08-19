@@ -38,7 +38,7 @@ class UpdateSharesUseCaseTest {
     private static Movie movie(long id, String owner) {
         return new Movie(
                 MovieId.of(id), owner, "Dune", MovieStatus.READY, EnrichmentStatus.ENRICHED,
-                null, null, MovieVisibility.SHARED);
+                null, null, MovieVisibility.SHARED, java.util.Set.of());
     }
 
     @Test
@@ -47,7 +47,7 @@ class UpdateSharesUseCaseTest {
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.findByIdVisible(MovieId.of(1L), "Javier"))
+        when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
         when(this.movieRepository.replaceShares(MovieId.of(1L), "Javier", List.of("Maria", "Pedro")))
                 .thenReturn(Mono.just(movie));
@@ -67,7 +67,7 @@ class UpdateSharesUseCaseTest {
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.movieRepository.findByIdVisible(MovieId.of(1L), "Maria"))
+        when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), List.of("Javier")))

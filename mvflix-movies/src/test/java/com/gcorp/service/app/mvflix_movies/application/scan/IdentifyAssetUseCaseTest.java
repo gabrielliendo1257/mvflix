@@ -66,7 +66,8 @@ class IdentifyAssetUseCaseTest {
                         EnrichmentStatus.RAW,
                         null,
                         null,
-                        MovieVisibility.PRIVATE);
+                        MovieVisibility.PRIVATE,
+                        java.util.Set.of());
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
@@ -148,7 +149,8 @@ class IdentifyAssetUseCaseTest {
                         EnrichmentStatus.RAW,
                         null,
                         null,
-                        MovieVisibility.PRIVATE);
+                        MovieVisibility.PRIVATE,
+                        java.util.Set.of());
         Movie enriched =
                 new Movie(
                         MovieId.of(50L),
@@ -158,7 +160,8 @@ class IdentifyAssetUseCaseTest {
                         EnrichmentStatus.ENRICHED,
                         null,
                         null,
-                        MovieVisibility.PRIVATE);
+                        MovieVisibility.PRIVATE,
+                        java.util.Set.of());
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
@@ -200,7 +203,8 @@ class IdentifyAssetUseCaseTest {
                         EnrichmentStatus.RAW,
                         null,
                         null,
-                        MovieVisibility.PRIVATE);
+                        MovieVisibility.PRIVATE,
+                        java.util.Set.of());
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())

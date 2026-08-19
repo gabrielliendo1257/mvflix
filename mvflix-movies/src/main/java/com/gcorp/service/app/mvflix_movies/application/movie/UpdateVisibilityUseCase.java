@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 
 /**
  * Cambia la visibilidad (PUBLIC/PRIVATE/SHARED) de una pelicula del catalogo.
- * Solo el dueño; el resto ve 403.
+ * Solo el dueño (lo decide {@link Movie#isOwnedBy(String)}); el resto ve 403.
  */
 @Slf4j
 @Service
@@ -30,12 +30,13 @@ public class UpdateVisibilityUseCase {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
-                        .findByIdVisible(id, user.subject())
+                        .findById(id)
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not accessible: " + id.value())))
-                        .filter(movie -> movie.getOwnerUsername().equals(user.subject()))
+                        .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not owned: " + id.value())))
+                        .map(movie -> movie.withVisibility(visibility))
                         .flatMap(movie -> this.movieRepository
                                 .updateVisibility(id, user.subject(), visibility))
                         .doOnNext(updated -> log.info(

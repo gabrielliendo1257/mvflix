@@ -1,5 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.domain.movie;
 
+import java.util.Set;
+
 public class Movie {
 
     private final MovieId id;
@@ -10,6 +12,7 @@ public class Movie {
     private final Long objectId;
     private final MovieMetadata metadata;
     private final MovieVisibility visibility;
+    private final Set<String> sharedWith;
 
     public Movie(
         MovieId id,
@@ -19,7 +22,8 @@ public class Movie {
         EnrichmentStatus enrichmentStatus,
         Long objectId,
         MovieMetadata metadata,
-        MovieVisibility visibility) {
+        MovieVisibility visibility,
+        Set<String> sharedWith) {
         this.id = id;
         this.ownerUsername = ownerUsername;
         this.title = title;
@@ -28,6 +32,7 @@ public class Movie {
         this.objectId = objectId;
         this.metadata = metadata;
         this.visibility = visibility;
+        this.sharedWith = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
     }
 
     public MovieId getId() {
@@ -62,6 +67,26 @@ public class Movie {
         return this.visibility;
     }
 
+    public Set<String> getSharedWith() {
+        return this.sharedWith;
+    }
+
+    /** Solo el dueño puede administrar la película (visibilidad, compartidos, borrado). */
+    public boolean isOwnedBy(String username) {
+        return this.ownerUsername.equals(username);
+    }
+
+    /**
+     * Política de acceso al catálogo (fuente de verdad del dominio): el dueño siempre ve;
+     * PUBLIC lo ve cualquiera; PRIVATE nadie más; SHARED solo los de la lista de compartidos.
+     */
+    public boolean isVisibleTo(String username) {
+        return isOwnedBy(username)
+                || this.visibility == MovieVisibility.PUBLIC
+                || (this.visibility == MovieVisibility.SHARED
+                        && this.sharedWith.contains(username));
+    }
+
     /** Transición de dominio: cambia la visibilidad del catálogo (solo el dueño). */
     public Movie withVisibility(MovieVisibility visibility) {
         return new Movie(
@@ -72,7 +97,22 @@ public class Movie {
                 this.enrichmentStatus,
                 this.objectId,
                 this.metadata,
-                visibility);
+                visibility,
+                this.sharedWith);
+    }
+
+    /** Transición de dominio: reemplaza la lista de compartidos (solo el dueño). */
+    public Movie withSharedWith(Set<String> sharedWith) {
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                this.title,
+                this.status,
+                this.enrichmentStatus,
+                this.objectId,
+                this.metadata,
+                this.visibility,
+                sharedWith);
     }
 
     public boolean isDraft() {
@@ -97,7 +137,8 @@ public class Movie {
                 this.enrichmentStatus,
                 objectId,
                 this.metadata,
-                this.visibility);
+                this.visibility,
+                this.sharedWith);
     }
 
     /** Transición de dominio: marca el catálogo como enriquecido (idempotente). */
@@ -110,7 +151,8 @@ public class Movie {
                 enrichmentStatus,
                 this.objectId,
                 this.metadata,
-                this.visibility);
+                this.visibility,
+                this.sharedWith);
     }
 
     /**
@@ -126,6 +168,7 @@ public class Movie {
                 status,
                 this.objectId,
                 enrichedMetadata,
-                this.visibility);
+                this.visibility,
+                this.sharedWith);
     }
 }

@@ -23,13 +23,17 @@ public class GetMovieUseCase {
 
     /**
      * Detalle solo si la pelicula es visible para el usuario autenticado
-     * (PUBLIC, propia o compartida); si no, 403 sin revelar la existencia.
+     * (la decide {@link Movie#isVisibleTo(String)}: PUBLIC, propia o compartida);
+     * si no, 403 sin revelar la existencia.
      */
     public Mono<Movie> execute(MovieId id) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
-                        .findByIdVisible(id, user.subject())
+                        .findById(id)
+                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
+                                "Movie not accessible: " + id.value())))
+                        .filter(movie -> movie.isVisibleTo(user.subject()))
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not accessible: " + id.value()))));
     }

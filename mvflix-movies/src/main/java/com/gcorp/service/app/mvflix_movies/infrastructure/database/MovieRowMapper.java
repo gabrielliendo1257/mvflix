@@ -16,11 +16,13 @@ import org.mapstruct.Mapping;
 public interface MovieRowMapper {
 
     @Mapping(target = "id", expression = "java(movie.getId() == null ? null : movie.getId().value())")
+    @Mapping(target = "sharedWith", expression = "java(movie.getSharedWith().toArray(String[]::new))")
     MovieRow toRow(Movie movie);
 
     @Mapping(target = "id", expression = "java(row.id() == null ? null : MovieId.of(row.id()))")
     @Mapping(target = "status", expression = "java(MovieStatus.valueOf(row.status()))")
     @Mapping(target = "enrichmentStatus", expression = "java(EnrichmentStatus.valueOf(row.enrichmentStatus()))")
     @Mapping(target = "visibility", expression = "java(MovieVisibility.valueOf(row.visibility()))")
+    @Mapping(target = "sharedWith", expression = "java(row.sharedWith() == null ? java.util.Set.of() : java.util.Set.of(row.sharedWith()))")
     Movie toDomain(MovieRow row);
 }

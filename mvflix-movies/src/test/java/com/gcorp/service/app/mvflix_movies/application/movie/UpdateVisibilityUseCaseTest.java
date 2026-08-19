@@ -36,7 +36,7 @@ class UpdateVisibilityUseCaseTest {
     private static Movie movie(long id, String owner, MovieVisibility visibility) {
         return new Movie(
                 MovieId.of(id), owner, "Dune", MovieStatus.READY, EnrichmentStatus.ENRICHED,
-                null, null, visibility);
+                null, null, visibility, java.util.Set.of());
     }
 
     @Test
@@ -46,7 +46,7 @@ class UpdateVisibilityUseCaseTest {
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.findByIdVisible(MovieId.of(1L), "Javier"))
+        when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
         when(this.movieRepository.updateVisibility(
                 MovieId.of(1L), "Javier", MovieVisibility.PUBLIC))
@@ -66,7 +66,7 @@ class UpdateVisibilityUseCaseTest {
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.movieRepository.findByIdVisible(MovieId.of(1L), "Maria"))
+        when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), MovieVisibility.PUBLIC))
@@ -81,7 +81,7 @@ class UpdateVisibilityUseCaseTest {
     void invisibleMovieIsDenied() {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.movieRepository.findByIdVisible(MovieId.of(1L), "Maria"))
+        when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.empty());
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), MovieVisibility.PUBLIC))
