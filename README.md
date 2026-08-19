@@ -96,6 +96,40 @@ make sandbox-test                      # smoke test del storage (perfil sandbox)
 `AUTHORIZATION_ISSUER_URL` (9090), `SERVICES_USERS_URL` (8080), `SERVICES_STORAGE_URL` (6060),
 `MINIO_URL` (9000), `BFF_ADDRESS` (http://127.0.0.1:9091, redirect del cliente OAuth2).
 
+### Levantar en LAN (192.168.x.x, desde otro equipo/telefono)
+
+Todo el stack corre en una maquina; el navegador (en otra maquina) solo ve **front (4200)**,
+**BFF (9091)** y **auth (9090)**. Los servicios internos (users/storage/movies) se quedan en
+`127.0.0.1` porque son llamadas servidor-a-servidor.
+
+1. **Front**: apuntar el `environment.ts` de Angular al BFF por LAN: `http://<IP-LAN>:9091`.
+
+2. **Variables de entorno al arrancar los 3 procesos visibles al navegador** (todas ya existen
+   con default localhost; exportarlas antes del `mvn spring-boot:run`):
+
+   ```bash
+   export AUTHORIZATION_ISSUER_URL="http://<IP-LAN>:9090"   # BFF: redirige el login al auth por LAN
+   export BFF_ADDRESS="http://<IP-LAN>:9091"                # auth: redirect-uri registrado del cliente OAuth2
+   export FRONTEND_URL="http://<IP-LAN>:4200"               # BFF: CORS + post-login redirect
+   export FRONTEND_ADDRESS="http://<IP-LAN>:4200"           # auth: redirect de logout
+   export BFF_CORS_ALLOWED_ORIGINS="http://<IP-LAN>:4200"   # BFF: origen CORS extra (ademas de FRONTEND_URL)
+   export BFF_SESSION_COOKIE_NAME="SESSION"                 # LAN por HTTP: __Host- exige Secure
+   export BFF_SESSION_COOKIE_SECURE="false"                 # Secure solo se acepta en localhost
+   ```
+
+   Sin los dos `BFF_SESSION_COOKIE_*`, el navegador descarta la cookie de sesion (`Secure` +
+   prefijo `__Host-` solo valen en localhost) y el login queda en un loop de redirecciones.
+
+3. **Subir los 3 servicios visibles** (auth, bff) + el resto (users, storage, movies) con el
+   perfil `dev`, como en la seccion de puesta en marcha. Al primer login, el navegador avisara
+   de un certificado/aviso no si se usa HTTP plano: es esperado, no hay TLS en dev.
+
+4. Verificar: en la otra maquina `curl http://<IP-LAN>:9091/web/session` -> 401 JSON (sin
+   sesion), y abrir `http://<IP-LAN>:4200` en el navegador: login completo por LAN.
+
+Alternativa sin tocar la cookie (mas segura): servir front y BFF por **HTTPS** con cert
+autofirmado de la IP LAN; entonces `__Host-SESSION` y `Secure` funcionan tal cual.
+
 ## API
 
 ### BFF web (`bff-mvflix-web`, puerto 9091)

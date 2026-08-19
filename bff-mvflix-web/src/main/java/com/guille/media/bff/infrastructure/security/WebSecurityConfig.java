@@ -1,6 +1,8 @@
 package com.guille.media.bff.infrastructure.security;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -53,6 +55,9 @@ public class WebSecurityConfig {
 
   @Value("${frontend.url}")
   private String frontendUrl;
+
+  @Value("${bff.cors.allowed-origins:}")
+  private String extraAllowedOrigins;
 
   /**
    * Dev-token (Bearer) para Postman/curl en dev. En WebFlux no se pueden combinar
@@ -179,13 +184,26 @@ public class WebSecurityConfig {
   @Bean
   UrlBasedCorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration configuration = new CorsConfiguration();
-    configuration.setAllowedOrigins(List.of("http://127.0.0.1:4200"));
+    configuration.setAllowedOrigins(allowedOrigins());
     configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
     configuration.setAllowedHeaders(List.of("Accept", "Content-Type"));
     configuration.setAllowCredentials(true);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", configuration);
     return source;
+  }
+
+  /** Origen del front + extras por config (LAN, dominio propio, ...). */
+  private List<String> allowedOrigins() {
+    List<String> origins = new ArrayList<>();
+    origins.add(this.frontendUrl);
+    if (this.extraAllowedOrigins != null && !this.extraAllowedOrigins.isBlank()) {
+      Arrays.stream(this.extraAllowedOrigins.split(","))
+          .map(String::trim)
+          .filter(origin -> !origin.isEmpty())
+          .forEach(origins::add);
+    }
+    return origins;
   }
 
   /** 401 en JSON para que el front distinga "sin sesión" y arranque el login. */

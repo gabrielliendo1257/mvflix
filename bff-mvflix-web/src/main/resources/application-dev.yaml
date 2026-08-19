@@ -39,10 +39,11 @@ server:
         # Prefijo __Host- (RFC 6265bis): exige Secure + Path=/ + sin Domain, protege
         # contra cookie tossing. En 127.0.0.1/localhost el navegador acepta Secure
         # (potentially trustworthy), asi que tambien vale en dev. Ojo: si se accede
-        # por otra IP en dev, el navegador rechazaria la cookie.
-        name: __Host-SESSION
+        # por otra IP en dev, el navegador rechazaria la cookie. En LAN por HTTP hay
+        # que bajar el prefijo a SESSION y Secure a false (ver README, seccion LAN).
+        name: ${BFF_SESSION_COOKIE_NAME:__Host-SESSION}
         path: /
-        secure: true
+        secure: ${BFF_SESSION_COOKIE_SECURE:true}
         # Front (4200) y BFF (9091) son same-site (mismo registrable domain): Lax
         # no bloquea el fetch con credentials y es defensa en profundidad.
         same-site: lax
@@ -82,6 +83,8 @@ frontend:
   url: ${FRONTEND_URL:http://127.0.0.1:4200}
 
 bff:
+  cors:
+    allowed-origins: ${BFF_CORS_ALLOWED_ORIGINS:}
   webclient:
     connect-timeout-ms: 2000
     response-timeout-ms: 30000
