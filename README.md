@@ -104,8 +104,10 @@ Todo el stack corre en una maquina; el navegador (en otra maquina) solo ve **fro
 
 1. **Front**: apuntar el `environment.ts` de Angular al BFF por LAN: `http://<IP-LAN>:9091`.
 
-2. **Variables de entorno al arrancar los 3 procesos visibles al navegador** (todas ya existen
-   con default localhost; exportarlas antes del `mvn spring-boot:run`):
+2. **Variables de entorno**: ponerlas en `envs/.env` (descomentar el bloque LAN de
+   `envs/.env.example` con la IP real). `scripts/stack-dev.sh` hace `source envs/.env`
+   (con `set -a`) antes de arrancar, asi que las apps las leen solas; si se arranca a
+   mano con `mvn spring-boot:run`, exportarlas antes en la misma terminal:
 
    ```bash
    export AUTHORIZATION_ISSUER_URL="http://<IP-LAN>:9090"   # BFF: redirige el login al auth por LAN
