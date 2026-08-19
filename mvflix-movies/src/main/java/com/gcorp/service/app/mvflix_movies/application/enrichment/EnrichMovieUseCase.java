@@ -99,11 +99,11 @@ public class EnrichMovieUseCase {
         Long tmdbId = explicitTmdbId != null
                 ? explicitTmdbId
                 : movie.getMetadata().tmdbId();
-        Mono<ExternalMovieDetail> detail = tmdbId != null
+        Mono<ExternalMovieDetail> detail = Mono.defer(() -> tmdbId != null
                 ? this.metadataSource.findById(tmdbId)
                 : this.metadataSource
                         .search(movie.getTitle(), movie.getMetadata().year())
-                        .flatMap(search -> this.metadataSource.findById(search.tmdbId()));
+                        .flatMap(search -> this.metadataSource.findById(search.tmdbId())));
 
         return detail
                 .flatMap(d -> {

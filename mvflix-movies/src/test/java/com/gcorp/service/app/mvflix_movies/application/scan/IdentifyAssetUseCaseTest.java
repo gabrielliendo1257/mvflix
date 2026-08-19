@@ -221,4 +221,49 @@ class IdentifyAssetUseCaseTest {
 
         verify(this.assetRepository).save(any(MediaAsset.class));
     }
+
+    @Test
+    void slowTmdbDoesNotBreakIdentification() {
+        MediaAsset asset =
+                new MediaAsset(
+                        MediaAssetId.of(1L),
+                        7L,
+                        "Dune.mp4",
+                        1024,
+                        "video/mp4",
+                        MediaAssetStatus.UNIDENTIFIED,
+                        null,
+                        Instant.now(),
+                        Instant.now());
+        Movie created =
+                new Movie(
+                        MovieId.of(50L),
+                        "Javier",
+                        "Dune",
+                        MovieStatus.READY,
+                        EnrichmentStatus.RAW,
+                        null,
+                        null,
+                        MovieVisibility.PRIVATE,
+                        java.util.Set.of());
+
+        when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.save(any(Movie.class))).thenReturn(Mono.just(created));
+        when(this.enrichMovieUseCase.enrich(any(Movie.class), any(Long.class)))
+                .thenReturn(Mono.never());
+        when(this.assetRepository.save(any(MediaAsset.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+        StepVerifier.withVirtualTime(() ->
+                        this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L))
+                .thenAwait(java.time.Duration.ofSeconds(21))
+                .expectNextMatches(identified ->
+                        identified.isIdentified()
+                                && identified.getMovieId().equals(MovieId.of(50L)))
+                .verifyComplete();
+
+        verify(this.assetRepository).save(any(MediaAsset.class));
+    }
 }

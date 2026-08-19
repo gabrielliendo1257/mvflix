@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.List;
 
 /**
@@ -80,14 +81,19 @@ public class IdentifyAssetUseCase {
 
     /**
      * Si el form eligio candidato TMDB, autocompleta la metadata en el mismo
-     * paso; un fallo de la fuente externa no rompe la identificacion (queda RAW).
+     * paso; un fallo o una respuesta lenta de la fuente externa no rompe la
+     * identificacion (queda RAW). El timeout acota la espera de TMDB para que
+     * el flujo termine siempre y el activo quede identificado.
      */
+    private static final Duration ENRICH_TIMEOUT = Duration.ofSeconds(20);
+
     private Mono<Movie> enrichIfRequested(Movie movie, Long tmdbId) {
         if (tmdbId == null) {
             return Mono.just(movie);
         }
         return this.enrichMovieUseCase
                 .enrich(movie, tmdbId)
+                .timeout(this.ENRICH_TIMEOUT)
                 .doOnNext(enriched -> log.info(
                         "Asset autocompletado con TMDB {} -> movie {} ENRICHED",
                         tmdbId, movie.getId().value()))

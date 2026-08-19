@@ -170,6 +170,18 @@ class EnrichMovieUseCaseTest {
         verify(this.movieRepository, never()).updateEnrichment(any(), any(), any());
     }
 
+    @Test
+    void synchronousSourceFailureBecomesMonoError() {
+        when(this.metadataSource.findById(274_003L))
+                .thenThrow(new IllegalStateException("TMDB_API_TOKEN no configurado"));
+
+        StepVerifier.create(this.useCase.enrich(DRAFT_RAW, 274_003L))
+                .expectError(IllegalStateException.class)
+                .verify();
+
+        verify(this.movieRepository, never()).updateEnrichment(any(), any(), any());
+    }
+
     private static MovieMetadata mergedMetadata() {
         return new MovieMetadata(
                 "Il colosso di Rodi", "Il colosso di Rodi", 1961,

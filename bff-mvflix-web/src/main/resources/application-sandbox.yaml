@@ -30,7 +30,7 @@ frontend:
 bff:
   webclient:
     connect-timeout-ms: 2000
-    response-timeout-ms: 10000
+    response-timeout-ms: 30000
 
 logging:
   level:
