@@ -39,9 +39,15 @@ public class SpringDataMediaLibraryRepository implements MediaLibraryRepository 
     }
 
     @Override
-    public Flux<MediaLibrary> findAllEnabled() {
+    public Flux<MediaLibrary> findAllAccessibleTo(String ownerUsername) {
         return this.databaseClient
-                .sql("SELECT * FROM media_libraries WHERE enabled = TRUE ORDER BY id")
+                .sql(
+                        """
+                        SELECT * FROM media_libraries
+                        WHERE enabled = TRUE AND (owner_username IS NULL OR owner_username = :owner)
+                        ORDER BY id
+                        """)
+                .bind("owner", ownerUsername)
                 .mapProperties(MediaLibraryJpaEntity.class)
                 .all()
                 .map(this.mapper::toDomain);
@@ -54,17 +60,26 @@ public class SpringDataMediaLibraryRepository implements MediaLibraryRepository 
                 this.databaseClient
                         .sql(
                                 """
-                                INSERT INTO media_libraries (type, root_path, enabled, created_at)
-                                VALUES (:type, :root_path, :enabled, :created_at)
+                                INSERT INTO media_libraries (type, root_path, enabled, owner_username, created_at)
+                                VALUES (:type, :root_path, :enabled, :owner_username, :created_at)
                                 ON CONFLICT (root_path) DO UPDATE SET enabled = EXCLUDED.enabled
                                 RETURNING *
                                 """)
                         .bind("type", entity.getType())
                         .bind("root_path", entity.getRootPath())
                         .bind("enabled", entity.getEnabled())
+                        .bind("owner_username", entity.getOwnerUsername())
                         .bind("created_at", entity.getCreatedAt());
         return spec.mapProperties(MediaLibraryJpaEntity.class)
                 .one()
                 .map(this.mapper::toDomain);
+    }
+
+    @Override
+    public Mono<Void> deleteById(Long id) {
+        return this.databaseClient
+                .sql("DELETE FROM media_libraries WHERE id = :id")
+                .bind("id", id)
+                .then();
     }
 }

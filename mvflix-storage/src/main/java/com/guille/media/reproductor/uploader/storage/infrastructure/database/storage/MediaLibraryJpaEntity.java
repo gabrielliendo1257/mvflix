@@ -25,5 +25,7 @@ public class MediaLibraryJpaEntity {
 
     private Boolean enabled;
 
+    private String ownerUsername;
+
     private Instant createdAt;
 }

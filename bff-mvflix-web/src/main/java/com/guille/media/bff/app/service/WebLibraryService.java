@@ -34,6 +34,18 @@ public class WebLibraryService {
     return this.storageWebClient.listLibraries();
   }
 
+  /** Registra una biblioteca desde un path elegido en la UI (runtime). */
+  public Mono<LibraryDto> register(String rootPath) {
+    log.info("register: path={}", rootPath);
+    return this.storageWebClient.createLibrary(rootPath);
+  }
+
+  /** Elimina una biblioteca propia. */
+  public Mono<Void> delete(Long libraryId) {
+    log.info("delete: biblioteca={}", libraryId);
+    return this.storageWebClient.deleteLibrary(libraryId);
+  }
+
   /**
    * Scan de una biblioteca del operador: pregunta al storage qué archivos
    * hay y entrega la lista a movies para el upsert + marcado de MISSING.

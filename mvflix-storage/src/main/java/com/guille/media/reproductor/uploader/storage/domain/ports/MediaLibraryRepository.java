@@ -11,7 +11,10 @@ public interface MediaLibraryRepository {
 
     Mono<MediaLibrary> findByRootPath(String rootPath);
 
-    Flux<MediaLibrary> findAllEnabled();
+    /** Bibliotecas visibles para un usuario: las del operador más las propias. */
+    Flux<MediaLibrary> findAllAccessibleTo(String ownerUsername);
 
     Mono<MediaLibrary> save(MediaLibrary library);
+
+    Mono<Void> deleteById(Long id);
 }

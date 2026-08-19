@@ -40,6 +40,12 @@ public interface StorageWebClient {
   /** Bibliotecas del operador (media server). */
   Flux<LibraryDto> listLibraries();
 
+  /** Registra una biblioteca en runtime a nombre del usuario autenticado. */
+  Mono<LibraryDto> createLibrary(String rootPath);
+
+  /** Elimina una biblioteca propia (las del operador no). */
+  Mono<Void> deleteLibrary(Long libraryId);
+
   /** Archivos descubiertos por el scanner en la biblioteca (media server). */
   Flux<DiscoveredFileDto> listLibraryFiles(Long libraryId);
 

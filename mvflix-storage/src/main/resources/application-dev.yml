@@ -44,8 +44,10 @@ storage:
     time-to-live: 60m
     expiration-check-ms: 60000
   # Bibliotecas del operador (media server). LOCAL -> directorio del filesystem.
-  library-roots:
+  # Son también las raíces permitidas para las bibliotecas registradas en runtime.
+  allowed-roots:
     - /tmp/mvflix-media
+    - /run/media/backdev/DATA_A/bolivia
 
 logging:
   level:

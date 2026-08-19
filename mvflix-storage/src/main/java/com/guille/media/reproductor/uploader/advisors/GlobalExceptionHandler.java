@@ -5,9 +5,14 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNot
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAccessDeniedException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAlreadyExistsException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathInvalidException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathNotAllowedException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ObjectAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
+import com.guille.media.reproductor.uploader.storage.infrastructure.errors.EntityNotFound;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,6 +65,31 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(StorageObjectNotAvailable.class)
     public ResponseEntity<?> storageObjectNotAvailable(StorageObjectNotAvailable ex) {
         return error(HttpStatus.NOT_FOUND, "STORAGE_OBJECT_NOT_AVAILABLE", ex);
+    }
+
+    @ExceptionHandler(EntityNotFound.class)
+    public ResponseEntity<?> entityNotFound(EntityNotFound ex) {
+        return error(HttpStatus.NOT_FOUND, "NOT_FOUND", ex);
+    }
+
+    @ExceptionHandler(LibraryPathInvalidException.class)
+    public ResponseEntity<?> libraryPathInvalid(LibraryPathInvalidException ex) {
+        return error(HttpStatus.BAD_REQUEST, "LIBRARY_PATH_INVALID", ex);
+    }
+
+    @ExceptionHandler(LibraryPathNotAllowedException.class)
+    public ResponseEntity<?> libraryPathNotAllowed(LibraryPathNotAllowedException ex) {
+        return error(HttpStatus.BAD_REQUEST, "LIBRARY_PATH_NOT_ALLOWED", ex);
+    }
+
+    @ExceptionHandler(LibraryAccessDeniedException.class)
+    public ResponseEntity<?> libraryAccessDenied(LibraryAccessDeniedException ex) {
+        return error(HttpStatus.FORBIDDEN, "LIBRARY_ACCESS_DENIED", ex);
+    }
+
+    @ExceptionHandler(LibraryAlreadyExistsException.class)
+    public ResponseEntity<?> libraryAlreadyExists(LibraryAlreadyExistsException ex) {
+        return error(HttpStatus.CONFLICT, "LIBRARY_ALREADY_EXISTS", ex);
     }
 
     @ExceptionHandler(ResponseStatusException.class)

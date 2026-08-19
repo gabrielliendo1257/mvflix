@@ -14,6 +14,7 @@ public class MediaLibraryMapper {
                 .type(library.getType().name())
                 .rootPath(library.getRootPath())
                 .enabled(library.isEnabled())
+                .ownerUsername(library.getOwnerUsername())
                 .createdAt(library.getCreatedAt())
                 .build();
     }
@@ -24,6 +25,7 @@ public class MediaLibraryMapper {
                 MediaLibraryType.valueOf(entity.getType()),
                 entity.getRootPath(),
                 Boolean.TRUE.equals(entity.getEnabled()),
+                entity.getOwnerUsername(),
                 entity.getCreatedAt());
     }
 }

@@ -4,10 +4,13 @@ import com.guille.media.bff.app.dto.IdentifyAssetRequest;
 import com.guille.media.bff.app.dto.LibraryDto;
 import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MediaAssetPageDto;
+import com.guille.media.bff.app.dto.RegisterLibraryRequest;
 import com.guille.media.bff.app.service.WebLibraryService;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,6 +36,24 @@ public class WebLibrariesController {
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public Flux<LibraryDto> libraries() {
     return this.webLibraryService.libraries();
+  }
+
+  @PostMapping(
+      consumes = MediaType.APPLICATION_JSON_VALUE,
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<LibraryDto>> register(
+      @RequestBody(required = false) RegisterLibraryRequest request) {
+    String rootPath = request == null ? null : request.rootPath();
+    return this.webLibraryService
+        .register(rootPath)
+        .map(library -> ResponseEntity.status(HttpStatus.CREATED).body(library));
+  }
+
+  @DeleteMapping(value = "/{libraryId}")
+  public Mono<ResponseEntity<Void>> delete(@PathVariable Long libraryId) {
+    return this.webLibraryService
+        .delete(libraryId)
+        .thenReturn(ResponseEntity.noContent().build());
   }
 
   @PostMapping(value = "/{libraryId}/scan", produces = MediaType.APPLICATION_JSON_VALUE)

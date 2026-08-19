@@ -143,6 +143,25 @@ class WebLibraryServiceTest {
         .verifyComplete();
   }
 
+  @Test
+  void registerForwardsPathToStorage() {
+    when(this.storageWebClient.createLibrary("/tmp/media/familia"))
+        .thenReturn(Mono.just(new LibraryDto(9L, "LOCAL", true)));
+
+    StepVerifier.create(this.service.register("/tmp/media/familia"))
+        .expectNextMatches(library -> library.id().equals(9L))
+        .verifyComplete();
+  }
+
+  @Test
+  void deleteForwardsToStorage() {
+    when(this.storageWebClient.deleteLibrary(9L)).thenReturn(Mono.empty());
+
+    StepVerifier.create(this.service.delete(9L)).verifyComplete();
+
+    org.mockito.Mockito.verify(this.storageWebClient).deleteLibrary(9L);
+  }
+
   private static List<DiscoveredFileDto> anyList() {
     return org.mockito.ArgumentMatchers.anyList();
   }

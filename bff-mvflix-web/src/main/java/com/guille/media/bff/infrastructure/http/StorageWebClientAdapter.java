@@ -108,6 +108,28 @@ public class StorageWebClientAdapter implements StorageWebClient {
   }
 
   @Override
+  public Mono<LibraryDto> createLibrary(String rootPath) {
+    return this.storageWebClient
+        .post()
+        .uri(API + "/libraries")
+        .bodyValue(new RegisterLibraryBody(rootPath))
+        .retrieve()
+        .bodyToMono(LibraryDto.class);
+  }
+
+  @Override
+  public Mono<Void> deleteLibrary(Long libraryId) {
+    return this.storageWebClient
+        .delete()
+        .uri(API + "/libraries/" + libraryId)
+        .retrieve()
+        .toBodilessEntity()
+        .then();
+  }
+
+  private record RegisterLibraryBody(String rootPath) {}
+
+  @Override
   public Flux<DiscoveredFileDto> listLibraryFiles(Long libraryId) {
     return this.storageWebClient
         .get()

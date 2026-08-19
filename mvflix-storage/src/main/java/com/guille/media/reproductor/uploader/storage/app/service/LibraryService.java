@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
+import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
 import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryScanner;
 import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;
@@ -27,9 +28,13 @@ public class LibraryService {
 
     private final MediaLibraryRepository libraryRepository;
     private final LibraryScanner libraryScanner;
+    private final UserProvider userProvider;
 
     public Flux<MediaLibrary> listLibraries() {
-        return this.libraryRepository.findAllEnabled();
+        return this.userProvider
+                .getAuthenticatedUser()
+                .flatMapMany(user ->
+                        this.libraryRepository.findAllAccessibleTo(user.subject()));
     }
 
     public Mono<MediaLibrary> findLibrary(Long libraryId) {

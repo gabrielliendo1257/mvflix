@@ -93,6 +93,14 @@ public class SecurityConfiguration {
                     .authenticated()
                     .pathMatchers(
                         HttpMethod.POST,
+                        this.apiPathBase + "/storage/libraries")
+                    .authenticated()
+                    .pathMatchers(
+                        HttpMethod.DELETE,
+                        this.apiPathBase + "/storage/libraries/*")
+                    .authenticated()
+                    .pathMatchers(
+                        HttpMethod.POST,
                         this.apiPathBase + "/storage/upload",
                         this.apiPathBase + "/storage/upload/*/cancel")
                     .authenticated()
