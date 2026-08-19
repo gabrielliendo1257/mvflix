@@ -23,6 +23,17 @@ spring:
 
 server:
   port: 9091
+  reactive:
+    session:
+      # La sesion del navegador guarda el authorized client (con su refresh token de
+      # 5 dias en el auth-server). Sin esto, la WebSession muere a los 30 min de
+      # inactividad (default de Boot) aunque el refresh token siga vivo: el usuario
+      # tendria que re-loguear cada 30 min. Se alinea con el TTL del refresh token.
+      timeout: 5d
+      cookie:
+        # Persistente para sobrevivir al cierre del navegador, igualando el timeout
+        # de sesion; si es cookie de sesion, se pierde el refresh token al cerrar.
+        max-age: 5d
   error:
     include-stacktrace: never
     include-message: never
