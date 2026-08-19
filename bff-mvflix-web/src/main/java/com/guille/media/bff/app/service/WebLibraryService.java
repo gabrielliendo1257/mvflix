@@ -3,6 +3,7 @@ package com.guille.media.bff.app.service;
 import com.guille.media.bff.app.dto.DiscoveredFileDto;
 import com.guille.media.bff.app.dto.LibraryDto;
 import com.guille.media.bff.app.dto.MediaAssetDto;
+import com.guille.media.bff.app.dto.MediaAssetPageDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
 
@@ -36,13 +37,15 @@ public class WebLibraryService {
   /**
    * Scan de una biblioteca del operador: pregunta al storage qué archivos
    * hay y entrega la lista a movies para el upsert + marcado de MISSING.
+   * El resultado reconciliado se pagina en memoria.
    */
-  public Flux<MediaAssetDto> scan(Long libraryId) {
-    log.info("scan: biblioteca={}", libraryId);
+  public Mono<MediaAssetPageDto> scan(Long libraryId, int page, int size) {
+    log.info("scan: biblioteca={} page={} size={}", libraryId, page, size);
     return this.storageWebClient
         .listLibraryFiles(libraryId)
         .collectList()
-        .flatMapMany(files -> this.reconcile(libraryId, files));
+        .flatMap(files -> this.reconcile(libraryId, files).collectList())
+        .map(all -> paginate(all, page, size));
   }
 
   private Flux<MediaAssetDto> reconcile(Long libraryId, List<DiscoveredFileDto> files) {
@@ -50,8 +53,21 @@ public class WebLibraryService {
     return this.moviesWebClient.scanLibrary(libraryId, files);
   }
 
-  public Flux<MediaAssetDto> unidentified(Long libraryId) {
-    return this.moviesWebClient.listAssets(libraryId, "UNIDENTIFIED");
+  public Mono<MediaAssetPageDto> unidentified(Long libraryId, int page, int size) {
+    return this.moviesWebClient
+        .listAssets(libraryId, "UNIDENTIFIED")
+        .collectList()
+        .map(all -> paginate(all, page, size));
+  }
+
+  private static MediaAssetPageDto paginate(List<MediaAssetDto> all, int page, int size) {
+    int safePage = Math.max(page, 0);
+    int safeSize = Math.max(size, 1);
+    int total = all.size();
+    int totalPages = (int) Math.ceil((double) total / safeSize);
+    int from = Math.min(safePage * safeSize, total);
+    int to = Math.min(from + safeSize, total);
+    return new MediaAssetPageDto(all.subList(from, to), total, safePage, safeSize, totalPages);
   }
 
   /**

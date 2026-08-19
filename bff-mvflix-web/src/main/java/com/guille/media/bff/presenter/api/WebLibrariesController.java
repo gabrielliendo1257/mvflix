@@ -3,6 +3,7 @@ package com.guille.media.bff.presenter.api;
 import com.guille.media.bff.app.dto.IdentifyAssetRequest;
 import com.guille.media.bff.app.dto.LibraryDto;
 import com.guille.media.bff.app.dto.MediaAssetDto;
+import com.guille.media.bff.app.dto.MediaAssetPageDto;
 import com.guille.media.bff.app.service.WebLibraryService;
 
 import org.springframework.http.MediaType;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Flux;
@@ -34,13 +36,19 @@ public class WebLibrariesController {
   }
 
   @PostMapping(value = "/{libraryId}/scan", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Flux<MediaAssetDto> scan(@PathVariable Long libraryId) {
-    return this.webLibraryService.scan(libraryId);
+  public Mono<MediaAssetPageDto> scan(
+      @PathVariable Long libraryId,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    return this.webLibraryService.scan(libraryId, page, size);
   }
 
   @GetMapping(value = "/{libraryId}/unidentified", produces = MediaType.APPLICATION_JSON_VALUE)
-  public Flux<MediaAssetDto> unidentified(@PathVariable Long libraryId) {
-    return this.webLibraryService.unidentified(libraryId);
+  public Mono<MediaAssetPageDto> unidentified(
+      @PathVariable Long libraryId,
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "20") int size) {
+    return this.webLibraryService.unidentified(libraryId, page, size);
   }
 
   @PostMapping(

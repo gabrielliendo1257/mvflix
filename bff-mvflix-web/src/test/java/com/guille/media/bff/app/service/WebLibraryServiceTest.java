@@ -40,8 +40,52 @@ class WebLibraryServiceTest {
             1L, 7L, "Interstellar/Interstellar.mkv", 100, "video/x-matroska",
             "UNIDENTIFIED", null)));
 
-    StepVerifier.create(this.service.scan(7L))
-        .expectNextMatches(asset -> asset.id().equals(1L) && "UNIDENTIFIED".equals(asset.status()))
+    StepVerifier.create(this.service.scan(7L, 0, 20))
+        .expectNextMatches(page ->
+            page.total() == 1 && page.totalPages() == 1
+                && page.items().size() == 1
+                && "UNIDENTIFIED".equals(page.items().get(0).status()))
+        .verifyComplete();
+  }
+
+  @Test
+  void scanPaginatesReconciledAssets() {
+    when(this.storageWebClient.listLibraryFiles(7L))
+        .thenReturn(Flux.just(
+            new DiscoveredFileDto("a.mp4", 1, "video/mp4"),
+            new DiscoveredFileDto("b.mp4", 1, "video/mp4"),
+            new DiscoveredFileDto("c.mp4", 1, "video/mp4")));
+    when(this.moviesWebClient.scanLibrary(eq(7L), anyList()))
+        .thenReturn(Flux.just(
+            new MediaAssetDto(1L, 7L, "a.mp4", 1, "video/mp4", "UNIDENTIFIED", null),
+            new MediaAssetDto(2L, 7L, "b.mp4", 1, "video/mp4", "UNIDENTIFIED", null),
+            new MediaAssetDto(3L, 7L, "c.mp4", 1, "video/mp4", "UNIDENTIFIED", null)));
+
+    StepVerifier.create(this.service.scan(7L, 1, 2))
+        .expectNextMatches(page ->
+            page.items().size() == 1
+                && page.items().get(0).id().equals(3L)
+                && page.total() == 3
+                && page.page() == 1
+                && page.size() == 2
+                && page.totalPages() == 2)
+        .verifyComplete();
+  }
+
+  @Test
+  void unidentifiedPaginatesAssets() {
+    when(this.moviesWebClient.listAssets(7L, "UNIDENTIFIED"))
+        .thenReturn(Flux.just(
+            new MediaAssetDto(1L, 7L, "a.mp4", 1, "video/mp4", "UNIDENTIFIED", null),
+            new MediaAssetDto(2L, 7L, "b.mp4", 1, "video/mp4", "UNIDENTIFIED", null),
+            new MediaAssetDto(3L, 7L, "c.mp4", 1, "video/mp4", "UNIDENTIFIED", null)));
+
+    StepVerifier.create(this.service.unidentified(7L, 0, 2))
+        .expectNextMatches(page ->
+            page.items().size() == 2
+                && page.items().get(0).id().equals(1L)
+                && page.total() == 3
+                && page.totalPages() == 2)
         .verifyComplete();
   }
 
