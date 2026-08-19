@@ -162,23 +162,18 @@ public class WebMoviesService {
 
   /**
    * Emite un ticket de stream (para el {@code <video>} del front, que no puede
-   * mandar el JWT en header). Exige autenticación actual y visibilidad de la
-   * movie; el ticket expira a los pocos minutos.
+   * mandar el JWT en header). {@code userJwt} llega ya resuelto por el controller
+   * (Bearer o access token de sesion); el ticket expira a los pocos minutos.
    */
-  public Mono<StreamTicketDto> issueStreamTicket(Long movieId) {
-    return ReactiveSecurityContextHolder.getContext()
-        .flatMap(context -> {
-          var auth = context.getAuthentication();
-          if (auth instanceof JwtAuthenticationToken jwtAuth) {
-            return this.moviesWebClient
-                .movieById(movieId)
-                .map(movie -> new StreamTicketDto(
-                    "/web/movies/" + movie.id() + "/stream?ticket="
-                        + this.streamTicketService.issue(movie.id(), jwtAuth.getToken().getTokenValue())));
-          }
-          log.warn("stream-ticket: movie={} sin autenticación por JWT", movieId);
-          return Mono.error(new StreamTicketException("Autenticación requerida"));
-        });
+  public Mono<StreamTicketDto> issueStreamTicket(Long movieId, String userJwt) {
+    if (userJwt == null || userJwt.isBlank()) {
+      return Mono.error(new StreamTicketException("Autenticación requerida"));
+    }
+    return this.moviesWebClient
+        .movieById(movieId)
+        .map(movie -> new StreamTicketDto(
+            "/web/movies/" + movie.id() + "/stream?ticket="
+                + this.streamTicketService.issue(movie.id(), userJwt)));
   }
 
   public Mono<List<MovieEnrichmentSearchDto>> search(String query, Integer year) {

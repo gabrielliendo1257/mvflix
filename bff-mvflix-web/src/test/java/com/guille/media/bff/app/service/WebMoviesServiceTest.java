@@ -240,4 +240,27 @@ class WebMoviesServiceTest {
         .assertNext(response -> assertThat(response.getStatusCode().value()).isEqualTo(206))
         .verifyComplete();
   }
+
+  @Test
+  void issueStreamTicketWithUserJwtReturnsTicketForVisibleMovie() {
+    when(moviesWebClient.movieById(4L)).thenReturn(Mono.just(movie(4L, null)));
+
+    StepVerifier.create(service.issueStreamTicket(4L, "session-access-token"))
+        .assertNext(ticket -> {
+          assertThat(ticket.url()).startsWith("/web/movies/4/stream?ticket=");
+          String resolvedJwt = this.streamTicketService.resolve(ticket.url().split("ticket=")[1]).userJwt();
+          assertThat(resolvedJwt).isEqualTo("session-access-token");
+        })
+        .verifyComplete();
+  }
+
+  @Test
+  void issueStreamTicketWithoutUserJwtIsRejected() {
+    StepVerifier.create(service.issueStreamTicket(4L, null))
+        .expectError(StreamTicketException.class)
+        .verify();
+    StepVerifier.create(service.issueStreamTicket(4L, " "))
+        .expectError(StreamTicketException.class)
+        .verify();
+  }
 }
