@@ -34,6 +34,16 @@ server:
         # Persistente para sobrevivir al cierre del navegador, igualando el timeout
         # de sesion; si es cookie de sesion, se pierde el refresh token al cerrar.
         max-age: 5d
+        # Prefijo __Host- (RFC 6265bis): exige Secure + Path=/ + sin Domain, protege
+        # contra cookie tossing. En 127.0.0.1/localhost el navegador acepta Secure
+        # (potentially trustworthy), asi que tambien vale en dev. Ojo: si se accede
+        # por otra IP en dev, el navegador rechazaria la cookie.
+        name: __Host-SESSION
+        path: /
+        secure: true
+        # Front (4200) y BFF (9091) son same-site (mismo registrable domain): Lax
+        # no bloquea el fetch con credentials y es defensa en profundidad.
+        same-site: lax
   error:
     include-stacktrace: never
     include-message: never
