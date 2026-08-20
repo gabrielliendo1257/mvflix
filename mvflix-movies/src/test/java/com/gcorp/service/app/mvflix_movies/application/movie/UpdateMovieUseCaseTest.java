@@ -66,7 +66,7 @@ class UpdateMovieUseCaseTest {
 
         var command = new UpdateMovieCommand(
                 "Dune: Part Two", "Dune: Part Two", 2024, List.of("Sci-Fi", "Adventure"),
-                null, null, null, null, "2024-03-01", null, null, null);
+                null, null, null, null, null, "2024-03-01", null, null, null, null);
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), command))
                 .expectNext(updated)
@@ -87,7 +87,7 @@ class UpdateMovieUseCaseTest {
     void mergeKeepsNullFieldsAndNonEditableIdentity() {
         MovieMetadata merged = UpdateMovieUseCase.merge(METADATA, new UpdateMovieCommand(
                 "Dune: Part Two", null, null, List.of(), null, null, null, "Nueva sinopsis",
-                null, null, null, null));
+                null, null, null, null, null, null));
 
         assertThat(merged.title()).isEqualTo("Dune: Part Two");
         assertThat(merged.genres()).isEmpty();
@@ -96,6 +96,18 @@ class UpdateMovieUseCaseTest {
         assertThat(merged.posterPath()).isEqualTo("/poster.jpg");
         assertThat(merged.tmdbId()).isEqualTo(438631L);
         assertThat(merged.year()).isEqualTo(2021);
+    }
+
+    @Test
+    void mergeUpdatesPosterAndPopularity() {
+        MovieMetadata merged = UpdateMovieUseCase.merge(METADATA, new UpdateMovieCommand(
+                null, null, null, null, null, null, null, null,
+                "/nuevo-poster.jpg", null, null, null, null, 9.1));
+
+        assertThat(merged.posterPath()).isEqualTo("/nuevo-poster.jpg");
+        assertThat(merged.popularity()).isEqualTo(9.1);
+        assertThat(merged.tmdbId()).isEqualTo(438631L);
+        assertThat(merged.title()).isEqualTo("Dune");
     }
 
     @Test
@@ -108,7 +120,7 @@ class UpdateMovieUseCaseTest {
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
                         "Otro", null, null, null, null, null, null, null,
-                        null, null, null, null)))
+                        null, null, null, null, null, null)))
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
@@ -123,7 +135,7 @@ class UpdateMovieUseCaseTest {
 
         StepVerifier.create(this.useCase.execute(MovieId.of(99L), new UpdateMovieCommand(
                         "X", null, null, null, null, null, null, null,
-                        null, null, null, null)))
+                        null, null, null, null, null, null)))
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 

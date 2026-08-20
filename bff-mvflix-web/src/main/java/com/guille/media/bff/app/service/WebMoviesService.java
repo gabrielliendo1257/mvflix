@@ -57,6 +57,9 @@ public class WebMoviesService {
   /** Tamaño de lote interno del BFF hacia mvflix-movies (progreso por SSE). */
   private static final int BULK_CHUNK_SIZE = 25;
 
+  /** Chunks de visibilidad en vuelo hacia mvflix-movies (velocidad sin saturar la DB). */
+  private static final int BULK_PARALLELISM = 4;
+
   private final MoviesWebClient moviesWebClient;
   private final StorageWebClient storageWebClient;
   private final UsersWebPort usersWebPort;
@@ -202,6 +205,11 @@ public class WebMoviesService {
     return this.moviesWebClient.enrichMovie(movieId, tmdbId);
   }
 
+  /** Desvincula la película del proveedor externo (vuelve a RAW). */
+  public Mono<MovieDto> unlinkEnrichment(Long movieId) {
+    return this.moviesWebClient.unlinkEnrichment(movieId);
+  }
+
   /**
    * Cambia la visibilidad del catalogo (PUBLIC/PRIVATE/SHARED). El BFF orquesta: en
    * SHARED tambien reemplaza la lista de usuarios compartidos (una sola llamada
@@ -301,7 +309,7 @@ public class WebMoviesService {
     AtomicInteger done = new AtomicInteger(0);
     AtomicInteger failed = new AtomicInteger(0);
     return Flux.fromIterable(chunk(movieIds, BULK_CHUNK_SIZE))
-        .concatMap(chunk -> this.moviesWebClient
+        .flatMap(chunk -> this.moviesWebClient
             .bulkUpdateVisibility(chunk, List.of(), request.visibility(), request.usernames(),
                 accessToken)
             .doOnNext(result -> {
@@ -309,7 +317,7 @@ public class WebMoviesService {
               failed.addAndGet(result.failed());
               this.bulkVisibilityJobStore.emit(jobId,
                   BulkVisibilityJobDto.running(jobId, total, done.get(), failed.get()));
-            }))
+            }), BULK_PARALLELISM)
         .then(Mono.defer(() -> {
           BulkVisibilityJobDto finalState =
               BulkVisibilityJobDto.done(jobId, total, done.get(), failed.get());

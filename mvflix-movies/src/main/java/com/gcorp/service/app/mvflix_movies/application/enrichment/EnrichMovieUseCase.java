@@ -49,6 +49,27 @@ public class EnrichMovieUseCase {
                         .flatMap(movie -> this.enrich(movie, explicitTmdbId)));
     }
 
+    /**
+     * Desvincula la película del proveedor externo: limpia tmdbId/poster/popularity
+     * y la devuelve a RAW para que el usuario rellene sus propios datos (media que
+     * no representa una película). Solo el dueño.
+     */
+    public Mono<Movie> unlinkCurrentUser(MovieId id) {
+        return this.userProvider
+                .getAuthenticatedUser()
+                .flatMap(user -> this.movieRepository
+                        .findById(id)
+                        .filter(movie -> movie.isOwnedBy(user.subject()))
+                        .switchIfEmpty(Mono.error(
+                                new MovieNotFoundException("Movie not found: " + id.value())))
+                        .flatMap(movie -> this.movieRepository.updateEnrichment(
+                                id, movie.getMetadata().withoutProvider(),
+                                EnrichmentStatus.RAW))
+                        .doOnNext(unlinked -> log.info(
+                                "Pelicula {} desvinculada del proveedor: queda RAW",
+                                id.value())));
+    }
+
     /** Busca candidatos en la fuente externa para que el usuario elija. */
     public Mono<List<ExternalMovieSearch>> search(String query, Integer year) {
         return this.metadataSource.searchCandidates(query, year).collectList();
@@ -91,7 +112,10 @@ public class EnrichMovieUseCase {
     }
 
     public Mono<Movie> enrich(Movie movie, Long explicitTmdbId) {
-        if (movie.isEnriched()) {
+        // El auto-enriquecimiento (scheduler, sin tmdb_id) no re-enricha una película
+        // ya ENRICHED; en cambio un tmdb_id explícito (el usuario re-matcher en la UI)
+        // sí reemplaza el match anterior.
+        if (movie.isEnriched() && explicitTmdbId == null) {
             log.info("Pelicula {} ya ENRICHED: no-op", movie.getId().value());
             return Mono.just(movie);
         }

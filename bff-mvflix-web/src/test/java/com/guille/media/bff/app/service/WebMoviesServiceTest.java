@@ -397,7 +397,7 @@ class WebMoviesServiceTest {
   void updateMovieDelegatesToMoviesBackend() {
     var request = new com.guille.media.bff.app.dto.MovieUpdateRequest(
         "Dune: Part Two", null, 2024, List.of("Sci-Fi"), null, null, null, null,
-        "2024-03-01", null, null, null);
+        null, "2024-03-01", null, null, null, null);
     when(moviesWebClient.updateMovie(4L, request))
         .thenReturn(Mono.just(movie(4L, null)));
 

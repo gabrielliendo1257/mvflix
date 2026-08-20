@@ -6,8 +6,8 @@ import java.util.List;
 
 /**
  * Edición manual de la metadata: campos {@code null} conservan el valor actual
- * (merge); las listas vacías limpian el valor. tmdbId/posterPath/popularity no
- * se editan por este endpoint.
+ * (merge); las listas vacías limpian el valor. tmdbId no se edita por este
+ * endpoint (se gestiona con enrich/re-enrich/unlink).
  */
 public record UpdateMovieRequest(
     String title,
@@ -18,7 +18,9 @@ public record UpdateMovieRequest(
     String director,
     List<String> cast,
     String overview,
+    @JsonProperty("poster_path") String posterPath,
     @JsonProperty("release_date") String releaseDate,
     String country,
     String language,
-    List<String> awards) {}
+    List<String> awards,
+    Double popularity) {}

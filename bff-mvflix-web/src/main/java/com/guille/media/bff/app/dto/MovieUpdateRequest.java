@@ -1,11 +1,13 @@
 package com.guille.media.bff.app.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 /**
  * Edición manual de la metadata: campos {@code null} conservan el valor actual
- * (merge); las listas vacías limpian el valor. tmdbId/posterPath/popularity no
- * se editan.
+ * (merge); las listas vacías limpian el valor. tmdbId no se edita (se gestiona
+ * con enrich/re-enrich/unlink).
  */
 public record MovieUpdateRequest(
     String title,
@@ -16,7 +18,9 @@ public record MovieUpdateRequest(
     String director,
     List<String> cast,
     String overview,
-    String releaseDate,
+    @JsonProperty("poster_path") String posterPath,
+    @JsonProperty("release_date") String releaseDate,
     String country,
     String language,
-    List<String> awards) {}
+    List<String> awards,
+    Double popularity) {}

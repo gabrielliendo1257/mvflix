@@ -164,6 +164,13 @@ public class MovieController {
                 .map(this.mapper::toResponse);
     }
 
+    @DeleteMapping("/{id}/enrich")
+    public Mono<MovieResponse> unlinkEnrichment(@PathVariable Long id) {
+        return this.enrichMovieUseCase
+                .unlinkCurrentUser(MovieId.of(id))
+                .map(this.mapper::toResponse);
+    }
+
     @GetMapping("/enrich/search")
     public Mono<List<EnrichMovieSearchResponse>> search(
             @RequestParam String query, @RequestParam(required = false) Integer year) {

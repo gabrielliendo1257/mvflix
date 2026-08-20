@@ -17,6 +17,7 @@ import com.guille.media.bff.app.service.WebMoviesService;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -70,6 +71,13 @@ public class WebMoviesController {
   public Mono<ResponseEntity<MovieDto>> enrich(
       @PathVariable Long movieId, @RequestBody MovieEnrichmentRequest request) {
     return this.webMoviesService.enrich(movieId, request.tmdbId()).map(ResponseEntity::ok);
+  }
+
+  @DeleteMapping(
+      value = "/{movieId}/enrichment",
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<MovieDto>> unlinkEnrichment(@PathVariable Long movieId) {
+    return this.webMoviesService.unlinkEnrichment(movieId).map(ResponseEntity::ok);
   }
 
   @PostMapping(

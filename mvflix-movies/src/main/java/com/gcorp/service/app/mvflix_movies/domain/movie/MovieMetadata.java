@@ -31,4 +31,28 @@ public record MovieMetadata(
                 title, null, null, List.of(), null, null, null,
                 List.of(), null, null, null, null, null, List.of(), null);
     }
+
+    /**
+     * Desvincula la metadata del proveedor externo: limpia tmdbId, posterPath y
+     * popularity (los datos que solo aporta TMDB) y conserva lo que el usuario
+     * haya rellenado a mano. Sirve para media que no representa una pelicula.
+     */
+    public MovieMetadata withoutProvider() {
+        return new MovieMetadata(
+                this.title,
+                this.originalTitle,
+                this.year,
+                this.genres,
+                null,
+                this.duration,
+                this.director,
+                this.cast,
+                this.overview,
+                null,
+                this.releaseDate,
+                this.country,
+                this.language,
+                this.awards,
+                null);
+    }
 }

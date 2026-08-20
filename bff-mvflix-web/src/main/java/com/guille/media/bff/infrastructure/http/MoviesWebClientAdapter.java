@@ -123,6 +123,15 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
+  public Mono<MovieDto> unlinkEnrichment(Long movieId) {
+    return this.moviesWebClient
+        .delete()
+        .uri(API + "/" + movieId + "/enrich")
+        .retrieve()
+        .bodyToMono(MovieDto.class);
+  }
+
+  @Override
   public Flux<MediaAssetDto> scanLibrary(Long libraryId, List<DiscoveredFileDto> files) {
     return this.moviesWebClient
         .post()

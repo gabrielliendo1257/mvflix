@@ -71,7 +71,7 @@ public class BulkVisibilityUseCase {
                             log.warn("Bulk: movie {} no se pudo actualizar: {}",
                                     movie.getId().value(), error.getMessage());
                             return Mono.just(false);
-                        }), 8)
+                        }), 16)
                 .collectList()
                 .map(results -> {
                     int updated = (int) results.stream().filter(Boolean.TRUE::equals).count();

@@ -6,7 +6,7 @@ import java.util.List;
  * Edición manual de la metadata de una película (sin pasar por la fuente externa).
  * Semántica de merge: los campos {@code null} conservan el valor actual de la movie;
  * las listas {@code null} se conservan y las listas vacías limpian el valor.
- * Campos que identifican la pieza (tmdbId, posterPath, popularity) no se editan.
+ * tmdbId no se edita (se gestiona con enrich/re-enrich/unlink).
  */
 public record UpdateMovieCommand(
     String title,
@@ -17,7 +17,9 @@ public record UpdateMovieCommand(
     String director,
     List<String> cast,
     String overview,
+    String posterPath,
     String releaseDate,
     String country,
     String language,
-    List<String> awards) {}
+    List<String> awards,
+    Double popularity) {}

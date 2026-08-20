@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 /**
  * Las fábricas codifican las dos clases de nacimiento de una película (DRAFT de
  * upload vs READY de biblioteca) y sus invariantes; los predicados explicitan la
@@ -62,5 +64,21 @@ class MovieFactoryTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> Movie.fromLibraryAsset(null, TITLE))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void withoutProviderLimpiaLosDatosDelProveedorYConservaLoManual() {
+        MovieMetadata enriched = new MovieMetadata(
+                "Dune", "Dune", 2021, List.of("Sci-Fi"), 7.9, "2h 35m",
+                "Denis Villeneuve", List.of("Timothée Chalamet"), "Overview",
+                "/poster.jpg", "2021-10-22", "USA", "English", List.of("Oscar"), 438631L);
+
+        MovieMetadata unlinked = enriched.withoutProvider();
+
+        assertThat(unlinked.tmdbId()).isNull();
+        assertThat(unlinked.posterPath()).isNull();
+        assertThat(unlinked.popularity()).isNull();
+        assertThat(unlinked.title()).isEqualTo("Dune");
+        assertThat(unlinked.overview()).isEqualTo("Overview");
     }
 }

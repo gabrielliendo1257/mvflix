@@ -38,6 +38,9 @@ public interface MoviesWebClient {
   /** Autocompletado con el candidato elegido por el usuario. */
   Mono<MovieDto> enrichMovie(Long movieId, Long tmdbId);
 
+  /** Desvincula la película del proveedor externo (tmdbId/poster/popularity a null). */
+  Mono<MovieDto> unlinkEnrichment(Long movieId);
+
   /** Upsert de los archivos que el storage descubrió en una biblioteca (media server). */
   Flux<MediaAssetDto> scanLibrary(Long libraryId, List<DiscoveredFileDto> files);
 
