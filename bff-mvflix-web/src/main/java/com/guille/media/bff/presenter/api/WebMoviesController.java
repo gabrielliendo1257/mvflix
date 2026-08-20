@@ -75,7 +75,7 @@ public class WebMoviesController {
       consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<MovieDto>> visibility(
       @PathVariable Long movieId, @RequestBody MovieVisibilityRequest request) {
-    return this.webMoviesService.visibility(movieId, request.visibility()).map(ResponseEntity::ok);
+    return this.webMoviesService.visibility(movieId, request.visibility(), request.usernames()).map(ResponseEntity::ok);
   }
 
   @PostMapping(

@@ -26,6 +26,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -191,9 +192,24 @@ public class WebMoviesService {
     return this.moviesWebClient.enrichMovie(movieId, tmdbId);
   }
 
-  /** Cambia la visibilidad del catálogo (PUBLIC/PRIVATE/SHARED); solo el dueño. */
-  public Mono<MovieDto> visibility(Long movieId, String visibility) {
-    return this.moviesWebClient.updateVisibility(movieId, visibility);
+  /**
+   * Cambia la visibilidad del catalogo (PUBLIC/PRIVATE/SHARED). El BFF orquesta: en
+   * SHARED tambien reemplaza la lista de usuarios compartidos (una sola llamada
+   * desde el front); en PUBLIC/PRIVATE usernames se ignora. Solo el dueno.
+   */
+  public Mono<MovieDto> visibility(Long movieId, String visibility, List<String> usernames) {
+    if (visibility == null || visibility.isBlank()) {
+      return Mono.error(new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "VISIBILITY_REQUIRED"));
+    }
+    boolean shared = "SHARED".equals(visibility);
+    if (shared && (usernames == null || usernames.isEmpty())) {
+      return Mono.error(new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "SHARED_REQUIRES_USERNAMES"));
+    }
+    return this.moviesWebClient
+        .updateVisibility(movieId, visibility)
+        .flatMap(movie -> shared ? this.moviesWebClient.updateShares(movieId, usernames) : Mono.just(movie));
   }
 
   /** Reemplaza la lista de usuarios compartidos; solo el dueño. */

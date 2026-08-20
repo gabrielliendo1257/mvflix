@@ -178,7 +178,7 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .post()
         .uri(API + "/" + movieId + "/visibility")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(new MovieVisibilityRequest(visibility))
+        .bodyValue(new MovieVisibilityRequest(visibility, null))
         .retrieve()
         .bodyToMono(MovieDto.class);
   }

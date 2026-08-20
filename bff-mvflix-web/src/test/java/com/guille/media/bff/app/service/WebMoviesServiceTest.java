@@ -2,10 +2,13 @@ package com.guille.media.bff.app.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.bff.app.dto.MovieDetailDto;
@@ -20,6 +23,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -134,15 +138,53 @@ class WebMoviesServiceTest {
   }
 
   @Test
-  void visibilityForwardsToMovies() {
+  void visibilityPublicIgnoresUsernames() {
     when(moviesWebClient.updateVisibility(1L, "PUBLIC"))
         .thenReturn(Mono.just(movie(1L, null)));
 
-    StepVerifier.create(service.visibility(1L, "PUBLIC"))
+    StepVerifier.create(service.visibility(1L, "PUBLIC", List.of("Maria")))
         .expectNextCount(1)
         .verifyComplete();
 
     verify(moviesWebClient).updateVisibility(1L, "PUBLIC");
+    verify(moviesWebClient, never()).updateShares(anyLong(), anyList());
+  }
+
+  @Test
+  void visibilitySharedOrchestratesShares() {
+    when(moviesWebClient.updateVisibility(1L, "SHARED"))
+        .thenReturn(Mono.just(movie(1L, null)));
+    when(moviesWebClient.updateShares(1L, List.of("Maria")))
+        .thenReturn(Mono.just(movie(1L, null)));
+
+    StepVerifier.create(service.visibility(1L, "SHARED", List.of("Maria")))
+        .expectNextCount(1)
+        .verifyComplete();
+
+    verify(moviesWebClient).updateVisibility(1L, "SHARED");
+    verify(moviesWebClient).updateShares(1L, List.of("Maria"));
+  }
+
+  @Test
+  void visibilitySharedWithoutUsernamesFails() {
+    StepVerifier.create(service.visibility(1L, "SHARED", null))
+        .expectError(ResponseStatusException.class)
+        .verify();
+
+    StepVerifier.create(service.visibility(1L, "SHARED", List.of()))
+        .expectError(ResponseStatusException.class)
+        .verify();
+
+    verifyNoInteractions(moviesWebClient);
+  }
+
+  @Test
+  void visibilityBlankFails() {
+    StepVerifier.create(service.visibility(1L, "", null))
+        .expectError(ResponseStatusException.class)
+        .verify();
+
+    verifyNoInteractions(moviesWebClient);
   }
 
   @Test
