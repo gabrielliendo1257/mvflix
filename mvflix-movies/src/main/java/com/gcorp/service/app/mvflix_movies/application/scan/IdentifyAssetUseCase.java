@@ -6,12 +6,9 @@ import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +18,6 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
-import java.util.List;
 
 /**
  * Vincula un activo de biblioteca a una pelicula del catalogo en un solo paso.
@@ -58,19 +54,8 @@ public class IdentifyAssetUseCase {
     private Mono<MediaAsset> linkToMovie(MediaAsset asset, String title, Long tmdbId) {
         return this.userProvider
                 .getAuthenticatedUser()
-                .flatMap(user -> this.movieRepository.save(new Movie(
-                        null,
-                        user.subject(),
-                        title,
-                        MovieStatus.READY,
-                        EnrichmentStatus.RAW,
-                        null,
-                        new MovieMetadata(
-                                title, null, null, List.of(), null, null, null,
-                                List.of(), null, null, null, null, null,
-                                List.of(), null),
-                        MovieVisibility.PRIVATE,
-                        java.util.Set.of())))
+                .flatMap(user -> this.movieRepository.save(
+                        Movie.fromLibraryAsset(user.subject(), MovieMetadata.onlyTitle(title))))
                 .flatMap(movie -> this.enrichIfRequested(movie, tmdbId))
                 .flatMap(movie -> this.assetRepository.save(asset.identify(movie.getId())))
                 .doOnNext(identified -> log.info(

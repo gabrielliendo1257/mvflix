@@ -35,6 +35,57 @@ public class Movie {
         this.sharedWith = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
     }
 
+    /**
+     * Nacimiento de una película en DRAFT (flujo de upload): el dueño aporta
+     * la metadata mínima y el objeto se asocia después con {@link #complete(Long)}.
+     */
+    public static Movie createDraft(String ownerUsername, MovieMetadata metadata) {
+        requireOwner(ownerUsername);
+        requireTitle(metadata);
+        return new Movie(
+                null,
+                ownerUsername,
+                metadata.title(),
+                MovieStatus.DRAFT,
+                EnrichmentStatus.RAW,
+                null,
+                metadata,
+                MovieVisibility.PRIVATE,
+                Set.of());
+    }
+
+    /**
+     * Nacimiento de una película desde una biblioteca (media server): el archivo
+     * ya existe en el filesystem, por eso nace READY sin objeto subido (objectId
+     * null). Es la otra clase de READY, complementaria a {@link #complete(Long)}.
+     */
+    public static Movie fromLibraryAsset(String ownerUsername, MovieMetadata metadata) {
+        requireOwner(ownerUsername);
+        requireTitle(metadata);
+        return new Movie(
+                null,
+                ownerUsername,
+                metadata.title(),
+                MovieStatus.READY,
+                EnrichmentStatus.RAW,
+                null,
+                metadata,
+                MovieVisibility.PRIVATE,
+                Set.of());
+    }
+
+    private static void requireOwner(String ownerUsername) {
+        if (ownerUsername == null || ownerUsername.isBlank()) {
+            throw new IllegalArgumentException("movie owner is required");
+        }
+    }
+
+    private static void requireTitle(MovieMetadata metadata) {
+        if (metadata == null || metadata.title() == null || metadata.title().isBlank()) {
+            throw new IllegalArgumentException("movie title is required");
+        }
+    }
+
     public MovieId getId() {
         return this.id;
     }
@@ -131,6 +182,19 @@ public class Movie {
 
     public boolean isDraft() {
         return this.status == MovieStatus.DRAFT;
+    }
+
+    /**
+     * READY respaldado por un archivo de biblioteca (sin objeto subido): el
+     * playback se resuelve por {@code MediaAsset}, no por el storage del upload.
+     */
+    public boolean isLibraryBacked() {
+        return this.status == MovieStatus.READY && this.objectId == null;
+    }
+
+    /** READY con objeto subido al storage (flujo de upload). */
+    public boolean isUploaded() {
+        return this.objectId != null;
     }
 
     public boolean isEnriched() {

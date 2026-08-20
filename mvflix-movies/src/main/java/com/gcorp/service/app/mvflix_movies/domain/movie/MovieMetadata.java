@@ -17,4 +17,18 @@ public record MovieMetadata(
     String country,
     String language,
     List<String> awards,
-    Long tmdbId) {}
+    Long tmdbId) {
+
+    /**
+     * Metadata minima del flujo de biblioteca: solo se conoce el titulo
+     * (derivado del filename); el resto queda null para enriquecer despues.
+     */
+    public static MovieMetadata onlyTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("movie title is required");
+        }
+        return new MovieMetadata(
+                title, null, null, List.of(), null, null, null,
+                List.of(), null, null, null, null, null, List.of(), null);
+    }
+}
