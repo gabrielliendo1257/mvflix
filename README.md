@@ -110,13 +110,14 @@ Todo el stack corre en una maquina; el navegador (en otra maquina) solo ve **fro
    mano con `mvn spring-boot:run`, exportarlas antes en la misma terminal:
 
    ```bash
-   export AUTHORIZATION_ISSUER_URL="http://<IP-LAN>:9090"   # BFF: redirige el login al auth por LAN
+   export AUTHORIZATION_ISSUER_URL="http://<IP-LAN>:9090"   # BFF: redirige el login al auth por LAN + auth: issuer fijo de los JWT
    export BFF_ADDRESS="http://<IP-LAN>:9091"                # auth: redirect-uri registrado del cliente OAuth2
    export FRONTEND_URL="http://<IP-LAN>:4200"               # BFF: CORS + post-login redirect
    export FRONTEND_ADDRESS="http://<IP-LAN>:4200"           # auth: redirect de logout
    export BFF_CORS_ALLOWED_ORIGINS="http://<IP-LAN>:4200"   # BFF: origen CORS extra (ademas de FRONTEND_URL)
    export BFF_SESSION_COOKIE_NAME="SESSION"                 # LAN por HTTP: __Host- exige Secure
    export BFF_SESSION_COOKIE_SECURE="false"                 # Secure solo se acepta en localhost
+   export SECURITY_OAUTH2_ISSUER_URI="http://<IP-LAN>:9090" # users: los JWT emitidos por LAN llevan iss LAN
    ```
 
    Sin los dos `BFF_SESSION_COOKIE_*`, el navegador descarta la cookie de sesion (`Secure` +

@@ -19,8 +19,8 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://127.0.0.1:9090
-          jwk-set-uri: http://127.0.0.1:9090/oauth2/jwks
+          issuer-uri: ${SECURITY_OAUTH2_ISSUER_URI:http://127.0.0.1:9090}
+          jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://127.0.0.1:9090/oauth2/jwks}
 
 services:
   authorization:

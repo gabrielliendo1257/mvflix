@@ -4,6 +4,7 @@ import java.time.Duration;
 
 import com.gcorp.service.app.authorizationservice.infrastructure.security.props.OAuth2PropertiesConfig;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -137,7 +138,8 @@ public class OAuth2AuthorizationConfig {
 	}
 
 	@Bean
-	AuthorizationServerSettings authorizationServerSettings() {
-		return AuthorizationServerSettings.builder().build();
+	AuthorizationServerSettings authorizationServerSettings(
+			@Value("${spring.security.oauth2.authorizationserver.issuer:http://127.0.0.1:9090}") String issuer) {
+		return AuthorizationServerSettings.builder().issuer(issuer).build();
 	}
 }

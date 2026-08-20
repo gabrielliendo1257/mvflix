@@ -2,6 +2,13 @@ spring:
   application:
     name: authorization-service
 
+  security:
+    oauth2:
+      authorizationserver:
+        # Issuer fijo del auth: los JWT (login real y dev-token) llevan este iss y los
+        # resource servers (users) lo validan. En LAN, apuntarlo a la IP de la maquina.
+        issuer: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}
+
   datasource:
     url: jdbc:postgresql://localhost:5432/mvflix_authorized_db
     username: db_rw
