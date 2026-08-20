@@ -134,7 +134,7 @@ public class BffWebClientConfiguration {
    * sesion OAuth2 (navegador) delega en el filtro oauth2-client (token de sesion). Fuera de
    * dev no existe este bean: siempre manda el filtro de sesion.
    */
-  @Bean
+@Bean
   @Profile("dev")
   ExchangeFilterFunction devOutboundAuthFilter(
       ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter) {
@@ -148,11 +148,20 @@ public class BffWebClientConfiguration {
                         ClientRequest.from(request)
                             .headers(
                                 headers ->
-                                    headers.setBearerAuth(jwtAuth.getToken().getTokenValue()))
+                                    headers.setBearerAuth(
+                                        jwtAuth.getToken().getTokenValue()))
                             .build());
                   }
                   return oauth2AuthorizedClientFilter.filter(request, next);
-                });
+                })
+            .switchIfEmpty(
+                Mono.defer(
+                    () -> {
+                      // Trabajo asíncrono (p. ej. bulk de visibilidad): el subscribe
+                      // corre sin contexto de seguridad; el token ya viaja en el header
+                      // del request (lo puso el adapter).
+                      return next.exchange(request);
+                    }));
   }
 
   @Bean

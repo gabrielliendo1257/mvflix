@@ -1,5 +1,6 @@
 package com.guille.media.bff.app.ports;
 
+import com.guille.media.bff.app.dto.BulkVisibilityResultDto;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
 import com.guille.media.bff.app.dto.DiscoveredFileDto;
 import com.guille.media.bff.app.dto.MediaAssetDto;
@@ -57,6 +58,13 @@ public interface MoviesWebClient {
 
   /** Reemplaza la lista de usuarios compartidos; solo el dueño. */
   Mono<MovieDto> updateShares(Long movieId, List<String> usernames);
+
+  /** Cambio de visibilidad en lote (movieIds y/o libraryIds); solo el dueño.
+   *  El token se pasa explícito porque el trabajo corre fuera del contexto de
+   *  la request (subscribe asíncrono) y el filtro de salida no lo vería. */
+  Mono<BulkVisibilityResultDto> bulkUpdateVisibility(
+      List<Long> movieIds, List<Long> libraryIds, String visibility, List<String> usernames,
+      String accessToken);
 
   /** Edición manual de la metadata (merge: null conserva el valor actual); solo el dueño. */
   Mono<MovieDto> updateMovie(Long movieId, MovieUpdateRequest request);

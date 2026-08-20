@@ -1,5 +1,7 @@
 package com.guille.media.bff.infrastructure.http;
 
+import com.guille.media.bff.app.dto.BulkVisibilityRequest;
+import com.guille.media.bff.app.dto.BulkVisibilityResultDto;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
 import com.guille.media.bff.app.dto.DiscoveredFileDto;
 import com.guille.media.bff.app.dto.IdentifyAssetRequest;
@@ -192,6 +194,24 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .bodyValue(new MovieSharesRequest(usernames))
         .retrieve()
         .bodyToMono(MovieDto.class);
+  }
+
+  @Override
+  public Mono<BulkVisibilityResultDto> bulkUpdateVisibility(
+      List<Long> movieIds, List<Long> libraryIds, String visibility, List<String> usernames,
+      String accessToken) {
+    return this.moviesWebClient
+        .post()
+        .uri(API + "/visibility/bulk")
+        .contentType(MediaType.APPLICATION_JSON)
+        .headers(headers -> {
+          if (accessToken != null && !accessToken.isBlank()) {
+            headers.setBearerAuth(accessToken);
+          }
+        })
+        .bodyValue(new BulkVisibilityRequest(movieIds, libraryIds, visibility, usernames))
+        .retrieve()
+        .bodyToMono(BulkVisibilityResultDto.class);
   }
 
   @Override

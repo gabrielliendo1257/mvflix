@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "MOVIE_CONFLICT", ex);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> badRequest(IllegalArgumentException ex) {
+        return error(HttpStatus.BAD_REQUEST, "BAD_REQUEST", ex);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> globalError(Exception ex) {
         log.error(ex.getMessage(), ex);

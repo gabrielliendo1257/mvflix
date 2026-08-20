@@ -231,6 +231,37 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
+    public Flux<Movie> findByOwnerAndIds(String ownerUsername, List<MovieId> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Flux.empty();
+        }
+        List<Long> values = ids.stream().map(MovieId::value).toList();
+        String in = java.util.stream.IntStream.range(0, values.size())
+                .mapToObj(i -> ":id" + i)
+                .collect(java.util.stream.Collectors.joining(", "));
+        DatabaseClient.GenericExecuteSpec spec = this.databaseClient
+                .sql(
+                        SELECT_MOVIE_COLUMNS
+                        + """
+                        FROM movies m
+                        WHERE m.owner_username = :owner_username
+                          AND m.id IN ("""
+                        + in
+                        + """
+                        )
+                        ORDER BY m.id
+                        """)
+                .bind("owner_username", ownerUsername);
+        for (int i = 0; i < values.size(); i++) {
+            spec = spec.bind("id" + i, values.get(i));
+        }
+        return spec
+                .map(this::toRow)
+                .all()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
     public Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility) {
         return this.databaseClient
                 .sql(

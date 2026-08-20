@@ -11,6 +11,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.guille.media.bff.app.dto.BulkVisibilityJobDto;
+import com.guille.media.bff.app.dto.BulkVisibilityRequest;
+import com.guille.media.bff.app.dto.BulkVisibilityResultDto;
 import com.guille.media.bff.app.dto.MovieDetailDto;
 import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MovieDto;
@@ -25,6 +28,7 @@ import org.springframework.web.reactive.function.client.WebClientRequestExceptio
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
@@ -41,13 +45,21 @@ class WebMoviesServiceTest {
   @BeforeEach
   void setUp() {
     this.service = new WebMoviesService(this.moviesWebClient, this.storageWebClient,
-        this.usersWebPort, this.streamTicketService);
+        this.usersWebPort, this.streamTicketService, new BulkVisibilityJobStore());
   }
 
   private static MovieDto movie(Long id, Long objectId) {
     return new MovieDto(id, "READY", objectId, "PRIVATE", "The Colossus of Rhodes", null, 1961,
         List.of("Adventure"), 3.2, "2h 7m", "Sergio Leone", List.of("Rory Calhoun"),
         "Overview...", null, "1961-06-15", "Italy", "Italian", null, "ENRICHED");
+  }
+
+  private static MediaAssetDto asset(Long movieId) {
+    return new MediaAssetDto(1L, 10L, "/movies/a.mp4", 1024L, "video/mp4", "IDENTIFIED", movieId);
+  }
+
+  private static List<Long> ids(int from, int count) {
+    return java.util.stream.IntStream.range(from, count).mapToObj(Long::valueOf).toList();
   }
 
   @Test
@@ -181,6 +193,81 @@ class WebMoviesServiceTest {
   @Test
   void visibilityBlankFails() {
     StepVerifier.create(service.visibility(1L, "", null))
+        .expectError(ResponseStatusException.class)
+        .verify();
+
+    verifyNoInteractions(moviesWebClient);
+  }
+
+  @Test
+  void bulkVisibilityLanzaJobYEmiteProgreso() {
+    when(moviesWebClient.bulkUpdateVisibility(anyList(), anyList(), eq("PUBLIC"), any(), any()))
+        .thenReturn(Mono.just(new BulkVisibilityResultDto(2, 2, 0)));
+
+    BulkVisibilityJobDto initial = service.bulkVisibility(
+        new BulkVisibilityRequest(List.of(1L, 2L), List.of(), "PUBLIC", null)).block();
+    assertThat(initial.status()).isEqualTo("RUNNING");
+
+    BulkVisibilityJobDto finalState = service.bulkVisibilityEvents(initial.jobId()).last().block();
+    assertThat(finalState.status()).isEqualTo("DONE");
+    assertThat(finalState.total()).isEqualTo(2);
+    assertThat(finalState.done()).isEqualTo(2);
+
+    verify(moviesWebClient).bulkUpdateVisibility(
+        List.of(1L, 2L), List.of(), "PUBLIC", null, "");
+  }
+
+  @Test
+  void bulkVisibilityResuelveIdsDeLibrerias() {
+    when(moviesWebClient.listAssets(10L, null))
+        .thenReturn(Flux.just(asset(11L), asset(12L)));
+    when(moviesWebClient.bulkUpdateVisibility(anyList(), anyList(), eq("PUBLIC"), any(), any()))
+        .thenReturn(Mono.just(new BulkVisibilityResultDto(2, 2, 0)));
+
+    BulkVisibilityJobDto initial = service.bulkVisibility(
+        new BulkVisibilityRequest(List.of(), List.of(10L), "PUBLIC", null)).block();
+
+    BulkVisibilityJobDto finalState = service.bulkVisibilityEvents(initial.jobId()).last().block();
+    assertThat(finalState.done()).isEqualTo(2);
+
+    verify(moviesWebClient).listAssets(10L, null);
+    verify(moviesWebClient).bulkUpdateVisibility(
+        List.of(11L, 12L), List.of(), "PUBLIC", null, "");
+  }
+
+  @Test
+  void bulkVisibilityTroceaEnLotes() {
+    when(moviesWebClient.bulkUpdateVisibility(anyList(), anyList(), eq("PUBLIC"), any(), any()))
+        .thenAnswer(invocation -> {
+          List<Long> chunk = invocation.getArgument(0);
+          return Mono.just(new BulkVisibilityResultDto(chunk.size(), chunk.size(), 0));
+        });
+
+    BulkVisibilityJobDto initial = service.bulkVisibility(
+        new BulkVisibilityRequest(ids(0, 60), List.of(), "PUBLIC", null)).block();
+
+    BulkVisibilityJobDto finalState = service.bulkVisibilityEvents(initial.jobId()).last().block();
+    assertThat(finalState.total()).isEqualTo(60);
+    assertThat(finalState.done()).isEqualTo(60);
+
+    verify(moviesWebClient, org.mockito.Mockito.times(3))
+        .bulkUpdateVisibility(anyList(), anyList(), eq("PUBLIC"), any(), any());
+  }
+
+  @Test
+  void bulkVisibilitySharedSinUsernamesFalla() {
+    StepVerifier.create(service.bulkVisibility(
+            new BulkVisibilityRequest(List.of(1L), List.of(), "SHARED", List.of())))
+        .expectError(ResponseStatusException.class)
+        .verify();
+
+    verifyNoInteractions(moviesWebClient);
+  }
+
+  @Test
+  void bulkVisibilityBlankFalla() {
+    StepVerifier.create(service.bulkVisibility(
+            new BulkVisibilityRequest(List.of(1L), List.of(), "", null)))
         .expectError(ResponseStatusException.class)
         .verify();
 

@@ -1,5 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
+import com.gcorp.service.app.mvflix_movies.application.movie.BulkVisibilityUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.CompleteMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.CreateMovieCommand;
 import com.gcorp.service.app.mvflix_movies.application.movie.CreateMovieUseCase;
@@ -9,6 +10,8 @@ import com.gcorp.service.app.mvflix_movies.application.movie.ListMoviesUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.UpdateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.BulkVisibilityRequest;
+import com.gcorp.service.app.mvflix_movies.presenter.api.dto.BulkVisibilityResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieRequest;
@@ -49,6 +52,7 @@ public class MovieController {
     private final ListMoviesUseCase listMoviesUseCase;
     private final UpdateVisibilityUseCase updateVisibilityUseCase;
     private final UpdateSharesUseCase updateSharesUseCase;
+    private final BulkVisibilityUseCase bulkVisibilityUseCase;
     private final UpdateMovieUseCase updateMovieUseCase;
     private final CompleteMovieUseCase completeMovieUseCase;
     private final DeleteMovieUseCase deleteMovieUseCase;
@@ -61,6 +65,7 @@ public class MovieController {
             ListMoviesUseCase listMoviesUseCase,
             UpdateVisibilityUseCase updateVisibilityUseCase,
             UpdateSharesUseCase updateSharesUseCase,
+            BulkVisibilityUseCase bulkVisibilityUseCase,
             UpdateMovieUseCase updateMovieUseCase,
             CompleteMovieUseCase completeMovieUseCase,
             DeleteMovieUseCase deleteMovieUseCase,
@@ -71,6 +76,7 @@ public class MovieController {
         this.listMoviesUseCase = listMoviesUseCase;
         this.updateVisibilityUseCase = updateVisibilityUseCase;
         this.updateSharesUseCase = updateSharesUseCase;
+        this.bulkVisibilityUseCase = bulkVisibilityUseCase;
         this.updateMovieUseCase = updateMovieUseCase;
         this.completeMovieUseCase = completeMovieUseCase;
         this.deleteMovieUseCase = deleteMovieUseCase;
@@ -104,6 +110,21 @@ public class MovieController {
         return this.updateSharesUseCase
                 .execute(MovieId.of(id), request.usernames())
                 .map(this.mapper::toResponse);
+    }
+
+    @PostMapping(value = "/visibility/bulk", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<BulkVisibilityResponse> bulkVisibility(
+            @RequestBody BulkVisibilityRequest request) {
+        List<MovieId> movieIds = request.movieIds() == null
+                ? List.of()
+                : request.movieIds().stream().map(MovieId::of).toList();
+        List<Long> libraryIds = request.libraryIds() == null
+                ? List.of()
+                : request.libraryIds();
+        return this.bulkVisibilityUseCase
+                .execute(movieIds, libraryIds, request.visibility(), request.usernames())
+                .map(result -> new BulkVisibilityResponse(
+                        result.total(), result.updated(), result.failed()));
     }
 
     @GetMapping

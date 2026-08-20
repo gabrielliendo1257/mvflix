@@ -1,7 +1,10 @@
 package com.guille.media.bff.app.service;
 
+import com.guille.media.bff.app.dto.BulkVisibilityJobDto;
+import com.guille.media.bff.app.dto.BulkVisibilityRequest;
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
+import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MovieDetailDto;
 import com.guille.media.bff.app.dto.MovieDetailDto.PlaybackDto;
 import com.guille.media.bff.app.dto.MovieDto;
@@ -33,7 +36,10 @@ import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Orquestador del flujo de alta de película. El front solo llama al complete; el BFF
@@ -48,10 +54,14 @@ public class WebMoviesService {
 
   private static final int PENDING_RETRIES = 3;
 
+  /** Tamaño de lote interno del BFF hacia mvflix-movies (progreso por SSE). */
+  private static final int BULK_CHUNK_SIZE = 25;
+
   private final MoviesWebClient moviesWebClient;
   private final StorageWebClient storageWebClient;
   private final UsersWebPort usersWebPort;
   private final StreamTicketService streamTicketService;
+  private final BulkVisibilityJobStore bulkVisibilityJobStore;
 
   public Flux<MovieListItemDto> list(int limit) {
     return this.moviesWebClient
@@ -215,6 +225,105 @@ public class WebMoviesService {
   /** Reemplaza la lista de usuarios compartidos; solo el dueño. */
   public Mono<MovieDto> shares(Long movieId, List<String> usernames) {
     return this.moviesWebClient.updateShares(movieId, usernames);
+  }
+
+  /**
+   * Cambio de visibilidad en lote (selección del front y/o librerías enteras).
+   * El trabajo corre en background por lotes de {@link #BULK_CHUNK_SIZE} para que
+   * la UI vea progreso real; el POST responde YA con el estado inicial y el
+   * progreso llega por SSE en {@link #bulkVisibilityEvents(String)}.
+   */
+  public Mono<BulkVisibilityJobDto> bulkVisibility(BulkVisibilityRequest request) {
+    String visibility = request.visibility();
+    if (visibility == null || visibility.isBlank()) {
+      return Mono.error(new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "VISIBILITY_REQUIRED"));
+    }
+    boolean shared = "SHARED".equals(visibility);
+    if (shared && (request.usernames() == null || request.usernames().isEmpty())) {
+      return Mono.error(new ResponseStatusException(
+          HttpStatus.BAD_REQUEST, "SHARED_REQUIRES_USERNAMES"));
+    }
+    String jobId = UUID.randomUUID().toString();
+    return ReactiveSecurityContextHolder.getContext()
+        .map(context -> {
+          var auth = context.getAuthentication();
+          return auth instanceof JwtAuthenticationToken jwtAuth
+              ? jwtAuth.getToken().getTokenValue()
+              : "";
+        })
+        .switchIfEmpty(Mono.just(""))
+        .flatMap(token -> {
+          this.bulkVisibilityJobStore.create(jobId);
+          this.resolveMovieIds(request)
+              .flatMap(ids -> this.runBulkJob(jobId, ids, request, token))
+              .subscribe(
+                  finalState -> log.info("bulkVisibility {} -> {} (total={}, ok={}, fail={})",
+                      jobId, visibility, finalState.total(), finalState.done(), finalState.failed()),
+                  error -> {
+                    log.error("bulkVisibility {} fallo: {}", jobId, error.getMessage(), error);
+                    this.bulkVisibilityJobStore.complete(jobId,
+                        BulkVisibilityJobDto.done(jobId, 0, 0, 0));
+                  });
+          return Mono.just(BulkVisibilityJobDto.running(jobId, 0, 0, 0));
+        });
+  }
+
+  /** Progreso SSE del trabajo en lote; completa cuando el trabajo termina. */
+  public Flux<BulkVisibilityJobDto> bulkVisibilityEvents(String jobId) {
+    return this.bulkVisibilityJobStore.events(jobId);
+  }
+
+  /**
+   * Resuelve los ids pedidos: los directos + los assets identificados de las
+   * librerías (para que el total y el progreso sean exactos desde el inicio).
+   */
+  private Mono<List<Long>> resolveMovieIds(BulkVisibilityRequest request) {
+    Flux<Long> direct = request.movieIds() == null ? Flux.empty() : Flux.fromIterable(request.movieIds());
+    Flux<Long> fromLibraries = request.libraryIds() == null
+        ? Flux.empty()
+        : Flux.fromIterable(request.libraryIds())
+            .flatMap(libraryId -> this.moviesWebClient.listAssets(libraryId, null))
+            .filter(asset -> asset.movieId() != null)
+            .map(MediaAssetDto::movieId);
+    return Flux.concat(direct, fromLibraries).distinct().collectList();
+  }
+
+  private Mono<BulkVisibilityJobDto> runBulkJob(
+      String jobId, List<Long> movieIds, BulkVisibilityRequest request, String accessToken) {
+    int total = movieIds.size();
+    if (total == 0) {
+      return Mono.fromCallable(() -> {
+        this.bulkVisibilityJobStore.complete(jobId, BulkVisibilityJobDto.done(jobId, 0, 0, 0));
+        return BulkVisibilityJobDto.done(jobId, 0, 0, 0);
+      });
+    }
+    AtomicInteger done = new AtomicInteger(0);
+    AtomicInteger failed = new AtomicInteger(0);
+    return Flux.fromIterable(chunk(movieIds, BULK_CHUNK_SIZE))
+        .concatMap(chunk -> this.moviesWebClient
+            .bulkUpdateVisibility(chunk, List.of(), request.visibility(), request.usernames(),
+                accessToken)
+            .doOnNext(result -> {
+              done.addAndGet(result.updated());
+              failed.addAndGet(result.failed());
+              this.bulkVisibilityJobStore.emit(jobId,
+                  BulkVisibilityJobDto.running(jobId, total, done.get(), failed.get()));
+            }))
+        .then(Mono.defer(() -> {
+          BulkVisibilityJobDto finalState =
+              BulkVisibilityJobDto.done(jobId, total, done.get(), failed.get());
+          this.bulkVisibilityJobStore.complete(jobId, finalState);
+          return Mono.just(finalState);
+        }));
+  }
+
+  private static List<List<Long>> chunk(List<Long> ids, int size) {
+    List<List<Long>> chunks = new ArrayList<>();
+    for (int i = 0; i < ids.size(); i += size) {
+      chunks.add(ids.subList(i, Math.min(ids.size(), i + size)));
+    }
+    return chunks;
   }
 
   /** Edición manual de la metadata (merge: null conserva el valor actual); solo el dueño. */

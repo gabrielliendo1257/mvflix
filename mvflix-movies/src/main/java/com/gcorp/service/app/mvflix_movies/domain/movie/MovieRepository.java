@@ -22,6 +22,12 @@ public interface MovieRepository {
     Flux<Movie> findByOwner(String ownerUsername, int limit);
 
     /**
+     * Películas del dueño por lista de ids (para cambios en lote).
+     * Las ajenas no aparecen: la política de autoría se resuelve por consulta.
+     */
+    Flux<Movie> findByOwnerAndIds(String ownerUsername, List<MovieId> ids);
+
+    /**
      * Compare-and-set: pasa a READY solo si la película sigue en DRAFT.
      * Vacío si no hubo fila (no existe o ya no está en DRAFT).
      * La autoría la decide el use-case con {@link Movie#isOwnedBy(String)}.
