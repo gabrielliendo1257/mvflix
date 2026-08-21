@@ -112,6 +112,38 @@ class UpdateMovieUseCaseTest {
     }
 
     @Test
+    void switchingToOtherClearsProviderMetadata() {
+        Movie movie = movie(1L, "Javier", METADATA);
+
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.movieRepository.updateEnrichment(
+                        eq(MovieId.of(1L)), any(MovieMetadata.class), eq(EnrichmentStatus.RAW)))
+                .thenReturn(Mono.just(movie));
+        when(this.movieRepository.updateKind(MovieId.of(1L), MediaKind.OTHER))
+                .thenReturn(Mono.just(movie));
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+                        "Mi grabacion", null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, MediaKind.OTHER)))
+                .expectNextCount(1)
+                .verifyComplete();
+
+        ArgumentCaptor<MovieMetadata> captor = ArgumentCaptor.forClass(MovieMetadata.class);
+        verify(this.movieRepository).updateEnrichment(
+                eq(MovieId.of(1L)), captor.capture(), eq(EnrichmentStatus.RAW));
+        assertThat(captor.getValue().title()).isEqualTo("Mi grabacion");
+        assertThat(captor.getValue().tmdbId()).isNull();
+        assertThat(captor.getValue().posterPath()).isNull();
+        assertThat(captor.getValue().popularity()).isNull();
+        assertThat(captor.getValue().year()).isNull();
+        assertThat(captor.getValue().overview()).isNull();
+        verify(this.movieRepository).updateKind(MovieId.of(1L), MediaKind.OTHER);
+        verify(this.movieRepository, never()).updateMetadata(eq(MovieId.of(1L)), any());
+    }
+
+    @Test
     void nonOwnerIsDenied() {
         Movie movie = movie(1L, "Javier", METADATA);
 
