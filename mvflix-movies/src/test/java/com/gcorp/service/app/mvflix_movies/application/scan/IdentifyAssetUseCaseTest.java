@@ -56,6 +56,7 @@ class IdentifyAssetUseCaseTest {
                         "video/mp4",
                         MediaAssetStatus.UNIDENTIFIED,
                         null,
+                        true,
                         Instant.now(),
                         Instant.now());
         Movie created =
@@ -105,6 +106,7 @@ class IdentifyAssetUseCaseTest {
                         "video/mp4",
                         MediaAssetStatus.IDENTIFIED,
                         MovieId.of(50L),
+                        true,
                         Instant.now(),
                         Instant.now());
 
@@ -139,6 +141,7 @@ class IdentifyAssetUseCaseTest {
                         "video/x-matroska",
                         MediaAssetStatus.UNIDENTIFIED,
                         null,
+                        true,
                         Instant.now(),
                         Instant.now());
         Movie created =
@@ -193,6 +196,7 @@ class IdentifyAssetUseCaseTest {
                         "video/mp4",
                         MediaAssetStatus.UNIDENTIFIED,
                         null,
+                        true,
                         Instant.now(),
                         Instant.now());
         Movie created =
@@ -234,6 +238,7 @@ class IdentifyAssetUseCaseTest {
                         "video/mp4",
                         MediaAssetStatus.UNIDENTIFIED,
                         null,
+                        true,
                         Instant.now(),
                         Instant.now());
         Movie created =

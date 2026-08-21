@@ -10,8 +10,9 @@ import java.time.Instant;
  * archivo no esta en el storage-managed del uploader sino en un root que el
  * operador confia al scan.
  *
- * <p>Ciclo de vida: UNIDENTIFIED -> IDENTIFIED (vinculo a Movie) y MISSING
- * cuando el scan ya no encuentra el archivo.
+ * <p>Dos dimensiones ortogonales: la identificación ({@link MediaAssetStatus}
+ * UNIDENTIFIED -> IDENTIFIED) y la presencia en disco ({@code present}); un
+ * archivo desaparecido conserva su vínculo a la película.
  */
 public class MediaAsset {
 
@@ -22,6 +23,7 @@ public class MediaAsset {
     private final String mimeType;
     private final MediaAssetStatus status;
     private final MovieId movieId;
+    private final boolean present;
     private final Instant createdAt;
     private final Instant updatedAt;
 
@@ -33,6 +35,7 @@ public class MediaAsset {
             String mimeType,
             MediaAssetStatus status,
             MovieId movieId,
+            boolean present,
             Instant createdAt,
             Instant updatedAt) {
         this.id = id;
@@ -42,6 +45,7 @@ public class MediaAsset {
         this.mimeType = mimeType;
         this.status = status;
         this.movieId = movieId;
+        this.present = present;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -55,6 +59,7 @@ public class MediaAsset {
                 file.mimeType(),
                 MediaAssetStatus.UNIDENTIFIED,
                 null,
+                true,
                 Instant.now(),
                 Instant.now());
     }
@@ -63,8 +68,12 @@ public class MediaAsset {
         return this.status == MediaAssetStatus.IDENTIFIED;
     }
 
+    public boolean isPresent() {
+        return this.present;
+    }
+
     public boolean isMissing() {
-        return this.status == MediaAssetStatus.MISSING;
+        return !this.present;
     }
 
     /** Vincula el activo a una pelicula (idempotente: ya identificado no cambia). */
@@ -80,11 +89,12 @@ public class MediaAsset {
                 this.mimeType,
                 MediaAssetStatus.IDENTIFIED,
                 movieId,
+                this.present,
                 this.createdAt,
                 Instant.now());
     }
 
-    /** El scan ya no encontro el archivo: pasa a MISSING sin tocar el vinculo. */
+    /** El scan ya no encontro el archivo: marca ausencia sin tocar el vinculo. */
     public MediaAsset markMissing() {
         if (this.isMissing()) {
             return this;
@@ -95,15 +105,16 @@ public class MediaAsset {
                 this.relativePath,
                 this.size,
                 this.mimeType,
-                MediaAssetStatus.MISSING,
+                this.status,
                 this.movieId,
+                false,
                 this.createdAt,
                 Instant.now());
     }
 
-    /** El scan volvio a encontrar el archivo: regresa al estado anterior al MISSING. */
+    /** El scan volvio a encontrar el archivo: marca presencia sin tocar el vinculo. */
     public MediaAsset markPresent() {
-        if (!this.isMissing()) {
+        if (this.isPresent()) {
             return this;
         }
         return new MediaAsset(
@@ -112,8 +123,9 @@ public class MediaAsset {
                 this.relativePath,
                 this.size,
                 this.mimeType,
-                this.movieId != null ? MediaAssetStatus.IDENTIFIED : MediaAssetStatus.UNIDENTIFIED,
+                this.status,
                 this.movieId,
+                true,
                 this.createdAt,
                 Instant.now());
     }
@@ -131,6 +143,7 @@ public class MediaAsset {
                 mimeType,
                 this.status,
                 this.movieId,
+                this.present,
                 this.createdAt,
                 Instant.now());
     }
@@ -161,6 +174,10 @@ public class MediaAsset {
 
     public MovieId getMovieId() {
         return this.movieId;
+    }
+
+    public boolean getPresent() {
+        return this.present;
     }
 
     public Instant getCreatedAt() {

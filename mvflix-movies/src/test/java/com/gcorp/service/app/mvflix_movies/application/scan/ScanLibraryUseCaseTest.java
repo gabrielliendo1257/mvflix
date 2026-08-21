@@ -65,6 +65,7 @@ class ScanLibraryUseCaseTest {
                         "video/x-matroska",
                         MediaAssetStatus.IDENTIFIED,
                         MovieId.of(9L),
+                        true,
                         Instant.now(),
                         Instant.now());
         when(this.assetRepository.findByLibraryAndPath(LIBRARY_ID, "present.mkv"))
@@ -93,6 +94,7 @@ class ScanLibraryUseCaseTest {
                         "video/mp4",
                         MediaAssetStatus.UNIDENTIFIED,
                         null,
+                        true,
                         Instant.now(),
                         Instant.now());
         ScannedFile fresh = new ScannedFile("Dune.mp4", 2048, "video/mp4");
@@ -121,8 +123,9 @@ class ScanLibraryUseCaseTest {
                         "Dune.mp4",
                         100,
                         "video/mp4",
-                        MediaAssetStatus.MISSING,
+                        MediaAssetStatus.IDENTIFIED,
                         MovieId.of(3L),
+                        false,
                         Instant.now(),
                         Instant.now());
         ScannedFile recovered = new ScannedFile("Dune.mp4", 100, "video/mp4");
@@ -150,6 +153,7 @@ class ScanLibraryUseCaseTest {
                         "video/x-matroska",
                         MediaAssetStatus.UNIDENTIFIED,
                         null,
+                        true,
                         Instant.now(),
                         Instant.now());
         when(this.assetRepository.findAllByLibraryId(LIBRARY_ID)).thenReturn(Flux.just(orphan));

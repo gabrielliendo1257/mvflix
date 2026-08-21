@@ -19,8 +19,8 @@ import java.util.Set;
 /**
  * Concilia el contenido de una biblioteca del operador con el catalogo:
  * hace upsert de los archivos descubiertos (idempotente por storage+path) y
- * marca MISSING los activos que ya no estan. No identifica nada: eso es
- * responsabilidad de {@code IdentifyAssetUseCase}.
+ * marca como ausentes (present=false) los activos que ya no estan. No
+ * identifica nada: eso es responsabilidad de {@code IdentifyAssetUseCase}.
  */
 @Slf4j
 @Service

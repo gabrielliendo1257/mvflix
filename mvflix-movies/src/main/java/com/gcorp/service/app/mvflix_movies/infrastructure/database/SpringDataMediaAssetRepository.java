@@ -17,6 +17,12 @@ import java.time.Instant;
 @Repository
 public class SpringDataMediaAssetRepository implements MediaAssetRepository {
 
+    private static final String ASSET_COLUMNS =
+            """
+            id, library_id, relative_path, size, mime_type, status, present,
+            movie_id, created_at, updated_at
+            """;
+
     private final DatabaseClient databaseClient;
 
     public SpringDataMediaAssetRepository(DatabaseClient databaseClient) {
@@ -30,16 +36,16 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                     .sql(
                             """
                             INSERT INTO media_assets
-                                (library_id, relative_path, size, mime_type, status, movie_id)
-                            VALUES (:library_id, :relative_path, :size, :mime_type, :status, :movie_id)
-                            RETURNING id, library_id, relative_path, size, mime_type, status,
-                                      movie_id, created_at, updated_at
-                            """)
+                                (library_id, relative_path, size, mime_type, status, present, movie_id)
+                            VALUES (:library_id, :relative_path, :size, :mime_type, :status, :present, :movie_id)
+                            RETURNING
+                            """ + ASSET_COLUMNS)
                     .bind("library_id", asset.getLibraryId())
                     .bind("relative_path", asset.getRelativePath())
                     .bind("size", asset.getSize())
                     .bind("mime_type", asset.getMimeType())
                     .bind("status", asset.getStatus().name())
+                    .bind("present", asset.getPresent())
                     .bindNull("movie_id", Long.class)
                     .map((row, metadata) -> this.toDomain(row))
                     .one();
@@ -50,14 +56,14 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                                 """
                                 UPDATE media_assets
                                 SET size = :size, mime_type = :mime_type, status = :status,
-                                    movie_id = :movie_id, updated_at = NOW()
+                                    present = :present, movie_id = :movie_id, updated_at = NOW()
                                 WHERE id = :id
-                                RETURNING id, library_id, relative_path, size, mime_type, status,
-                                          movie_id, created_at, updated_at
-                                """)
+                                RETURNING
+                                """ + ASSET_COLUMNS)
                         .bind("size", asset.getSize())
                         .bind("mime_type", asset.getMimeType())
                         .bind("status", asset.getStatus().name())
+                        .bind("present", asset.getPresent())
                         .bind("id", asset.getId().value());
         return bindMovieId(spec, asset.getMovieId())
                 .map((row, metadata) -> this.toDomain(row))
@@ -77,8 +83,9 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, library_id, relative_path, size, mime_type, status,
-                               movie_id, created_at, updated_at
+                        SELECT
+                        """ + ASSET_COLUMNS
+                        + """
                         FROM media_assets
                         WHERE id = :id
                         """)
@@ -92,8 +99,9 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, library_id, relative_path, size, mime_type, status,
-                               movie_id, created_at, updated_at
+                        SELECT
+                        """ + ASSET_COLUMNS
+                        + """
                         FROM media_assets
                         WHERE movie_id = :movie_id
                         ORDER BY id
@@ -109,8 +117,9 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, library_id, relative_path, size, mime_type, status,
-                               movie_id, created_at, updated_at
+                        SELECT
+                        """ + ASSET_COLUMNS
+                        + """
                         FROM media_assets
                         WHERE library_id = :library_id AND relative_path = :relative_path
                         """)
@@ -125,8 +134,9 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, library_id, relative_path, size, mime_type, status,
-                               movie_id, created_at, updated_at
+                        SELECT
+                        """ + ASSET_COLUMNS
+                        + """
                         FROM media_assets
                         WHERE library_id = :library_id
                         ORDER BY relative_path
@@ -141,8 +151,9 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, library_id, relative_path, size, mime_type, status,
-                               movie_id, created_at, updated_at
+                        SELECT
+                        """ + ASSET_COLUMNS
+                        + """
                         FROM media_assets
                         WHERE library_id = :library_id AND status = :status
                         ORDER BY relative_path
@@ -155,6 +166,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
 
     private MediaAsset toDomain(io.r2dbc.spi.Row row) {
         Long movieId = row.get("movie_id", Long.class);
+        Boolean present = row.get("present", Boolean.class);
         return new MediaAsset(
                 MediaAssetId.of(row.get("id", Long.class)),
                 row.get("library_id", Long.class),
@@ -163,6 +175,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                 row.get("mime_type", String.class),
                 MediaAssetStatus.valueOf(row.get("status", String.class)),
                 movieId == null ? null : MovieId.of(movieId),
+                present == null || present,
                 row.get("created_at", Instant.class),
                 row.get("updated_at", Instant.class));
     }
