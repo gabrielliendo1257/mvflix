@@ -11,7 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.guille.media.bff.app.dto.BulkVisibilityJobDto;
 import com.guille.media.bff.app.dto.BulkVisibilityRequest;
 import com.guille.media.bff.app.dto.BulkVisibilityResultDto;
 import com.guille.media.bff.app.dto.MovieDetailDto;
@@ -40,12 +39,14 @@ class WebMoviesServiceTest {
   private final StorageWebClient storageWebClient = mock(StorageWebClient.class);
   private final UsersWebPort usersWebPort = mock(UsersWebPort.class);
   private final StreamTicketService streamTicketService = new StreamTicketService("test-secret", 300);
+  private JobStore jobStore;
   private WebMoviesService service;
 
   @BeforeEach
   void setUp() {
+    this.jobStore = new JobStore();
     this.service = new WebMoviesService(this.moviesWebClient, this.storageWebClient,
-        this.usersWebPort, this.streamTicketService, new BulkVisibilityJobStore());
+        this.usersWebPort, this.streamTicketService, this.jobStore);
   }
 
   private static MovieDto movie(Long id, Long objectId) {
@@ -204,12 +205,12 @@ class WebMoviesServiceTest {
     when(moviesWebClient.bulkUpdateVisibility(anyList(), anyList(), eq("PUBLIC"), any(), any()))
         .thenReturn(Mono.just(new BulkVisibilityResultDto(2, 2, 0)));
 
-    BulkVisibilityJobDto initial = service.bulkVisibility(
+    Job initial = service.bulkVisibility(
         new BulkVisibilityRequest(List.of(1L, 2L), List.of(), "PUBLIC", null)).block();
-    assertThat(initial.status()).isEqualTo("RUNNING");
+    assertThat(initial.status()).isEqualTo(JobStatus.RUNNING);
 
-    BulkVisibilityJobDto finalState = service.bulkVisibilityEvents(initial.jobId()).last().block();
-    assertThat(finalState.status()).isEqualTo("DONE");
+    Job finalState = this.jobStore.events(initial.id()).last().block();
+    assertThat(finalState.status()).isEqualTo(JobStatus.COMPLETED);
     assertThat(finalState.total()).isEqualTo(2);
     assertThat(finalState.done()).isEqualTo(2);
 
@@ -224,10 +225,10 @@ class WebMoviesServiceTest {
     when(moviesWebClient.bulkUpdateVisibility(anyList(), anyList(), eq("PUBLIC"), any(), any()))
         .thenReturn(Mono.just(new BulkVisibilityResultDto(2, 2, 0)));
 
-    BulkVisibilityJobDto initial = service.bulkVisibility(
+    Job initial = service.bulkVisibility(
         new BulkVisibilityRequest(List.of(), List.of(10L), "PUBLIC", null)).block();
 
-    BulkVisibilityJobDto finalState = service.bulkVisibilityEvents(initial.jobId()).last().block();
+    Job finalState = this.jobStore.events(initial.id()).last().block();
     assertThat(finalState.done()).isEqualTo(2);
 
     verify(moviesWebClient).listAssets(10L, null);
@@ -243,10 +244,10 @@ class WebMoviesServiceTest {
           return Mono.just(new BulkVisibilityResultDto(chunk.size(), chunk.size(), 0));
         });
 
-    BulkVisibilityJobDto initial = service.bulkVisibility(
+    Job initial = service.bulkVisibility(
         new BulkVisibilityRequest(ids(0, 60), List.of(), "PUBLIC", null)).block();
 
-    BulkVisibilityJobDto finalState = service.bulkVisibilityEvents(initial.jobId()).last().block();
+    Job finalState = this.jobStore.events(initial.id()).last().block();
     assertThat(finalState.total()).isEqualTo(60);
     assertThat(finalState.done()).isEqualTo(60);
 

@@ -1,6 +1,5 @@
 package com.guille.media.bff.app.service;
 
-import com.guille.media.bff.app.dto.BulkVisibilityJobDto;
 import com.guille.media.bff.app.dto.BulkVisibilityRequest;
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
@@ -64,7 +63,7 @@ public class WebMoviesService {
   private final StorageWebClient storageWebClient;
   private final UsersWebPort usersWebPort;
   private final StreamTicketService streamTicketService;
-  private final BulkVisibilityJobStore bulkVisibilityJobStore;
+  private final JobStore jobStore;
 
   public Flux<MovieListItemDto> list(int limit) {
     return this.moviesWebClient
@@ -237,11 +236,11 @@ public class WebMoviesService {
 
   /**
    * Cambio de visibilidad en lote (selección del front y/o librerías enteras).
-   * El trabajo corre en background por lotes de {@link #BULK_CHUNK_SIZE} para que
-   * la UI vea progreso real; el POST responde YA con el estado inicial y el
-   * progreso llega por SSE en {@link #bulkVisibilityEvents(String)}.
+   * El trabajo corre en background por lotes de {@link #BULK_CHUNK_SIZE} y se
+   * registra como un {@link Job} en {@link JobStore}: el POST responde YA con el
+   * estado inicial y el progreso llega por SSE en /web/activity/{id}/events.
    */
-  public Mono<BulkVisibilityJobDto> bulkVisibility(BulkVisibilityRequest request) {
+  public Mono<Job> bulkVisibility(BulkVisibilityRequest request) {
     String visibility = request.visibility();
     if (visibility == null || visibility.isBlank()) {
       return Mono.error(new ResponseStatusException(
@@ -262,24 +261,18 @@ public class WebMoviesService {
         })
         .switchIfEmpty(Mono.just(""))
         .flatMap(token -> {
-          this.bulkVisibilityJobStore.create(jobId);
+          Job initial = this.jobStore.start(jobId, JobType.BULK_VISIBILITY);
           this.resolveMovieIds(request)
-              .flatMap(ids -> this.runBulkJob(jobId, ids, request, token))
+              .flatMap(ids -> this.runBulkJob(initial, ids, request, token))
               .subscribe(
                   finalState -> log.info("bulkVisibility {} -> {} (total={}, ok={}, fail={})",
                       jobId, visibility, finalState.total(), finalState.done(), finalState.failed()),
                   error -> {
                     log.error("bulkVisibility {} fallo: {}", jobId, error.getMessage(), error);
-                    this.bulkVisibilityJobStore.complete(jobId,
-                        BulkVisibilityJobDto.done(jobId, 0, 0, 0));
+                    this.jobStore.complete(jobId, initial.failed(0, 0, 0));
                   });
-          return Mono.just(BulkVisibilityJobDto.running(jobId, 0, 0, 0));
+          return Mono.just(initial);
         });
-  }
-
-  /** Progreso SSE del trabajo en lote; completa cuando el trabajo termina. */
-  public Flux<BulkVisibilityJobDto> bulkVisibilityEvents(String jobId) {
-    return this.bulkVisibilityJobStore.events(jobId);
   }
 
   /**
@@ -297,13 +290,15 @@ public class WebMoviesService {
     return Flux.concat(direct, fromLibraries).distinct().collectList();
   }
 
-  private Mono<BulkVisibilityJobDto> runBulkJob(
-      String jobId, List<Long> movieIds, BulkVisibilityRequest request, String accessToken) {
+  private Mono<Job> runBulkJob(
+      Job initial, List<Long> movieIds, BulkVisibilityRequest request, String accessToken) {
+    String jobId = initial.id();
     int total = movieIds.size();
     if (total == 0) {
-      return Mono.fromCallable(() -> {
-        this.bulkVisibilityJobStore.complete(jobId, BulkVisibilityJobDto.done(jobId, 0, 0, 0));
-        return BulkVisibilityJobDto.done(jobId, 0, 0, 0);
+      return Mono.defer(() -> {
+        Job done = initial.completed(0, 0, 0);
+        this.jobStore.complete(jobId, done);
+        return Mono.just(done);
       });
     }
     AtomicInteger done = new AtomicInteger(0);
@@ -315,13 +310,11 @@ public class WebMoviesService {
             .doOnNext(result -> {
               done.addAndGet(result.updated());
               failed.addAndGet(result.failed());
-              this.bulkVisibilityJobStore.emit(jobId,
-                  BulkVisibilityJobDto.running(jobId, total, done.get(), failed.get()));
+              this.jobStore.update(jobId, initial.progress(total, done.get(), failed.get()));
             }), BULK_PARALLELISM)
         .then(Mono.defer(() -> {
-          BulkVisibilityJobDto finalState =
-              BulkVisibilityJobDto.done(jobId, total, done.get(), failed.get());
-          this.bulkVisibilityJobStore.complete(jobId, finalState);
+          Job finalState = initial.completed(total, done.get(), failed.get());
+          this.jobStore.complete(jobId, finalState);
           return Mono.just(finalState);
         }));
   }

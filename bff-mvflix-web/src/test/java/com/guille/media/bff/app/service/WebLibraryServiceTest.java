@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import reactor.core.publisher.Flux;
@@ -27,6 +28,7 @@ class WebLibraryServiceTest {
 
   @Mock private StorageWebClient storageWebClient;
   @Mock private MoviesWebClient moviesWebClient;
+  @Spy private JobStore jobStore = new JobStore();
 
   @InjectMocks private WebLibraryService service;
 

@@ -1,6 +1,5 @@
 package com.guille.media.bff.presenter.api;
 
-import com.guille.media.bff.app.dto.BulkVisibilityJobDto;
 import com.guille.media.bff.app.dto.BulkVisibilityRequest;
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.CreateMovieRequest;
@@ -13,6 +12,7 @@ import com.guille.media.bff.app.dto.MovieListItemDto;
 import com.guille.media.bff.app.dto.MovieSharesRequest;
 import com.guille.media.bff.app.dto.MovieUpdateRequest;
 import com.guille.media.bff.app.dto.MovieVisibilityRequest;
+import com.guille.media.bff.app.service.Job;
 import com.guille.media.bff.app.service.WebMoviesService;
 
 import org.springframework.http.MediaType;
@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.http.codec.ServerSentEvent;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -102,24 +101,11 @@ public class WebMoviesController {
       value = "/visibility",
       produces = MediaType.APPLICATION_JSON_VALUE,
       consumes = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<ResponseEntity<BulkVisibilityJobDto>> bulkVisibility(
+  public Mono<ResponseEntity<Job>> bulkVisibility(
       @RequestBody BulkVisibilityRequest request) {
     return this.webMoviesService
         .bulkVisibility(request)
         .map(job -> ResponseEntity.accepted().body(job));
-  }
-
-  @GetMapping(
-      value = "/visibility/jobs/{jobId}/events",
-      produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-  public Flux<ServerSentEvent<BulkVisibilityJobDto>> bulkVisibilityEvents(
-      @PathVariable String jobId) {
-    return this.webMoviesService
-        .bulkVisibilityEvents(jobId)
-        .map(progress -> ServerSentEvent
-            .builder(progress)
-            .event("progress")
-            .build());
   }
 
   @PostMapping(
