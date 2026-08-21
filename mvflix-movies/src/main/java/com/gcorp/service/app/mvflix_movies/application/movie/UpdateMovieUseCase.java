@@ -40,8 +40,15 @@ public class UpdateMovieUseCase {
                         .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not owned: " + id.value())))
-                        .flatMap(movie -> this.movieRepository.updateMetadata(
-                                id, merge(movie.getMetadata(), command)))
+                        .flatMap(movie -> {
+                            Mono<Movie> updated = this.movieRepository.updateMetadata(
+                                    id, merge(movie.getMetadata(), command));
+                            if (command.kind() != null && command.kind() != movie.getKind()) {
+                                return updated.flatMap(m ->
+                                        this.movieRepository.updateKind(id, command.kind()));
+                            }
+                            return updated;
+                        })
                         .doOnNext(updated -> log.info(
                                 "Movie {} metadata actualizada manualmente",
                                 id.value())));

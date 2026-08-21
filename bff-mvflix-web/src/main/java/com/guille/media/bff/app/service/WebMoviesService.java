@@ -70,7 +70,7 @@ public class WebMoviesService {
     return this.moviesWebClient
         .listMovies(limit)
         .map(movie -> new MovieListItemDto(
-            movie.id(), movie.status(), movie.visibility(), movie.title(),
+            movie.id(), movie.status(), movie.visibility(), movie.kind(), movie.title(),
             movie.year(), movie.posterPath()));
   }
 

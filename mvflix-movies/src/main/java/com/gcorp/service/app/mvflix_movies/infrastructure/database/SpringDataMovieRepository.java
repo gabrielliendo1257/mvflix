@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
 import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
@@ -48,7 +49,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     private static final String SELECT_MOVIE_COLUMNS =
             """
             SELECT m.id, m.owner_username, m.title, m.status, m.enrichment_status,
-                   m.metadata::text, m.visibility,
+                   m.metadata::text, m.visibility, m.kind,
             """ + MEDIA_OBJECT_ID + ", " + SHARED_WITH;
 
     private final DatabaseClient databaseClient;
@@ -68,9 +69,9 @@ public class SpringDataMovieRepository implements MovieRepository {
         return this.databaseClient
                         .sql(
                                 """
-                                INSERT INTO movies (owner_username, title, status, enrichment_status, metadata, visibility)
-                                VALUES (:owner_username, :title, :status, :enrichment_status, CAST(:metadata AS jsonb), :visibility)
-                                RETURNING id, owner_username, title, status, enrichment_status, metadata::text, visibility
+                                INSERT INTO movies (owner_username, title, status, enrichment_status, metadata, visibility, kind)
+                                VALUES (:owner_username, :title, :status, :enrichment_status, CAST(:metadata AS jsonb), :visibility, :kind)
+                                RETURNING id, owner_username, title, status, enrichment_status, metadata::text, visibility, kind
                                 """)
                         .bind("owner_username", row.ownerUsername())
                         .bind("title", row.title())
@@ -78,6 +79,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                         .bind("enrichment_status", row.enrichmentStatus())
                         .bind("metadata", row.metadata())
                         .bind("visibility", row.visibility())
+                        .bind("kind", row.kind())
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -145,7 +147,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                         SET status = 'READY', updated_at = NOW()
                         WHERE id = :id AND status = 'DRAFT'
                         RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text, visibility,
+                                  metadata::text, visibility, kind,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
@@ -194,7 +196,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                             updated_at = NOW()
                         WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text, visibility,
+                                  metadata::text, visibility, kind,
                                   (SELECT mm.object_id FROM media mm
                                    WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
@@ -217,7 +219,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                         SET metadata = CAST(:metadata AS jsonb), updated_at = NOW()
                         WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text, visibility,
+                                  metadata::text, visibility, kind,
                                   (SELECT mm.object_id FROM media mm
                                    WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
@@ -270,11 +272,33 @@ public class SpringDataMovieRepository implements MovieRepository {
                         SET visibility = :visibility, updated_at = NOW()
                         WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text, visibility,
+                                  metadata::text, visibility, kind,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
                 .bind("visibility", visibility.name())
+                .bind("id", id.value())
+                .map(this::toRow)
+                .one()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    public Mono<Movie> updateKind(MovieId id, MediaKind kind) {
+        return this.databaseClient
+                .sql(
+                        """
+                        UPDATE movies
+                        SET kind = :kind, updated_at = NOW()
+                        WHERE id = :id
+                        RETURNING id, owner_username, title, status, enrichment_status,
+                                  metadata::text, visibility, kind,
+                                  (SELECT mm.object_id FROM media mm
+                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
+                                  (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
+                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
+                        """)
+                .bind("kind", kind.name())
                 .bind("id", id.value())
                 .map(this::toRow)
                 .one()
@@ -316,7 +340,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                                 SET updated_at = NOW()
                                 WHERE id = :id
                                 RETURNING id, owner_username, title, status, enrichment_status,
-                                          metadata::text, visibility,
+                                          metadata::text, visibility, kind,
                                           (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                            FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                                 """)
@@ -354,6 +378,7 @@ public class SpringDataMovieRepository implements MovieRepository {
             metadata.contains("object_id") ? row.get("object_id", Long.class) : null,
             row.get("metadata", String.class),
             row.get("visibility", String.class),
-            metadata.contains("shared_with") ? row.get("shared_with", String[].class) : null);
+            metadata.contains("shared_with") ? row.get("shared_with", String[].class) : null,
+            row.get("kind", String.class));
     }
 }

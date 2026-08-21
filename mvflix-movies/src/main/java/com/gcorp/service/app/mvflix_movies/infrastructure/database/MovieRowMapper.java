@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
 import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
@@ -23,6 +24,7 @@ public interface MovieRowMapper {
     @Mapping(target = "status", expression = "java(MovieStatus.valueOf(row.status()))")
     @Mapping(target = "enrichmentStatus", expression = "java(EnrichmentStatus.valueOf(row.enrichmentStatus()))")
     @Mapping(target = "visibility", expression = "java(MovieVisibility.valueOf(row.visibility()))")
+    @Mapping(target = "kind", expression = "java(MediaKind.valueOf(row.kind()))")
     @Mapping(target = "sharedWith", expression = "java(row.sharedWith() == null ? java.util.Set.of() : java.util.Set.of(row.sharedWith()))")
     Movie toDomain(MovieRow row);
 }

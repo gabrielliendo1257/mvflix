@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
@@ -36,7 +37,7 @@ class UpdateVisibilityUseCaseTest {
     private static Movie movie(long id, String owner, MovieVisibility visibility) {
         return new Movie(
                 MovieId.of(id), owner, "Dune", MovieStatus.READY, EnrichmentStatus.ENRICHED,
-                null, null, visibility, java.util.Set.of());
+                null, null, visibility, java.util.Set.of(), MediaKind.MOVIE);
     }
 
     @Test

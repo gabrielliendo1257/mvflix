@@ -112,6 +112,11 @@ public class EnrichMovieUseCase {
     }
 
     public Mono<Movie> enrich(Movie movie, Long explicitTmdbId) {
+        // El enriquecimiento solo aplica a items MOVIE; un OTHER (media que no
+        // representa una película) nunca se enriquece ni se matchea con TMDB.
+        if (!movie.isMovie()) {
+            return Mono.just(movie);
+        }
         // El auto-enriquecimiento (scheduler, sin tmdb_id) no re-enricha una película
         // ya ENRICHED; en cambio un tmdb_id explícito (el usuario re-matcher en la UI)
         // sí reemplaza el match anterior.

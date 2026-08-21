@@ -91,28 +91,28 @@ class WebLibraryServiceTest {
 
   @Test
   void identifyUsesExplicitTitleWhenProvided() {
-    when(this.moviesWebClient.identifyAsset(1L, "Dune", null))
+    when(this.moviesWebClient.identifyAsset(1L, "Dune", null, null))
         .thenReturn(Mono.just(new MediaAssetDto(
             1L, 7L, "Dune.mp4", 10, "video/mp4", "IDENTIFIED", 50L)));
 
-    StepVerifier.create(this.service.identify(1L, "Dune", null))
+    StepVerifier.create(this.service.identify(1L, "Dune", null, null))
         .expectNextMatches(asset -> "IDENTIFIED".equals(asset.status()))
         .verifyComplete();
 
-    verify(this.moviesWebClient).identifyAsset(1L, "Dune", null);
+    verify(this.moviesWebClient).identifyAsset(1L, "Dune", null, null);
   }
 
   @Test
   void identifyForwardsTmdbCandidateForAutocomplete() {
-    when(this.moviesWebClient.identifyAsset(1L, "Dune", 123L))
+    when(this.moviesWebClient.identifyAsset(1L, "Dune", 123L, null))
         .thenReturn(Mono.just(new MediaAssetDto(
             1L, 7L, "Dune.mp4", 10, "video/mp4", "IDENTIFIED", 50L)));
 
-    StepVerifier.create(this.service.identify(1L, "Dune", 123L))
+    StepVerifier.create(this.service.identify(1L, "Dune", 123L, null))
         .expectNextMatches(asset -> "IDENTIFIED".equals(asset.status()))
         .verifyComplete();
 
-    verify(this.moviesWebClient).identifyAsset(1L, "Dune", 123L);
+    verify(this.moviesWebClient).identifyAsset(1L, "Dune", 123L, null);
   }
 
   @Test
@@ -121,16 +121,16 @@ class WebLibraryServiceTest {
         .thenReturn(Mono.just(new MediaAssetDto(
             1L, 7L, "Carpetas/Interstellar (2014).mkv", 10, "video/x-matroska",
             "UNIDENTIFIED", null)));
-    when(this.moviesWebClient.identifyAsset(1L, "Interstellar (2014)", null))
+    when(this.moviesWebClient.identifyAsset(1L, "Interstellar (2014)", null, null))
         .thenReturn(Mono.just(new MediaAssetDto(
             1L, 7L, "Carpetas/Interstellar (2014).mkv", 10, "video/x-matroska",
             "IDENTIFIED", 50L)));
 
-    StepVerifier.create(this.service.identify(1L, null, null))
+    StepVerifier.create(this.service.identify(1L, null, null, null))
         .expectNextMatches(asset -> "IDENTIFIED".equals(asset.status()))
         .verifyComplete();
 
-    verify(this.moviesWebClient).identifyAsset(1L, "Interstellar (2014)", null);
+    verify(this.moviesWebClient).identifyAsset(1L, "Interstellar (2014)", null, null);
   }
 
   @Test

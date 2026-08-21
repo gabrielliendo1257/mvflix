@@ -16,7 +16,7 @@ class MovieVisibilityPolicyTest {
     private static Movie movie(MovieVisibility visibility, Set<String> sharedWith) {
         return new Movie(
                 MovieId.of(1L), "Javier", "Dune", MovieStatus.READY,
-                EnrichmentStatus.ENRICHED, null, null, visibility, sharedWith);
+                EnrichmentStatus.ENRICHED, null, null, visibility, sharedWith, MediaKind.MOVIE);
     }
 
     @Test
@@ -84,7 +84,7 @@ class MovieVisibilityPolicyTest {
     void nullSharedWithIsTreatedAsEmpty() {
         Movie movie = new Movie(
                 MovieId.of(1L), "Javier", "Dune", MovieStatus.READY,
-                EnrichmentStatus.ENRICHED, null, null, MovieVisibility.SHARED, null);
+                EnrichmentStatus.ENRICHED, null, null, MovieVisibility.SHARED, null, MediaKind.MOVIE);
         assertThat(movie.getSharedWith()).isEmpty();
         assertThat(movie.isVisibleTo("Pepe")).isFalse();
     }

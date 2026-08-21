@@ -2,6 +2,8 @@ package com.gcorp.service.app.mvflix_movies.presenter.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
+
 import java.util.List;
 
 /**
@@ -23,4 +25,5 @@ public record UpdateMovieRequest(
     String country,
     String language,
     List<String> awards,
-    Double popularity) {}
+    Double popularity,
+    MediaKind kind) {}

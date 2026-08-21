@@ -6,6 +6,7 @@ import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
@@ -36,7 +37,7 @@ public class IdentifyAssetUseCase {
     private final UserProvider userProvider;
     private final EnrichMovieUseCase enrichMovieUseCase;
 
-    public Mono<MediaAsset> execute(MediaAssetId assetId, String title, Long tmdbId) {
+    public Mono<MediaAsset> execute(MediaAssetId assetId, String title, Long tmdbId, MediaKind kind) {
         return this.assetRepository
                 .findById(assetId)
                 .switchIfEmpty(Mono.defer(() -> Mono.error(
@@ -47,15 +48,16 @@ public class IdentifyAssetUseCase {
                         log.info("Asset {} ya identificado: no-op", assetId.value());
                         return Mono.just(asset);
                     }
-                    return this.linkToMovie(asset, title, tmdbId);
+                    return this.linkToMovie(asset, title, tmdbId, kind);
                 });
     }
 
-    private Mono<MediaAsset> linkToMovie(MediaAsset asset, String title, Long tmdbId) {
+    private Mono<MediaAsset> linkToMovie(MediaAsset asset, String title, Long tmdbId, MediaKind kind) {
+        MediaKind resolvedKind = kind == null ? MediaKind.MOVIE : kind;
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository.save(
-                        Movie.fromLibraryAsset(user.subject(), MovieMetadata.onlyTitle(title))))
+                        Movie.fromLibraryAsset(user.subject(), MovieMetadata.onlyTitle(title), resolvedKind)))
                 .flatMap(movie -> this.enrichIfRequested(movie, tmdbId))
                 .flatMap(movie -> this.assetRepository.save(asset.identify(movie.getId())))
                 .doOnNext(identified -> log.info(

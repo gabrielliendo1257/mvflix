@@ -173,12 +173,12 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
-  public Mono<MediaAssetDto> identifyAsset(Long assetId, String title, Long tmdbId) {
+  public Mono<MediaAssetDto> identifyAsset(Long assetId, String title, Long tmdbId, String kind) {
     return this.moviesWebClient
         .post()
         .uri(API + "/media-assets/" + assetId + "/identify")
         .contentType(MediaType.APPLICATION_JSON)
-        .bodyValue(new IdentifyAssetRequest(title, tmdbId))
+        .bodyValue(new IdentifyAssetRequest(title, tmdbId, kind))
         .retrieve()
         .bodyToMono(MediaAssetDto.class);
   }

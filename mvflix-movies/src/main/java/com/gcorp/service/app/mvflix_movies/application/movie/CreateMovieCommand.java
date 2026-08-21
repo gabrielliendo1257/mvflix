@@ -1,5 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.application.movie;
 
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 
-public record CreateMovieCommand(MovieMetadata metadata) {}
+public record CreateMovieCommand(MovieMetadata metadata, MediaKind kind) {}

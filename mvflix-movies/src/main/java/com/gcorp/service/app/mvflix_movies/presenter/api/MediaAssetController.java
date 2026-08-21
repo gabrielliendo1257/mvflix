@@ -109,7 +109,7 @@ public class MediaAssetController {
     public Mono<MediaAssetResponse> identify(
             @PathVariable Long id, @RequestBody IdentifyAssetRequest request) {
         return this.identifyAssetUseCase
-                .execute(MediaAssetId.of(id), request.title(), request.tmdbId())
+                .execute(MediaAssetId.of(id), request.title(), request.tmdbId(), request.kind())
                 .map(this.mapper::toResponse);
     }
 }

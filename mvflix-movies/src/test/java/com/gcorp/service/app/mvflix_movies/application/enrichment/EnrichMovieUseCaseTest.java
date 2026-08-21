@@ -15,6 +15,7 @@ import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieDetail
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.MetadataSource;
 import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
@@ -48,7 +49,7 @@ class EnrichMovieUseCaseTest {
     private static final Movie DRAFT_RAW =
             new Movie(
                     MovieId.of(1L), "pepe", "The Colossus of Rhodes", MovieStatus.DRAFT,
-                    EnrichmentStatus.RAW, null, RAW_METADATA, MovieVisibility.PRIVATE, Set.of());
+                    EnrichmentStatus.RAW, null, RAW_METADATA, MovieVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
 
     private static final ExternalMovieDetail TMDB_DETAIL =
             new ExternalMovieDetail(
@@ -91,7 +92,7 @@ class EnrichMovieUseCaseTest {
                 null, null, null, null, null, 274_003L);
         Movie movie = new Movie(
                 MovieId.of(2L), "pepe", "The Colossus of Rhodes", MovieStatus.DRAFT,
-                EnrichmentStatus.RAW, null, withTmdbId, MovieVisibility.PRIVATE, Set.of());
+                EnrichmentStatus.RAW, null, withTmdbId, MovieVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
 
         when(this.metadataSource.findById(274_003L)).thenReturn(Mono.just(TMDB_DETAIL));
         when(this.movieRepository.updateEnrichment(

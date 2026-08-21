@@ -1,5 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.application.movie;
 
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
+
 import java.util.List;
 
 /**
@@ -22,4 +24,5 @@ public record UpdateMovieCommand(
     String country,
     String language,
     List<String> awards,
-    Double popularity) {}
+    Double popularity,
+    MediaKind kind) {}

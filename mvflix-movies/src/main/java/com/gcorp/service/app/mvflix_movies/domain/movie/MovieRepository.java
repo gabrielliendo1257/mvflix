@@ -51,6 +51,9 @@ public interface MovieRepository {
     /** Cambia la visibilidad del catálogo. Vacío si la fila no existe. */
     Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility);
 
+    /** Cambia el tipo de contenido (MOVIE/OTHER). Vacío si la fila no existe. */
+    Mono<Movie> updateKind(MovieId id, MediaKind kind);
+
     /**
      * Reemplaza la lista de compartidos. Vacío si la movie no existe.
      */

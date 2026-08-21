@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 /**
- * Las fábricas codifican las dos clases de nacimiento de una película (DRAFT de
- * upload vs READY de biblioteca) y sus invariantes; los predicados explicitan la
- * dualidad de READY (subido vs respaldado por archivo local).
+ * Las fábricas codifican las dos clases de nacimiento de un item (DRAFT de upload
+ * vs READY de biblioteca), su tipo de contenido (MediaKind) y sus invariantes; los
+ * predicados explicitan la dualidad de READY (subido vs respaldado por archivo local).
  */
 class MovieFactoryTest {
 
@@ -18,7 +18,7 @@ class MovieFactoryTest {
 
     @Test
     void createDraftNacePrivadaYEnDraftSinObjeto() {
-        Movie draft = Movie.createDraft("Javier", TITLE);
+        Movie draft = Movie.createDraft("Javier", TITLE, MediaKind.MOVIE);
 
         assertThat(draft.getStatus()).isEqualTo(MovieStatus.DRAFT);
         assertThat(draft.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
@@ -26,13 +26,15 @@ class MovieFactoryTest {
         assertThat(draft.getObjectId()).isNull();
         assertThat(draft.getSharedWith()).isEmpty();
         assertThat(draft.getTitle()).isEqualTo("Dune");
+        assertThat(draft.getKind()).isEqualTo(MediaKind.MOVIE);
+        assertThat(draft.isMovie()).isTrue();
         assertThat(draft.isLibraryBacked()).isFalse();
         assertThat(draft.isUploaded()).isFalse();
     }
 
     @Test
     void fromLibraryAssetNaceReadyRespaldadaPorArchivoLocal() {
-        Movie movie = Movie.fromLibraryAsset("Javier", TITLE);
+        Movie movie = Movie.fromLibraryAsset("Javier", TITLE, MediaKind.MOVIE);
 
         assertThat(movie.getStatus()).isEqualTo(MovieStatus.READY);
         assertThat(movie.getObjectId()).isNull();
@@ -42,7 +44,7 @@ class MovieFactoryTest {
 
     @Test
     void completeProduceReadySubidoAlStorage() {
-        Movie uploaded = Movie.createDraft("Javier", TITLE).complete(42L);
+        Movie uploaded = Movie.createDraft("Javier", TITLE, MediaKind.MOVIE).complete(42L);
 
         assertThat(uploaded.getStatus()).isEqualTo(MovieStatus.READY);
         assertThat(uploaded.getObjectId()).isEqualTo(42L);
@@ -51,18 +53,39 @@ class MovieFactoryTest {
     }
 
     @Test
+    void otherNaceConSoloTituloYSinProveedor() {
+        Movie clip = Movie.fromLibraryAsset("Javier", TITLE, MediaKind.OTHER);
+
+        assertThat(clip.getKind()).isEqualTo(MediaKind.OTHER);
+        assertThat(clip.isMovie()).isFalse();
+        assertThat(clip.getMetadata().tmdbId()).isNull();
+        assertThat(clip.getMetadata().posterPath()).isNull();
+        assertThat(clip.getStatus()).isEqualTo(MovieStatus.READY);
+    }
+
+    @Test
+    void kindNullSeResuelveAMovie() {
+        Movie draft = Movie.createDraft("Javier", TITLE, null);
+
+        assertThat(draft.getKind()).isEqualTo(MediaKind.MOVIE);
+        assertThat(draft.isMovie()).isTrue();
+    }
+
+    @Test
     void tituloEnBlancoSeRechaza() {
-        assertThatThrownBy(() -> Movie.createDraft("Javier", MovieMetadata.onlyTitle(" ")))
+        assertThatThrownBy(() ->
+                Movie.createDraft("Javier", MovieMetadata.onlyTitle(" "), MediaKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> Movie.fromLibraryAsset("Javier", MovieMetadata.onlyTitle("")))
+        assertThatThrownBy(() ->
+                Movie.fromLibraryAsset("Javier", MovieMetadata.onlyTitle(""), MediaKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void duenoEnBlancoSeRechaza() {
-        assertThatThrownBy(() -> Movie.createDraft(" ", TITLE))
+        assertThatThrownBy(() -> Movie.createDraft(" ", TITLE, MediaKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> Movie.fromLibraryAsset(null, TITLE))
+        assertThatThrownBy(() -> Movie.fromLibraryAsset(null, TITLE, MediaKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -9,4 +9,5 @@ public record MovieRow(
     Long objectId,
     String metadata,
     String visibility,
-    String[] sharedWith) {}
+    String[] sharedWith,
+    String kind) {}

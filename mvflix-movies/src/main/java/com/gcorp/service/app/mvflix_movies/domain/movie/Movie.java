@@ -13,6 +13,7 @@ public class Movie {
     private final MovieMetadata metadata;
     private final MovieVisibility visibility;
     private final Set<String> sharedWith;
+    private final MediaKind kind;
 
     public Movie(
         MovieId id,
@@ -23,7 +24,8 @@ public class Movie {
         Long objectId,
         MovieMetadata metadata,
         MovieVisibility visibility,
-        Set<String> sharedWith) {
+        Set<String> sharedWith,
+        MediaKind kind) {
         this.id = id;
         this.ownerUsername = ownerUsername;
         this.title = title;
@@ -33,13 +35,14 @@ public class Movie {
         this.metadata = metadata;
         this.visibility = visibility;
         this.sharedWith = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
+        this.kind = kind == null ? MediaKind.MOVIE : kind;
     }
 
     /**
-     * Nacimiento de una película en DRAFT (flujo de upload): el dueño aporta
-     * la metadata mínima y el objeto se asocia después con {@link #complete(Long)}.
+     * Nacimiento de un item en DRAFT (flujo de upload): el dueño aporta la
+     * metadata mínima y el objeto se asocia después con {@link #complete(Long)}.
      */
-    public static Movie createDraft(String ownerUsername, MovieMetadata metadata) {
+    public static Movie createDraft(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
         requireOwner(ownerUsername);
         requireTitle(metadata);
         return new Movie(
@@ -51,15 +54,16 @@ public class Movie {
                 null,
                 metadata,
                 MovieVisibility.PRIVATE,
-                Set.of());
+                Set.of(),
+                kind);
     }
 
     /**
-     * Nacimiento de una película desde una biblioteca (media server): el archivo
-     * ya existe en el filesystem, por eso nace READY sin objeto subido (objectId
+     * Nacimiento de un item desde una biblioteca (media server): el archivo ya
+     * existe en el filesystem, por eso nace READY sin objeto subido (objectId
      * null). Es la otra clase de READY, complementaria a {@link #complete(Long)}.
      */
-    public static Movie fromLibraryAsset(String ownerUsername, MovieMetadata metadata) {
+    public static Movie fromLibraryAsset(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
         requireOwner(ownerUsername);
         requireTitle(metadata);
         return new Movie(
@@ -71,7 +75,8 @@ public class Movie {
                 null,
                 metadata,
                 MovieVisibility.PRIVATE,
-                Set.of());
+                Set.of(),
+                kind);
     }
 
     private static void requireOwner(String ownerUsername) {
@@ -122,7 +127,16 @@ public class Movie {
         return this.sharedWith;
     }
 
-    /** Solo el dueño puede administrar la película (visibilidad, compartidos, borrado). */
+    public MediaKind getKind() {
+        return this.kind;
+    }
+
+    /** {@code true} si el item representa una película (tipo de contenido). */
+    public boolean isMovie() {
+        return this.kind == MediaKind.MOVIE;
+    }
+
+    /** Solo el dueño puede administrar el item (visibilidad, compartidos, borrado). */
     public boolean isOwnedBy(String username) {
         return this.ownerUsername.equals(username);
     }
@@ -149,7 +163,8 @@ public class Movie {
                 this.objectId,
                 this.metadata,
                 visibility,
-                this.sharedWith);
+                this.sharedWith,
+                this.kind);
     }
 
     /** Transición de dominio: reemplaza la lista de compartidos (solo el dueño). */
@@ -163,7 +178,8 @@ public class Movie {
                 this.objectId,
                 this.metadata,
                 this.visibility,
-                sharedWith);
+                sharedWith,
+                this.kind);
     }
 
     /** Transición de dominio: reemplaza la metadata (edición manual del dueño). */
@@ -177,7 +193,23 @@ public class Movie {
                 this.objectId,
                 metadata,
                 this.visibility,
-                this.sharedWith);
+                this.sharedWith,
+                this.kind);
+    }
+
+    /** Transición de dominio: cambia el tipo de contenido (MOVIE/OTHER). */
+    public Movie withKind(MediaKind kind) {
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                this.title,
+                this.status,
+                this.enrichmentStatus,
+                this.objectId,
+                this.metadata,
+                this.visibility,
+                this.sharedWith,
+                kind);
     }
 
     public boolean isDraft() {
@@ -202,7 +234,7 @@ public class Movie {
     }
 
     /**
-     * Transición de dominio: una película en borrador pasa a lista cuando se le asigna su objeto.
+     * Transición de dominio: un item en borrador pasa a lista cuando se le asigna su objeto.
      * Solo el {@code objectId} (referencia publica) vive en el agregado; la key del objeto
      * es un secreto interno que queda en {@code Media}, nunca en Movie.
      */
@@ -216,7 +248,8 @@ public class Movie {
                 objectId,
                 this.metadata,
                 this.visibility,
-                this.sharedWith);
+                this.sharedWith,
+                this.kind);
     }
 
     /** Transición de dominio: marca el catálogo como enriquecido (idempotente). */
@@ -230,7 +263,8 @@ public class Movie {
                 this.objectId,
                 this.metadata,
                 this.visibility,
-                this.sharedWith);
+                this.sharedWith,
+                this.kind);
     }
 
     /**
@@ -247,6 +281,7 @@ public class Movie {
                 this.objectId,
                 enrichedMetadata,
                 this.visibility,
-                this.sharedWith);
+                this.sharedWith,
+                this.kind);
     }
 }

@@ -49,7 +49,7 @@ class WebMoviesServiceTest {
   }
 
   private static MovieDto movie(Long id, Long objectId) {
-    return new MovieDto(id, "READY", objectId, "PRIVATE", "The Colossus of Rhodes", null, 1961,
+    return new MovieDto(id, "READY", objectId, "PRIVATE", "MOVIE", "The Colossus of Rhodes", null, 1961,
         List.of("Adventure"), 3.2, "2h 7m", "Sergio Leone", List.of("Rory Calhoun"),
         "Overview...", null, "1961-06-15", "Italy", "Italian", null, "ENRICHED");
   }
@@ -397,7 +397,7 @@ class WebMoviesServiceTest {
   void updateMovieDelegatesToMoviesBackend() {
     var request = new com.guille.media.bff.app.dto.MovieUpdateRequest(
         "Dune: Part Two", null, 2024, List.of("Sci-Fi"), null, null, null, null,
-        null, "2024-03-01", null, null, null, null);
+        null, "2024-03-01", null, null, null, null, null);
     when(moviesWebClient.updateMovie(4L, request))
         .thenReturn(Mono.just(movie(4L, null)));
 

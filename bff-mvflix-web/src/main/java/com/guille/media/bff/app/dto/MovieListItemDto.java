@@ -9,6 +9,7 @@ public record MovieListItemDto(
     Long id,
     String status,
     String visibility,
+    String kind,
     String title,
     Integer year,
     @JsonProperty("poster_path") String posterPath) {}

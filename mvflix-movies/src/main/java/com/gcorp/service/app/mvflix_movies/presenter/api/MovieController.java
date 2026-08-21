@@ -9,6 +9,7 @@ import com.gcorp.service.app.mvflix_movies.application.movie.GetMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.ListMoviesUseCase;
 import com.gcorp.service.app.mvflix_movies.application.movie.UpdateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.BulkVisibilityRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.BulkVisibilityResponse;
@@ -86,8 +87,9 @@ public class MovieController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MovieResponse> create(@RequestBody CreateMovieRequest request) {
+        MediaKind kind = request.kind() == null ? MediaKind.MOVIE : request.kind();
         return this.createMovieUseCase
-                .execute(new CreateMovieCommand(this.mapper.toMetadata(request)))
+                .execute(new CreateMovieCommand(this.mapper.toMetadata(request), kind))
                 .map(this.mapper::toResponse);
     }
 

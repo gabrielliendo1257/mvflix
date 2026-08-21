@@ -23,4 +23,5 @@ public record MovieUpdateRequest(
     String country,
     String language,
     List<String> awards,
-    Double popularity) {}
+    Double popularity,
+    String kind) {}

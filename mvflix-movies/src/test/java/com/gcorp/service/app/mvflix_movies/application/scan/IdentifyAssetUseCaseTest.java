@@ -16,6 +16,7 @@ import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundE
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
@@ -67,7 +68,7 @@ class IdentifyAssetUseCaseTest {
                         null,
                         null,
                         MovieVisibility.PRIVATE,
-                        java.util.Set.of());
+                        java.util.Set.of(), MediaKind.MOVIE);
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
@@ -78,7 +79,7 @@ class IdentifyAssetUseCaseTest {
 
         ArgumentCaptor<Movie> movieCaptor = ArgumentCaptor.forClass(Movie.class);
 
-        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null))
+        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null, null))
                 .expectNextMatches(identified ->
                         identified.isIdentified()
                                 && identified.getMovieId().equals(MovieId.of(50L)))
@@ -109,7 +110,7 @@ class IdentifyAssetUseCaseTest {
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(identified));
 
-        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null))
+        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null, null))
                 .expectNextMatches(asset -> asset.getMovieId().equals(MovieId.of(50L)))
                 .verifyComplete();
 
@@ -122,7 +123,7 @@ class IdentifyAssetUseCaseTest {
     void unknownAssetFails() {
         when(this.assetRepository.findById(MediaAssetId.of(999L))).thenReturn(Mono.empty());
 
-        StepVerifier.create(this.useCase.execute(MediaAssetId.of(999L), "Dune", null))
+        StepVerifier.create(this.useCase.execute(MediaAssetId.of(999L), "Dune", null, null))
                 .expectError(MediaAssetNotFoundException.class)
                 .verify();
     }
@@ -150,7 +151,7 @@ class IdentifyAssetUseCaseTest {
                         null,
                         null,
                         MovieVisibility.PRIVATE,
-                        java.util.Set.of());
+                        java.util.Set.of(), MediaKind.MOVIE);
         Movie enriched =
                 new Movie(
                         MovieId.of(50L),
@@ -161,7 +162,7 @@ class IdentifyAssetUseCaseTest {
                         null,
                         null,
                         MovieVisibility.PRIVATE,
-                        java.util.Set.of());
+                        java.util.Set.of(), MediaKind.MOVIE);
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
@@ -172,7 +173,7 @@ class IdentifyAssetUseCaseTest {
         when(this.assetRepository.save(any(MediaAsset.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Interstellar (2014)", 157336L))
+        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Interstellar (2014)", 157336L, null))
                 .expectNextMatches(identified ->
                         identified.isIdentified()
                                 && identified.getMovieId().equals(MovieId.of(50L)))
@@ -204,7 +205,7 @@ class IdentifyAssetUseCaseTest {
                         null,
                         null,
                         MovieVisibility.PRIVATE,
-                        java.util.Set.of());
+                        java.util.Set.of(), MediaKind.MOVIE);
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
@@ -215,7 +216,7 @@ class IdentifyAssetUseCaseTest {
         when(this.assetRepository.save(any(MediaAsset.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L))
+        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L, null))
                 .expectNextMatches(identified -> identified.isIdentified())
                 .verifyComplete();
 
@@ -245,7 +246,7 @@ class IdentifyAssetUseCaseTest {
                         null,
                         null,
                         MovieVisibility.PRIVATE,
-                        java.util.Set.of());
+                        java.util.Set.of(), MediaKind.MOVIE);
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
@@ -257,7 +258,7 @@ class IdentifyAssetUseCaseTest {
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.withVirtualTime(() ->
-                        this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L))
+                        this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L, null))
                 .thenAwait(java.time.Duration.ofSeconds(21))
                 .expectNextMatches(identified ->
                         identified.isIdentified()

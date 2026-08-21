@@ -25,7 +25,7 @@ public class CreateMovieUseCase {
                 .doOnNext(user -> log.info("Creando pelicula en DRAFT: owner={} title={}",
                         user.subject(), command.metadata().title()))
                 .flatMap(user -> this.movieRepository.save(
-                        Movie.createDraft(user.subject(), command.metadata())))
+                        Movie.createDraft(user.subject(), command.metadata(), command.kind())))
                 .doOnNext(movie -> log.info("Pelicula creada: id={} owner={}", movie.getId(),
                         movie.getOwnerUsername()));
     }

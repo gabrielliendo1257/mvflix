@@ -89,7 +89,8 @@ public class WebLibrariesController {
         .identify(
             assetId,
             request == null ? null : request.title(),
-            request == null ? null : request.tmdbId())
+            request == null ? null : request.tmdbId(),
+            request == null ? null : request.kind())
         .map(ResponseEntity::ok);
   }
 }

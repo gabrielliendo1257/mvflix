@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
@@ -46,7 +47,7 @@ class UpdateMovieUseCaseTest {
     private static Movie movie(long id, String owner, MovieMetadata metadata) {
         return new Movie(
                 MovieId.of(id), owner, "Dune", MovieStatus.READY, EnrichmentStatus.ENRICHED,
-                null, metadata, MovieVisibility.PRIVATE, java.util.Set.of());
+                null, metadata, MovieVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
     }
 
     @Test
@@ -66,7 +67,7 @@ class UpdateMovieUseCaseTest {
 
         var command = new UpdateMovieCommand(
                 "Dune: Part Two", "Dune: Part Two", 2024, List.of("Sci-Fi", "Adventure"),
-                null, null, null, null, null, "2024-03-01", null, null, null, null);
+                null, null, null, null, null, "2024-03-01", null, null, null, null, null);
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), command))
                 .expectNext(updated)
@@ -87,7 +88,7 @@ class UpdateMovieUseCaseTest {
     void mergeKeepsNullFieldsAndNonEditableIdentity() {
         MovieMetadata merged = UpdateMovieUseCase.merge(METADATA, new UpdateMovieCommand(
                 "Dune: Part Two", null, null, List.of(), null, null, null, "Nueva sinopsis",
-                null, null, null, null, null, null));
+                null, null, null, null, null, null, null));
 
         assertThat(merged.title()).isEqualTo("Dune: Part Two");
         assertThat(merged.genres()).isEmpty();
@@ -102,7 +103,7 @@ class UpdateMovieUseCaseTest {
     void mergeUpdatesPosterAndPopularity() {
         MovieMetadata merged = UpdateMovieUseCase.merge(METADATA, new UpdateMovieCommand(
                 null, null, null, null, null, null, null, null,
-                "/nuevo-poster.jpg", null, null, null, null, 9.1));
+                "/nuevo-poster.jpg", null, null, null, null, 9.1, null));
 
         assertThat(merged.posterPath()).isEqualTo("/nuevo-poster.jpg");
         assertThat(merged.popularity()).isEqualTo(9.1);
@@ -120,7 +121,7 @@ class UpdateMovieUseCaseTest {
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
                         "Otro", null, null, null, null, null, null, null,
-                        null, null, null, null, null, null)))
+                        null, null, null, null, null, null, null)))
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
@@ -135,7 +136,7 @@ class UpdateMovieUseCaseTest {
 
         StepVerifier.create(this.useCase.execute(MovieId.of(99L), new UpdateMovieCommand(
                         "X", null, null, null, null, null, null, null,
-                        null, null, null, null, null, null)))
+                        null, null, null, null, null, null, null)))
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 

@@ -91,14 +91,14 @@ public class WebLibraryService {
    * Identifica un activo en un solo paso: el titulo se deriva del filename si el
    * front no lo manda, y tmdb_id autocompleta la metadata si se eligio candidato.
    */
-  public Mono<MediaAssetDto> identify(Long assetId, String title, Long tmdbId) {
+  public Mono<MediaAssetDto> identify(Long assetId, String title, Long tmdbId, String kind) {
     if (title != null && !title.isBlank()) {
-      return this.moviesWebClient.identifyAsset(assetId, title, tmdbId);
+      return this.moviesWebClient.identifyAsset(assetId, title, tmdbId, kind);
     }
     return this.moviesWebClient
         .assetById(assetId)
         .flatMap(asset -> this.moviesWebClient.identifyAsset(
-            assetId, this.titleFrom(asset.relativePath()), tmdbId));
+            assetId, this.titleFrom(asset.relativePath()), tmdbId, kind));
   }
 
   /** "Carpetas/Interstellar (2014).mkv" -> "Interstellar" (último segmento sin extensión). */

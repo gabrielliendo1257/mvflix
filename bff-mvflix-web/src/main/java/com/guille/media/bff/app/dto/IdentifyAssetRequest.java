@@ -7,4 +7,4 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * del filename) y tmdb_id autocompleta la metadata si el usuario eligió candidato.
  */
 public record IdentifyAssetRequest(
-    String title, @JsonProperty("tmdb_id") Long tmdbId) {}
+    String title, @JsonProperty("tmdb_id") Long tmdbId, String kind) {}

@@ -18,4 +18,5 @@ public record CreateMovieRequest(
     @JsonProperty("release_date") String releaseDate,
     String country,
     String language,
-    List<String> awards) {}
+    List<String> awards,
+    String kind) {}
