@@ -82,24 +82,29 @@ public class EnrichMovieUseCase {
     public Mono<MovieMetadata> preview(long tmdbId) {
         return this.metadataSource
                 .findById(tmdbId)
-                .map(detail -> new MovieMetadata(
-                        detail.title(),
-                        detail.originalTitle(),
-                        detail.year(),
-                        detail.genres(),
-                        detail.popularity() > 0 ? detail.popularity() : null,
-                        detail.runtimeMinutes() > 0
-                                ? formatDuration(detail.runtimeMinutes())
-                                : null,
-                        detail.director(),
-                        detail.cast(),
-                        detail.overview(),
-                        detail.posterPath(),
-                        detail.releaseDate(),
-                        detail.country(),
-                        detail.language(),
-                        null,
-                        detail.tmdbId()));
+                .map(EnrichMovieUseCase::fromDetail);
+    }
+
+    /** Metadata fresca solo desde el detalle externo (sin conservar la actual). */
+    private static MovieMetadata fromDetail(ExternalMovieDetail detail) {
+        return new MovieMetadata(
+                detail.title(),
+                detail.originalTitle(),
+                detail.year(),
+                detail.genres(),
+                detail.popularity() > 0 ? detail.popularity() : null,
+                detail.runtimeMinutes() > 0
+                        ? formatDuration(detail.runtimeMinutes())
+                        : null,
+                detail.director(),
+                detail.cast(),
+                detail.overview(),
+                detail.posterPath(),
+                detail.releaseDate(),
+                detail.country(),
+                detail.language(),
+                null,
+                detail.tmdbId());
     }
 
     /**
@@ -136,9 +141,11 @@ public class EnrichMovieUseCase {
 
         return detail
                 .flatMap(d -> {
-                    MovieMetadata merged = this.merge(movie.getMetadata(), d);
+                    MovieMetadata metadata = isReMatch(movie, explicitTmdbId)
+                            ? fromDetail(d)
+                            : merge(movie.getMetadata(), d);
                     return this.movieRepository.updateEnrichment(
-                            movie.getId(), merged,
+                            movie.getId(), metadata,
                             EnrichmentStatus.ENRICHED);
                 })
                 .doOnNext(enriched -> log.info(
@@ -149,6 +156,17 @@ public class EnrichMovieUseCase {
                             movie.getId().value());
                     return Mono.just(movie);
                 }));
+    }
+
+    /**
+     * Re-match: el usuario eligió un tmdb_id distinto al persistido. En ese caso
+     * la metadata se reemplaza por completo desde el nuevo detalle (sin conservar
+     * campos viejos); si es el mismo o es el primer enrich, se fusiona.
+     */
+    private static boolean isReMatch(Movie movie, Long explicitTmdbId) {
+        return explicitTmdbId != null
+                && movie.getMetadata().tmdbId() != null
+                && !explicitTmdbId.equals(movie.getMetadata().tmdbId());
     }
 
     /** Funde la metadata externa con la actual: la fuente externa gana, los huecos se respetan. */
@@ -173,7 +191,7 @@ public class EnrichMovieUseCase {
                 detail.tmdbId());
     }
 
-    private String formatDuration(int minutes) {
+    private static String formatDuration(int minutes) {
         int hours = minutes / 60;
         int rest = minutes % 60;
         return hours > 0 ? hours + "h " + rest + "m" : rest + "m";

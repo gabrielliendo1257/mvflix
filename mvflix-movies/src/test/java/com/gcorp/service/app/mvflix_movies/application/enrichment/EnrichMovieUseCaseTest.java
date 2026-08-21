@@ -25,6 +25,7 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.util.Set;
 
@@ -169,6 +170,46 @@ class EnrichMovieUseCaseTest {
 
         verifyNoInteractions(this.metadataSource);
         verify(this.movieRepository, never()).updateEnrichment(any(), any(), any());
+    }
+
+    @Test
+    void reMatchReplacesMetadataCompletely() {
+        MovieMetadata old = new MovieMetadata(
+                "Old", "Old", 2000, List.of("Action"), 5.0, "1h 30m", "Old Dir",
+                List.of("Old Actor"), "old overview", "/old.jpg", "2000-01-01", "USA", "en",
+                List.of("Old Award"), 274_003L);
+        Movie movie = new Movie(
+                MovieId.of(3L), "pepe", "Old", MovieStatus.READY,
+                EnrichmentStatus.ENRICHED, null, old, MovieVisibility.PRIVATE, Set.of(),
+                MediaKind.MOVIE);
+
+        ExternalMovieDetail fresh = new ExternalMovieDetail(
+                43020L, "New", "New", 2021, List.of("Sci-Fi"), 8.0, 120, null,
+                List.of(), null, "/new.jpg", "2021-01-01", null, null);
+
+        when(this.metadataSource.findById(43020L)).thenReturn(Mono.just(fresh));
+        when(this.movieRepository.updateEnrichment(
+                        eq(MovieId.of(3L)), any(MovieMetadata.class),
+                        eq(EnrichmentStatus.ENRICHED)))
+                .thenAnswer(invocation -> Mono.just(movie.applyEnrichment(
+                        invocation.getArgument(1), EnrichmentStatus.ENRICHED)));
+
+        StepVerifier.create(this.useCase.enrich(movie, 43020L))
+                .assertNext(m -> assertThat(m.getEnrichmentStatus())
+                        .isEqualTo(EnrichmentStatus.ENRICHED))
+                .verifyComplete();
+
+        ArgumentCaptor<MovieMetadata> captor = ArgumentCaptor.forClass(MovieMetadata.class);
+        verify(this.movieRepository).updateEnrichment(
+                eq(MovieId.of(3L)), captor.capture(), eq(EnrichmentStatus.ENRICHED));
+        MovieMetadata result = captor.getValue();
+        assertThat(result.tmdbId()).isEqualTo(43020L);
+        assertThat(result.title()).isEqualTo("New");
+        assertThat(result.director()).isNull();
+        assertThat(result.overview()).isNull();
+        assertThat(result.country()).isNull();
+        assertThat(result.awards()).isNull();
+        assertThat(result.posterPath()).isEqualTo("/new.jpg");
     }
 
     @Test
