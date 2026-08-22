@@ -162,13 +162,13 @@ class CompleteMovieUseCaseTest {
   }
 
   @Test
-  void documentsIncorrectNotFoundWhenReadyMovieHasNoMedia() {
+  void rejectsReadyMovieWithoutUploadMediaAsConflict() {
     this.movieRepository.findByIdReturns(readyMovie(null), readyMovie(null));
     this.movieRepository.completeIfDraftReturnsEmpty();
     this.mediaRepository.findByMovieIdReturnsEmpty();
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
-        .expectError(MovieNotFoundException.class)
+        .expectError(MovieConflictException.class)
         .verify();
 
     assertThat(this.mediaRepository.savedMedia).isEmpty();
