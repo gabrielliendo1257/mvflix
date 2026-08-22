@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.enrichment;
+package com.gcorp.service.app.mvflix_movies.catalog.application.port;
 
 /** Resultado minimal de la busqueda: suficiente para confirmar el match. */
 public record ExternalMovieSearch(

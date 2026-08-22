@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.enrichment;
+package com.gcorp.service.app.mvflix_movies.catalog.application.port;
 
 import java.util.List;
 

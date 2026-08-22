@@ -2,8 +2,8 @@ package com.gcorp.service.app.mvflix_movies.infrastructure.tmdb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieDetail;
-import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieDetail;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.CastMember;
 import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.Credits;
 import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.CrewMember;

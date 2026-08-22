@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.enrichment;
+package com.gcorp.service.app.mvflix_movies.catalog.application.port;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

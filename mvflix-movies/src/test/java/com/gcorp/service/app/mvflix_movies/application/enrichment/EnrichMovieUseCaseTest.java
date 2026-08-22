@@ -11,9 +11,9 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieDetail;
-import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
-import com.gcorp.service.app.mvflix_movies.domain.enrichment.MetadataSource;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieDetail;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.MetadataSource;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;

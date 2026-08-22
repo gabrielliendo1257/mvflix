@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieCommand;
-import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;
