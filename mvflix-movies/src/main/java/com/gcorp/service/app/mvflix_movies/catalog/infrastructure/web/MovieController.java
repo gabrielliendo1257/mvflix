@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.presenter.api;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.BulkVisibilityUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CompleteMovieUseCase;
@@ -11,19 +11,19 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieUseCas
 import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.BulkVisibilityRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.BulkVisibilityResponse;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieSearchResponse;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichmentPreviewResponse;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CompleteMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichMovieSearchResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichmentPreviewResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.MovieResponse;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateSharesUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateVisibilityUseCase;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateMovieRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateSharesRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateVisibilityRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateSharesRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateVisibilityRequest;
 
 import jakarta.validation.Valid;
 

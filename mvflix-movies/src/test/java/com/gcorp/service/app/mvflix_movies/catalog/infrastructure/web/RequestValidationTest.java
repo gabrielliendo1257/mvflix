@@ -1,14 +1,14 @@
-package com.gcorp.service.app.mvflix_movies.presenter.api;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.BulkVisibilityRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CompleteMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.IdentifyAssetRequest;
 import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.ScanLibraryRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateVisibilityRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateVisibilityRequest;
 
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;

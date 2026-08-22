@@ -1,14 +1,14 @@
-package com.gcorp.service.app.mvflix_movies.presenter.api;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieCommand;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichMovieSearchResponse;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.EnrichmentPreviewResponse;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MovieResponse;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichMovieSearchResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichmentPreviewResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.MovieResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateMovieRequest;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;

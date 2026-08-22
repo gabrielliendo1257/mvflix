@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.presenter.api.dto;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto;
 
 import java.util.List;
 
