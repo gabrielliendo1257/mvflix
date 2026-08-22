@@ -7,6 +7,7 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.test.context.ActiveProfiles;
+
+import java.util.List;
 
 @ActiveProfiles("sandbox")
 @SpringBootTest
@@ -59,9 +62,53 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
     this.assertPersistedTitles(movie.getId().value(), "Provider title");
   }
 
+  @Test
+  void updateVisibilityPreservesUploadedObjectId() {
+    Movie movie = this.saveDraft("Dune");
+    this.insertMedia(movie.getId().value(), 700L, "movies/visibility/video.mp4");
+
+    Movie updated =
+        this.movieRepository
+            .updateVisibility(movie.getId(), MovieVisibility.PUBLIC)
+            .block();
+
+    assertThat(updated).isNotNull();
+    assertThat(updated.getObjectId()).isEqualTo(700L);
+  }
+
+  @Test
+  void replaceSharesPreservesUploadedObjectId() {
+    Movie movie = this.saveDraft("Dune");
+    this.insertMedia(movie.getId().value(), 701L, "movies/shares/video.mp4");
+
+    Movie updated =
+        this.movieRepository
+            .replaceShares(movie.getId(), List.of("maria"))
+            .block();
+
+    assertThat(updated).isNotNull();
+    assertThat(updated.getObjectId()).isEqualTo(701L);
+    assertThat(updated.getSharedWith()).containsExactly("maria");
+  }
+
   private Movie saveDraft(String title) {
     return this.movieRepository
         .save(Movie.createDraft("pepe", MovieMetadata.onlyTitle(title), MediaKind.MOVIE))
+        .block();
+  }
+
+  private void insertMedia(Long movieId, Long objectId, String objectKey) {
+    this.databaseClient
+        .sql(
+            """
+            INSERT INTO media (movie_id, object_id, object_key)
+            VALUES (:movie_id, :object_id, :object_key)
+            """)
+        .bind("movie_id", movieId)
+        .bind("object_id", objectId)
+        .bind("object_key", objectKey)
+        .fetch()
+        .rowsUpdated()
         .block();
   }
 

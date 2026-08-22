@@ -276,6 +276,8 @@ public class SpringDataMovieRepository implements MovieRepository {
                         WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility, kind,
+                                  (SELECT mm.object_id FROM media mm
+                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
@@ -344,6 +346,8 @@ public class SpringDataMovieRepository implements MovieRepository {
                                 WHERE id = :id
                                 RETURNING id, owner_username, title, status, enrichment_status,
                                           metadata::text, visibility, kind,
+                                          (SELECT mm.object_id FROM media mm
+                                           WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
                                           (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                            FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                                 """)
