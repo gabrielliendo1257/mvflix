@@ -8,7 +8,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteMovieUseCas
 import com.gcorp.service.app.mvflix_movies.catalog.application.GetMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.ListMoviesUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;

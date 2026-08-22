@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.application.enrichment;
+package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieDetail;

@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.application.enrichment;
+package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;

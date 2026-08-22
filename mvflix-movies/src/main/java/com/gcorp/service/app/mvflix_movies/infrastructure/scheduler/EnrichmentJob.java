@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.scheduler;
 
-import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 
