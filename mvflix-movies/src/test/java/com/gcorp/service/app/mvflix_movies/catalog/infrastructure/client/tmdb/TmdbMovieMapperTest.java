@@ -1,17 +1,17 @@
-package com.gcorp.service.app.mvflix_movies.infrastructure.tmdb;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieDetail;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.CastMember;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.Credits;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.CrewMember;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.Genre;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.MovieDetails;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.MovieSummary;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.ProductionCountry;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.SpokenLanguage;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.CastMember;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.Credits;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.CrewMember;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.Genre;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.MovieDetails;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.MovieSummary;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.ProductionCountry;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.SpokenLanguage;
 
 import org.junit.jupiter.api.Test;
 

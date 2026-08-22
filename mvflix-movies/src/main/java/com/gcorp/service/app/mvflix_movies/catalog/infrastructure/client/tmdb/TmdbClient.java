@@ -1,11 +1,11 @@
-package com.gcorp.service.app.mvflix_movies.infrastructure.tmdb;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieDetail;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.MetadataSource;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.MovieDetails;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.MovieSummary;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.SearchResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.MovieDetails;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.MovieSummary;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.SearchResponse;
 
 import lombok.extern.slf4j.Slf4j;
 

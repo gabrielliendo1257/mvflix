@@ -1,11 +1,11 @@
-package com.gcorp.service.app.mvflix_movies.infrastructure.tmdb;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieDetail;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.Credits;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.CrewMember;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.MovieDetails;
-import com.gcorp.service.app.mvflix_movies.infrastructure.tmdb.TmdbResponses.MovieSummary;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.Credits;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.CrewMember;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.MovieDetails;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb.TmdbResponses.MovieSummary;
 
 import java.util.List;
 import java.util.Optional;

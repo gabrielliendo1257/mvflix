@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.infrastructure.tmdb;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.client.tmdb;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
