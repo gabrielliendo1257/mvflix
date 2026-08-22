@@ -54,4 +54,31 @@ class LayerDependencyTest {
             .dependOnClassesThat()
             .resideInAPackage("..library.infrastructure..")
             .because("otros módulos solo deben consumir dominio o contratos de Library");
+
+    @ArchTest
+    static final ArchRule catalog_adapters_are_internal = noClasses()
+            .that()
+            .resideOutsideOfPackage("..catalog..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..catalog.infrastructure..")
+            .because("otros módulos solo deben consumir dominio o capacidades de Catalog");
+
+    @ArchTest
+    static final ArchRule library_application_uses_catalog_ports = noClasses()
+            .that()
+            .resideInAPackage("..library.application..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..catalog.application..")
+            .because("Library debe expresar sus necesidades de Catalog mediante sus propios puertos");
+
+    @ArchTest
+    static final ArchRule catalog_domain_is_independent_from_library = noClasses()
+            .that()
+            .resideInAPackage("..catalog.domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..library..")
+            .because("las invariantes de Catalog no deben depender del módulo Library");
 }
