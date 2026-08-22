@@ -236,6 +236,48 @@ public class Movie {
     }
 
     /**
+     * Vincula metadata confirmada de un proveedor externo. Solo los items que
+     * representan películas pueden tener ese vínculo y la metadata debe incluir
+     * el identificador estable del proveedor.
+     */
+    public Movie linkProviderMetadata(MovieMetadata providerMetadata) {
+        if (!isMovie()) {
+            throw new MovieConflictException("Only movie items can link provider metadata");
+        }
+        if (providerMetadata == null || providerMetadata.tmdbId() == null) {
+            throw new IllegalArgumentException("provider metadata id is required");
+        }
+        requireTitle(providerMetadata);
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                providerMetadata.title(),
+                this.status,
+                EnrichmentStatus.ENRICHED,
+                this.objectId,
+                providerMetadata,
+                this.visibility,
+                this.sharedWith,
+                this.kind);
+    }
+
+    /** Desvincula el proveedor y devuelve el item a RAW conservando metadata manual. */
+    public Movie unlinkProvider() {
+        MovieMetadata unlinkedMetadata = this.metadata.withoutProvider();
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                unlinkedMetadata.title(),
+                this.status,
+                EnrichmentStatus.RAW,
+                this.objectId,
+                unlinkedMetadata,
+                this.visibility,
+                this.sharedWith,
+                this.kind);
+    }
+
+    /**
      * Transición de dominio: un item en borrador pasa a lista cuando se le asigna su objeto.
      * Solo el {@code objectId} (referencia publica) vive en el agregado; la key del objeto
      * es un secreto interno que queda en {@code Media}, nunca en Movie.
