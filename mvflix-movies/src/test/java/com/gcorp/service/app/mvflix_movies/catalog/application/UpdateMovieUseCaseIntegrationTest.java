@@ -39,7 +39,7 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
   }
 
   @Test
-  void rollsBackMetadataWhenKindUpdateFails() {
+  void doesNotPersistPartialDetailsWhenReclassificationFails() {
     Movie movie =
         this.movieRepository
             .save(

@@ -186,6 +186,7 @@ public class Movie {
 
     /** Transición de dominio: reemplaza la metadata (edición manual del dueño). */
     public Movie withMetadata(MovieMetadata metadata) {
+        requireTitle(metadata);
         return new Movie(
                 this.id,
                 this.ownerUsername,
@@ -199,19 +200,46 @@ public class Movie {
                 this.kind);
     }
 
-    /** Transición de dominio: cambia el tipo de contenido (MOVIE/OTHER). */
-    public Movie withKind(MediaKind kind) {
+    /**
+     * Reclasifica una película como contenido genérico. El vínculo con el
+     * proveedor deja de ser válido y el item deja de estar identificado como
+     * película.
+     */
+    public Movie reclassifyAsOther(MovieMetadata manualMetadata) {
+        requireTitle(manualMetadata);
+        MovieMetadata unlinkedMetadata = manualMetadata.withoutProvider();
         return new Movie(
                 this.id,
                 this.ownerUsername,
-                this.title,
+                unlinkedMetadata.title(),
                 this.status,
-                this.enrichmentStatus,
+                EnrichmentStatus.RAW,
                 this.objectId,
-                this.metadata,
+                unlinkedMetadata,
                 this.visibility,
                 this.sharedWith,
-                kind);
+                MediaKind.OTHER);
+    }
+
+    /**
+     * Reclasifica contenido genérico como película todavía no identificada.
+     * Un proveedor solo puede vincularse después mediante
+     * {@link #linkProviderMetadata(MovieMetadata)}.
+     */
+    public Movie reclassifyAsMovie() {
+        requireTitle(this.metadata);
+        MovieMetadata unlinkedMetadata = this.metadata.withoutProvider();
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                unlinkedMetadata.title(),
+                this.status,
+                EnrichmentStatus.RAW,
+                this.objectId,
+                unlinkedMetadata,
+                this.visibility,
+                this.sharedWith,
+                MediaKind.MOVIE);
     }
 
     public boolean isDraft() {

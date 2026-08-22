@@ -58,4 +58,53 @@ class MovieProviderLinkTest {
         assertThat(unlinked.getMetadata().overview()).isEqualTo("Overview");
         assertThat(unlinked.getTitle()).isEqualTo("Dune");
     }
+
+    @Test
+    void reclassifiesMovieAsOtherAndDropsProviderIdentity() {
+        Movie linked = Movie.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE)
+                .linkProviderMetadata(PROVIDER_METADATA);
+        MovieMetadata manualMetadata = new MovieMetadata(
+                "Grabación familiar", null, null, List.of(), null, null, null,
+                List.of(), "Metadata manual", "/provider-poster.jpg", null, null,
+                null, List.of(), 438631L);
+
+        Movie reclassified = linked.reclassifyAsOther(manualMetadata);
+
+        assertThat(reclassified.getKind()).isEqualTo(MediaKind.OTHER);
+        assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
+        assertThat(reclassified.getTitle()).isEqualTo("Grabación familiar");
+        assertThat(reclassified.getMetadata().overview()).isEqualTo("Metadata manual");
+        assertThat(reclassified.getMetadata().tmdbId()).isNull();
+        assertThat(reclassified.getMetadata().posterPath()).isNull();
+        assertThat(reclassified.getMetadata().popularity()).isNull();
+    }
+
+    @Test
+    void rejectsReclassificationWithoutTitle() {
+        Movie movie = Movie.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
+        MovieMetadata missingTitle = new MovieMetadata(
+                null, null, null, List.of(), null, null, null, List.of(), null,
+                null, null, null, null, List.of(), null);
+
+        assertThatThrownBy(() -> movie.reclassifyAsOther(missingTitle))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("movie title is required");
+    }
+
+    @Test
+    void reclassifiesOtherAsRawMovieWithoutProvider() {
+        MovieMetadata inconsistentProviderMetadata = new MovieMetadata(
+                "Imported clip", null, null, List.of(), 8.0, null, null,
+                List.of(), null, "/poster.jpg", null, null, null, List.of(), 99L);
+        Movie clip = Movie.fromLibraryAsset(
+                "Javier", inconsistentProviderMetadata, MediaKind.OTHER);
+
+        Movie reclassified = clip.reclassifyAsMovie();
+
+        assertThat(reclassified.getKind()).isEqualTo(MediaKind.MOVIE);
+        assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
+        assertThat(reclassified.getMetadata().tmdbId()).isNull();
+        assertThat(reclassified.getMetadata().posterPath()).isNull();
+        assertThat(reclassified.getMetadata().popularity()).isNull();
+    }
 }

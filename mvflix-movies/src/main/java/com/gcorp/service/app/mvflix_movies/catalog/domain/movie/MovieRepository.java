@@ -41,24 +41,11 @@ public interface MovieRepository {
     /** Persiste la transición de proveedor ya decidida por el agregado. */
     Mono<Movie> updateEnrichment(Movie movie);
 
-    /**
-     * Actualización técnica conservada temporalmente para la reclasificación a OTHER.
-     * Los nuevos flujos deben entregar el agregado ya transformado.
-     */
-    Mono<Movie> updateEnrichment(MovieId id, MovieMetadata metadata,
-            EnrichmentStatus enrichmentStatus);
-
-    /**
-     * Reemplaza la metadata por edición manual del dueño, sin tocar el estado de
-     * enriquecimiento. Vacío si la fila no existe.
-     */
-    Mono<Movie> updateMetadata(MovieId id, MovieMetadata metadata);
+    /** Persiste conjuntamente metadata, clasificación y estado de enriquecimiento. */
+    Mono<Movie> updateDetails(Movie movie);
 
     /** Cambia la visibilidad del catálogo. Vacío si la fila no existe. */
     Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility);
-
-    /** Cambia el tipo de contenido (MOVIE/OTHER). Vacío si la fila no existe. */
-    Mono<Movie> updateKind(MovieId id, MediaKind kind);
 
     /**
      * Reemplaza la lista de compartidos. Vacío si la movie no existe.

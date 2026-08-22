@@ -343,29 +343,18 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
-    public Mono<Movie> updateEnrichment(
-        MovieId id, MovieMetadata metadata, EnrichmentStatus enrichmentStatus) {
-      return unexpectedMono("updateEnrichment");
-    }
-
-    @Override
     public Mono<Movie> updateEnrichment(Movie movie) {
       return unexpectedMono("updateEnrichment");
     }
 
     @Override
-    public Mono<Movie> updateMetadata(MovieId id, MovieMetadata metadata) {
-      return unexpectedMono("updateMetadata");
+    public Mono<Movie> updateDetails(Movie movie) {
+      return unexpectedMono("updateDetails");
     }
 
     @Override
     public Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility) {
       return unexpectedMono("updateVisibility");
-    }
-
-    @Override
-    public Mono<Movie> updateKind(MovieId id, MediaKind kind) {
-      return unexpectedMono("updateKind");
     }
 
     @Override

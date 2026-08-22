@@ -2,7 +2,6 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -62,7 +61,7 @@ class UpdateMovieUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.movieRepository.updateMetadata(eq(MovieId.of(1L)), any()))
+        when(this.movieRepository.updateDetails(any(Movie.class)))
                 .thenReturn(Mono.just(updated));
 
         var command = new UpdateMovieCommand(
@@ -73,15 +72,17 @@ class UpdateMovieUseCaseTest {
                 .expectNext(updated)
                 .verifyComplete();
 
-        ArgumentCaptor<MovieMetadata> captor = ArgumentCaptor.forClass(MovieMetadata.class);
-        verify(this.movieRepository).updateMetadata(eq(MovieId.of(1L)), captor.capture());
-        assertThat(captor.getValue().title()).isEqualTo("Dune: Part Two");
-        assertThat(captor.getValue().year()).isEqualTo(2024);
-        assertThat(captor.getValue().genres()).containsExactly("Sci-Fi", "Adventure");
-        assertThat(captor.getValue().releaseDate()).isEqualTo("2024-03-01");
-        assertThat(captor.getValue().duration()).isEqualTo("2h 35m");
-        assertThat(captor.getValue().posterPath()).isEqualTo("/poster.jpg");
-        assertThat(captor.getValue().tmdbId()).isEqualTo(438631L);
+        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        verify(this.movieRepository).updateDetails(captor.capture());
+        assertThat(captor.getValue().getId()).isEqualTo(MovieId.of(1L));
+        assertThat(captor.getValue().getMetadata().title()).isEqualTo("Dune: Part Two");
+        assertThat(captor.getValue().getMetadata().year()).isEqualTo(2024);
+        assertThat(captor.getValue().getMetadata().genres())
+                .containsExactly("Sci-Fi", "Adventure");
+        assertThat(captor.getValue().getMetadata().releaseDate()).isEqualTo("2024-03-01");
+        assertThat(captor.getValue().getMetadata().duration()).isEqualTo("2h 35m");
+        assertThat(captor.getValue().getMetadata().posterPath()).isEqualTo("/poster.jpg");
+        assertThat(captor.getValue().getMetadata().tmdbId()).isEqualTo(438631L);
     }
 
     @Test
@@ -118,11 +119,8 @@ class UpdateMovieUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.movieRepository.updateEnrichment(
-                        eq(MovieId.of(1L)), any(MovieMetadata.class), eq(EnrichmentStatus.RAW)))
-                .thenReturn(Mono.just(movie));
-        when(this.movieRepository.updateKind(MovieId.of(1L), MediaKind.OTHER))
-                .thenReturn(Mono.just(movie));
+        when(this.movieRepository.updateDetails(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
                         "Mi grabacion", null, null, null, null, null, null, null,
@@ -130,17 +128,44 @@ class UpdateMovieUseCaseTest {
                 .expectNextCount(1)
                 .verifyComplete();
 
-        ArgumentCaptor<MovieMetadata> captor = ArgumentCaptor.forClass(MovieMetadata.class);
-        verify(this.movieRepository).updateEnrichment(
-                eq(MovieId.of(1L)), captor.capture(), eq(EnrichmentStatus.RAW));
-        assertThat(captor.getValue().title()).isEqualTo("Mi grabacion");
-        assertThat(captor.getValue().tmdbId()).isNull();
-        assertThat(captor.getValue().posterPath()).isNull();
-        assertThat(captor.getValue().popularity()).isNull();
-        assertThat(captor.getValue().year()).isNull();
-        assertThat(captor.getValue().overview()).isNull();
-        verify(this.movieRepository).updateKind(MovieId.of(1L), MediaKind.OTHER);
-        verify(this.movieRepository, never()).updateMetadata(eq(MovieId.of(1L)), any());
+        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        verify(this.movieRepository).updateDetails(captor.capture());
+        Movie reclassified = captor.getValue();
+        assertThat(reclassified.getKind()).isEqualTo(MediaKind.OTHER);
+        assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
+        assertThat(reclassified.getMetadata().title()).isEqualTo("Mi grabacion");
+        assertThat(reclassified.getMetadata().tmdbId()).isNull();
+        assertThat(reclassified.getMetadata().posterPath()).isNull();
+        assertThat(reclassified.getMetadata().popularity()).isNull();
+        assertThat(reclassified.getMetadata().year()).isNull();
+        assertThat(reclassified.getMetadata().overview()).isNull();
+    }
+
+    @Test
+    void switchingFromOtherCreatesRawUnlinkedMovie() {
+        Movie other = new Movie(
+                MovieId.of(1L), "Javier", "Imported clip", MovieStatus.READY,
+                EnrichmentStatus.RAW, null, MovieMetadata.onlyTitle("Imported clip"),
+                MovieVisibility.PRIVATE, java.util.Set.of(), MediaKind.OTHER);
+
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(other));
+        when(this.movieRepository.updateDetails(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+                        "Identifiable movie", null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, MediaKind.MOVIE)))
+                .assertNext(updated -> {
+                    assertThat(updated.getKind()).isEqualTo(MediaKind.MOVIE);
+                    assertThat(updated.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
+                    assertThat(updated.getMetadata().title()).isEqualTo("Identifiable movie");
+                    assertThat(updated.getMetadata().tmdbId()).isNull();
+                })
+                .verifyComplete();
+
+        verify(this.movieRepository).updateDetails(any(Movie.class));
     }
 
     @Test
@@ -157,7 +182,7 @@ class UpdateMovieUseCaseTest {
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never()).updateMetadata(eq(MovieId.of(1L)), any());
+        verify(this.movieRepository, never()).updateDetails(any(Movie.class));
     }
 
     @Test
@@ -172,6 +197,6 @@ class UpdateMovieUseCaseTest {
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never()).updateMetadata(eq(MovieId.of(99L)), any());
+        verify(this.movieRepository, never()).updateDetails(any(Movie.class));
     }
 }

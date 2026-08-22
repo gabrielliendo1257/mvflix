@@ -1,7 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
@@ -44,7 +43,7 @@ public class UpdateMovieUseCase {
                         .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not owned: " + id.value())))
-                        .flatMap(movie -> this.update(movie, id, command))
+                        .flatMap(movie -> this.update(movie, command))
                         .doOnNext(updated -> log.info(
                                 "Movie {} metadata actualizada manualmente",
                                 id.value())));
@@ -55,7 +54,7 @@ public class UpdateMovieUseCase {
      * (solo queda lo que el usuario manda, sin proveedor) y revierte a RAW, todo en
      * una sola llamada. El resto de casos hace merge normal.
      */
-    private Mono<Movie> update(Movie movie, MovieId id, UpdateMovieCommand command) {
+    private Mono<Movie> update(Movie movie, UpdateMovieCommand command) {
         boolean switchedToOther = command.kind() == MediaKind.OTHER
                 && movie.getKind() == MediaKind.MOVIE;
 
@@ -63,15 +62,16 @@ public class UpdateMovieUseCase {
                 ? fromCommand(command)
                 : merge(movie.getMetadata(), command);
 
-        Mono<Movie> updated = switchedToOther
-                ? this.movieRepository.updateEnrichment(id, merged, EnrichmentStatus.RAW)
-                : this.movieRepository.updateMetadata(id, merged);
+        Movie edited = switchedToOther
+                ? movie.reclassifyAsOther(merged)
+                : movie.withMetadata(merged);
 
-        if (command.kind() != null && command.kind() != movie.getKind()) {
-            return updated.flatMap(m ->
-                    this.movieRepository.updateKind(id, command.kind()));
+        if (!switchedToOther
+                && command.kind() == MediaKind.MOVIE
+                && movie.getKind() == MediaKind.OTHER) {
+            edited = edited.reclassifyAsMovie();
         }
-        return updated;
+        return this.movieRepository.updateDetails(edited);
     }
 
     /** Metadata solo con lo que manda el usuario (sin proveedor): para el paso a OTHER. */

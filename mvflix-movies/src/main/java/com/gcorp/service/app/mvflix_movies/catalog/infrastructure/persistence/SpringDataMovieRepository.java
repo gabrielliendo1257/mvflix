@@ -1,10 +1,8 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 
@@ -187,44 +185,26 @@ public class SpringDataMovieRepository implements MovieRepository {
 
     @Override
     public Mono<Movie> updateEnrichment(Movie movie) {
-        return this.updateEnrichment(
-                movie.getId(), movie.getMetadata(), movie.getEnrichmentStatus());
+        return this.updateDetailsState(movie, false);
     }
 
     @Override
-    public Mono<Movie> updateEnrichment(MovieId id,
-            MovieMetadata metadata, EnrichmentStatus enrichmentStatus) {
-        return this.databaseClient
+    public Mono<Movie> updateDetails(Movie movie) {
+        return this.updateDetailsState(movie, true);
+    }
+
+    private Mono<Movie> updateDetailsState(Movie movie, boolean updateKind) {
+        String kindAssignment = updateKind ? ", kind = :kind" : "";
+        DatabaseClient.GenericExecuteSpec statement = this.databaseClient
                 .sql(
                         """
                         UPDATE movies
                         SET title = :title, metadata = CAST(:metadata AS jsonb),
-                            enrichment_status = :enrichment_status,
-                            updated_at = NOW()
-                        WHERE id = :id
-                        RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text, visibility, kind,
-                                  (SELECT mm.object_id FROM media mm
-                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
-                                  (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
-                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
-                        """)
-                .bind("metadata", this.jsonCodec.encode(metadata))
-                .bind("title", metadata.title())
-                .bind("enrichment_status", enrichmentStatus.name())
-                .bind("id", id.value())
-                .map(this::toRow)
-                .one()
-                .map(this.rowMapper::toDomain);
-    }
-
-    @Override
-    public Mono<Movie> updateMetadata(MovieId id, MovieMetadata metadata) {
-        return this.databaseClient
-                .sql(
+                            enrichment_status = :enrichment_status
                         """
-                        UPDATE movies
-                        SET title = :title, metadata = CAST(:metadata AS jsonb), updated_at = NOW()
+                        + kindAssignment
+                        + """
+                            , updated_at = NOW()
                         WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility, kind,
@@ -233,9 +213,14 @@ public class SpringDataMovieRepository implements MovieRepository {
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
-                .bind("metadata", this.jsonCodec.encode(metadata))
-                .bind("title", metadata.title())
-                .bind("id", id.value())
+                .bind("metadata", this.jsonCodec.encode(movie.getMetadata()))
+                .bind("title", movie.getMetadata().title())
+                .bind("enrichment_status", movie.getEnrichmentStatus().name())
+                .bind("id", movie.getId().value());
+        if (updateKind) {
+            statement = statement.bind("kind", movie.getKind().name());
+        }
+        return statement
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -288,28 +273,6 @@ public class SpringDataMovieRepository implements MovieRepository {
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
                 .bind("visibility", visibility.name())
-                .bind("id", id.value())
-                .map(this::toRow)
-                .one()
-                .map(this.rowMapper::toDomain);
-    }
-
-    @Override
-    public Mono<Movie> updateKind(MovieId id, MediaKind kind) {
-        return this.databaseClient
-                .sql(
-                        """
-                        UPDATE movies
-                        SET kind = :kind, updated_at = NOW()
-                        WHERE id = :id
-                        RETURNING id, owner_username, title, status, enrichment_status,
-                                  metadata::text, visibility, kind,
-                                  (SELECT mm.object_id FROM media mm
-                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
-                                  (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
-                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
-                        """)
-                .bind("kind", kind.name())
                 .bind("id", id.value())
                 .map(this::toRow)
                 .one()
