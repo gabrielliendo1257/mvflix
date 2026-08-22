@@ -4,10 +4,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 
+import jakarta.validation.constraints.NotBlank;
+
 import java.util.List;
 
 public record CreateMovieRequest(
-    String title,
+    @NotBlank String title,
     String originalTitle,
     Integer year,
     List<String> genres,

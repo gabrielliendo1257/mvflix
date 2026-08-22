@@ -10,6 +10,8 @@ import com.gcorp.service.app.mvflix_movies.presenter.api.dto.IdentifyAssetReques
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MediaAssetResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.ScanLibraryRequest;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -47,7 +49,7 @@ public class MediaAssetController {
     /** El BFF entrega aqui los archivos que el storage descubrio en la biblioteca. */
     @PostMapping(value = "/libraries/{libraryId}/scan", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Flux<MediaAssetResponse> scan(
-            @PathVariable Long libraryId, @RequestBody ScanLibraryRequest request) {
+            @PathVariable Long libraryId, @Valid @RequestBody ScanLibraryRequest request) {
         return this.scanLibraryUseCase
                 .execute(libraryId, this.mapper.toScannedFiles(request))
                 .map(this.mapper::toResponse);
@@ -81,7 +83,7 @@ public class MediaAssetController {
 
     @PostMapping(value = "/media-assets/{id}/identify", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MediaAssetResponse> identify(
-            @PathVariable Long id, @RequestBody IdentifyAssetRequest request) {
+            @PathVariable Long id, @Valid @RequestBody IdentifyAssetRequest request) {
         return this.identifyAssetUseCase
                 .execute(MediaAssetId.of(id), request.title(), request.tmdbId(), request.kind())
                 .map(this.mapper::toResponse);

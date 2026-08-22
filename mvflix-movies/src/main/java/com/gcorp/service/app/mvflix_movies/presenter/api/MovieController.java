@@ -25,6 +25,8 @@ import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateSharesRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateVisibilityRequest;
 
+import jakarta.validation.Valid;
+
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -86,7 +88,7 @@ public class MovieController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MovieResponse> create(@RequestBody CreateMovieRequest request) {
+    public Mono<MovieResponse> create(@Valid @RequestBody CreateMovieRequest request) {
         MediaKind kind = request.kind() == null ? MediaKind.MOVIE : request.kind();
         return this.createMovieUseCase
                 .execute(new CreateMovieCommand(this.mapper.toMetadata(request), kind))
@@ -100,7 +102,7 @@ public class MovieController {
 
     @PostMapping("/{id}/visibility")
     public Mono<MovieResponse> updateVisibility(
-            @PathVariable Long id, @RequestBody UpdateVisibilityRequest request) {
+            @PathVariable Long id, @Valid @RequestBody UpdateVisibilityRequest request) {
         return this.updateVisibilityUseCase
                 .execute(MovieId.of(id), request.visibility())
                 .map(this.mapper::toResponse);
@@ -108,7 +110,7 @@ public class MovieController {
 
     @PostMapping("/{id}/shares")
     public Mono<MovieResponse> updateShares(
-            @PathVariable Long id, @RequestBody UpdateSharesRequest request) {
+            @PathVariable Long id, @Valid @RequestBody UpdateSharesRequest request) {
         return this.updateSharesUseCase
                 .execute(MovieId.of(id), request.usernames())
                 .map(this.mapper::toResponse);
@@ -116,7 +118,7 @@ public class MovieController {
 
     @PostMapping(value = "/visibility/bulk", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<BulkVisibilityResponse> bulkVisibility(
-            @RequestBody BulkVisibilityRequest request) {
+            @Valid @RequestBody BulkVisibilityRequest request) {
         List<MovieId> movieIds = request.movieIds() == null
                 ? List.of()
                 : request.movieIds().stream().map(MovieId::of).toList();
@@ -136,7 +138,7 @@ public class MovieController {
 
     @PostMapping(value = "/{id}/complete", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MovieResponse> complete(
-            @PathVariable Long id, @RequestBody CompleteMovieRequest request) {
+            @PathVariable Long id, @Valid @RequestBody CompleteMovieRequest request) {
         return this.completeMovieUseCase
                 .execute(MovieId.of(id), request.objectId(), request.objectKey())
                 .map(this.mapper::toResponse);
@@ -145,7 +147,7 @@ public class MovieController {
     /** Edición manual de la metadata del dueño (merge: null conserva el valor actual). */
     @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MovieResponse> update(
-            @PathVariable Long id, @RequestBody UpdateMovieRequest request) {
+            @PathVariable Long id, @Valid @RequestBody UpdateMovieRequest request) {
         return this.updateMovieUseCase
                 .execute(MovieId.of(id), this.mapper.toCommand(request))
                 .map(this.mapper::toResponse);
@@ -159,7 +161,7 @@ public class MovieController {
     @PostMapping(value = "/{id}/enrich", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MovieResponse> enrich(
             @PathVariable Long id,
-            @RequestBody(required = false) EnrichMovieRequest request) {
+            @Valid @RequestBody(required = false) EnrichMovieRequest request) {
         return this.enrichMovieUseCase
                 .enrichCurrentUser(
                         MovieId.of(id), request == null ? null : request.tmdbId())
