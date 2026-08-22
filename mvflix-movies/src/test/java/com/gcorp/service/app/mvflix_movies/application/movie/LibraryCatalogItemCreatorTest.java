@@ -50,7 +50,7 @@ class LibraryCatalogItemCreatorTest {
 
         StepVerifier.create(this.creator.createFromLibrary(
                         "Javier", "Dune", MediaKind.MOVIE))
-                .assertNext(created -> assertThat(created.getId()).isEqualTo(MovieId.of(50L)))
+                .expectNext(MovieId.of(50L))
                 .verifyComplete();
 
         ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);

@@ -23,9 +23,9 @@ class IdentifyAssetTransaction {
             MediaAsset asset, String ownerUsername, String title, MediaKind kind) {
         return this.catalogItemCreator
                 .createFromLibrary(ownerUsername, title, kind)
-                .flatMap(saved -> this.assetRepository
-                        .identifyIfUnidentified(asset.getId(), saved.getId())
-                        .map(identified -> new IdentificationResult(identified, saved))
+                .flatMap(movieId -> this.assetRepository
+                        .identifyIfUnidentified(asset.getId(), movieId)
+                        .map(identified -> new IdentificationResult(identified, movieId))
                         .switchIfEmpty(Mono.error(
                                 new MediaAssetAlreadyIdentifiedException(
                                         "Media asset already identified: "

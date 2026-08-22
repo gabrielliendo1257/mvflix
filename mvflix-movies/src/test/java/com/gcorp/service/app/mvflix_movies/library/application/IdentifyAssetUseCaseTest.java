@@ -8,19 +8,15 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemEnricher;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +34,7 @@ class IdentifyAssetUseCaseTest {
 
     @Mock private MediaAssetRepository assetRepository;
     @Mock private UserProvider userProvider;
-    @Mock private EnrichMovieUseCase enrichMovieUseCase;
+    @Mock private CatalogItemEnricher catalogItemEnricher;
     @Mock private IdentifyAssetTransaction identifyAssetTransaction;
 
     @InjectMocks private IdentifyAssetUseCase useCase;
@@ -57,24 +53,13 @@ class IdentifyAssetUseCaseTest {
                         true,
                         Instant.now(),
                         Instant.now());
-        Movie created =
-                new Movie(
-                        MovieId.of(50L),
-                        "Javier",
-                        "Dune",
-                        MovieStatus.READY,
-                        EnrichmentStatus.RAW,
-                        null,
-                        null,
-                        MovieVisibility.PRIVATE,
-                        java.util.Set.of(), MediaKind.MOVIE);
-
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.identifyAssetTransaction.execute(
                         eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
-                .thenReturn(Mono.just(new IdentificationResult(asset.identify(created.getId()), created)));
+                .thenReturn(Mono.just(new IdentificationResult(
+                        asset.identify(MovieId.of(50L)), MovieId.of(50L))));
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null, null))
                 .expectNextMatches(identified ->
@@ -84,7 +69,7 @@ class IdentifyAssetUseCaseTest {
 
         verify(this.identifyAssetTransaction).execute(
                 asset, "Javier", "Dune", MediaKind.MOVIE);
-        verify(this.enrichMovieUseCase, never()).enrich(any(Movie.class), any(Long.class));
+        verify(this.catalogItemEnricher, never()).enrich(any(MovieId.class), any(Long.class));
     }
 
     @Test
@@ -114,7 +99,7 @@ class IdentifyAssetUseCaseTest {
                         any(String.class),
                         any(String.class),
                         any(MediaKind.class));
-        verify(this.enrichMovieUseCase, never()).enrich(any(Movie.class), any(Long.class));
+        verify(this.catalogItemEnricher, never()).enrich(any(MovieId.class), any(Long.class));
     }
 
     @Test
@@ -170,29 +155,6 @@ class IdentifyAssetUseCaseTest {
                         true,
                         Instant.now(),
                         Instant.now());
-        Movie created =
-                new Movie(
-                        MovieId.of(50L),
-                        "Javier",
-                        "Interstellar (2014)",
-                        MovieStatus.READY,
-                        EnrichmentStatus.RAW,
-                        null,
-                        null,
-                        MovieVisibility.PRIVATE,
-                        java.util.Set.of(), MediaKind.MOVIE);
-        Movie enriched =
-                new Movie(
-                        MovieId.of(50L),
-                        "Javier",
-                        "Interstellar",
-                        MovieStatus.READY,
-                        EnrichmentStatus.ENRICHED,
-                        null,
-                        null,
-                        MovieVisibility.PRIVATE,
-                        java.util.Set.of(), MediaKind.MOVIE);
-
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
@@ -201,9 +163,10 @@ class IdentifyAssetUseCaseTest {
                         eq("Javier"),
                         eq("Interstellar (2014)"),
                         eq(MediaKind.MOVIE)))
-                .thenReturn(Mono.just(new IdentificationResult(asset.identify(created.getId()), created)));
-        when(this.enrichMovieUseCase.enrich(any(Movie.class), any(Long.class)))
-                .thenReturn(Mono.just(enriched));
+                .thenReturn(Mono.just(new IdentificationResult(
+                        asset.identify(MovieId.of(50L)), MovieId.of(50L))));
+        when(this.catalogItemEnricher.enrich(MovieId.of(50L), 157336L))
+                .thenReturn(Mono.empty());
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Interstellar (2014)", 157336L, null))
                 .expectNextMatches(identified ->
@@ -211,7 +174,7 @@ class IdentifyAssetUseCaseTest {
                                 && identified.getMovieId().equals(MovieId.of(50L)))
                 .verifyComplete();
 
-        verify(this.enrichMovieUseCase).enrich(any(Movie.class), eq(157336L));
+        verify(this.catalogItemEnricher).enrich(MovieId.of(50L), 157336L);
     }
 
     @Test
@@ -228,25 +191,14 @@ class IdentifyAssetUseCaseTest {
                         true,
                         Instant.now(),
                         Instant.now());
-        Movie created =
-                new Movie(
-                        MovieId.of(50L),
-                        "Javier",
-                        "Dune",
-                        MovieStatus.READY,
-                        EnrichmentStatus.RAW,
-                        null,
-                        null,
-                        MovieVisibility.PRIVATE,
-                        java.util.Set.of(), MediaKind.MOVIE);
-
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.identifyAssetTransaction.execute(
                         eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
-                .thenReturn(Mono.just(new IdentificationResult(asset.identify(created.getId()), created)));
-        when(this.enrichMovieUseCase.enrich(any(Movie.class), any(Long.class)))
+                .thenReturn(Mono.just(new IdentificationResult(
+                        asset.identify(MovieId.of(50L)), MovieId.of(50L))));
+        when(this.catalogItemEnricher.enrich(MovieId.of(50L), 123L))
                 .thenReturn(Mono.error(new IllegalStateException("TMDB down")));
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L, null))
@@ -271,25 +223,14 @@ class IdentifyAssetUseCaseTest {
                         true,
                         Instant.now(),
                         Instant.now());
-        Movie created =
-                new Movie(
-                        MovieId.of(50L),
-                        "Javier",
-                        "Dune",
-                        MovieStatus.READY,
-                        EnrichmentStatus.RAW,
-                        null,
-                        null,
-                        MovieVisibility.PRIVATE,
-                        java.util.Set.of(), MediaKind.MOVIE);
-
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.identifyAssetTransaction.execute(
                         eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
-                .thenReturn(Mono.just(new IdentificationResult(asset.identify(created.getId()), created)));
-        when(this.enrichMovieUseCase.enrich(any(Movie.class), any(Long.class)))
+                .thenReturn(Mono.just(new IdentificationResult(
+                        asset.identify(MovieId.of(50L)), MovieId.of(50L))));
+        when(this.catalogItemEnricher.enrich(MovieId.of(50L), 123L))
                 .thenReturn(Mono.never());
 
         StepVerifier.withVirtualTime(() ->

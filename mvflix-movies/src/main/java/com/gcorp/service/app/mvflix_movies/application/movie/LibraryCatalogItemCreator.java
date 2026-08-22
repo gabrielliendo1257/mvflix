@@ -2,6 +2,7 @@ package com.gcorp.service.app.mvflix_movies.application.movie;
 
 import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemCreator;
@@ -20,10 +21,10 @@ public class LibraryCatalogItemCreator implements CatalogItemCreator {
     private final MovieRepository movieRepository;
 
     @Override
-    public Mono<Movie> createFromLibrary(
+    public Mono<MovieId> createFromLibrary(
             String ownerUsername, String title, MediaKind kind) {
         Movie movie = Movie.fromLibraryAsset(
                 ownerUsername, MovieMetadata.onlyTitle(title), kind);
-        return this.movieRepository.save(movie);
+        return this.movieRepository.save(movie).map(Movie::getId);
     }
 }
