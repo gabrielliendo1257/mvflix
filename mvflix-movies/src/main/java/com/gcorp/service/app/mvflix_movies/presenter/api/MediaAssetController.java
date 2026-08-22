@@ -1,16 +1,11 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
-import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.application.scan.IdentifyAssetUseCase;
+import com.gcorp.service.app.mvflix_movies.application.scan.MediaAssetQueries;
 import com.gcorp.service.app.mvflix_movies.application.scan.ScanLibraryUseCase;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.IdentifyAssetRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MediaAssetResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.ScanLibraryRequest;
@@ -35,23 +30,17 @@ public class MediaAssetController {
 
     private final ScanLibraryUseCase scanLibraryUseCase;
     private final IdentifyAssetUseCase identifyAssetUseCase;
-    private final MediaAssetRepository assetRepository;
-    private final MovieRepository movieRepository;
-    private final UserProvider userProvider;
+    private final MediaAssetQueries mediaAssetQueries;
     private final MediaAssetApiMapper mapper;
 
     public MediaAssetController(
             ScanLibraryUseCase scanLibraryUseCase,
             IdentifyAssetUseCase identifyAssetUseCase,
-            MediaAssetRepository assetRepository,
-            MovieRepository movieRepository,
-            UserProvider userProvider,
+            MediaAssetQueries mediaAssetQueries,
             MediaAssetApiMapper mapper) {
         this.scanLibraryUseCase = scanLibraryUseCase;
         this.identifyAssetUseCase = identifyAssetUseCase;
-        this.assetRepository = assetRepository;
-        this.movieRepository = movieRepository;
-        this.userProvider = userProvider;
+        this.mediaAssetQueries = mediaAssetQueries;
         this.mapper = mapper;
     }
 
@@ -68,40 +57,25 @@ public class MediaAssetController {
     public Flux<MediaAssetResponse> assets(
             @PathVariable Long libraryId,
             @RequestParam(required = false) String status) {
-        Flux<MediaAsset> assets = status == null || status.isBlank()
-                ? this.assetRepository.findAllByLibraryId(libraryId)
-                : this.assetRepository.findAllByLibraryIdAndStatus(
-                        libraryId, MediaAssetStatus.valueOf(status));
-        return assets.map(this.mapper::toResponse);
+        MediaAssetStatus parsedStatus = status == null || status.isBlank()
+                ? null
+                : MediaAssetStatus.valueOf(status);
+        return this.mediaAssetQueries
+                .findByLibrary(libraryId, parsedStatus)
+                .map(this.mapper::toResponse);
     }
 
     @GetMapping("/media-assets/{id}")
     public Mono<MediaAssetResponse> assetById(@PathVariable Long id) {
-        return this.assetRepository
+        return this.mediaAssetQueries
                 .findById(MediaAssetId.of(id))
-                .switchIfEmpty(Mono.error(
-                        new MediaAssetNotFoundException("Media asset not found: " + id)))
                 .map(this.mapper::toResponse);
     }
 
     @GetMapping("/media-assets/by-movie/{movieId}")
     public Mono<MediaAssetResponse> assetByMovie(@PathVariable Long movieId) {
-        return this.userProvider
-                .getAuthenticatedUser()
-                .flatMap(user -> this.movieRepository
-                        .findById(MovieId.of(movieId))
-                        .switchIfEmpty(Mono.defer(() -> Mono.error(
-                                new MovieAccessDeniedException(
-                                        "Movie not accessible: " + movieId))))
-                        .filter(movie -> movie.isVisibleTo(user.subject()))
-                        .switchIfEmpty(Mono.defer(() -> Mono.error(
-                                new MovieAccessDeniedException(
-                                        "Movie not accessible: " + movieId)))))
-                .flatMap(movie -> this.assetRepository
-                        .findByMovieId(MovieId.of(movieId))
-                        .switchIfEmpty(Mono.defer(() -> Mono.error(
-                                new MediaAssetNotFoundException(
-                                        "No media asset for movie: " + movieId)))))
+        return this.mediaAssetQueries
+                .findByMovie(MovieId.of(movieId))
                 .map(this.mapper::toResponse);
     }
 
