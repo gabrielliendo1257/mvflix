@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.infrastructure.scheduler;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.scheduler;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.DraftCleanupUseCase;
 
