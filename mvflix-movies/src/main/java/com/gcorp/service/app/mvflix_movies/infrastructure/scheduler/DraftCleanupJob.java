@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.scheduler;
 
-import com.gcorp.service.app.mvflix_movies.application.cleanup.DraftCleanupUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.DraftCleanupUseCase;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.application.cleanup;
+package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 

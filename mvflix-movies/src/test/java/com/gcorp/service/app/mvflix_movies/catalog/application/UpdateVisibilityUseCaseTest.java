@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.application.movie;
+package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;

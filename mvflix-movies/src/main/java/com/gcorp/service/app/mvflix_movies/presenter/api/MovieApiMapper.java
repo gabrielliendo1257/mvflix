@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
-import com.gcorp.service.app.mvflix_movies.application.movie.UpdateMovieCommand;
+import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieCommand;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
