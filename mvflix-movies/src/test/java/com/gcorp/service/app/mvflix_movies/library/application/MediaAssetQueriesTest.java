@@ -11,14 +11,9 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemAccess;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,13 +26,11 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Instant;
-import java.util.Set;
-
 @ExtendWith(MockitoExtension.class)
 class MediaAssetQueriesTest {
 
     @Mock private MediaAssetRepository assetRepository;
-    @Mock private MovieRepository movieRepository;
+    @Mock private CatalogItemAccess catalogItemAccess;
     @Mock private UserProvider userProvider;
 
     @InjectMocks private MediaAssetQueries queries;
@@ -81,11 +74,11 @@ class MediaAssetQueriesTest {
 
     @Test
     void visibleMovieReturnsItsAsset() {
-        Movie movie = movie(MovieVisibility.SHARED, Set.of("Maria"));
         MediaAsset asset = asset(1L, MediaAssetStatus.IDENTIFIED, MovieId.of(10L));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.movieRepository.findById(MovieId.of(10L))).thenReturn(Mono.just(movie));
+        when(this.catalogItemAccess.requireVisible(MovieId.of(10L), "Maria"))
+                .thenReturn(Mono.empty());
         when(this.assetRepository.findByMovieId(MovieId.of(10L))).thenReturn(Mono.just(asset));
 
         StepVerifier.create(this.queries.findByMovie(MovieId.of(10L)))
@@ -95,10 +88,11 @@ class MediaAssetQueriesTest {
 
     @Test
     void invisibleMovieDoesNotExposeItsAsset() {
-        Movie movie = movie(MovieVisibility.PRIVATE, Set.of());
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.movieRepository.findById(MovieId.of(10L))).thenReturn(Mono.just(movie));
+        when(this.catalogItemAccess.requireVisible(MovieId.of(10L), "Maria"))
+                .thenReturn(Mono.error(new MovieAccessDeniedException(
+                        "Movie not accessible: 10")));
 
         StepVerifier.create(this.queries.findByMovie(MovieId.of(10L)))
                 .expectError(MovieAccessDeniedException.class)
@@ -109,10 +103,10 @@ class MediaAssetQueriesTest {
 
     @Test
     void reportsWhenVisibleMovieHasNoAsset() {
-        Movie movie = movie(MovieVisibility.PUBLIC, Set.of());
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.movieRepository.findById(MovieId.of(10L))).thenReturn(Mono.just(movie));
+        when(this.catalogItemAccess.requireVisible(MovieId.of(10L), "Maria"))
+                .thenReturn(Mono.empty());
         when(this.assetRepository.findByMovieId(MovieId.of(10L))).thenReturn(Mono.empty());
 
         StepVerifier.create(this.queries.findByMovie(MovieId.of(10L)))
@@ -136,17 +130,4 @@ class MediaAssetQueriesTest {
                 now);
     }
 
-    private static Movie movie(MovieVisibility visibility, Set<String> sharedWith) {
-        return new Movie(
-                MovieId.of(10L),
-                "Javier",
-                "Dune",
-                MovieStatus.READY,
-                EnrichmentStatus.ENRICHED,
-                null,
-                null,
-                visibility,
-                sharedWith,
-                MediaKind.MOVIE);
-    }
 }

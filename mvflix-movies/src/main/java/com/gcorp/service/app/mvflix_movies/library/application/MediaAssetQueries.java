@@ -6,9 +6,8 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemAccess;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,7 +21,7 @@ import reactor.core.publisher.Mono;
 public class MediaAssetQueries {
 
     private final MediaAssetRepository assetRepository;
-    private final MovieRepository movieRepository;
+    private final CatalogItemAccess catalogItemAccess;
     private final UserProvider userProvider;
 
     public Flux<MediaAsset> findByLibrary(Long libraryId, MediaAssetStatus status) {
@@ -41,14 +40,11 @@ public class MediaAssetQueries {
     public Mono<MediaAsset> findByMovie(MovieId movieId) {
         return this.userProvider
                 .getAuthenticatedUser()
-                .flatMap(user -> this.movieRepository
-                        .findById(movieId)
-                        .filter(movie -> movie.isVisibleTo(user.subject()))
-                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
-                                "Movie not accessible: " + movieId.value()))))
-                .flatMap(movie -> this.assetRepository
-                        .findByMovieId(movieId)
-                        .switchIfEmpty(Mono.error(new MediaAssetNotFoundException(
-                                "No media asset for movie: " + movieId.value()))));
+                .flatMap(user -> this.catalogItemAccess
+                        .requireVisible(movieId, user.subject())
+                        .then(Mono.defer(() -> this.assetRepository
+                                .findByMovieId(movieId)
+                                .switchIfEmpty(Mono.error(new MediaAssetNotFoundException(
+                                        "No media asset for movie: " + movieId.value()))))));
     }
 }
