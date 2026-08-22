@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import reactor.core.publisher.Mono;
 
@@ -32,6 +33,7 @@ public class UpdateMovieUseCase {
     private final MovieRepository movieRepository;
     private final UserProvider userProvider;
 
+    @Transactional(transactionManager = "connectionFactoryTransactionManager")
     public Mono<Movie> execute(MovieId id, UpdateMovieCommand command) {
         return this.userProvider
                 .getAuthenticatedUser()
