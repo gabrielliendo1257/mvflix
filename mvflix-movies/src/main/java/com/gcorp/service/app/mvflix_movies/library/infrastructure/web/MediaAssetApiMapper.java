@@ -1,9 +1,9 @@
-package com.gcorp.service.app.mvflix_movies.presenter.api;
+package com.gcorp.service.app.mvflix_movies.library.infrastructure.web;
 
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MediaAssetResponse;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.ScanLibraryRequest;
+import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.MediaAssetResponse;
+import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.ScanLibraryRequest;
 
 import org.springframework.stereotype.Component;
 

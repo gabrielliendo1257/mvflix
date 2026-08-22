@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.infrastructure.database;
+package com.gcorp.service.app.mvflix_movies.library.infrastructure.persistence;
 
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;

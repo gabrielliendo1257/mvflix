@@ -6,8 +6,8 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.BulkVisibilityRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CompleteMovieRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.CreateMovieRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.IdentifyAssetRequest;
-import com.gcorp.service.app.mvflix_movies.presenter.api.dto.ScanLibraryRequest;
+import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.IdentifyAssetRequest;
+import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.ScanLibraryRequest;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.UpdateVisibilityRequest;
 
 import jakarta.validation.ConstraintViolation;
