@@ -45,4 +45,13 @@ class LayerDependencyTest {
             .dependOnClassesThat()
             .haveSimpleNameEndingWith("Repository")
             .because("los controllers deben invocar casos de uso o queries de Application");
+
+    @ArchTest
+    static final ArchRule library_adapters_are_internal = noClasses()
+            .that()
+            .resideOutsideOfPackage("..library..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..library.infrastructure..")
+            .because("otros módulos solo deben consumir dominio o contratos de Library");
 }
