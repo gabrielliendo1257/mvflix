@@ -3,13 +3,13 @@ package com.gcorp.service.app.mvflix_movies.application.scan;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetAlreadyIdentifiedException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,9 +33,9 @@ import java.time.Duration;
 public class IdentifyAssetUseCase {
 
     private final MediaAssetRepository assetRepository;
-    private final MovieRepository movieRepository;
     private final UserProvider userProvider;
     private final EnrichMovieUseCase enrichMovieUseCase;
+    private final IdentifyAssetTransaction identifyAssetTransaction;
 
     public Mono<MediaAsset> execute(MediaAssetId assetId, String title, Long tmdbId, MediaKind kind) {
         return this.assetRepository
@@ -56,10 +56,17 @@ public class IdentifyAssetUseCase {
         MediaKind resolvedKind = kind == null ? MediaKind.MOVIE : kind;
         return this.userProvider
                 .getAuthenticatedUser()
-                .flatMap(user -> this.movieRepository.save(
-                        Movie.fromLibraryAsset(user.subject(), MovieMetadata.onlyTitle(title), resolvedKind)))
-                .flatMap(movie -> this.enrichIfRequested(movie, tmdbId))
-                .flatMap(movie -> this.assetRepository.save(asset.identify(movie.getId())))
+                .map(user -> Movie.fromLibraryAsset(
+                        user.subject(), MovieMetadata.onlyTitle(title), resolvedKind))
+                .flatMap(movie -> this.identifyAssetTransaction.execute(asset, movie))
+                .flatMap(result -> this.enrichIfRequested(result.movie(), tmdbId)
+                        .thenReturn(result.asset()))
+                .onErrorResume(
+                        MediaAssetAlreadyIdentifiedException.class,
+                        conflict -> this.assetRepository
+                                .findById(asset.getId())
+                                .filter(MediaAsset::isIdentified)
+                                .switchIfEmpty(Mono.error(conflict)))
                 .doOnNext(identified -> log.info(
                         "Asset {} identificado: path={} -> movie_id={}",
                         asset.getId(), asset.getRelativePath(),

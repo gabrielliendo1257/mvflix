@@ -11,6 +11,9 @@ public interface MediaAssetRepository {
 
     Mono<MediaAsset> findById(MediaAssetId id);
 
+    /** Compare-and-set: vincula únicamente si el asset continúa sin identificar. */
+    Mono<MediaAsset> identifyIfUnidentified(MediaAssetId assetId, MovieId movieId);
+
     Mono<MediaAsset> findByMovieId(MovieId movieId);
 
     /** Desvincula los assets de una película sin borrar el catálogo del filesystem. */

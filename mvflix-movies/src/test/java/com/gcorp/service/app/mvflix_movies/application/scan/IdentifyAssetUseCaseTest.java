@@ -11,6 +11,7 @@ import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetAlreadyIdentifiedException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
@@ -19,7 +20,6 @@ import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
 
@@ -39,9 +39,9 @@ import java.time.Instant;
 class IdentifyAssetUseCaseTest {
 
     @Mock private MediaAssetRepository assetRepository;
-    @Mock private MovieRepository movieRepository;
     @Mock private UserProvider userProvider;
     @Mock private EnrichMovieUseCase enrichMovieUseCase;
+    @Mock private IdentifyAssetTransaction identifyAssetTransaction;
 
     @InjectMocks private IdentifyAssetUseCase useCase;
 
@@ -74,9 +74,8 @@ class IdentifyAssetUseCaseTest {
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.save(any(Movie.class))).thenReturn(Mono.just(created));
-        when(this.assetRepository.save(any(MediaAsset.class)))
-                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+        when(this.identifyAssetTransaction.execute(eq(asset), any(Movie.class)))
+                .thenReturn(Mono.just(new IdentificationResult(asset.identify(created.getId()), created)));
 
         ArgumentCaptor<Movie> movieCaptor = ArgumentCaptor.forClass(Movie.class);
 
@@ -86,7 +85,7 @@ class IdentifyAssetUseCaseTest {
                                 && identified.getMovieId().equals(MovieId.of(50L)))
                 .verifyComplete();
 
-        verify(this.movieRepository).save(movieCaptor.capture());
+        verify(this.identifyAssetTransaction).execute(eq(asset), movieCaptor.capture());
         Movie saved = movieCaptor.getValue();
         assertThat(saved.getTitle()).isEqualTo("Dune");
         assertThat(saved.getStatus()).isEqualTo(MovieStatus.READY);
@@ -116,8 +115,8 @@ class IdentifyAssetUseCaseTest {
                 .expectNextMatches(asset -> asset.getMovieId().equals(MovieId.of(50L)))
                 .verifyComplete();
 
-        verify(this.movieRepository, never()).save(any(Movie.class));
-        verify(this.assetRepository, never()).save(any(MediaAsset.class));
+        verify(this.identifyAssetTransaction, never())
+                .execute(any(MediaAsset.class), any(Movie.class));
         verify(this.enrichMovieUseCase, never()).enrich(any(Movie.class), any(Long.class));
     }
 
@@ -128,6 +127,35 @@ class IdentifyAssetUseCaseTest {
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(999L), "Dune", null, null))
                 .expectError(MediaAssetNotFoundException.class)
                 .verify();
+    }
+
+    @Test
+    void concurrentIdentificationReturnsWinningLink() {
+        MediaAsset asset =
+                new MediaAsset(
+                        MediaAssetId.of(1L),
+                        7L,
+                        "Dune.mp4",
+                        1024,
+                        "video/mp4",
+                        MediaAssetStatus.UNIDENTIFIED,
+                        null,
+                        true,
+                        Instant.now(),
+                        Instant.now());
+        MediaAsset winner = asset.identify(MovieId.of(50L));
+
+        when(this.assetRepository.findById(MediaAssetId.of(1L)))
+                .thenReturn(Mono.just(asset), Mono.just(winner));
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.identifyAssetTransaction.execute(eq(asset), any(Movie.class)))
+                .thenReturn(Mono.error(
+                        new MediaAssetAlreadyIdentifiedException("already identified")));
+
+        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null, null))
+                .expectNext(winner)
+                .verifyComplete();
     }
 
     @Test
@@ -170,11 +198,10 @@ class IdentifyAssetUseCaseTest {
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.save(any(Movie.class))).thenReturn(Mono.just(created));
+        when(this.identifyAssetTransaction.execute(eq(asset), any(Movie.class)))
+                .thenReturn(Mono.just(new IdentificationResult(asset.identify(created.getId()), created)));
         when(this.enrichMovieUseCase.enrich(any(Movie.class), any(Long.class)))
                 .thenReturn(Mono.just(enriched));
-        when(this.assetRepository.save(any(MediaAsset.class)))
-                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Interstellar (2014)", 157336L, null))
                 .expectNextMatches(identified ->
@@ -214,17 +241,16 @@ class IdentifyAssetUseCaseTest {
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.save(any(Movie.class))).thenReturn(Mono.just(created));
+        when(this.identifyAssetTransaction.execute(eq(asset), any(Movie.class)))
+                .thenReturn(Mono.just(new IdentificationResult(asset.identify(created.getId()), created)));
         when(this.enrichMovieUseCase.enrich(any(Movie.class), any(Long.class)))
                 .thenReturn(Mono.error(new IllegalStateException("TMDB down")));
-        when(this.assetRepository.save(any(MediaAsset.class)))
-                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L, null))
                 .expectNextMatches(identified -> identified.isIdentified())
                 .verifyComplete();
 
-        verify(this.assetRepository).save(any(MediaAsset.class));
+        verify(this.identifyAssetTransaction).execute(eq(asset), any(Movie.class));
     }
 
     @Test
@@ -256,11 +282,10 @@ class IdentifyAssetUseCaseTest {
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.save(any(Movie.class))).thenReturn(Mono.just(created));
+        when(this.identifyAssetTransaction.execute(eq(asset), any(Movie.class)))
+                .thenReturn(Mono.just(new IdentificationResult(asset.identify(created.getId()), created)));
         when(this.enrichMovieUseCase.enrich(any(Movie.class), any(Long.class)))
                 .thenReturn(Mono.never());
-        when(this.assetRepository.save(any(MediaAsset.class)))
-                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.withVirtualTime(() ->
                         this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L, null))
@@ -270,6 +295,6 @@ class IdentifyAssetUseCaseTest {
                                 && identified.getMovieId().equals(MovieId.of(50L)))
                 .verifyComplete();
 
-        verify(this.assetRepository).save(any(MediaAsset.class));
+        verify(this.identifyAssetTransaction).execute(eq(asset), any(Movie.class));
     }
 }

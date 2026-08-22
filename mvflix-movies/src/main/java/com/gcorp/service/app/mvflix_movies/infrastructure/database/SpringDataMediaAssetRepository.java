@@ -95,6 +95,24 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
     }
 
     @Override
+    public Mono<MediaAsset> identifyIfUnidentified(MediaAssetId assetId, MovieId movieId) {
+        return this.databaseClient
+                .sql(
+                        """
+                        UPDATE media_assets
+                        SET status = 'IDENTIFIED', movie_id = :movie_id, updated_at = NOW()
+                        WHERE id = :asset_id
+                          AND status = 'UNIDENTIFIED'
+                          AND movie_id IS NULL
+                        RETURNING
+                        """ + ASSET_COLUMNS)
+                .bind("movie_id", movieId.value())
+                .bind("asset_id", assetId.value())
+                .map((row, metadata) -> this.toDomain(row))
+                .one();
+    }
+
+    @Override
     public Mono<MediaAsset> findByMovieId(MovieId movieId) {
         return this.databaseClient
                 .sql(
