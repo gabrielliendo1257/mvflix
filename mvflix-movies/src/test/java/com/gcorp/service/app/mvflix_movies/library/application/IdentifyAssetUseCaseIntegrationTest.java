@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.application.scan;
+package com.gcorp.service.app.mvflix_movies.library.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
