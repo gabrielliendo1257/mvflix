@@ -192,7 +192,8 @@ public class SpringDataMovieRepository implements MovieRepository {
                 .sql(
                         """
                         UPDATE movies
-                        SET metadata = CAST(:metadata AS jsonb), enrichment_status = :enrichment_status,
+                        SET title = :title, metadata = CAST(:metadata AS jsonb),
+                            enrichment_status = :enrichment_status,
                             updated_at = NOW()
                         WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
@@ -203,6 +204,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
                 .bind("metadata", this.jsonCodec.encode(metadata))
+                .bind("title", metadata.title())
                 .bind("enrichment_status", enrichmentStatus.name())
                 .bind("id", id.value())
                 .map(this::toRow)
@@ -216,7 +218,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                 .sql(
                         """
                         UPDATE movies
-                        SET metadata = CAST(:metadata AS jsonb), updated_at = NOW()
+                        SET title = :title, metadata = CAST(:metadata AS jsonb), updated_at = NOW()
                         WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility, kind,
@@ -226,6 +228,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
                 .bind("metadata", this.jsonCodec.encode(metadata))
+                .bind("title", metadata.title())
                 .bind("id", id.value())
                 .map(this::toRow)
                 .one()

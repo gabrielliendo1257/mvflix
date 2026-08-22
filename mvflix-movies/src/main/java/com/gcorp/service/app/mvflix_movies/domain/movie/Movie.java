@@ -104,7 +104,9 @@ public class Movie {
     }
 
     public String getTitle() {
-        return this.title;
+        return this.metadata != null && this.metadata.title() != null
+                ? this.metadata.title()
+                : this.title;
     }
 
     public MovieStatus getStatus() {
@@ -187,7 +189,7 @@ public class Movie {
         return new Movie(
                 this.id,
                 this.ownerUsername,
-                this.title,
+                metadata.title(),
                 this.status,
                 this.enrichmentStatus,
                 this.objectId,
@@ -275,7 +277,7 @@ public class Movie {
         return new Movie(
                 this.id,
                 this.ownerUsername,
-                this.title,
+                enrichedMetadata.title(),
                 this.status,
                 status,
                 this.objectId,
