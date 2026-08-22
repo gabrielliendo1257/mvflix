@@ -1,10 +1,10 @@
 package com.gcorp.service.app.mvflix_movies.library.application;
 
+import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemCreator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,13 +15,14 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 class IdentifyAssetTransaction {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemCreator catalogItemCreator;
     private final MediaAssetRepository assetRepository;
 
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    Mono<IdentificationResult> execute(MediaAsset asset, Movie movie) {
-        return this.movieRepository
-                .save(movie)
+    Mono<IdentificationResult> execute(
+            MediaAsset asset, String ownerUsername, String title, MediaKind kind) {
+        return this.catalogItemCreator
+                .createFromLibrary(ownerUsername, title, kind)
                 .flatMap(saved -> this.assetRepository
                         .identifyIfUnidentified(asset.getId(), saved.getId())
                         .map(identified -> new IdentificationResult(identified, saved))

@@ -9,7 +9,6 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundExce
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,9 +55,8 @@ public class IdentifyAssetUseCase {
         MediaKind resolvedKind = kind == null ? MediaKind.MOVIE : kind;
         return this.userProvider
                 .getAuthenticatedUser()
-                .map(user -> Movie.fromLibraryAsset(
-                        user.subject(), MovieMetadata.onlyTitle(title), resolvedKind))
-                .flatMap(movie -> this.identifyAssetTransaction.execute(asset, movie))
+                .flatMap(user -> this.identifyAssetTransaction.execute(
+                        asset, user.subject(), title, resolvedKind))
                 .flatMap(result -> this.enrichIfRequested(result.movie(), tmdbId)
                         .thenReturn(result.asset()))
                 .onErrorResume(
