@@ -38,7 +38,13 @@ public interface MovieRepository {
     /** {@code true} si borró la fila. */
     Mono<Boolean> deleteById(MovieId id);
 
-    /** Aplica metadata enriquecida + estado de enriquecimiento (idempotente). */
+    /** Persiste la transición de proveedor ya decidida por el agregado. */
+    Mono<Movie> updateEnrichment(Movie movie);
+
+    /**
+     * Actualización técnica conservada temporalmente para la reclasificación a OTHER.
+     * Los nuevos flujos deben entregar el agregado ya transformado.
+     */
     Mono<Movie> updateEnrichment(MovieId id, MovieMetadata metadata,
             EnrichmentStatus enrichmentStatus);
 

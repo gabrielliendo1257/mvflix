@@ -50,10 +50,9 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
     Movie updated =
         this.movieRepository
-            .updateEnrichment(
-                movie.getId(),
-                MovieMetadata.onlyTitle("Provider title"),
-                EnrichmentStatus.ENRICHED)
+            .updateEnrichment(movie.linkProviderMetadata(new MovieMetadata(
+                "Provider title", null, null, List.of(), null, null, null,
+                List.of(), null, null, null, null, null, List.of(), 100L)))
             .block();
 
     assertThat(updated).isNotNull();

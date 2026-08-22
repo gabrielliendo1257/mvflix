@@ -186,6 +186,12 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
+    public Mono<Movie> updateEnrichment(Movie movie) {
+        return this.updateEnrichment(
+                movie.getId(), movie.getMetadata(), movie.getEnrichmentStatus());
+    }
+
+    @Override
     public Mono<Movie> updateEnrichment(MovieId id,
             MovieMetadata metadata, EnrichmentStatus enrichmentStatus) {
         return this.databaseClient

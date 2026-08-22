@@ -349,6 +349,11 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
+    public Mono<Movie> updateEnrichment(Movie movie) {
+      return unexpectedMono("updateEnrichment");
+    }
+
+    @Override
     public Mono<Movie> updateMetadata(MovieId id, MovieMetadata metadata) {
       return unexpectedMono("updateMetadata");
     }

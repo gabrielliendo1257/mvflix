@@ -62,9 +62,8 @@ public class EnrichMovieUseCase {
                         .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(
                                 new MovieNotFoundException("Movie not found: " + id.value())))
-                        .flatMap(movie -> this.movieRepository.updateEnrichment(
-                                id, movie.getMetadata().withoutProvider(),
-                                EnrichmentStatus.RAW))
+                        .map(Movie::unlinkProvider)
+                        .flatMap(this.movieRepository::updateEnrichment)
                         .doOnNext(unlinked -> log.info(
                                 "Pelicula {} desvinculada del proveedor: queda RAW",
                                 id.value())));
@@ -144,9 +143,8 @@ public class EnrichMovieUseCase {
                     MovieMetadata metadata = isReMatch(movie, explicitTmdbId)
                             ? fromDetail(d)
                             : merge(movie.getMetadata(), d);
-                    return this.movieRepository.updateEnrichment(
-                            movie.getId(), metadata,
-                            EnrichmentStatus.ENRICHED);
+                    Movie linked = movie.linkProviderMetadata(metadata);
+                    return this.movieRepository.updateEnrichment(linked);
                 })
                 .doOnNext(enriched -> log.info(
                         "Pelicula {} enriquecida: tmdb_id={}",

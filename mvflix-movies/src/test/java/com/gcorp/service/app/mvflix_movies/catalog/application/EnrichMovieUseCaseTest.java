@@ -2,7 +2,6 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -68,11 +67,8 @@ class EnrichMovieUseCaseTest {
                 .thenReturn(Mono.just(new ExternalMovieSearch(
                         274_003L, "Il colosso di Rodi", 1961, null, "1961-06-20", "Overview...")));
         when(this.metadataSource.findById(274_003L)).thenReturn(Mono.just(TMDB_DETAIL));
-        when(this.movieRepository.updateEnrichment(
-                        eq(MovieId.of(1L)), any(MovieMetadata.class),
-                        eq(EnrichmentStatus.ENRICHED)))
-                .thenReturn(Mono.just(DRAFT_RAW.applyEnrichment(
-                        mergedMetadata(), EnrichmentStatus.ENRICHED)));
+        when(this.movieRepository.updateEnrichment(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.enrichCurrentUser(MovieId.of(1L)))
                 .assertNext(movie -> assertThat(movie.getEnrichmentStatus())
@@ -81,9 +77,7 @@ class EnrichMovieUseCaseTest {
 
         verify(this.metadataSource).search("The Colossus of Rhodes", null);
         verify(this.metadataSource).findById(274_003L);
-        verify(this.movieRepository).updateEnrichment(
-                eq(MovieId.of(1L)), any(MovieMetadata.class),
-                eq(EnrichmentStatus.ENRICHED));
+        verify(this.movieRepository).updateEnrichment(any(Movie.class));
     }
 
     @Test
@@ -96,11 +90,8 @@ class EnrichMovieUseCaseTest {
                 EnrichmentStatus.RAW, null, withTmdbId, MovieVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
 
         when(this.metadataSource.findById(274_003L)).thenReturn(Mono.just(TMDB_DETAIL));
-        when(this.movieRepository.updateEnrichment(
-                        eq(MovieId.of(2L)), any(MovieMetadata.class),
-                        eq(EnrichmentStatus.ENRICHED)))
-                .thenReturn(Mono.just(movie.applyEnrichment(
-                        mergedMetadata(), EnrichmentStatus.ENRICHED)));
+        when(this.movieRepository.updateEnrichment(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.enrich(movie))
                 .assertNext(enriched -> assertThat(enriched.getEnrichmentStatus())
@@ -108,19 +99,14 @@ class EnrichMovieUseCaseTest {
                 .verifyComplete();
 
         verify(this.metadataSource, never()).search(any(), any());
-        verify(this.movieRepository).updateEnrichment(
-                eq(MovieId.of(2L)), any(MovieMetadata.class),
-                eq(EnrichmentStatus.ENRICHED));
+        verify(this.movieRepository).updateEnrichment(any(Movie.class));
     }
 
     @Test
     void enrichWithExplicitTmdbIdSkipsSearchAndUsesChosenCandidate() {
         when(this.metadataSource.findById(43020L)).thenReturn(Mono.just(TMDB_DETAIL));
-        when(this.movieRepository.updateEnrichment(
-                        eq(MovieId.of(1L)), any(MovieMetadata.class),
-                        eq(EnrichmentStatus.ENRICHED)))
-                .thenReturn(Mono.just(DRAFT_RAW.applyEnrichment(
-                        mergedMetadata(), EnrichmentStatus.ENRICHED)));
+        when(this.movieRepository.updateEnrichment(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.enrich(DRAFT_RAW, 43020L))
                 .assertNext(movie -> assertThat(movie.getEnrichmentStatus())
@@ -143,8 +129,7 @@ class EnrichMovieUseCaseTest {
                 })
                 .verifyComplete();
 
-        verify(this.movieRepository, never()).updateEnrichment(
-                any(), any(), any());
+        verify(this.movieRepository, never()).updateEnrichment(any(Movie.class));
     }
 
     @Test
@@ -161,15 +146,37 @@ class EnrichMovieUseCaseTest {
     }
 
     @Test
+    void unlinkCurrentUserPersistsAggregateTransition() {
+        Movie linked = DRAFT_RAW.linkProviderMetadata(mergedMetadata());
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("pepe", "sub-1")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(linked));
+        when(this.movieRepository.updateEnrichment(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+        StepVerifier.create(this.useCase.unlinkCurrentUser(MovieId.of(1L)))
+                .assertNext(movie -> {
+                    assertThat(movie.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
+                    assertThat(movie.getMetadata().tmdbId()).isNull();
+                    assertThat(movie.getMetadata().posterPath()).isNull();
+                })
+                .verifyComplete();
+
+        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        verify(this.movieRepository).updateEnrichment(captor.capture());
+        assertThat(captor.getValue().getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
+    }
+
+    @Test
     void enrichAlreadyEnrichedIsNoOp() {
-        Movie enriched = DRAFT_RAW.applyEnrichment(mergedMetadata(), EnrichmentStatus.ENRICHED);
+        Movie enriched = DRAFT_RAW.linkProviderMetadata(mergedMetadata());
 
         StepVerifier.create(this.useCase.enrich(enriched))
                 .expectNext(enriched)
                 .verifyComplete();
 
         verifyNoInteractions(this.metadataSource);
-        verify(this.movieRepository, never()).updateEnrichment(any(), any(), any());
+        verify(this.movieRepository, never()).updateEnrichment(any(Movie.class));
     }
 
     @Test
@@ -188,21 +195,17 @@ class EnrichMovieUseCaseTest {
                 List.of(), null, "/new.jpg", "2021-01-01", null, null);
 
         when(this.metadataSource.findById(43020L)).thenReturn(Mono.just(fresh));
-        when(this.movieRepository.updateEnrichment(
-                        eq(MovieId.of(3L)), any(MovieMetadata.class),
-                        eq(EnrichmentStatus.ENRICHED)))
-                .thenAnswer(invocation -> Mono.just(movie.applyEnrichment(
-                        invocation.getArgument(1), EnrichmentStatus.ENRICHED)));
+        when(this.movieRepository.updateEnrichment(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.enrich(movie, 43020L))
                 .assertNext(m -> assertThat(m.getEnrichmentStatus())
                         .isEqualTo(EnrichmentStatus.ENRICHED))
                 .verifyComplete();
 
-        ArgumentCaptor<MovieMetadata> captor = ArgumentCaptor.forClass(MovieMetadata.class);
-        verify(this.movieRepository).updateEnrichment(
-                eq(MovieId.of(3L)), captor.capture(), eq(EnrichmentStatus.ENRICHED));
-        MovieMetadata result = captor.getValue();
+        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        verify(this.movieRepository).updateEnrichment(captor.capture());
+        MovieMetadata result = captor.getValue().getMetadata();
         assertThat(result.tmdbId()).isEqualTo(43020L);
         assertThat(result.title()).isEqualTo("New");
         assertThat(result.director()).isNull();
@@ -221,7 +224,7 @@ class EnrichMovieUseCaseTest {
                 .expectError(IllegalStateException.class)
                 .verify();
 
-        verify(this.movieRepository, never()).updateEnrichment(any(), any(), any());
+        verify(this.movieRepository, never()).updateEnrichment(any(Movie.class));
     }
 
     private static MovieMetadata mergedMetadata() {
