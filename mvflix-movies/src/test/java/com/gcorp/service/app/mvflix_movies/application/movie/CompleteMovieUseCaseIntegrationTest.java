@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.application.movie;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 
 import org.springframework.stereotype.Component;
 

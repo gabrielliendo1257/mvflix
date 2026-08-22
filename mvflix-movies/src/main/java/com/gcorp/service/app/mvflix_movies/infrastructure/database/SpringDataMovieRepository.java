@@ -1,12 +1,12 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
-import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;

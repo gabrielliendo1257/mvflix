@@ -4,12 +4,12 @@ import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieDetail;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.domain.enrichment.MetadataSource;
-import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

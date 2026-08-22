@@ -1,8 +1,8 @@
 package com.gcorp.service.app.mvflix_movies.application.movie;
 
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemAccess;
 
 import lombok.RequiredArgsConstructor;

@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

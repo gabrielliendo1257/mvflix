@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.application.cleanup;
 
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

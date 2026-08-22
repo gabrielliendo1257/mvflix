@@ -7,8 +7,8 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdent
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

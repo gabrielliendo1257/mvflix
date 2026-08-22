@@ -8,14 +8,14 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

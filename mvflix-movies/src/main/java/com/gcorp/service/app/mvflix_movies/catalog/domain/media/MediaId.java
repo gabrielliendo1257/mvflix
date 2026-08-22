@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.media;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.media;
 
 public record MediaId(Long value) {
 

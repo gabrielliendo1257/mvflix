@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api.dto;
 
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 
 import jakarta.validation.constraints.NotNull;
 

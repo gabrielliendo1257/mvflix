@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.movie;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
 
 /**
  * Visibilidad del catalogo: PUBLIC lo ve cualquiera, PRIVATE solo el dueño y

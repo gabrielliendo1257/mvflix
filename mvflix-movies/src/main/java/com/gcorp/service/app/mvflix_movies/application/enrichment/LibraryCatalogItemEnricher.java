@@ -1,8 +1,8 @@
 package com.gcorp.service.app.mvflix_movies.application.enrichment;
 
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemEnricher;
 
 import lombok.RequiredArgsConstructor;

@@ -1,9 +1,9 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.database;
 
-import com.gcorp.service.app.mvflix_movies.domain.media.Media;
-import com.gcorp.service.app.mvflix_movies.domain.media.MediaId;
-import com.gcorp.service.app.mvflix_movies.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;

@@ -3,10 +3,10 @@ package com.gcorp.service.app.mvflix_movies.application.movie;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

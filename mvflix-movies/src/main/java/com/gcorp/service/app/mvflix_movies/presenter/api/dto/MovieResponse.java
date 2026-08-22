@@ -1,10 +1,10 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.gcorp.service.app.mvflix_movies.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 
 import java.util.List;
 

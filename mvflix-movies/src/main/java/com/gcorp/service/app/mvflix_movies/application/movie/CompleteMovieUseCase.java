@@ -1,14 +1,14 @@
 package com.gcorp.service.app.mvflix_movies.application.movie;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.domain.media.Media;
-import com.gcorp.service.app.mvflix_movies.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieConflictException;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieConflictException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
