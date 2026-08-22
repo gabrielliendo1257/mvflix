@@ -2,11 +2,11 @@ package com.gcorp.service.app.mvflix_movies.application.scan;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.application.enrichment.EnrichMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetAlreadyIdentifiedException;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;

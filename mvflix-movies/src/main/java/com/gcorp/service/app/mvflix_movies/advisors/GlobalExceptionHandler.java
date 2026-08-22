@@ -1,8 +1,8 @@
 package com.gcorp.service.app.mvflix_movies.advisors;
 
 import com.gcorp.service.app.mvflix_movies.advisors.models.ErrorResponse;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetAlreadyIdentifiedException;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieConflictException;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;

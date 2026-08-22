@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.mediaasset;
+package com.gcorp.service.app.mvflix_movies.library.domain;
 
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 

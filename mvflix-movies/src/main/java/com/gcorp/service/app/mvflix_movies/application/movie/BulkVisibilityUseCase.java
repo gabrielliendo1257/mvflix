@@ -1,8 +1,8 @@
 package com.gcorp.service.app.mvflix_movies.application.movie;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieRepository;

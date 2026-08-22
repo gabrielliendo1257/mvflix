@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.advisors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.advisors.models.ErrorResponse;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetNotFoundException;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;

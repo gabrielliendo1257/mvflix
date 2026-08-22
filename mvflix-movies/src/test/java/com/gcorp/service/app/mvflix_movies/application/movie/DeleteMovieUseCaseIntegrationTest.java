@@ -2,10 +2,10 @@ package com.gcorp.service.app.mvflix_movies.application.movie;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.ScannedFile;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
+import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieMetadata;

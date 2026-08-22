@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.presenter.api;
 
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.ScannedFile;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.MediaAssetResponse;
 import com.gcorp.service.app.mvflix_movies.presenter.api.dto.ScanLibraryRequest;
 

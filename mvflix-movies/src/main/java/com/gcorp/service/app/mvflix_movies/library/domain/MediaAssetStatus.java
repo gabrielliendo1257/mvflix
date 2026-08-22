@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.domain.mediaasset;
+package com.gcorp.service.app.mvflix_movies.library.domain;
 
 /**
  * Estado de identificación de un activo, ortogonal a su presencia en disco

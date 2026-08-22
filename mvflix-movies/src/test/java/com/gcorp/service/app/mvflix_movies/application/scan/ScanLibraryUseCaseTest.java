@@ -5,11 +5,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetId;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.ScannedFile;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
+import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 
 import org.junit.jupiter.api.Test;

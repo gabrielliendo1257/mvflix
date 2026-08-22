@@ -1,8 +1,8 @@
 package com.gcorp.service.app.mvflix_movies.application.scan;
 
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAsset;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
-import com.gcorp.service.app.mvflix_movies.domain.mediaasset.ScannedFile;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
