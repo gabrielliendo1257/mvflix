@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.infrastructure.database;
+package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 
 public record MovieRow(
     Long id,
