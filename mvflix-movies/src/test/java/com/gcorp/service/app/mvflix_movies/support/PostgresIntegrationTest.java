@@ -3,19 +3,21 @@ package com.gcorp.service.app.mvflix_movies.support;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /** PostgreSQL real compartido por los tests de integración del microservicio. */
 @Testcontainers(disabledWithoutDocker = true)
 public abstract class PostgresIntegrationTest {
 
-  @Container
   protected static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>("postgres:16-alpine")
           .withDatabaseName("mvflix_movies_test")
           .withUsername("test")
           .withPassword("test");
+
+  static {
+    POSTGRES.start();
+  }
 
   @DynamicPropertySource
   static void databaseProperties(DynamicPropertyRegistry registry) {
