@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.application.movie;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
+import com.gcorp.service.app.mvflix_movies.domain.mediaasset.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.domain.movie.MovieNotFoundException;
@@ -10,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import reactor.core.publisher.Mono;
 
@@ -19,8 +21,10 @@ import reactor.core.publisher.Mono;
 public class DeleteMovieUseCase {
 
     private final MovieRepository movieRepository;
+    private final MediaAssetRepository mediaAssetRepository;
     private final UserProvider userProvider;
 
+    @Transactional(transactionManager = "connectionFactoryTransactionManager")
     public Mono<Void> execute(MovieId id) {
         return this.userProvider
                 .getAuthenticatedUser()
@@ -31,8 +35,9 @@ public class DeleteMovieUseCase {
                         .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(new MovieNotFoundException(
                                 "Movie not found: " + id)))
-                        .flatMap(movie -> this.movieRepository
-                                .deleteById(id)
+                        .flatMap(movie -> this.mediaAssetRepository
+                                .unlinkByMovieId(id)
+                                .then(this.movieRepository.deleteById(id))
                                 .flatMap(deleted -> {
                                     if (!deleted) {
                                         return Mono.error(

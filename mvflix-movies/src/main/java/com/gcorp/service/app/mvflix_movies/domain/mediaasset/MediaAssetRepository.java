@@ -13,6 +13,9 @@ public interface MediaAssetRepository {
 
     Mono<MediaAsset> findByMovieId(MovieId movieId);
 
+    /** Desvincula los assets de una película sin borrar el catálogo del filesystem. */
+    Mono<Long> unlinkByMovieId(MovieId movieId);
+
     Mono<MediaAsset> findByLibraryAndPath(Long libraryId, String relativePath);
 
     Flux<MediaAsset> findAllByLibraryId(Long libraryId);

@@ -94,6 +94,24 @@ public class MediaAsset {
                 Instant.now());
     }
 
+    /** Desvincula el activo cuando su película se elimina; el archivo sigue catalogado. */
+    public MediaAsset unidentify() {
+        if (!this.isIdentified() && this.movieId == null) {
+            return this;
+        }
+        return new MediaAsset(
+                this.id,
+                this.libraryId,
+                this.relativePath,
+                this.size,
+                this.mimeType,
+                MediaAssetStatus.UNIDENTIFIED,
+                null,
+                this.present,
+                this.createdAt,
+                Instant.now());
+    }
+
     /** El scan ya no encontro el archivo: marca ausencia sin tocar el vinculo. */
     public MediaAsset markMissing() {
         if (this.isMissing()) {

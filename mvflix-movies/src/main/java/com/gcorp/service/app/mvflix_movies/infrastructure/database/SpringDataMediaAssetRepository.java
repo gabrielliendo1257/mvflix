@@ -113,6 +113,21 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
     }
 
     @Override
+    public Mono<Long> unlinkByMovieId(MovieId movieId) {
+        return this.databaseClient
+                .sql(
+                        """
+                        UPDATE media_assets
+                        SET status = 'UNIDENTIFIED', movie_id = NULL, updated_at = NOW()
+                        WHERE movie_id = :movie_id
+                        """)
+                .bind("movie_id", movieId.value())
+                .fetch()
+                .rowsUpdated()
+                .map(Long::valueOf);
+    }
+
+    @Override
     public Mono<MediaAsset> findByLibraryAndPath(Long libraryId, String relativePath) {
         return this.databaseClient
                 .sql(
