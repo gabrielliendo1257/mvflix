@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryMovieIds;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
@@ -16,7 +17,6 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
-import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,7 +36,7 @@ import java.util.Set;
 class BulkVisibilityUseCaseTest {
 
     @Mock private MovieRepository movieRepository;
-    @Mock private MediaAssetRepository assetRepository;
+    @Mock private LibraryMovieIds libraryMovieIds;
     @Mock private UserProvider userProvider;
 
     @InjectMocks private BulkVisibilityUseCase useCase;
@@ -94,6 +94,26 @@ class BulkVisibilityUseCaseTest {
 
         verify(this.movieRepository, never()).updateAccess(any(Movie.class));
         verify(this.userProvider, never()).getAuthenticatedUser();
+    }
+
+    @Test
+    void resolvesLibraryMoviesThroughCatalogPort() {
+        Movie movie = movie(2L, MovieVisibility.PRIVATE, Set.of());
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.libraryMovieIds.findIdentifiedByLibraryIds(List.of(7L)))
+                .thenReturn(Flux.just(MovieId.of(2L)));
+        when(this.movieRepository.findByOwnerAndIds("Javier", List.of(MovieId.of(2L))))
+                .thenReturn(Flux.just(movie));
+        when(this.movieRepository.updateAccess(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+        StepVerifier.create(this.useCase.execute(
+                        List.of(), List.of(7L), MovieVisibility.PUBLIC, List.of()))
+                .expectNext(new BulkVisibilityResult(1, 1, 0))
+                .verifyComplete();
+
+        verify(this.libraryMovieIds).findIdentifiedByLibraryIds(List.of(7L));
     }
 
     private static Movie movie(long id, MovieVisibility visibility, Set<String> shares) {

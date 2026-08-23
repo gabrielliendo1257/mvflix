@@ -1,8 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
-import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryMovieIds;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
@@ -33,7 +32,7 @@ import java.util.Set;
 public class BulkVisibilityUseCase {
 
     private final MovieRepository movieRepository;
-    private final MediaAssetRepository assetRepository;
+    private final LibraryMovieIds libraryMovieIds;
     private final UserProvider userProvider;
 
     public Mono<BulkVisibilityResult> execute(
@@ -55,11 +54,10 @@ public class BulkVisibilityUseCase {
                 .getAuthenticatedUser()
                 .flatMapMany(user -> Flux.concat(
                                 Flux.fromIterable(movieIds),
-                                Flux.fromIterable(libraryIds)
-                                        .flatMap(libraryId -> this.assetRepository
-                                                .findAllByLibraryId(libraryId))
-                                        .filter(asset -> asset.getMovieId() != null)
-                                        .map(MediaAsset::getMovieId))
+                                libraryIds.isEmpty()
+                                        ? Flux.empty()
+                                        : this.libraryMovieIds
+                                                .findIdentifiedByLibraryIds(libraryIds))
                         .distinct()
                         .collectList()
                         .flatMapMany(ids -> ids.isEmpty()
