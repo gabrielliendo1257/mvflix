@@ -1,4 +1,4 @@
-package com.guille.media.bff.app.service;
+package com.guille.media.bff.experience.addmedia.application;
 
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.MovieDto;
@@ -26,7 +26,7 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 @Service
-public class AddMediaCompletion {
+public class CompleteAddMedia {
 
   private final MoviesWebClient moviesWebClient;
   private final StorageWebClient storageWebClient;
@@ -83,7 +83,7 @@ public class AddMediaCompletion {
   private Mono<UploadCompletionOutcome> evaluateStatus(Long movieId,
       CompleteMovieRequest request, UploadStatusDto status) {
     String state = status.status() == null ? "" : status.status();
-    log.debug("complete: movie={} estado storage={} key={}", movieId, state, status.storageKey());
+    log.debug("add-media complete: movie={} estado storage={} key={}", movieId, state, status.storageKey());
     switch (state) {
       case "COMPLETED":
         if (request.sizeBytes() != null

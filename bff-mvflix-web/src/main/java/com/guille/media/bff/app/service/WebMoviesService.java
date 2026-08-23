@@ -12,7 +12,6 @@ import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 import com.guille.media.bff.app.dto.MovieListItemDto;
 import com.guille.media.bff.app.dto.MovieUpdateRequest;
 import com.guille.media.bff.app.dto.StreamTicketDto;
-import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
 import com.guille.media.bff.app.ports.UsersWebPort;
@@ -64,7 +63,7 @@ public class WebMoviesService {
   private final UsersWebPort usersWebPort;
   private final StreamTicketService streamTicketService;
   private final JobStore jobStore;
-  private final AddMediaCompletion addMediaCompletion;
+  private final com.guille.media.bff.experience.addmedia.application.CompleteAddMedia addMediaCompletion;
 
   public Flux<MovieListItemDto> list(int limit) {
     return this.moviesWebClient
@@ -349,7 +348,7 @@ public class WebMoviesService {
   }
 
   /**
-   * Complete orquestado del alta: delegado en {@link AddMediaCompletion}.
+   * Complete orquestado del alta: delegado en {@link com.guille.media.bff.experience.addmedia.application.CompleteAddMedia}.
    */
   public Mono<UploadCompletionOutcome> complete(Long movieId, CompleteMovieRequest request) {
     return this.addMediaCompletion.complete(movieId, request);

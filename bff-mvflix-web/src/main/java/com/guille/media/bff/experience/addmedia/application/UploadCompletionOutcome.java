@@ -1,4 +1,4 @@
-package com.guille.media.bff.app.service;
+package com.guille.media.bff.experience.addmedia.application;
 
 import com.guille.media.bff.app.dto.MovieDto;
 
