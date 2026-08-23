@@ -2,6 +2,7 @@ package com.guille.media.bff.presenter.api;
 
 import com.guille.media.bff.app.service.StreamTicketException;
 import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
+import com.guille.media.bff.shared.error.EntityNotFound;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.presenter.api.dto.OrchestrationError;
 
@@ -40,6 +41,17 @@ public class ApiExceptionHandler {
         ResponseEntity.status(ex.getStatus())
             .contentType(MediaType.APPLICATION_JSON)
             .body(new OrchestrationError(ex.getStatus().value(), ex.getCode(), ex.getMessage())));
+  }
+
+  /** Recurso de aplicación inexistente (p.ej. proceso Add Media ajeno). */
+  @ExceptionHandler(EntityNotFound.class)
+  public Mono<ResponseEntity<OrchestrationError>> entityNotFound(EntityNotFound ex) {
+    log.warn("Recurso no encontrado: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.NOT_FOUND.value(), "NOT_FOUND", ex.getMessage())));
   }
 
   /** Fase del proceso incompatible con la operación pedida. */

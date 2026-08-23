@@ -35,6 +35,11 @@ public class StorageAddMediaAdapter implements AddMediaStorage {
   }
 
   @Override
+  public Mono<UploadSessionDto> refreshInstructions(Long uploadId) {
+    return this.delegate.renewInstructions(uploadId);
+  }
+
+  @Override
   public Mono<Void> cancelUpload(Long uploadId) {
     return this.delegate.cancelUpload(uploadId);
   }

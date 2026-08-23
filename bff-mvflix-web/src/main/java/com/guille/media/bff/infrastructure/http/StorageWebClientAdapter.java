@@ -63,6 +63,11 @@ public class StorageWebClientAdapter implements StorageWebClient {
   }
 
   @Override
+  public Mono<UploadSessionDto> renewInstructions(Long uploadId) {
+    return this.post(API + "/upload/" + uploadId + "/instructions", UploadSessionDto.class);
+  }
+
+  @Override
   public Mono<Void> cancelUpload(Long uploadId) {
     return this.postAndDiscard(API + "/upload/" + uploadId + "/cancel");
   }
@@ -182,6 +187,14 @@ public class StorageWebClientAdapter implements StorageWebClient {
         .get()
         .uri(uri)
                 .retrieve()
+        .bodyToMono(type);
+  }
+
+  private <T> Mono<T> post(String uri, Class<T> type) {
+    return this.storageWebClient
+        .post()
+        .uri(uri)
+        .retrieve()
         .bodyToMono(type);
   }
 

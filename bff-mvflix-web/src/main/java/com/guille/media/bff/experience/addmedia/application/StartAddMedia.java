@@ -52,8 +52,19 @@ public class StartAddMedia {
     return this.processes
         .createIfAbsent(ownerSubject, request.idempotencyKey())
         .flatMap(process -> {
+          if (process.phase() == AddMediaPhase.WAITING_FOR_UPLOAD
+              && process.uploadId() != null) {
+            // Replay tras recarga/pérdida de la primera respuesta: restaurar
+            // las instrucciones de subida con un presigned fresco.
+            return this.storage.refreshInstructions(process.uploadId())
+                .map(session -> AddMediaView.waitingForUpload(process, session))
+                .onErrorResume(error -> {
+                  log.warn("add-media replay: no se pudo renovar URL para {}: {}",
+                      process.id(), error.getMessage());
+                  return Mono.just(AddMediaView.from(process));
+                });
+          }
           if (process.phase() != AddMediaPhase.STARTING) {
-            // Replay del mismo intento: no duplicar draft ni upload.
             log.info("add-media replay: process={} phase={}",
                 process.id(), process.phase());
             return Mono.just(AddMediaView.from(process));

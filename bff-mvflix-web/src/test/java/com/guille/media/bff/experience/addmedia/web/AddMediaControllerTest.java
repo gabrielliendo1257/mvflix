@@ -16,6 +16,7 @@ import com.guille.media.bff.app.service.WebSessionService;
 import com.guille.media.bff.experience.addmedia.application.CancelAddMedia;
 import com.guille.media.bff.experience.addmedia.application.CompleteAddMedia;
 import com.guille.media.bff.experience.addmedia.application.CompleteProcessAddMedia;
+import com.guille.media.bff.experience.addmedia.application.GetAddMediaStatus;
 import com.guille.media.bff.experience.addmedia.application.PreviewMovieCandidate;
 import com.guille.media.bff.experience.addmedia.application.SearchMovieCandidates;
 import com.guille.media.bff.experience.addmedia.application.StartAddMedia;
@@ -52,6 +53,7 @@ class AddMediaControllerTest {
         "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 0, false)));
     CompleteProcessAddMedia completeProcess =
         new CompleteProcessAddMedia(this.processes, mock(CompleteAddMedia.class));
+    GetAddMediaStatus getStatus = new GetAddMediaStatus(this.processes, storageAdapter);
     AddMediaController controller =
         new AddMediaController(
             new SearchMovieCandidates(moviesAdapter),
@@ -59,9 +61,12 @@ class AddMediaControllerTest {
             new StartAddMedia(moviesAdapter, storageAdapter, this.processes, users),
             completeProcess,
             new CancelAddMedia(this.processes, storageAdapter, moviesAdapter),
+            getStatus,
             this.processes,
             this.session);
-    this.client = WebTestClient.bindToController(controller).build();
+    this.client = WebTestClient.bindToController(controller)
+        .controllerAdvice(new com.guille.media.bff.presenter.api.ApiExceptionHandler())
+        .build();
   }
 
   @Test
@@ -97,6 +102,30 @@ class AddMediaControllerTest {
   }
 
   @Test
+  void statusRestoresFreshUploadInstructionsWhileWaiting() {
+    // Preparar proceso WAITING_FOR_UPLOAD directamente en el repo.
+    com.guille.media.bff.experience.addmedia.model.AddMediaId pid =
+        com.guille.media.bff.experience.addmedia.model.AddMediaId.newId();
+    this.processes.save(new com.guille.media.bff.experience.addmedia.model.AddMediaProcess(
+        pid, "pepe", 7L, 42L,
+        com.guille.media.bff.experience.addmedia.model.AddMediaPhase.WAITING_FOR_UPLOAD,
+        null, 2)).block();
+    when(this.storageWebClient.renewInstructions(42L))
+        .thenReturn(Mono.just(new UploadSessionDto("42", "http://minio/fresh",
+            "k.mp4", "PUT", "PENDING",
+            new UploadSessionDto.ExpectedObjectData(1024L, "video/mp4"))));
+
+    this.client
+        .get()
+        .uri("/web/add-media/" + pid.value())
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.upload.url").isEqualTo("http://minio/fresh");
+  }
+
+  @Test
   void statusIsOwnerScopedAndHidesForeignProcesses() {
     when(this.session.currentSubject()).thenReturn(Mono.just("pepe"));
     when(this.moviesWebClient.createMovie(ArgumentMatchers.any()))
@@ -105,6 +134,11 @@ class AddMediaControllerTest {
             List.of(), null, null, null, null, null, null, null)));
     when(this.storageWebClient.createUpload(ArgumentMatchers.any()))
         .thenReturn(Mono.just(new UploadSessionDto("42", "http://minio/put",
+            "k.mp4", "PUT", "PENDING",
+            new UploadSessionDto.ExpectedObjectData(1024L, "video/mp4"))));
+    // El GET de estado renueva instrucciones mientras esté WAITING_FOR_UPLOAD.
+    when(this.storageWebClient.renewInstructions(42L))
+        .thenReturn(Mono.just(new UploadSessionDto("42", "http://minio/fresh",
             "k.mp4", "PUT", "PENDING",
             new UploadSessionDto.ExpectedObjectData(1024L, "video/mp4"))));
     String startBody = "{"

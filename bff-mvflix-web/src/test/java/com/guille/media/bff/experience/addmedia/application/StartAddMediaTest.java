@@ -99,12 +99,19 @@ class StartAddMediaTest {
     when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
+    // El replay renueva las instrucciones en vez de devolver upload=null.
+    when(this.storage.refreshInstructions(42L))
+        .thenReturn(Mono.just(new UploadSessionDto("42", "http://minio/fresh",
+            "pepe/videos/a.mp4", "PUT", "PENDING",
+            new UploadSessionDto.ExpectedObjectData(1024L, "video/mp4"))));
 
     AddMediaView first = start().block();
     AddMediaView replay = start().block();
 
     assertThat(replay.addMediaId()).isEqualTo(first.addMediaId());
     assertThat(replay.uploadId()).isEqualTo(42L);
+    assertThat(replay.phase()).isEqualTo(AddMediaPhase.WAITING_FOR_UPLOAD);
+    assertThat(replay.upload().url()).isEqualTo("http://minio/fresh");
     // Un solo draft y una sola sesión de upload para el mismo intento.
     verify(this.movies, org.mockito.Mockito.times(1)).createDraft(any());
     verify(this.storage, org.mockito.Mockito.times(1)).prepareUpload(any());

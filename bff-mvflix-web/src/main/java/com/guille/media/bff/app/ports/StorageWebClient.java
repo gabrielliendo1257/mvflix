@@ -27,6 +27,9 @@ public interface StorageWebClient {
 
   Mono<UploadStatusDto> uploadStatus(Long uploadId);
 
+  /** Regenera instrucciones de subida para una sesión PENDING propia. */
+  Mono<UploadSessionDto> renewInstructions(Long uploadId);
+
   Mono<Void> cancelUpload(Long uploadId);
 
   Mono<HttpStatus> completeUpload(Long uploadId);

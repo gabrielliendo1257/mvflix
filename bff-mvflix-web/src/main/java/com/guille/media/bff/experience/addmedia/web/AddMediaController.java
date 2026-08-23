@@ -3,6 +3,7 @@ package com.guille.media.bff.experience.addmedia.web;
 import com.guille.media.bff.app.service.WebSessionService;
 import com.guille.media.bff.experience.addmedia.application.CancelAddMedia;
 import com.guille.media.bff.experience.addmedia.application.CompleteProcessAddMedia;
+import com.guille.media.bff.experience.addmedia.application.GetAddMediaStatus;
 import com.guille.media.bff.experience.addmedia.application.PreviewMovieCandidate;
 import com.guille.media.bff.experience.addmedia.application.SearchMovieCandidates;
 import com.guille.media.bff.experience.addmedia.application.StartAddMedia;
@@ -22,7 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
-import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.validation.Valid;
 
@@ -42,6 +42,7 @@ public class AddMediaController {
   private final StartAddMedia startAddMedia;
   private final CompleteProcessAddMedia completeProcess;
   private final CancelAddMedia cancelAddMedia;
+  private final GetAddMediaStatus getStatus;
   private final AddMediaProcessRepository processes;
   private final WebSessionService session;
 
@@ -51,6 +52,7 @@ public class AddMediaController {
       StartAddMedia startAddMedia,
       CompleteProcessAddMedia completeProcess,
       CancelAddMedia cancelAddMedia,
+      GetAddMediaStatus getStatus,
       AddMediaProcessRepository processes,
       WebSessionService session) {
     this.searchMovieCandidates = searchMovieCandidates;
@@ -58,6 +60,7 @@ public class AddMediaController {
     this.startAddMedia = startAddMedia;
     this.completeProcess = completeProcess;
     this.cancelAddMedia = cancelAddMedia;
+    this.getStatus = getStatus;
     this.processes = processes;
     this.session = session;
   }
@@ -85,13 +88,7 @@ public class AddMediaController {
   public Mono<AddMediaView> status(
       @PathVariable String addMediaId) {
     return this.ownerSubject()
-        .flatMap(owner ->
-            this.processes
-                .findById(new AddMediaId(addMediaId))
-                .filter(process -> process.ownedBy(owner))
-                .switchIfEmpty(Mono.error(
-                    new ResponseStatusException(HttpStatus.NOT_FOUND, "Proceso no encontrado")))
-                .map(AddMediaView::from));
+        .flatMap(owner -> this.getStatus.handle(owner, addMediaId));
   }
 
   /**

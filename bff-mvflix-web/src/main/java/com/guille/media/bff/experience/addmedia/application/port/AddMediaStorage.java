@@ -26,6 +26,9 @@ public interface AddMediaStorage {
   /** Estado REAL de la sesión (fuente de verdad del objeto físico). */
   Mono<UploadStatusDto> getUploadState(Long uploadId);
 
+  /** Regenera instrucciones de subida para una sesión PENDING propia. */
+  Mono<UploadSessionDto> refreshInstructions(Long uploadId);
+
   /** Cancela la sesión (storage libera la cuota reservada). */
   Mono<Void> cancelUpload(Long uploadId);
 
