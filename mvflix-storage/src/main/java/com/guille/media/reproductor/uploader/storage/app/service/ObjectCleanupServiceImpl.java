@@ -15,7 +15,6 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.reactive.TransactionalOperator;
 
 import reactor.core.publisher.Mono;
 
@@ -29,19 +28,19 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
   private final ObjectStorageService objectStoragePort;
   private final StorageRepository storageRepository;
   private final UserStorageRepository userStorageRepository;
-  private final TransactionalOperator transactionalOperator;
+  private final TerminalUploadTransition terminalTransition;
 
   public ObjectCleanupServiceImpl(
       UserProvider userProvider,
       ObjectStorageService objectStorageService,
       StorageRepository storageRepository,
       UserStorageRepository userStorageRepository,
-      TransactionalOperator transactionalOperator) {
+      TerminalUploadTransition terminalTransition) {
     this.userProvider = userProvider;
     this.objectStoragePort = objectStorageService;
     this.storageRepository = storageRepository;
     this.userStorageRepository = userStorageRepository;
-    this.transactionalOperator = transactionalOperator;
+    this.terminalTransition = terminalTransition;
   }
 
   @Override
@@ -80,16 +79,8 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
               // borra después, best effort: un crash deja un blob huérfano
               // (reconciliable por eventos/lifecycle), nunca cuota corrupta ni
               // una fila DELETED que retiene bytes contabilizados.
-              return this.transactionalOperator
-                  .transactional(
-                      this.storageRepository
-                          .updateStatus(object, StorageSessionStatus.COMPLETED)
-                          .flatMap(
-                              deleted ->
-                                  this.userStorageRepository
-                                      .releaseStorage(
-                                          deleted.getOwnerUsername(), deleted.sizeInBytes())
-                                      .thenReturn(deleted)))
+              return this.terminalTransition
+                  .transitionAndRelease(object, StorageSessionStatus.COMPLETED)
                   .flatMap(
                       deleted ->
                           this.deleteObjectBestEffort(deleted, userStorage.getBucketName()))
@@ -118,16 +109,8 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
         .findByOwnerUsername(object.getOwnerUsername())
         .flatMap(
             userStorage ->
-                this.transactionalOperator
-                    .transactional(
-                        this.storageRepository
-                            .updateStatus(object, StorageSessionStatus.PENDING)
-                            .flatMap(
-                                expired ->
-                                    this.userStorageRepository
-                                        .releaseStorage(
-                                            expired.getOwnerUsername(), expired.sizeInBytes())
-                                        .thenReturn(expired)))
+                this.terminalTransition
+                    .transitionAndRelease(object, StorageSessionStatus.PENDING)
                     .flatMap(
                         expired ->
                             this.deleteObjectBestEffort(expired, userStorage.getBucketName())

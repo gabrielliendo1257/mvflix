@@ -56,6 +56,7 @@ public class UploadServiceImpl implements UploadService {
   private final UserStorageRepository userStorageRepository;
   private final StorageEventPublisher eventPublisher;
   private final TransactionalOperator transactionalOperator;
+  private final TerminalUploadTransition terminalTransition;
 
   public UploadServiceImpl(
       ObjectStorageService objectStorageService,
@@ -65,7 +66,8 @@ public class UploadServiceImpl implements UploadService {
       UserProvider userProvider,
       UserStorageRepository userStorageRepository,
       StorageEventPublisher eventPublisher,
-      TransactionalOperator transactionalOperator) {
+      TransactionalOperator transactionalOperator,
+      TerminalUploadTransition terminalTransition) {
     this.objectStoragePort = objectStorageService;
     this.storageKeyGenerator = storageKeyGenerator;
     this.uploadPolicy = uploadPolicy;
@@ -74,6 +76,7 @@ public class UploadServiceImpl implements UploadService {
     this.userStorageRepository = userStorageRepository;
     this.eventPublisher = eventPublisher;
     this.transactionalOperator = transactionalOperator;
+    this.terminalTransition = terminalTransition;
   }
 
   @Override
@@ -183,16 +186,8 @@ public class UploadServiceImpl implements UploadService {
               // esperara FAILED el CAS nunca matchearía. Transición y liberación
               // comparten transacción: o ambas, o ninguna (MinIO ya eliminó el
               // blob; este evento es la reconciliación de ese borrado).
-              return this.transactionalOperator
-                  .transactional(
-                      this.storageRepository
-                          .updateStatus(object, StorageSessionStatus.PENDING)
-                          .flatMap(
-                              failed ->
-                                  this.userStorageRepository
-                                      .releaseStorage(
-                                          failed.getOwnerUsername(), failed.sizeInBytes())
-                                      .thenReturn(failed)));
+              return this.terminalTransition.transitionAndRelease(
+                  object, StorageSessionStatus.PENDING);
             })
         .doOnNext(failed -> this.publishFailed(failed, new StorageObjectRemovedException()))
         .onErrorResume(
@@ -254,22 +249,11 @@ public class UploadServiceImpl implements UploadService {
                               .findByOwnerUsername(object.getOwnerUsername())
                               .flatMap(
                                   userStorage ->
-                                      // Transición + liberación atómicas: si el
-                                      // release falla, la tx revierte el CAS y la
-                                      // sesión sigue PENDING para reintentar. El
-                                      // blob se borra después, fuera de la tx.
-                                      this.transactionalOperator
-                                          .transactional(
-                                              this.storageRepository
-                                                  .updateStatus(
-                                                      object, StorageSessionStatus.PENDING)
-                                                  .flatMap(
-                                                      failed ->
-                                                          this.userStorageRepository
-                                                              .releaseStorage(
-                                                                  failed.getOwnerUsername(),
-                                                                  failed.sizeInBytes())
-                                                              .thenReturn(failed)))
+                                      // Transición + liberación atómicas (ver
+                                      // TerminalUploadTransition); el blob se borra
+                                      // después del commit, best effort.
+                                      this.terminalTransition
+                                          .transitionAndRelease(object, StorageSessionStatus.PENDING)
                                           .flatMap(
                                               failed ->
                                                   this.deleteObjectBestEffort(
@@ -534,19 +518,11 @@ public class UploadServiceImpl implements UploadService {
           if (!object.markFailed()) {
             return Mono.error(error);
           }
-          // Transición + liberación atómicas (misma tx local); el borrado del
-          // blob ocurre después y best effort: un blob huérfano es
-          // reconciliable, una cuota descontada dos veces no.
-          return this.transactionalOperator
-              .transactional(
-                  this.storageRepository
-                      .updateStatus(object, StorageSessionStatus.PENDING)
-                      .flatMap(
-                          failed ->
-                              this.userStorageRepository
-                                  .releaseStorage(
-                                      failed.getOwnerUsername(), failed.sizeInBytes())
-                                  .thenReturn(failed)))
+          // Transición + liberación atómicas; el borrado del blob ocurre
+          // después y best effort: un blob huérfano es reconciliable, una
+          // cuota descontada dos veces no.
+          return this.terminalTransition
+              .transitionAndRelease(object, StorageSessionStatus.PENDING)
               .flatMap(failed -> this.deleteObjectBestEffort(failed, bucket).thenReturn(failed))
               .doOnNext(failed -> this.publishFailed(failed, error))
               .onErrorResume(

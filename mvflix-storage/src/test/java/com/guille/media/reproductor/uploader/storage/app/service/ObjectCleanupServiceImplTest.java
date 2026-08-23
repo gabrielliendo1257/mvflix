@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Test;
 
 import org.springframework.transaction.reactive.TransactionalOperator;
 
+import java.time.Instant;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -48,6 +50,8 @@ class ObjectCleanupServiceImplTest {
   private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
   private final TransactionalOperator transactionalOperator =
       mock(TransactionalOperator.class);
+  private final TerminalUploadTransition terminalTransition =
+      new TerminalUploadTransition(storageRepository, userStorageRepository, transactionalOperator);
 
   private final ObjectCleanupServiceImpl service =
       new ObjectCleanupServiceImpl(
@@ -55,7 +59,7 @@ class ObjectCleanupServiceImplTest {
           objectStoragePort,
           storageRepository,
           userStorageRepository,
-          transactionalOperator);
+          terminalTransition);
 
   @BeforeEach
   void passThroughTransaction() {

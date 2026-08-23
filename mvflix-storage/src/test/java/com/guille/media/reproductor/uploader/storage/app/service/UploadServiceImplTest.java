@@ -66,6 +66,8 @@ class UploadServiceImplTest {
   private final StorageEventPublisher eventPublisher = mock(StorageEventPublisher.class);
   private final TransactionalOperator transactionalOperator =
       mock(TransactionalOperator.class);
+  private final TerminalUploadTransition terminalTransition =
+      new TerminalUploadTransition(storageRepository, userStorageRepository, transactionalOperator);
 
   private final UploadServiceImpl service =
       new UploadServiceImpl(
@@ -76,7 +78,8 @@ class UploadServiceImplTest {
           userProvider,
           userStorageRepository,
           eventPublisher,
-          transactionalOperator);
+          transactionalOperator,
+          terminalTransition);
 
   @BeforeEach
   void passThroughTransaction() {
