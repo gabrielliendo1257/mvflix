@@ -37,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.reactive.TransactionalOperator;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -54,6 +55,7 @@ public class UploadServiceImpl implements UploadService {
   private final UserProvider userProvider;
   private final UserStorageRepository userStorageRepository;
   private final StorageEventPublisher eventPublisher;
+  private final TransactionalOperator transactionalOperator;
 
   public UploadServiceImpl(
       ObjectStorageService objectStorageService,
@@ -62,7 +64,8 @@ public class UploadServiceImpl implements UploadService {
       StorageRepository storageRepository,
       UserProvider userProvider,
       UserStorageRepository userStorageRepository,
-      StorageEventPublisher eventPublisher) {
+      StorageEventPublisher eventPublisher,
+      TransactionalOperator transactionalOperator) {
     this.objectStoragePort = objectStorageService;
     this.storageKeyGenerator = storageKeyGenerator;
     this.uploadPolicy = uploadPolicy;
@@ -70,6 +73,7 @@ public class UploadServiceImpl implements UploadService {
     this.userProvider = userProvider;
     this.userStorageRepository = userStorageRepository;
     this.eventPublisher = eventPublisher;
+    this.transactionalOperator = transactionalOperator;
   }
 
   @Override
@@ -131,15 +135,20 @@ public class UploadServiceImpl implements UploadService {
         .createUploadUrl(presignedRequest, location)
         .flatMap(
             permissionUrl ->
-                this.userStorageRepository
-                    .consumeStorage(userStorage.getOwnerUsername(), command.size())
-                    .filter(rowsUpdated -> rowsUpdated == 1)
-                    .switchIfEmpty(
-                        Mono.error(
-                            new ExceededQuotaException(
-                                "Storage quota exceeded for user: "
-                                    + userStorage.getOwnerUsername())))
-                    .then(this.storageRepository.save(object))
+                // Reserva de cuota + persistencia de la sesión comparten una única
+                // transacción local: si el save falla, el consumo se revierte y no
+                // quedan bytes reservados sin fila que los libere.
+                this.transactionalOperator
+                    .transactional(
+                        this.userStorageRepository
+                            .consumeStorage(userStorage.getOwnerUsername(), command.size())
+                            .filter(rowsUpdated -> rowsUpdated == 1)
+                            .switchIfEmpty(
+                                Mono.error(
+                                    new ExceededQuotaException(
+                                        "Storage quota exceeded for user: "
+                                            + userStorage.getOwnerUsername())))
+                            .then(this.storageRepository.save(object)))
                     .map(
                         saved ->
                             new UploadSession(

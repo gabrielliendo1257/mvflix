@@ -6,6 +6,9 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
+
+import org.springframework.transaction.reactive.TransactionalOperator;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,6 +64,8 @@ class UploadServiceImplTest {
   private final UserProvider userProvider = mock(UserProvider.class);
   private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
   private final StorageEventPublisher eventPublisher = mock(StorageEventPublisher.class);
+  private final TransactionalOperator transactionalOperator =
+      mock(TransactionalOperator.class);
 
   private final UploadServiceImpl service =
       new UploadServiceImpl(
@@ -70,7 +75,14 @@ class UploadServiceImplTest {
           storageRepository,
           userProvider,
           userStorageRepository,
-          eventPublisher);
+          eventPublisher,
+          transactionalOperator);
+
+  @BeforeEach
+  void passThroughTransaction() {
+    when(this.transactionalOperator.transactional(any(Mono.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+  }
 
   private static final AuthenticatedUser PEPE = new AuthenticatedUser("pepe", "pepe@mvflix.dev");
 
