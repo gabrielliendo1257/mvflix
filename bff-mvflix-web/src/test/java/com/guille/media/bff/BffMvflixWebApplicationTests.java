@@ -2,10 +2,46 @@ package com.guille.media.bff;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.InMemoryReactiveClientRegistrationRepository;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 
-@SpringBootTest(properties = "spring.profiles.active=dev")
+/**
+ * Smoke de contexto en perfil dev, AISLADO de la red: el yaml de dev declara
+ * el issuer http://127.0.0.1:9090 y Spring valida el descubrimiento OIDC al
+ * construir el repositorio de registros, lo que rompía este test sin servicios
+ * vivos. Reemplazamos ese bean con registros de URIs estáticas (sin
+ * discovery) y apuntamos el jwk-set-uri directo que ya consume
+ * WebSecurityConfig.
+ */
+@SpringBootTest(properties = {
+    "spring.profiles.active=dev",
+    "security.oauth2.jwk-set-uri=http://localhost:0/oauth2/jwks"
+})
 class BffMvflixWebApplicationTests {
 
   @Test
   void contextLoads() {}
+
+  @TestConfiguration
+  static class OfflineOAuth2ClientRegistrations {
+
+    @Bean
+    InMemoryReactiveClientRegistrationRepository clientRegistrationRepository() {
+      ClientRegistration movieApp =
+          ClientRegistration.withRegistrationId("movie-app")
+              .clientId("test-client")
+              .clientSecret("test-secret")
+              .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+              .redirectUri("{baseUrl}/login/oauth2/code/movie-app")
+              .scope("openid")
+              .authorizationUri("http://localhost:0/authorize")
+              .tokenUri("http://localhost:0/token")
+              .clientName("test")
+              .build();
+      return new InMemoryReactiveClientRegistrationRepository(movieApp);
+    }
+  }
 }
