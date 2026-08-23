@@ -46,6 +46,30 @@ class StorageArchitectureTest {
               "..storage.infrastructure.security..");
 
   @ArchTest
+  static final ArchRule library_is_self_contained =
+      noClasses()
+          .that()
+          .resideInAPackage("..storage.library..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage(
+              "..storage.app..",
+              "..storage.domain..",
+              "..storage.infrastructure..",
+              "..storage.presenter..");
+
+  @ArchTest
+  static final ArchRule legacy_layers_do_not_reach_into_library =
+      noClasses()
+          .that()
+          .resideInAnyPackage(
+              "..storage.app..", "..storage.domain..",
+              "..storage.infrastructure..", "..storage.presenter..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAPackage("..storage.library..");
+
+  @ArchTest
   static final ArchRule bounded_contexts_are_acyclic =
       slices().matching("com.guille.media.reproductor.uploader.storage.(*)..")
           .should().beFreeOfCycles();
