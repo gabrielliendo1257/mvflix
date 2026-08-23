@@ -20,6 +20,7 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNot
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageKeyGenerator;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
@@ -165,6 +166,7 @@ class UploadServiceImplTest {
   void completeUploadTransitionsToCompletedAndPublishesEvent() {
     StoreObject pending = this.pendingObject(7L);
 
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
     when(this.objectStoragePort.objectExists(any(StorageLocation.class))).thenReturn(Mono.just(true));
@@ -186,6 +188,7 @@ class UploadServiceImplTest {
     StoreObject pending = this.pendingObject(7L);
     StoreObject completed = this.completedObject(7L);
 
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
     when(this.userStorageRepository.findByOwnerUsername("pepe"))
         .thenReturn(Mono.just(PEPE_STORAGE));
@@ -209,6 +212,7 @@ class UploadServiceImplTest {
   void completeUploadReleasesQuotaWhenObjectSizeMismatch() {
     StoreObject pending = this.pendingObject(7L);
 
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
     when(this.objectStoragePort.objectExists(any(StorageLocation.class))).thenReturn(Mono.just(true));
@@ -333,6 +337,7 @@ class UploadServiceImplTest {
   void completeUploadDefersCompletionWhenObjectIsNotYetInObjectStore() {
     StoreObject pending = this.pendingObject(7L);
 
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
     when(this.objectStoragePort.objectExists(any(StorageLocation.class))).thenReturn(Mono.just(false));
@@ -350,6 +355,7 @@ class UploadServiceImplTest {
   void cancelUploadReleasesQuotaDeletesObjectAndMarksFailed() {
     StoreObject pending = this.pendingObject(7L);
 
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
     when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
@@ -370,6 +376,7 @@ class UploadServiceImplTest {
   void cancelUploadIsNoOpWhenSessionIsNoLongerPending() {
     StoreObject completed = this.completedObject(7L);
 
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(completed));
 
     StepVerifier.create(this.service.cancelUpload(7L)).verifyComplete();
@@ -377,6 +384,62 @@ class UploadServiceImplTest {
     assertThat(completed.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
     verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
     verify(this.eventPublisher, never()).publish(any());
+  }
+
+  private StoreObject objectOwnedBy(long storageId, StorageSessionStatus status, String owner) {
+    return new StoreObject(
+        owner,
+        new StorageKeyGenerator().generate(owner, com.guille.media.reproductor.uploader.storage.domain.vos.StorageFolder.from(MimeType.of("video/mp4"))),
+        new StorageMetadata("video/mp4", 1024, null, Instant.now()),
+        Instant.now(),
+        storageId,
+        status);
+  }
+
+  @Test
+  void cancelUploadRejectsNonOwnerWithoutLeakingExistence() {
+    StoreObject anasPendingUpload = this.objectOwnedBy(7L, StorageSessionStatus.PENDING, "ana");
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(anasPendingUpload));
+
+    StepVerifier.create(this.service.cancelUpload(7L))
+        .expectErrorSatisfies(
+            error -> assertThat(error).isInstanceOf(StorageObjectNotAvailable.class))
+        .verify();
+
+    assertThat(anasPendingUpload.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.PENDING);
+    verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
+    verify(this.objectStoragePort, never())
+        .delete(any(com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation.class));
+    verify(this.eventPublisher, never()).publish(any());
+  }
+
+  @Test
+  void completeUploadRejectsNonOwnerWithoutLeakingExistence() {
+    StoreObject anasPendingUpload = this.objectOwnedBy(7L, StorageSessionStatus.PENDING, "ana");
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(anasPendingUpload));
+
+    StepVerifier.create(this.service.completeUpload(7L))
+        .expectErrorSatisfies(
+            error -> assertThat(error).isInstanceOf(StorageObjectNotAvailable.class))
+        .verify();
+
+    assertThat(anasPendingUpload.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.PENDING);
+    verify(this.userStorageRepository, never()).findByOwnerUsername(anyString());
+    verify(this.eventPublisher, never()).publish(any());
+  }
+
+  @Test
+  void cancelUploadFailsWhenSessionDoesNotExist() {
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.empty());
+
+    StepVerifier.create(this.service.cancelUpload(7L))
+        .expectError(StorageObjectNotAvailable.class)
+        .verify();
   }
 
   @Test

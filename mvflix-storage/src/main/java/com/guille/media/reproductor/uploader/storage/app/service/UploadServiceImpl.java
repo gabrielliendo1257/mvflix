@@ -210,13 +210,21 @@ public class UploadServiceImpl implements UploadService {
   public Mono<Void> cancelUpload(Long uploadId) {
     log.info("Cancelling upload: uploadId={}", uploadId);
 
-    return this.storageRepository
-        .findById(uploadId)
+    return this.userProvider
+        .getAuthenticatedUser()
         .switchIfEmpty(
-            Mono.error(new StorageObjectNotAvailable("Storage object not available: " + uploadId)))
+            Mono.error(new AuthenticationCredentialsNotFoundException("No authenticated user")))
         .flatMap(
-            object -> {
-              if (object.getStorageObjectStatus() != StorageSessionStatus.PENDING) {
+            user ->
+                this.storageRepository
+                    .findById(uploadId)
+                    .switchIfEmpty(
+                        Mono.error(new StorageObjectNotAvailable(
+                            "Storage object not available: " + uploadId)))
+                    .doOnNext(object -> object.ensureOwnedBy(user.subject()))
+                    .flatMap(
+                        object -> {
+                          if (object.getStorageObjectStatus() != StorageSessionStatus.PENDING) {
                 log.info(
                     "Upload is no longer cancellable (not PENDING), skipping: uploadId={}, status={}",
                     uploadId,
@@ -249,8 +257,10 @@ public class UploadServiceImpl implements UploadService {
                             object.getStorageObjectStatus());
                         return Mono.empty();
                       });
-            })
-        .doOnNext(failed -> this.publishFailed(failed, new UploadCancelledByUserException()))
+                        })
+                    .doOnNext(
+                        failed ->
+                            this.publishFailed(failed, new UploadCancelledByUserException())))
         .then();
   }
 
@@ -258,22 +268,31 @@ public class UploadServiceImpl implements UploadService {
   public Mono<UploadCompletionResult> completeUpload(Long uploadId) {
     log.info("Completing upload: uploadId={}", uploadId);
 
-    return this.storageRepository
-        .findById(uploadId)
+    return this.userProvider
+        .getAuthenticatedUser()
         .switchIfEmpty(
-            Mono.error(new StorageObjectNotAvailable("Storage object not available: " + uploadId)))
+            Mono.error(new AuthenticationCredentialsNotFoundException("No authenticated user")))
         .flatMap(
-            object ->
-                this.userStorageRepository
-                    .findByOwnerUsername(object.getOwnerUsername())
+            user ->
+                this.storageRepository
+                    .findById(uploadId)
                     .switchIfEmpty(
-                        Mono.error(
-                            new UserStorageNotFoundException(
-                                "No storage registered for user: " + object.getOwnerUsername())))
+                        Mono.error(new StorageObjectNotAvailable(
+                            "Storage object not available: " + uploadId)))
+                    .doOnNext(object -> object.ensureOwnedBy(user.subject()))
                     .flatMap(
-                        userStorage ->
-                            this.completeUploadedObject(
-                                object, userStorage.getBucketName(), true)))
+                        object ->
+                            this.userStorageRepository
+                                .findByOwnerUsername(object.getOwnerUsername())
+                                .switchIfEmpty(
+                                    Mono.error(
+                                        new UserStorageNotFoundException(
+                                            "No storage registered for user: "
+                                                + object.getOwnerUsername())))
+                                .flatMap(
+                                    userStorage ->
+                                        this.completeUploadedObject(
+                                            object, userStorage.getBucketName(), true)))
         .doOnNext(
             completion -> {
               if (completion.transitioned()) {
@@ -287,7 +306,7 @@ public class UploadServiceImpl implements UploadService {
                 log.info("Upload already completed, skipping: uploadId={}", uploadId);
               }
             })
-        .map(this::toCompletionResult);
+                    .map(this::toCompletionResult));
   }
 
   private UploadCompletionResult toCompletionResult(Completion completion) {
