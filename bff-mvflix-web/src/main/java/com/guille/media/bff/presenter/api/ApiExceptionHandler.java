@@ -2,6 +2,7 @@ package com.guille.media.bff.presenter.api;
 
 import com.guille.media.bff.app.service.StreamTicketException;
 import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
+import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.presenter.api.dto.OrchestrationError;
 
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +40,18 @@ public class ApiExceptionHandler {
         ResponseEntity.status(ex.getStatus())
             .contentType(MediaType.APPLICATION_JSON)
             .body(new OrchestrationError(ex.getStatus().value(), ex.getCode(), ex.getMessage())));
+  }
+
+  /** Fase del proceso incompatible con la operación pedida. */
+  @ExceptionHandler(InvalidAddMediaTransition.class)
+  public Mono<ResponseEntity<OrchestrationError>> invalidTransition(
+      InvalidAddMediaTransition ex) {
+    log.warn("Add Media transición inválida: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.CONFLICT.value(), "INVALID_ADD_MEDIA_TRANSITION", ex.getMessage())));
   }
 
   /** Propaga el status y el body del servicio aguas abajo (users/storage) sin degradar a 500. */

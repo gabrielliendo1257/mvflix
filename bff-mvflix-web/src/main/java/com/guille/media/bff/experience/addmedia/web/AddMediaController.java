@@ -1,6 +1,8 @@
 package com.guille.media.bff.experience.addmedia.web;
 
 import com.guille.media.bff.app.service.WebSessionService;
+import com.guille.media.bff.experience.addmedia.application.CancelAddMedia;
+import com.guille.media.bff.experience.addmedia.application.CompleteProcessAddMedia;
 import com.guille.media.bff.experience.addmedia.application.PreviewMovieCandidate;
 import com.guille.media.bff.experience.addmedia.application.SearchMovieCandidates;
 import com.guille.media.bff.experience.addmedia.application.StartAddMedia;
@@ -38,6 +40,8 @@ public class AddMediaController {
   private final SearchMovieCandidates searchMovieCandidates;
   private final PreviewMovieCandidate previewMovieCandidate;
   private final StartAddMedia startAddMedia;
+  private final CompleteProcessAddMedia completeProcess;
+  private final CancelAddMedia cancelAddMedia;
   private final AddMediaProcessRepository processes;
   private final WebSessionService session;
 
@@ -45,11 +49,15 @@ public class AddMediaController {
       SearchMovieCandidates searchMovieCandidates,
       PreviewMovieCandidate previewMovieCandidate,
       StartAddMedia startAddMedia,
+      CompleteProcessAddMedia completeProcess,
+      CancelAddMedia cancelAddMedia,
       AddMediaProcessRepository processes,
       WebSessionService session) {
     this.searchMovieCandidates = searchMovieCandidates;
     this.previewMovieCandidate = previewMovieCandidate;
     this.startAddMedia = startAddMedia;
+    this.completeProcess = completeProcess;
+    this.cancelAddMedia = cancelAddMedia;
     this.processes = processes;
     this.session = session;
   }
@@ -85,6 +93,31 @@ public class AddMediaController {
                     new ResponseStatusException(HttpStatus.NOT_FOUND, "Proceso no encontrado")))
                 .map(AddMediaView::from));
   }
+
+  /**
+   * Cierre del alta. 200 si quedó READY, 202 VERIFYING_UPLOAD si storage aún
+   * verifica, 409 ante veredicto definitivo (rollback ya ejecutado).
+   */
+  @PostMapping(value = "/{addMediaId}/complete", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<AddMediaView>> complete(
+      @PathVariable String addMediaId,
+      @RequestBody(required = false) CompleteSizeRequest request) {
+    Long sizeBytes = request == null ? null : request.sizeBytes();
+    return this.ownerSubject()
+        .flatMap(owner -> this.completeProcess.handle(owner, addMediaId, sizeBytes))
+        .map(view -> view.phase() == com.guille.media.bff.experience.addmedia.model.AddMediaPhase.READY
+            ? ResponseEntity.ok(view)
+            : ResponseEntity.accepted().body(view));
+  }
+
+  /** Cancelación del proceso con compensaciones acotadas. */
+  @PostMapping("/{addMediaId}/cancel")
+  public Mono<AddMediaView> cancel(@PathVariable String addMediaId) {
+    return this.ownerSubject()
+        .flatMap(owner -> this.cancelAddMedia.handle(owner, addMediaId));
+  }
+
+  public record CompleteSizeRequest(Long sizeBytes) {}
 
   /**
    * Sujeto propietario del proceso. Fallback "sandbox" SOLO para el perfil sin

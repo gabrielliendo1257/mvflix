@@ -1,0 +1,133 @@
+package com.guille.media.bff.experience.addmedia.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import com.guille.media.bff.app.dto.CompleteMovieRequest;
+import com.guille.media.bff.app.dto.MovieDto;
+import com.guille.media.bff.app.ports.StorageWebClient;
+import com.guille.media.bff.app.service.WebMoviesService;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
+import com.guille.media.bff.experience.addmedia.model.AddMediaId;
+import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
+import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
+import com.guille.media.bff.experience.addmedia.web.AddMediaView;
+import com.guille.media.bff.infrastructure.persistence.InMemoryAddMediaProcessRepository;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import java.util.List;
+
+class CompleteProcessAddMediaTest {
+
+  private final StorageWebClient storage = mock(StorageWebClient.class);
+  private final WebMoviesService movies = mock(WebMoviesService.class);
+  private final InMemoryAddMediaProcessRepository processes =
+      new InMemoryAddMediaProcessRepository();
+
+  private CompleteProcessAddMedia useCase;
+
+  @BeforeEach
+  void setUp() {
+    this.useCase =
+        new CompleteProcessAddMedia(this.processes, this.completion());
+  }
+
+  private CompleteAddMedia completion;
+
+  private CompleteAddMedia completion() {
+    this.completion = mock(CompleteAddMedia.class);
+    return this.completion;
+  }
+
+  private String preparedProcess() {
+    AddMediaProcess process =
+        AddMediaProcess.starting(AddMediaId.newId(), "pepe").uploadPrepared(7L, 42L);
+    return this.processes.save(process).block().id().value();
+  }
+
+  @Test
+  void completedOutcomeMarksReadyAndReturnsMovieId() {
+    String id = this.preparedProcess();
+    MovieDto readyMovie = movie(7L);
+    when(this.completion.complete(7L, new CompleteMovieRequest(42L, 1024L)))
+        .thenReturn(Mono.just(new UploadCompletionOutcome.Completed(readyMovie)));
+
+    StepVerifier.create(this.useCase.handle("pepe", id, 1024L))
+        .assertNext(view -> {
+          assertThat(view.phase()).isEqualTo(AddMediaPhase.READY);
+          assertThat(view.movieId()).isEqualTo(7L);
+        })
+        .verifyComplete();
+  }
+
+  @Test
+  void verifyingOutcomeKeepsProcessVerifyingWithoutRollback() {
+    String id = this.preparedProcess();
+    when(this.completion.complete(anyLong(), any()))
+        .thenReturn(Mono.just(new UploadCompletionOutcome.StillVerifying(42L)));
+
+    StepVerifier.create(this.useCase.handle("pepe", id, null))
+        .assertNext(view -> assertThat(view.phase()).isEqualTo(AddMediaPhase.VERIFYING_UPLOAD))
+        .verifyComplete();
+
+    verify(this.movies, never()).discardDraft(anyLong());
+  }
+
+  @Test
+  void definitiveFailureMarksProcessFailedAndPropagates() {
+    String id = this.preparedProcess();
+    when(this.completion.complete(anyLong(), any()))
+        .thenReturn(Mono.error(new UploadOrchestrationException(
+            org.springframework.http.HttpStatus.CONFLICT, "UPLOAD_FAILED", "cuarentena")));
+
+    StepVerifier.create(this.useCase.handle("pepe", id, null))
+        .expectError(UploadOrchestrationException.class)
+        .verify();
+
+    StepVerifier.create(this.processes.findById(new AddMediaId(id)))
+        .assertNext(process -> {
+          assertThat(process.phase()).isEqualTo(AddMediaPhase.FAILED);
+          assertThat(process.failureCode()).isEqualTo("UPLOAD_FAILED");
+        })
+        .verifyComplete();
+  }
+
+  @Test
+  void readyProcessIsIdempotent() {
+    AddMediaId id = AddMediaId.newId();
+    this.processes.save(
+        AddMediaProcess.starting(id, "pepe").uploadPrepared(7L, 42L).verifying().ready()).block();
+
+    StepVerifier.create(this.useCase.handle("pepe", id.value(), null))
+        .assertNext(view -> assertThat(view.phase()).isEqualTo(AddMediaPhase.READY))
+        .verifyComplete();
+
+    verify(this.completion, never()).complete(anyLong(), any());
+  }
+
+  @Test
+  void foreignOrMissingProcessesAreNotFound() {
+    AddMediaId id = AddMediaId.newId();
+    this.processes.save(
+        AddMediaProcess.starting(id, "ana").uploadPrepared(1L, 2L)).block();
+
+    StepVerifier.create(this.useCase.handle("pepe", id.value(), null))
+        .expectError(org.springframework.web.server.ResponseStatusException.class)
+        .verify();
+  }
+
+  private static MovieDto movie(Long id) {
+    return new MovieDto(id, "READY", 42L, "PRIVATE", "MOVIE", "Alien", null, 1979,
+        List.of(), null, null, null, List.of(), null, null, null, null, null, null, null);
+  }
+}

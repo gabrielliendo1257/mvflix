@@ -11,6 +11,9 @@ import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
 import com.guille.media.bff.app.service.WebMoviesService;
 import com.guille.media.bff.app.service.WebSessionService;
+import com.guille.media.bff.experience.addmedia.application.CancelAddMedia;
+import com.guille.media.bff.experience.addmedia.application.CompleteAddMedia;
+import com.guille.media.bff.experience.addmedia.application.CompleteProcessAddMedia;
 import com.guille.media.bff.experience.addmedia.application.PreviewMovieCandidate;
 import com.guille.media.bff.experience.addmedia.application.SearchMovieCandidates;
 import com.guille.media.bff.experience.addmedia.application.StartAddMedia;
@@ -41,11 +44,14 @@ class AddMediaControllerTest {
   @BeforeEach
   void setUp() {
     when(this.session.currentSubject()).thenReturn(Mono.just("pepe"));
+    CompleteAddMedia completion = mock(CompleteAddMedia.class);
     AddMediaController controller =
         new AddMediaController(
             new SearchMovieCandidates(this.moviesWebClient),
             new PreviewMovieCandidate(this.moviesWebClient),
             new StartAddMedia(this.webMoviesService, this.storageWebClient, this.processes),
+            new CompleteProcessAddMedia(this.processes, completion),
+            new CancelAddMedia(this.processes, this.storageWebClient, this.webMoviesService),
             this.processes,
             this.session);
     this.client = WebTestClient.bindToController(controller).build();
