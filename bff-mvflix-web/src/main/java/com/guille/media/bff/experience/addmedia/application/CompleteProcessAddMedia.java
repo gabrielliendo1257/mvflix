@@ -54,7 +54,8 @@ public class CompleteProcessAddMedia {
           // Terminales no reabren; sin upload preparado no hay qué verificar.
           if (process.phase() == AddMediaPhase.CANCELLED
               || process.phase() == AddMediaPhase.FAILED
-              || process.phase() == AddMediaPhase.STARTING) {
+              || process.phase() == AddMediaPhase.STARTING
+              || process.phase() == AddMediaPhase.PREPARING) {
             return Mono.error(new InvalidAddMediaTransition(
                 process.phase(), AddMediaPhase.VERIFYING_UPLOAD));
           }

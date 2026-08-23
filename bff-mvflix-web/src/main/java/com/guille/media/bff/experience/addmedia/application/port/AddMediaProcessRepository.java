@@ -25,4 +25,13 @@ public interface AddMediaProcessRepository {
    * fue modificado concurrentemente desde que se leyó.
    */
   Mono<AddMediaProcess> save(AddMediaProcess process);
+
+  /**
+   * Reclamo atómico STARTING -> PREPARING. Verdadero solo para el ganador:
+   * los perdedores NO deben ejecutar los side effects del alta.
+   */
+  Mono<Boolean> tryClaim(AddMediaId id);
+
+  /** Devuelve un reclamo fallido a STARTING para habilitar el reintento. */
+  Mono<AddMediaProcess> releaseClaim(AddMediaId id);
 }

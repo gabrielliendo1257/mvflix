@@ -111,6 +111,50 @@ class StartAddMediaTest {
   }
 
   @Test
+  void concurrentStartsWithSameKeyCreateSideEffectsOnlyOnce() {
+    when(this.movies.createDraft(any())).thenAnswer(
+        inv -> Mono.delay(java.time.Duration.ofMillis(50)).thenReturn(draft()));
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
+        .thenReturn(Mono.just(session()));
+
+    Mono<AddMediaView> v1 = start();
+    Mono<AddMediaView> v2 = start();
+    StepVerifier.create(Mono.zip(v1, v2))
+        .assertNext(tuple -> {
+          // Uno gana y termina WAITING_FOR_UPLOAD; el otro ve PREPARING o
+          // WAITING_FOR_UPLOAD según el timing de la persistencia final.
+          assertThat(tuple.getT1().phase()).isIn(
+              AddMediaPhase.WAITING_FOR_UPLOAD, AddMediaPhase.PREPARING);
+          assertThat(tuple.getT2().phase()).isIn(
+              AddMediaPhase.WAITING_FOR_UPLOAD, AddMediaPhase.PREPARING);
+        })
+        .verifyComplete();
+
+    verify(this.movies, org.mockito.Mockito.times(1)).createDraft(any());
+    verify(this.storage, org.mockito.Mockito.times(1)).prepareUpload(any());
+  }
+
+  @Test
+  void loserOfTheClaimSeesPreparingWithoutSideEffects() {
+    // Proceso existente ya reclamado por otro request en vuelo.
+    this.processes.createIfAbsent("pepe", "intent-1").block();
+    String id = this.processes.createIfAbsent("pepe", "intent-1").block().id().value();
+    org.assertj.core.api.Assertions.assertThat(
+        this.processes.tryClaim(com.guille.media.bff.experience.addmedia.model.AddMediaId
+            .parse(id)).block()).isTrue();
+
+    StepVerifier.create(start())
+        .assertNext(view -> {
+          assertThat(view.phase()).isEqualTo(AddMediaPhase.PREPARING);
+          assertThat(view.movieId()).isNull();
+        })
+        .verifyComplete();
+
+    verify(this.movies, never()).createDraft(any());
+    verify(this.storage, never()).prepareUpload(any());
+  }
+
+  @Test
   void storageFailureDiscardsOnlyThisProcessDraftAndPropagates() {
     when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
     when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());

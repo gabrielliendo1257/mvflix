@@ -58,7 +58,27 @@ public class StartAddMedia {
                 process.id(), process.phase());
             return Mono.just(AddMediaView.from(process));
           }
-          return this.startFresh(process, request);
+          // Claim atómico: solo un request ejecuta los side effects.
+          return this.processes
+              .tryClaim(process.id())
+              .flatMap(claimed -> {
+                if (!claimed) {
+                  // Otro request está preparando: el front consulta estado.
+                  log.info("add-media: proceso {} reclamado por otro request",
+                      process.id());
+                  return this.processes
+                      .findById(process.id())
+                      .map(AddMediaView::from);
+                }
+                // Continuar sobre la instancia ya reclamada (PREPARING).
+                return this.processes
+                    .findById(process.id())
+                    .flatMap(claimedProcess ->
+                        this.startFresh(claimedProcess, request)
+                            .onErrorResume(error ->
+                                this.processes.releaseClaim(process.id())
+                                    .then(Mono.error(error))));
+              });
         });
   }
 

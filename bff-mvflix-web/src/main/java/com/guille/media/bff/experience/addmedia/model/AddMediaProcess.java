@@ -37,8 +37,28 @@ public record AddMediaProcess(
     return new AddMediaProcess(id, ownerSubject, null, null, AddMediaPhase.STARTING, null, 0L);
   }
 
-  public AddMediaProcess uploadPrepared(Long movieId, Long uploadId) {
+  /** Reclamo de ejecución: solo el ganador crea side effects. */
+  public AddMediaProcess preparing() {
     if (this.phase != AddMediaPhase.STARTING) {
+      throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.PREPARING);
+    }
+    return new AddMediaProcess(
+        this.id, this.ownerSubject, null, null,
+        AddMediaPhase.PREPARING, null, this.version + 1);
+  }
+
+  /** Suelta el reclamo tras un fallo para permitir retry con la misma key. */
+  public AddMediaProcess revertToStarting() {
+    if (this.phase != AddMediaPhase.PREPARING) {
+      throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.STARTING);
+    }
+    return new AddMediaProcess(
+        this.id, this.ownerSubject, null, null,
+        AddMediaPhase.STARTING, null, this.version + 1);
+  }
+
+  public AddMediaProcess uploadPrepared(Long movieId, Long uploadId) {
+    if (this.phase != AddMediaPhase.PREPARING) {
       throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.WAITING_FOR_UPLOAD);
     }
     return new AddMediaProcess(

@@ -11,6 +11,10 @@ public record AddMediaId(String value) {
     }
   }
 
+  public static AddMediaId parse(String value) {
+    return new AddMediaId(value);
+  }
+
   public static AddMediaId newId() {
     return new AddMediaId(UUID.randomUUID().toString());
   }

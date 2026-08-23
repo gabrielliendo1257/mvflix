@@ -7,6 +7,8 @@ package com.guille.media.bff.experience.addmedia.model;
  */
 public enum AddMediaPhase {
   STARTING,
+  /** Un único worker reclamó el proceso y está creando draft/upload. */
+  PREPARING,
   WAITING_FOR_UPLOAD,
   VERIFYING_UPLOAD,
   FINALIZING,

@@ -50,6 +50,41 @@ public class InMemoryAddMediaProcessRepository implements AddMediaProcessReposit
   }
 
   @Override
+  public Mono<Boolean> tryClaim(AddMediaId id) {
+    return Mono.defer(() -> Mono.just(this.claimInPlace(id)));
+  }
+
+  private boolean claimInPlace(AddMediaId id) {
+    AtomicReference<Boolean> claimed = new AtomicReference<>(false);
+    this.processes.compute(id, (k, existing) -> {
+      if (existing == null || existing.phase() != com.guille.media.bff.experience.addmedia.model.AddMediaPhase.STARTING) {
+        return existing;
+      }
+      claimed.set(true);
+      return existing.preparing();
+    });
+    return claimed.get();
+  }
+
+  @Override
+  public Mono<AddMediaProcess> releaseClaim(AddMediaId id) {
+    return Mono.defer(() -> Mono.justOrEmpty(this.releaseInPlace(id)));
+  }
+
+  private AddMediaProcess releaseInPlace(AddMediaId id) {
+    AtomicReference<AddMediaProcess> released = new AtomicReference<>();
+    this.processes.compute(id, (k, existing) -> {
+      if (existing == null || existing.phase() != com.guille.media.bff.experience.addmedia.model.AddMediaPhase.PREPARING) {
+        return existing;
+      }
+      AddMediaProcess reverted = existing.revertToStarting();
+      released.set(reverted);
+      return reverted;
+    });
+    return released.get();
+  }
+
+  @Override
   public Mono<AddMediaProcess> save(AddMediaProcess process) {
     return Mono.defer(() -> {
       AtomicReference<AddMediaProcess> saved = new AtomicReference<>();
