@@ -33,6 +33,13 @@ public interface AddMediaProcessRepository {
   Mono<Boolean> tryClaim(AddMediaId id);
 
   /**
+   * Reclamo atómico de finalización (WAITING_FOR_UPLOAD | VERIFYING ->
+   * FINALIZING). Verdadero solo para el ganador de la carrera complete vs
+   * cancel; el perdedor NO ejecuta side effects.
+   */
+  Mono<Boolean> tryFinalizeClaim(AddMediaId id);
+
+  /**
    * Reclamo atómico de cancelación desde fases activas
    * (WAITING_FOR_UPLOAD | VERIFYING_UPLOAD -> CANCELLING).
    */

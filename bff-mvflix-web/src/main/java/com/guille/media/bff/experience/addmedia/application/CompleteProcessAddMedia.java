@@ -4,96 +4,118 @@ import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.experience.addmedia.application.UploadCompletionOutcome.Completed;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
-import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
+import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.experience.addmedia.web.AddMediaView;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import reactor.core.publisher.Mono;
 
 /**
- * Cierre de la experiencia Add Media: una sola intención (complete) que
- * coordina la verificación del upload y la persistencia READY en Movies,
- * manteniendo la fase del proceso alineada con el resultado.
+ * Cierre de la experiencia Add Media. SERIALIZACIÓN: complete reclama
+ * FINALIZING (CAS) ANTES de tocar Movies/Storage; si cancel ganó el claim,
+ * complete falla con 409 sin side effects.
  *
- * <p>PENDING → VERIFYING (202, sin rollback): puede ser demora del webhook.
- * FAILED/INCONSISTENT → FAILED en el proceso; el rollback + penalidad lo
- * decide CompleteAddMedia según veredicto del storage.
+ * <p>Salidas del claim FINALIZING:
+ * <ul>
+ *   <li>Movie persistida → READY;</li>
+ *   <li>Storage aún PENDING o fallo transitorio → VERIFYING (reintentable);</li>
+ *   <li>veredicto definitivo → FAILED (rollback ya ejecutado).</li>
+ * </ul>
  */
 @Slf4j
+@RequiredArgsConstructor
 @Service
 public class CompleteProcessAddMedia {
 
   private final AddMediaProcessRepository processes;
   private final CompleteAddMedia completion;
 
-  public CompleteProcessAddMedia(
-      AddMediaProcessRepository processes,
-      CompleteAddMedia completion) {
-    this.processes = processes;
-    this.completion = completion;
-  }
-
   public Mono<AddMediaView> handle(String ownerSubject, String addMediaId, Long reportedSizeBytes) {
     return this.processes
         .findById(new AddMediaId(addMediaId))
         .filter(process -> process.ownedBy(ownerSubject))
-        .switchIfEmpty(Mono.error(
-            new ResponseStatusException(HttpStatus.NOT_FOUND, "Proceso no encontrado")))
+        .switchIfEmpty(Mono.error(new com.guille.media.bff.shared.error.EntityNotFound(
+            "Proceso no encontrado")))
         .flatMap(process -> {
           // Idempotencia: READY responde siempre la misma vista.
           if (process.phase() == AddMediaPhase.READY) {
             return Mono.just(AddMediaView.from(process));
           }
-          // Terminales no reabren; sin upload preparado no hay qué verificar.
           if (process.phase() == AddMediaPhase.CANCELLED
               || process.phase() == AddMediaPhase.CANCELLING
               || process.phase() == AddMediaPhase.FAILED
               || process.phase() == AddMediaPhase.STARTING
               || process.phase() == AddMediaPhase.PREPARING) {
             return Mono.error(new InvalidAddMediaTransition(
-                process.phase(), AddMediaPhase.VERIFYING_UPLOAD));
+                process.phase(), AddMediaPhase.FINALIZING));
           }
-          return this.completeViaStorage(process, reportedSizeBytes);
+          return this.claimAndComplete(process, reportedSizeBytes);
         });
   }
 
-  private Mono<AddMediaView> completeViaStorage(AddMediaProcess process,
-      Long reportedSizeBytes) {
-    // Reintento en VERIFYING: la fase ya es correcta, no re-persistir.
-    Mono<AddMediaProcess> ensureVerifying =
-        process.phase() == AddMediaPhase.VERIFYING_UPLOAD
-            ? Mono.just(process)
-            : this.processes.save(process.verifying());
-    return ensureVerifying
-        .flatMap(verify ->
-            this.completion.complete(process.movieId(),
-                    new CompleteMovieRequest(process.uploadId(), reportedSizeBytes))
-                .flatMap(outcome -> {
-                  if (outcome instanceof Completed completed) {
-                    return this.processes
-                        .save(verify.ready())
-                        .map(saved -> withMovie(AddMediaView.from(saved), completed.movie()));
-                  }
-                  return Mono.just(AddMediaView.from(verify));
-                })
-                .onErrorResume(
-                    error -> error instanceof UploadOrchestrationException orchestration
-                        && orchestration.getStatus() == HttpStatus.CONFLICT,
-                    error -> this.processes
-                        .save(verify.failed(failureCodeOf(error)))
-                        .then(Mono.error(error))));
+  private Mono<AddMediaView> claimAndComplete(AddMediaProcess process, Long reportedSizeBytes) {
+    return this.processes
+        .tryFinalizeClaim(process.id())
+        .flatMap(claimed -> {
+          if (!claimed) {
+            log.info("add-media: finalize perdió la carrera para {}", process.id());
+            return Mono.error(new InvalidAddMediaTransition(
+                process.phase(), AddMediaPhase.FINALIZING));
+          }
+          return this.processes
+              .findById(process.id())
+              .flatMap(finalizing -> this.runCompletion(finalizing, reportedSizeBytes));
+        });
+  }
+
+  private Mono<AddMediaView> runCompletion(AddMediaProcess finalizing, Long reportedSizeBytes) {
+    return this.completion
+        .complete(finalizing.movieId(),
+            new CompleteMovieRequest(finalizing.uploadId(), reportedSizeBytes))
+        .flatMap(outcome -> {
+          if (outcome instanceof Completed completed) {
+            return this.processes
+                .save(finalizing.ready())
+                .map(saved -> withMovie(AddMediaView.from(saved), completed.movie()));
+          }
+          // PENDING en storage o fallo transitorio: soltar el claim y permitir retry.
+          return this.processes
+              .save(finalizing.backToVerifying())
+              .map(saved -> withFailureCode(AddMediaView.from(saved), null));
+        })
+        .onErrorResume(
+            error -> error instanceof UploadOrchestrationException orchestration
+                && orchestration.getStatus() == HttpStatus.CONFLICT,
+            error -> this.processes
+                .save(finalizing.failed(failureCodeOf(error)))
+                .then(Mono.error(error)))
+        .onErrorResume(error -> {
+              // Cualquier otro fallo (incluido CAS perdido por cancel):
+              // devolver el claim a VERIFYING salvo que el proceso ya no sea
+              // FINALIZING (cancel ganó).
+              return this.processes.findById(finalizing.id())
+                  .filter(current -> current.phase() == AddMediaPhase.FINALIZING)
+                  .flatMap(current -> this.processes.save(current.backToVerifying()))
+                  .then(Mono.error(error));
+            });
+  }
+
+  private static AddMediaView withFailureCode(AddMediaView view, String code) {
+    return new AddMediaView(view.addMediaId(), view.ownerSubject(), view.phase(),
+        view.movieId(), view.uploadId(), view.upload(), code);
   }
 
   private static AddMediaView withMovie(AddMediaView view,
       com.guille.media.bff.app.dto.MovieDto movie) {
-    return new AddMediaView(view.addMediaId(), view.ownerSubject(), view.phase(),
+    return new AddMediaView(view.addMediaId(), view.ownerSubject(),
+        com.guille.media.bff.experience.addmedia.model.AddMediaPhase.READY,
         movie.id(), view.uploadId(), view.upload(), view.failureCode());
   }
 

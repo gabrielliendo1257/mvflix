@@ -106,6 +106,30 @@ public record AddMediaProcess(
         AddMediaPhase.CANCELLING, null, this.version + 1);
   }
 
+  /**
+   * Reclamo de finalización: serializa complete frente a cancel. Solo el
+   * ganador ejecuta los side effects sobre Movies/Storage.
+   */
+  public AddMediaProcess finalizing() {
+    if (this.phase != AddMediaPhase.WAITING_FOR_UPLOAD
+        && this.phase != AddMediaPhase.VERIFYING_UPLOAD) {
+      throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.FINALIZING);
+    }
+    return new AddMediaProcess(
+        this.id, this.ownerSubject, this.movieId, this.uploadId,
+        AddMediaPhase.FINALIZING, null, this.version + 1);
+  }
+
+  /** Suelta el reclamo tras un fallo transitorio/PENDING para permitir retry. */
+  public AddMediaProcess backToVerifying() {
+    if (this.phase != AddMediaPhase.FINALIZING) {
+      throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.VERIFYING_UPLOAD);
+    }
+    return new AddMediaProcess(
+        this.id, this.ownerSubject, this.movieId, this.uploadId,
+        AddMediaPhase.VERIFYING_UPLOAD, null, this.version + 1);
+  }
+
   public AddMediaProcess failed(String failureCode) {
     if (this.phase == AddMediaPhase.READY || this.phase == AddMediaPhase.CANCELLED) {
       throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.FAILED);

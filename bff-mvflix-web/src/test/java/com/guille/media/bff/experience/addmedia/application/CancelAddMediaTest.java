@@ -13,6 +13,7 @@ import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
+import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.experience.addmedia.web.AddMediaView;
 import com.guille.media.bff.infrastructure.persistence.InMemoryAddMediaProcessRepository;
 
@@ -62,15 +63,36 @@ class CancelAddMediaTest {
   }
 
   @Test
-  void cancelDuringVerificationKeepsMovieButCancelsUpload() {
+  void cancelDuringVerificationAlsoDiscardsDraft() {
+    // VERIFYING también representa Storage PENDING: el draft NO está
+    // verificado; cancelar antes de FINALIZING lo compensa completo.
     String id = this.processInPhase(AddMediaPhase.VERIFYING_UPLOAD);
     when(this.storage.cancelUpload(42L)).thenReturn(Mono.empty());
+    when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
 
     StepVerifier.create(this.useCase.handle("pepe", id))
-        .expectNextCount(1)
+        .assertNext(view -> assertThat(view.phase())
+            .isEqualTo(com.guille.media.bff.experience.addmedia.model.AddMediaPhase.CANCELLED))
         .verifyComplete();
 
-    // En VERIFYING el draft ya es contenido verificado: no se descarta a ciegas.
+    verify(this.storage).cancelUpload(42L);
+    verify(this.movies).discardDraft(7L);
+  }
+
+  @Test
+  void cancelLosesAgainstFinalizingClaim() {
+    String id = this.processInPhase(AddMediaPhase.WAITING_FOR_UPLOAD);
+    org.assertj.core.api.Assertions.assertThat(
+        this.processes.tryFinalizeClaim(
+            com.guille.media.bff.experience.addmedia.model.AddMediaId.parse(id)).block())
+        .isTrue();
+
+    StepVerifier.create(this.useCase.handle("pepe", id))
+        .expectError(InvalidAddMediaTransition.class)
+        .verify();
+
+    // Complete ganó: cancel NO toca recursos.
+    verify(this.storage, never()).cancelUpload(anyLong());
     verify(this.movies, never()).discardDraft(anyLong());
   }
 

@@ -74,6 +74,29 @@ class AddMediaProcessTest {
   }
 
   @Test
+  void finalizeClaimSerializesCompleteVersusCancel() {
+    AddMediaProcess waiting = AddMediaProcess.starting(this.id, "pepe")
+        .preparing()
+        .uploadPrepared(11L, 42L);
+
+    AddMediaProcess finalizing = waiting.finalizing();
+    assertThat(finalizing.phase()).isEqualTo(AddMediaPhase.FINALIZING);
+
+    // Cancel pierde: cancelling() desde FINALIZING es ilegal.
+    assertThatThrownBy(finalizing::cancelling).isInstanceOf(InvalidAddMediaTransition.class);
+
+    // Transitorio: suelta el claim a VERIFYING para permitir retry.
+    AddMediaProcess retryable = finalizing.backToVerifying();
+    assertThat(retryable.phase()).isEqualTo(AddMediaPhase.VERIFYING_UPLOAD);
+
+    // Definitivo: FAILED directo desde FINALIZING.
+    assertThat(finalizing.failed("UPLOAD_FAILED").phase()).isEqualTo(AddMediaPhase.FAILED);
+
+    // Éxito: READY desde FINALIZING.
+    assertThat(finalizing.ready().phase()).isEqualTo(AddMediaPhase.READY);
+  }
+
+  @Test
   void failureCarriesScreenOrientedCode() {
     AddMediaProcess failed = AddMediaProcess.starting(this.id, "pepe")
         .preparing()

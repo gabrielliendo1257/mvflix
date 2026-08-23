@@ -49,7 +49,6 @@ public class CancelAddMedia {
       return Mono.error(new InvalidAddMediaTransition(
           process.phase(), AddMediaPhase.CANCELLING));
     }
-    boolean wasWaiting = process.phase() == AddMediaPhase.WAITING_FOR_UPLOAD;
     return this.processes
         .tryCancelClaim(process.id())
         .flatMap(claimed -> {
@@ -58,14 +57,19 @@ public class CancelAddMedia {
             return Mono.error(new InvalidAddMediaTransition(
                 process.phase(), AddMediaPhase.CANCELLING));
           }
-          return this.compensate(process, wasWaiting)
+          return this.compensate(process)
               .then(this.processes.save(process.cancelling().cancelled()))
               .map(AddMediaView::from);
         });
   }
 
-  /** Compensaciones best-effort; los fallos quedan registrados como pendientes. */
-  private Mono<Void> compensate(AddMediaProcess process, boolean wasWaiting) {
+  /**
+   * Compensaciones best-effort. VERIFYING no implica contenido verificado
+   * (también representa Storage PENDING): cualquier proceso anterior a
+   * FINALIZING se compensa completo (upload + draft). Los fallos quedan
+   * registrados como compensaciones pendientes.
+   */
+  private Mono<Void> compensate(AddMediaProcess process) {
     Mono<Void> cancelUpload = process.uploadId() == null
         ? Mono.empty()
         : this.storage.cancelUpload(process.uploadId())
@@ -74,14 +78,14 @@ public class CancelAddMedia {
                   process.uploadId(), err.getMessage());
               return Mono.empty();
             });
-    Mono<Void> discardDraft = (wasWaiting && process.movieId() != null)
-        ? this.movies.discardDraft(process.movieId())
+    Mono<Void> discardDraft = process.movieId() == null
+        ? Mono.empty()
+        : this.movies.discardDraft(process.movieId())
             .onErrorResume(err -> {
               log.error("add-media cancel: PENDIENTE descartar draft {}: {}",
                   process.movieId(), err.getMessage());
               return Mono.empty();
-            })
-        : Mono.empty();
+            });
     return cancelUpload.then(discardDraft);
   }
 }

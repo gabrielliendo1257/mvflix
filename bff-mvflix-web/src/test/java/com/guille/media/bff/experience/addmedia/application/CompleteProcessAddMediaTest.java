@@ -14,6 +14,7 @@ import com.guille.media.bff.app.ports.StorageWebClient;
 import com.guille.media.bff.app.service.WebMoviesService;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
+import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.web.AddMediaView;
@@ -151,6 +152,19 @@ class CompleteProcessAddMediaTest {
   }
 
   @Test
+  void completeLosesWhenCancelAlreadyClaimed() {
+    String id = this.preparedProcess();
+    org.assertj.core.api.Assertions.assertThat(
+        this.processes.tryCancelClaim(new AddMediaId(id)).block()).isTrue();
+
+    StepVerifier.create(this.useCase.handle("pepe", id, null))
+        .expectError(InvalidAddMediaTransition.class)
+        .verify();
+
+    verify(this.completion, never()).complete(anyLong(), any());
+  }
+
+  @Test
   void readyProcessIsIdempotent() {
     AddMediaId id = AddMediaId.newId();
     this.processes.save(
@@ -170,7 +184,7 @@ class CompleteProcessAddMediaTest {
         AddMediaProcess.starting(id, "ana").preparing().uploadPrepared(1L, 2L)).block();
 
     StepVerifier.create(this.useCase.handle("pepe", id.value(), null))
-        .expectError(org.springframework.web.server.ResponseStatusException.class)
+        .expectError(com.guille.media.bff.shared.error.EntityNotFound.class)
         .verify();
   }
 
