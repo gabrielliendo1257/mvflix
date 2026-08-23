@@ -8,8 +8,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.StreamingCommand;
-import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
-import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.shared.security.AuthenticatedUser;
+import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;

@@ -4,7 +4,7 @@ import com.guille.media.reproductor.uploader.storage.app.commands.requests.Creat
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSession;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSummary;
-import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadCompletedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.events.UploadFailedEvent;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;

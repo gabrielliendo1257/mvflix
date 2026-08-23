@@ -4,8 +4,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
-import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.shared.security.AuthenticatedUser;
+import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAccessDeniedException;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibraryType;

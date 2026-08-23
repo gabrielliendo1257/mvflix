@@ -1,4 +1,4 @@
-package com.guille.media.reproductor.uploader.storage.app.security;
+package com.guille.media.reproductor.uploader.storage.shared.security;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;

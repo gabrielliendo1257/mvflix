@@ -1,4 +1,4 @@
-package com.guille.media.reproductor.uploader.storage.app.security;
+package com.guille.media.reproductor.uploader.storage.shared.security;
 
 import lombok.RequiredArgsConstructor;
 

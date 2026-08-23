@@ -5,8 +5,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.storage.app.configuration.LibraryRegistryProperties;
-import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
-import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.shared.security.AuthenticatedUser;
+import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathInvalidException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathNotAllowedException;

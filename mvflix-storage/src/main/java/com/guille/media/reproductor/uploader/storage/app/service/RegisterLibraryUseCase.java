@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
-import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibraryType;

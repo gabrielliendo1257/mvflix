@@ -7,7 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
 
-import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
 import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryScanner;
 import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;

@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
-import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
