@@ -123,7 +123,8 @@ public class StartAddMedia {
         .flatMap(
             draft ->
                 this.prepareUpload(process, draft.id(), request)
-                    // Compensación acotada: solo el draft creado por ESTE proceso.
+                    // El upload ya se compensó dentro de prepareUpload (si
+                    // llegó a existir); aquí solo queda el draft.
                     .onErrorResume(
                         error -> this.compensateDraft(draft.id()).then(Mono.error(error))));
   }
@@ -137,17 +138,50 @@ public class StartAddMedia {
             request.file().mimeType());
     return this.storage
         .prepareUpload(uploadRequest)
-        .flatMap(session -> this.persistPrepared(process, movieId, session))
-        .doOnNext(view -> log.info("add-media started: process={} movie={} upload={}",
-            view.addMediaId(), view.movieId(), view.uploadId()));
+        .flatMap(session -> {
+          Long uploadId = strictParseUploadId(session.uploadId());
+          // Con uploadId no fiable NO se persiste: se compensa todo.
+          AddMediaProcess prepared = process.uploadPrepared(movieId, uploadId);
+          return this.persistPrepared(prepared, session)
+              .onErrorResume(err ->
+                  this.compensateUpload(uploadId).then(Mono.error(err)))
+              .doOnNext(view -> log.info("add-media started: process={} movie={} upload={}",
+                  view.addMediaId(), view.movieId(), view.uploadId()));
+        });
   }
 
   private Mono<AddMediaView> persistPrepared(
-      AddMediaProcess process, Long movieId, UploadSessionDto session) {
-    Long uploadId = parseUploadId(session.uploadId());
+      AddMediaProcess process, UploadSessionDto session) {
     return this.processes
-        .save(process.uploadPrepared(movieId, uploadId))
+        .save(process)
         .map(saved -> AddMediaView.waitingForUpload(saved, session));
+  }
+
+  private static Long strictParseUploadId(String uploadId) {
+    if (uploadId == null || !uploadId.chars().allMatch(Character::isDigit)) {
+      throw new UploadOrchestrationException(HttpStatus.BAD_GATEWAY,
+          "INVALID_UPLOAD_RESPONSE",
+          "Storage devolvió un uploadId no válido: " + uploadId);
+    }
+    try {
+      return Long.valueOf(uploadId);
+    } catch (NumberFormatException e) {
+      throw new UploadOrchestrationException(HttpStatus.BAD_GATEWAY,
+          "INVALID_UPLOAD_RESPONSE",
+          "Storage devolvió un uploadId no válido: " + uploadId);
+    }
+  }
+
+  /** Compensación best-effort: libera la cuota reservada por la sesión. */
+  private Mono<Void> compensateUpload(Long uploadId) {
+    log.warn("add-media: fallo tras crear el upload {}; cancelando sesión", uploadId);
+    return this.storage
+        .cancelUpload(uploadId)
+        .onErrorResume(err -> {
+          log.error("add-media: compensación PENDIENTE - upload {} no pudo cancelarse: {}",
+              uploadId, err.getMessage());
+          return Mono.empty();
+        });
   }
 
   /** Compensación best-effort: si el discard falla queda pendiente en el log. */
@@ -162,11 +196,4 @@ public class StartAddMedia {
         });
   }
 
-  private static Long parseUploadId(String uploadId) {
-    try {
-      return uploadId == null ? null : Long.valueOf(uploadId);
-    } catch (NumberFormatException e) {
-      return null;
-    }
-  }
 }

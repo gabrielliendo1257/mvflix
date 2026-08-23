@@ -2,6 +2,7 @@ package com.guille.media.bff.experience.addmedia.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -182,6 +183,63 @@ class StartAddMediaTest {
           assertThat(process.movieId()).isNull();
         })
         .verifyComplete();
+  }
+
+  @Test
+  void invalidStorageUploadIdAbortsWithoutPersisting() {
+    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
+        .thenReturn(Mono.just(new UploadSessionDto("no-es-numerico", "http://minio/put",
+            "k.mp4", "PUT", "PENDING",
+            new UploadSessionDto.ExpectedObjectData(1024L, "video/mp4"))));
+
+    StepVerifier.create(start())
+        .expectErrorSatisfies(error -> {
+          assertThat(error).isInstanceOf(
+              com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException.class);
+          assertThat(((com.guille.media.bff.experience.addmedia.application.
+              UploadOrchestrationException) error).getCode())
+              .isEqualTo("INVALID_UPLOAD_RESPONSE");
+        })
+        .verify();
+
+    // Respuesta no fiable => nada se persiste ni se compensa upload inexistente.
+    verify(this.storage, never()).cancelUpload(anyLong());
+    verify(this.movies).discardDraft(7L);
+  }
+
+  @Test
+  void persistenceFailureAfterUploadCreatedCompensatesBothResources() {
+    com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository failingSave =
+        new com.guille.media.bff.infrastructure.persistence.InMemoryAddMediaProcessRepository() {
+          @Override
+          public Mono<com.guille.media.bff.experience.addmedia.model.AddMediaProcess> save(
+              com.guille.media.bff.experience.addmedia.model.AddMediaProcess process) {
+            if (process.phase() == AddMediaPhase.WAITING_FOR_UPLOAD) {
+              return Mono.error(new RuntimeException("db down"));
+            }
+            return super.save(process);
+          }
+        };
+    StartAddMedia useCaseFailing =
+        new StartAddMedia(this.movies, this.storage, failingSave, this.users);
+
+    when(this.users.me()).thenReturn(Mono.just(new UserProfile(
+        "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 0, false)));
+    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
+        .thenReturn(Mono.just(session()));
+    when(this.storage.cancelUpload(42L)).thenReturn(Mono.empty());
+    when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
+
+    StepVerifier.create(useCaseFailing.handle("pepe", request("intent-x")))
+        .expectErrorMessage("db down")
+        .verify();
+
+    // Upload cancelado (cuota liberada) y draft descartado: cero huérfanos.
+    verify(this.storage).cancelUpload(42L);
+    verify(this.movies).discardDraft(7L);
   }
 
   @Test
