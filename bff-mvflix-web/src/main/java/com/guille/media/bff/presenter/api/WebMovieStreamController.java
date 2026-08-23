@@ -4,6 +4,7 @@ import com.guille.media.bff.app.dto.StreamTicketDto;
 import com.guille.media.bff.app.service.StreamTicketException;
 import com.guille.media.bff.app.service.WebMoviesService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
@@ -24,6 +25,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /** Stream LOCAL con Range: el <video> del front apunta aqui para movies de biblioteca. */
+@Tag(name = "Web · Playback", description = "Tickets HMAC y proxy Range para reproducción")
 @RestController
 public class WebMovieStreamController {
 

@@ -16,6 +16,7 @@ import com.guille.media.bff.app.service.Job;
 import com.guille.media.bff.experience.addmedia.application.UploadCompletionOutcome;
 import com.guille.media.bff.app.service.WebMoviesService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -33,6 +34,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+@Tag(name = "Web · Movies", description = "Catálogo desde la experiencia web (endpoints legacy de alta marcados @Deprecated)")
 @RestController
 @RequestMapping("/web/movies")
 public class WebMoviesController {

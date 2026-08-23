@@ -18,6 +18,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.RestController;
 
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
@@ -29,9 +32,10 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Experiencia Add Media: el front dice "añade este contenido" y no aprende
- * cómo están divididos los microservicios.
+ * Experiencia Add Media: el front dice "añade este contenido" y no aprende cómo están divididos los
+ * microservicios.
  */
+@Tag(name = "Add Media", description = "Alta guiada de contenido: candidatos, proceso con idempotencia, subida directa y cierre")
 @RestController
 @RequestMapping(value = "/web/add-media", produces = MediaType.APPLICATION_JSON_VALUE)
 public class AddMediaController {
@@ -61,17 +65,20 @@ public class AddMediaController {
     this.session = session;
   }
 
+  @Operation(summary = "Busca candidatos en TMDB por título (y año opcional)")
   @GetMapping("/candidates")
   public Flux<MovieEnrichmentSearchDto> candidates(
       @RequestParam String query, @RequestParam(required = false) Integer year) {
     return this.searchMovieCandidates.search(query, year);
   }
 
+  @Operation(summary = "Detalle del candidato seleccionado antes de iniciar")
   @GetMapping("/candidates/{providerId}")
   public Mono<MovieEnrichmentPreviewDto> candidate(@PathVariable Long providerId) {
     return this.previewMovieCandidate.preview(providerId);
   }
 
+  @Operation(summary = "Inicia el alta: draft identificado + sesión de upload (idempotente)")
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<AddMediaView>> start(
       @Valid @RequestBody StartAddMediaRequest request) {
@@ -80,6 +87,7 @@ public class AddMediaController {
         .map(view -> ResponseEntity.status(HttpStatus.CREATED).body(view));
   }
 
+  @Operation(summary = "Estado del proceso; restaura instrucciones frescas mientras espera upload")
   @GetMapping("/{addMediaId}")
   public Mono<AddMediaView> status(
       @PathVariable String addMediaId) {
@@ -104,6 +112,7 @@ public class AddMediaController {
   }
 
   /** Cancelación del proceso con compensaciones acotadas. */
+  @Operation(summary = "Cancela el proceso y compensa recursos ya creados")
   @PostMapping("/{addMediaId}/cancel")
   public Mono<AddMediaView> cancel(@PathVariable String addMediaId) {
     return this.ownerSubject()

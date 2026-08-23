@@ -7,6 +7,7 @@ import com.guille.media.bff.app.dto.MediaAssetPageDto;
 import com.guille.media.bff.app.dto.RegisterLibraryRequest;
 import com.guille.media.bff.app.service.WebLibraryService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /** Media server (bibliotecas del operador): scan, listado e identificación. */
+@Tag(name = "Web · Libraries", description = "Bibliotecas: registro, escaneo e identificación de assets")
 @RestController
 @RequestMapping("/web/libraries")
 public class WebLibrariesController {

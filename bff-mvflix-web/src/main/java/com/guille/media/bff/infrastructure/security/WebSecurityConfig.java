@@ -75,7 +75,8 @@ public class WebSecurityConfig {
         .authorizeExchange(
             exchanges ->
                 exchanges
-                    .pathMatchers("/web/session", "/login/**", "/oauth2/**", "/error")
+                    .pathMatchers("/web/session", "/login/**", "/oauth2/**", "/error",
+                        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
                     .pathMatchers(HttpMethod.OPTIONS, "/web/uploads")
                     .authenticated()
@@ -102,7 +103,8 @@ public class WebSecurityConfig {
         .authorizeExchange(
             exchanges ->
                 exchanges
-                    .pathMatchers("/web/session", "/login/**", "/oauth2/**", "/error")
+                    .pathMatchers("/web/session", "/login/**", "/oauth2/**", "/error",
+                        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
                     .pathMatchers(HttpMethod.GET, "/web/movies/*/stream")
                     .permitAll()
