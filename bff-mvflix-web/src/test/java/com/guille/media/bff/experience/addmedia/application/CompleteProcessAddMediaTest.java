@@ -50,8 +50,8 @@ class CompleteProcessAddMediaTest {
   }
 
   private String preparedProcess() {
-    AddMediaProcess process =
-        AddMediaProcess.starting(AddMediaId.newId(), "pepe").uploadPrepared(7L, 42L);
+    AddMediaProcess process = AddMediaProcess.starting(AddMediaId.newId(), "pepe")
+        .preparing().uploadPrepared(7L, 42L);
     return this.processes.save(process).block().id().value();
   }
 
@@ -154,7 +154,7 @@ class CompleteProcessAddMediaTest {
   void readyProcessIsIdempotent() {
     AddMediaId id = AddMediaId.newId();
     this.processes.save(
-        AddMediaProcess.starting(id, "pepe").uploadPrepared(7L, 42L).verifying().ready()).block();
+        AddMediaProcess.starting(id, "pepe").preparing().uploadPrepared(7L, 42L).verifying().ready()).block();
 
     StepVerifier.create(this.useCase.handle("pepe", id.value(), null))
         .assertNext(view -> assertThat(view.phase()).isEqualTo(AddMediaPhase.READY))
@@ -167,7 +167,7 @@ class CompleteProcessAddMediaTest {
   void foreignOrMissingProcessesAreNotFound() {
     AddMediaId id = AddMediaId.newId();
     this.processes.save(
-        AddMediaProcess.starting(id, "ana").uploadPrepared(1L, 2L)).block();
+        AddMediaProcess.starting(id, "ana").preparing().uploadPrepared(1L, 2L)).block();
 
     StepVerifier.create(this.useCase.handle("pepe", id.value(), null))
         .expectError(org.springframework.web.server.ResponseStatusException.class)

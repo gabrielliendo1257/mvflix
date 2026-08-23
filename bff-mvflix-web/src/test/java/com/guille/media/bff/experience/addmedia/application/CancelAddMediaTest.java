@@ -38,7 +38,7 @@ class CancelAddMediaTest {
 
   private String processInPhase(AddMediaPhase phase) {
     AddMediaProcess base = AddMediaProcess.starting(AddMediaId.newId(), "pepe")
-        .uploadPrepared(7L, 42L);
+        .preparing().uploadPrepared(7L, 42L);
     AddMediaProcess target = switch (phase) {
       case VERIFYING_UPLOAD -> base.verifying();
       case READY -> base.verifying().ready();
