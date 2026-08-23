@@ -122,6 +122,35 @@ class CompleteProcessAddMediaTest {
   }
 
   @Test
+  void transientDownstreamFailureKeepsProcessVerifyingForRetry() {
+    String id = this.preparedProcess();
+    // Movies caído: CompleteAddMedia mapea a DOWNSTREAM_UNAVAILABLE (503),
+    // que NO es veredicto definitivo.
+    when(this.completion.complete(anyLong(), any()))
+        .thenReturn(Mono.error(new UploadOrchestrationException(
+            org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+            "DOWNSTREAM_UNAVAILABLE", "movies no responde")))
+        .thenReturn(Mono.just(new UploadCompletionOutcome.Completed(movie(7L))));
+
+    StepVerifier.create(this.useCase.handle("pepe", id, null))
+        .expectError(UploadOrchestrationException.class)
+        .verify();
+
+    // El proceso NO quedó FAILado por un timeout: sigue VERIFYING.
+    StepVerifier.create(this.processes.findById(new AddMediaId(id)))
+        .assertNext(process -> {
+          assertThat(process.phase()).isEqualTo(AddMediaPhase.VERIFYING_UPLOAD);
+          assertThat(process.failureCode()).isNull();
+        })
+        .verifyComplete();
+
+    // El reintento funciona.
+    StepVerifier.create(this.useCase.handle("pepe", id, null))
+        .assertNext(view -> assertThat(view.phase()).isEqualTo(AddMediaPhase.READY))
+        .verifyComplete();
+  }
+
+  @Test
   void readyProcessIsIdempotent() {
     AddMediaId id = AddMediaId.newId();
     this.processes.save(

@@ -81,9 +81,12 @@ public class CompleteProcessAddMedia {
                   }
                   return Mono.just(AddMediaView.from(verify));
                 })
-                .onErrorResume(error -> this.processes
-                    .save(verify.failed(failureCodeOf(error)))
-                    .then(Mono.error(error))));
+                .onErrorResume(
+                    error -> error instanceof UploadOrchestrationException orchestration
+                        && orchestration.getStatus() == HttpStatus.CONFLICT,
+                    error -> this.processes
+                        .save(verify.failed(failureCodeOf(error)))
+                        .then(Mono.error(error))));
   }
 
   private static AddMediaView withMovie(AddMediaView view,
