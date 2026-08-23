@@ -157,4 +157,34 @@ class UploadControllerTest {
         .isEqualTo(42);
   }
 
+
+  @Test
+  void renewInstructionsDelegatesAndReturnsFreshSession200() {
+    UploadSession renewed =
+        new UploadSession(
+            "9",
+            "http://minio/fresh",
+            new StorageKey("k9"),
+            "PUT",
+            Instant.now().plusSeconds(1800),
+            StorageSessionStatus.PENDING,
+            null);
+    when(this.uploadService.renewInstructions(9L)).thenReturn(Mono.just(renewed));
+    when(this.uploadMapper.toUploadResponse(renewed))
+        .thenReturn(new UploadResponse("9", "http://minio/fresh", "k9", "PUT",
+            StorageSessionStatus.PENDING, null));
+
+    this.client
+        .post()
+        .uri(BASE + "/upload/9/instructions")
+        .accept(MediaType.APPLICATION_JSON)
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.uploadId").isEqualTo("9")
+        .jsonPath("$.uploadUrl").isEqualTo("http://minio/fresh");
+
+    verify(this.uploadService).renewInstructions(9L);
+  }
 }

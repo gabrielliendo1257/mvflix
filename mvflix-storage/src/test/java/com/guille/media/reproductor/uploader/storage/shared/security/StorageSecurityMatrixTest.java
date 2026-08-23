@@ -126,6 +126,26 @@ class StorageSecurityMatrixTest {
   }
 
   @Test
+  void uploadInstructionRenewalIsAuthenticatedOnly() {
+    // Sin token: 401. La ruta existe en la cadena JWT (no cae en denyAll).
+    this.client
+        .post()
+        .uri(BASE + "/upload/9/instructions")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+
+    // Con token pasa seguridad; 404 porque el slice no carga controladores.
+    this.client
+        .mutateWith(mockJwt())
+        .post()
+        .uri(BASE + "/upload/9/instructions")
+        .exchange()
+        .expectStatus()
+        .isNotFound();
+  }
+
+  @Test
   void catalogStreamingRequiresStorageStreamScope() {
     this.client
         .post()
