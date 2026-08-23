@@ -45,10 +45,8 @@ public class UpdateSharesUseCase {
                         .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not owned: " + id.value())))
-                        .flatMap(movie -> this.movieRepository
-                                .replaceShares(id, clean)
-                                .map(updated -> updated.withSharedWith(
-                                        Set.copyOf(clean))))
+                        .map(movie -> movie.withSharedWith(Set.copyOf(clean)))
+                        .flatMap(this.movieRepository::replaceShares)
                         .doOnNext(updated -> log.info(
                                 "Movie {} compartida con {}",
                                 id.value(), clean)));

@@ -44,13 +44,14 @@ public interface MovieRepository {
     /** Persiste conjuntamente metadata, clasificación y estado de enriquecimiento. */
     Mono<Movie> updateDetails(Movie movie);
 
-    /** Cambia la visibilidad del catálogo. Vacío si la fila no existe. */
-    Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility);
+    /** Persiste la visibilidad ya decidida por el agregado. */
+    Mono<Movie> updateVisibility(Movie movie);
 
-    /**
-     * Reemplaza la lista de compartidos. Vacío si la movie no existe.
-     */
-    Mono<Movie> replaceShares(MovieId id, List<String> usernames);
+    /** Persiste la lista de compartidos ya decidida por el agregado. */
+    Mono<Movie> replaceShares(Movie movie);
+
+    /** Para SHARED, persiste visibilidad y compartidos como una unidad transaccional. */
+    Mono<Movie> updateAccess(Movie movie);
 
     /** Catalogo pendiente de enriquecer (para el scheduler), limitado y estable. */
     Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit);

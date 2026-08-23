@@ -258,7 +258,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility) {
+    public Mono<Movie> updateVisibility(Movie movie) {
         return this.databaseClient
                 .sql(
                         """
@@ -272,8 +272,8 @@ public class SpringDataMovieRepository implements MovieRepository {
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                    FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                         """)
-                .bind("visibility", visibility.name())
-                .bind("id", id.value())
+                .bind("visibility", movie.getVisibility().name())
+                .bind("id", movie.getId().value())
                 .map(this::toRow)
                 .one()
                 .map(this.rowMapper::toDomain);
@@ -281,18 +281,18 @@ public class SpringDataMovieRepository implements MovieRepository {
 
     @Override
     @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
-    public Mono<Movie> replaceShares(MovieId id, List<String> usernames) {
+    public Mono<Movie> replaceShares(Movie movie) {
         return this.databaseClient
                 .sql(
                         """
                         DELETE FROM movie_shares
                         WHERE movie_id = :id
                         """)
-                .bind("id", id.value())
+                .bind("id", movie.getId().value())
                 .fetch()
                 .rowsUpdated()
                 .flatMapMany(deleted ->
-                        Flux.fromIterable(usernames)
+                        Flux.fromIterable(movie.getSharedWith())
                             .distinct()
                             .flatMap(username -> this.databaseClient
                                     .sql(
@@ -303,7 +303,7 @@ public class SpringDataMovieRepository implements MovieRepository {
                                                 SELECT 1 FROM movies m
                                                 WHERE m.id = :id)
                                             """)
-                                    .bind("id", id.value())
+                                    .bind("id", movie.getId().value())
                                     .bind("username", username)
                                     .fetch()
                                     .rowsUpdated()))
@@ -320,10 +320,20 @@ public class SpringDataMovieRepository implements MovieRepository {
                                           (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
                                            FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
                                 """)
-                        .bind("id", id.value())
+                        .bind("id", movie.getId().value())
                         .map(this::toRow)
                         .one()
                         .map(this.rowMapper::toDomain));
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
+    public Mono<Movie> updateAccess(Movie movie) {
+        Mono<Movie> visibilityUpdate = this.updateVisibility(movie);
+        if (movie.getVisibility() != MovieVisibility.SHARED) {
+            return visibilityUpdate;
+        }
+        return visibilityUpdate.then(this.replaceShares(movie));
     }
 
     @Override

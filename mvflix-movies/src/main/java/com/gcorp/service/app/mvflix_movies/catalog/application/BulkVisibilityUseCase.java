@@ -17,6 +17,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Cambia la visibilidad de varias peliculas del catalogo en un solo lote.
@@ -85,11 +86,10 @@ public class BulkVisibilityUseCase {
 
     private Mono<Movie> applyVisibility(
             Movie movie, MovieVisibility visibility, List<String> usernames) {
-        Mono<Movie> update = this.movieRepository.updateVisibility(movie.getId(), visibility);
+        Movie access = movie.withVisibility(visibility);
         if (visibility == MovieVisibility.SHARED) {
-            return update.flatMap(updated ->
-                    this.movieRepository.replaceShares(updated.getId(), usernames));
+            access = access.withSharedWith(Set.copyOf(usernames));
         }
-        return update;
+        return this.movieRepository.updateAccess(access);
     }
 }

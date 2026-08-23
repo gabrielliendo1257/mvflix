@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +20,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -27,6 +28,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.List;
+import java.util.Set;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateSharesUseCaseTest {
@@ -50,16 +52,19 @@ class UpdateSharesUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
-        when(this.movieRepository.replaceShares(MovieId.of(1L), List.of("Maria", "Pedro")))
-                .thenReturn(Mono.just(movie));
+        when(this.movieRepository.replaceShares(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.execute(
                         MovieId.of(1L), List.of("Maria", "Pedro", "Maria", "  ")))
                 .expectNextCount(1)
                 .verifyComplete();
 
-        verify(this.movieRepository).replaceShares(
-                MovieId.of(1L), List.of("Maria", "Pedro"));
+        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        verify(this.movieRepository).replaceShares(captor.capture());
+        assertThat(captor.getValue().getId()).isEqualTo(MovieId.of(1L));
+        assertThat(captor.getValue().getSharedWith())
+                .isEqualTo(Set.of("Maria", "Pedro"));
     }
 
     @Test
@@ -75,6 +80,6 @@ class UpdateSharesUseCaseTest {
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never()).replaceShares(eq(MovieId.of(1L)), any());
+        verify(this.movieRepository, never()).replaceShares(any(Movie.class));
     }
 }

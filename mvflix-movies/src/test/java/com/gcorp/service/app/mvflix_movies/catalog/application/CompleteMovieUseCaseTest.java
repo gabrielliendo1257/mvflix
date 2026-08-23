@@ -353,13 +353,18 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
-    public Mono<Movie> updateVisibility(MovieId id, MovieVisibility visibility) {
+    public Mono<Movie> updateVisibility(Movie movie) {
       return unexpectedMono("updateVisibility");
     }
 
     @Override
-    public Mono<Movie> replaceShares(MovieId id, List<String> usernames) {
+    public Mono<Movie> replaceShares(Movie movie) {
       return unexpectedMono("replaceShares");
+    }
+
+    @Override
+    public Mono<Movie> updateAccess(Movie movie) {
+      return unexpectedMono("updateAccess");
     }
 
     @Override

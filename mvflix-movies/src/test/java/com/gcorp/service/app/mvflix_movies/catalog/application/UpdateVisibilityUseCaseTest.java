@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -20,6 +20,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -49,16 +50,17 @@ class UpdateVisibilityUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
-        when(this.movieRepository.updateVisibility(
-                MovieId.of(1L), MovieVisibility.PUBLIC))
+        when(this.movieRepository.updateVisibility(any(Movie.class)))
                 .thenReturn(Mono.just(published));
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), MovieVisibility.PUBLIC))
                 .expectNextMatches(m -> m.getVisibility() == MovieVisibility.PUBLIC)
                 .verifyComplete();
 
-        verify(this.movieRepository).updateVisibility(
-                MovieId.of(1L), MovieVisibility.PUBLIC);
+        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        verify(this.movieRepository).updateVisibility(captor.capture());
+        assertThat(captor.getValue().getId()).isEqualTo(MovieId.of(1L));
+        assertThat(captor.getValue().getVisibility()).isEqualTo(MovieVisibility.PUBLIC);
     }
 
     @Test
@@ -74,8 +76,7 @@ class UpdateVisibilityUseCaseTest {
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never())
-                .updateVisibility(eq(MovieId.of(1L)), any());
+        verify(this.movieRepository, never()).updateVisibility(any(Movie.class));
     }
 
     @Test
@@ -89,7 +90,6 @@ class UpdateVisibilityUseCaseTest {
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never())
-                .updateVisibility(eq(MovieId.of(1L)), any());
+        verify(this.movieRepository, never()).updateVisibility(any(Movie.class));
     }
 }
