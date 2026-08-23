@@ -1,7 +1,7 @@
 package com.guille.media.bff.presenter.api;
 
 import com.guille.media.bff.app.service.StreamTicketException;
-import com.guille.media.bff.app.service.UploadOrchestrationException;
+import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
 import com.guille.media.bff.presenter.api.dto.OrchestrationError;
 
 import lombok.extern.slf4j.Slf4j;

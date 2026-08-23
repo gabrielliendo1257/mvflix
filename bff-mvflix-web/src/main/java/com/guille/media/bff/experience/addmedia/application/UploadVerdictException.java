@@ -1,19 +1,19 @@
-package com.guille.media.bff.app.service;
+package com.guille.media.bff.experience.addmedia.application;
 
 /**
  * Veredicto no transitorio del storage: la subida es inconsistente o falló de forma
  * definitiva; el orquestador ejecuta rollback y, según el caso, penalidad.
  */
-class UploadVerdictException extends RuntimeException {
+public class UploadVerdictException extends RuntimeException {
 
   private final String code;
 
-  UploadVerdictException(String code, String message) {
+  public UploadVerdictException(String code, String message) {
     super(message);
     this.code = code;
   }
 
-  String getCode() {
+  public String getCode() {
     return this.code;
   }
 }

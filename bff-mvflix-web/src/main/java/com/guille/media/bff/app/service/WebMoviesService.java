@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
 
 /**
  * Orquestador del flujo de alta de película. El front solo llama al complete; el BFF
@@ -350,7 +351,8 @@ public class WebMoviesService {
   /**
    * Complete orquestado del alta: delegado en {@link com.guille.media.bff.experience.addmedia.application.CompleteAddMedia}.
    */
-  public Mono<UploadCompletionOutcome> complete(Long movieId, CompleteMovieRequest request) {
+  public Mono<com.guille.media.bff.experience.addmedia.application.UploadCompletionOutcome>
+      complete(Long movieId, CompleteMovieRequest request) {
     return this.addMediaCompletion.complete(movieId, request);
   }
 

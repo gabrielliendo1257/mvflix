@@ -32,7 +32,7 @@ public class CompleteAddMedia {
   private final StorageWebClient storageWebClient;
   private final UsersWebPort usersWebPort;
 
-  public AddMediaCompletion(
+  public CompleteAddMedia(
       MoviesWebClient moviesWebClient,
       StorageWebClient storageWebClient,
       UsersWebPort usersWebPort) {

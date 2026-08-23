@@ -13,7 +13,7 @@ import com.guille.media.bff.app.dto.MovieSharesRequest;
 import com.guille.media.bff.app.dto.MovieUpdateRequest;
 import com.guille.media.bff.app.dto.MovieVisibilityRequest;
 import com.guille.media.bff.app.service.Job;
-import com.guille.media.bff.app.service.UploadCompletionOutcome;
+import com.guille.media.bff.experience.addmedia.application.UploadCompletionOutcome;
 import com.guille.media.bff.app.service.WebMoviesService;
 
 import org.springframework.http.MediaType;

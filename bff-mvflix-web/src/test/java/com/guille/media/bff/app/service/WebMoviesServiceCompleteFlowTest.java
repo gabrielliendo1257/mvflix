@@ -23,6 +23,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import com.guille.media.bff.experience.addmedia.application.UploadCompletionOutcome;
+import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
 
 /**
  * Tests de caracterización del flujo completo de alta (POST /web/movies/{id}/complete).
