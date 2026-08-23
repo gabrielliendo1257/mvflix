@@ -1,7 +1,5 @@
 package com.gcorp.service.app.mvflix_movies.library.domain;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-
 import java.time.Instant;
 
 /**
@@ -22,7 +20,7 @@ public class MediaAsset {
     private final long size;
     private final String mimeType;
     private final MediaAssetStatus status;
-    private final MovieId movieId;
+    private final CatalogItemId catalogItemId;
     private final boolean present;
     private final Instant createdAt;
     private final Instant updatedAt;
@@ -34,7 +32,7 @@ public class MediaAsset {
             long size,
             String mimeType,
             MediaAssetStatus status,
-            MovieId movieId,
+            CatalogItemId catalogItemId,
             boolean present,
             Instant createdAt,
             Instant updatedAt) {
@@ -44,7 +42,7 @@ public class MediaAsset {
         this.size = size;
         this.mimeType = mimeType;
         this.status = status;
-        this.movieId = movieId;
+        this.catalogItemId = catalogItemId;
         this.present = present;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
@@ -77,8 +75,8 @@ public class MediaAsset {
     }
 
     /** Vincula el activo a una pelicula (idempotente: ya identificado no cambia). */
-    public MediaAsset identify(MovieId movieId) {
-        if (this.isIdentified() && this.movieId != null) {
+    public MediaAsset identify(CatalogItemId catalogItemId) {
+        if (this.isIdentified() && this.catalogItemId != null) {
             return this;
         }
         return new MediaAsset(
@@ -88,7 +86,7 @@ public class MediaAsset {
                 this.size,
                 this.mimeType,
                 MediaAssetStatus.IDENTIFIED,
-                movieId,
+                catalogItemId,
                 this.present,
                 this.createdAt,
                 Instant.now());
@@ -96,7 +94,7 @@ public class MediaAsset {
 
     /** Desvincula el activo cuando su película se elimina; el archivo sigue catalogado. */
     public MediaAsset unidentify() {
-        if (!this.isIdentified() && this.movieId == null) {
+        if (!this.isIdentified() && this.catalogItemId == null) {
             return this;
         }
         return new MediaAsset(
@@ -124,7 +122,7 @@ public class MediaAsset {
                 this.size,
                 this.mimeType,
                 this.status,
-                this.movieId,
+                this.catalogItemId,
                 false,
                 this.createdAt,
                 Instant.now());
@@ -142,7 +140,7 @@ public class MediaAsset {
                 this.size,
                 this.mimeType,
                 this.status,
-                this.movieId,
+                this.catalogItemId,
                 true,
                 this.createdAt,
                 Instant.now());
@@ -160,7 +158,7 @@ public class MediaAsset {
                 size,
                 mimeType,
                 this.status,
-                this.movieId,
+                this.catalogItemId,
                 this.present,
                 this.createdAt,
                 Instant.now());
@@ -190,8 +188,8 @@ public class MediaAsset {
         return this.status;
     }
 
-    public MovieId getMovieId() {
-        return this.movieId;
+    public CatalogItemId getCatalogItemId() {
+        return this.catalogItemId;
     }
 
     public boolean getPresent() {

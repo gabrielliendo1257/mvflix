@@ -3,6 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
@@ -49,7 +50,9 @@ class DeleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
                     7L, new ScannedFile("Dune.mkv", 1024L, "video/x-matroska")))
             .block();
     MediaAsset asset =
-        this.mediaAssetRepository.save(discovered.identify(movie.getId())).block();
+        this.mediaAssetRepository
+            .save(discovered.identify(CatalogItemId.of(movie.getId().value())))
+            .block();
 
     StepVerifier.create(this.useCase.execute(movie.getId())).verifyComplete();
 
@@ -58,7 +61,7 @@ class DeleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
         .assertNext(
             persisted -> {
               assertThat(persisted.getStatus()).isEqualTo(MediaAssetStatus.UNIDENTIFIED);
-              assertThat(persisted.getMovieId()).isNull();
+              assertThat(persisted.getCatalogItemId()).isNull();
               assertThat(persisted.isPresent()).isTrue();
             })
         .verifyComplete();

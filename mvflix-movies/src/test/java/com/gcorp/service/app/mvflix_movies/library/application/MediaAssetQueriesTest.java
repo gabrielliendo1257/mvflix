@@ -12,7 +12,7 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundExce
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemAccess;
 
 import org.junit.jupiter.api.Test;
@@ -74,14 +74,14 @@ class MediaAssetQueriesTest {
 
     @Test
     void visibleMovieReturnsItsAsset() {
-        MediaAsset asset = asset(1L, MediaAssetStatus.IDENTIFIED, MovieId.of(10L));
+        MediaAsset asset = asset(1L, MediaAssetStatus.IDENTIFIED, CatalogItemId.of(10L));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.catalogItemAccess.requireVisible(MovieId.of(10L), "Maria"))
+        when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .thenReturn(Mono.empty());
-        when(this.assetRepository.findByMovieId(MovieId.of(10L))).thenReturn(Mono.just(asset));
+        when(this.assetRepository.findByCatalogItemId(CatalogItemId.of(10L))).thenReturn(Mono.just(asset));
 
-        StepVerifier.create(this.queries.findByMovie(MovieId.of(10L)))
+        StepVerifier.create(this.queries.findByCatalogItem(CatalogItemId.of(10L)))
                 .expectNext(asset)
                 .verifyComplete();
     }
@@ -90,32 +90,32 @@ class MediaAssetQueriesTest {
     void invisibleMovieDoesNotExposeItsAsset() {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.catalogItemAccess.requireVisible(MovieId.of(10L), "Maria"))
+        when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .thenReturn(Mono.error(new MovieAccessDeniedException(
                         "Movie not accessible: 10")));
 
-        StepVerifier.create(this.queries.findByMovie(MovieId.of(10L)))
+        StepVerifier.create(this.queries.findByCatalogItem(CatalogItemId.of(10L)))
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
 
-        verify(this.assetRepository, never()).findByMovieId(MovieId.of(10L));
+        verify(this.assetRepository, never()).findByCatalogItemId(CatalogItemId.of(10L));
     }
 
     @Test
     void reportsWhenVisibleMovieHasNoAsset() {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.catalogItemAccess.requireVisible(MovieId.of(10L), "Maria"))
+        when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .thenReturn(Mono.empty());
-        when(this.assetRepository.findByMovieId(MovieId.of(10L))).thenReturn(Mono.empty());
+        when(this.assetRepository.findByCatalogItemId(CatalogItemId.of(10L))).thenReturn(Mono.empty());
 
-        StepVerifier.create(this.queries.findByMovie(MovieId.of(10L)))
+        StepVerifier.create(this.queries.findByCatalogItem(CatalogItemId.of(10L)))
                 .expectError(MediaAssetNotFoundException.class)
                 .verify();
     }
 
     private static MediaAsset asset(
-            long id, MediaAssetStatus status, MovieId movieId) {
+            long id, MediaAssetStatus status, CatalogItemId catalogItemId) {
         Instant now = Instant.now();
         return new MediaAsset(
                 MediaAssetId.of(id),
@@ -124,7 +124,7 @@ class MediaAssetQueriesTest {
                 1024L,
                 "video/mp4",
                 status,
-                movieId,
+                catalogItemId,
                 true,
                 now,
                 now);

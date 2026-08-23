@@ -16,7 +16,7 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundExce
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -59,17 +59,17 @@ class IdentifyAssetUseCaseTest {
         when(this.identifyAssetTransaction.execute(
                         eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
                 .thenReturn(Mono.just(new IdentificationResult(
-                        asset.identify(MovieId.of(50L)), MovieId.of(50L))));
+                        asset.identify(CatalogItemId.of(50L)), CatalogItemId.of(50L))));
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null, null))
                 .expectNextMatches(identified ->
                         identified.isIdentified()
-                                && identified.getMovieId().equals(MovieId.of(50L)))
+                                && identified.getCatalogItemId().equals(CatalogItemId.of(50L)))
                 .verifyComplete();
 
         verify(this.identifyAssetTransaction).execute(
                 asset, "Javier", "Dune", MediaKind.MOVIE);
-        verify(this.catalogItemEnricher, never()).enrich(any(MovieId.class), any(Long.class));
+        verify(this.catalogItemEnricher, never()).enrich(any(CatalogItemId.class), any(Long.class));
     }
 
     @Test
@@ -82,7 +82,7 @@ class IdentifyAssetUseCaseTest {
                         1024,
                         "video/mp4",
                         MediaAssetStatus.IDENTIFIED,
-                        MovieId.of(50L),
+                        CatalogItemId.of(50L),
                         true,
                         Instant.now(),
                         Instant.now());
@@ -90,7 +90,7 @@ class IdentifyAssetUseCaseTest {
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(identified));
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null, null))
-                .expectNextMatches(asset -> asset.getMovieId().equals(MovieId.of(50L)))
+                .expectNextMatches(asset -> asset.getCatalogItemId().equals(CatalogItemId.of(50L)))
                 .verifyComplete();
 
         verify(this.identifyAssetTransaction, never())
@@ -99,7 +99,7 @@ class IdentifyAssetUseCaseTest {
                         any(String.class),
                         any(String.class),
                         any(MediaKind.class));
-        verify(this.catalogItemEnricher, never()).enrich(any(MovieId.class), any(Long.class));
+        verify(this.catalogItemEnricher, never()).enrich(any(CatalogItemId.class), any(Long.class));
     }
 
     @Test
@@ -125,7 +125,7 @@ class IdentifyAssetUseCaseTest {
                         true,
                         Instant.now(),
                         Instant.now());
-        MediaAsset winner = asset.identify(MovieId.of(50L));
+        MediaAsset winner = asset.identify(CatalogItemId.of(50L));
 
         when(this.assetRepository.findById(MediaAssetId.of(1L)))
                 .thenReturn(Mono.just(asset), Mono.just(winner));
@@ -164,17 +164,17 @@ class IdentifyAssetUseCaseTest {
                         eq("Interstellar (2014)"),
                         eq(MediaKind.MOVIE)))
                 .thenReturn(Mono.just(new IdentificationResult(
-                        asset.identify(MovieId.of(50L)), MovieId.of(50L))));
-        when(this.catalogItemEnricher.enrich(MovieId.of(50L), 157336L))
+                        asset.identify(CatalogItemId.of(50L)), CatalogItemId.of(50L))));
+        when(this.catalogItemEnricher.enrich(CatalogItemId.of(50L), 157336L))
                 .thenReturn(Mono.empty());
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Interstellar (2014)", 157336L, null))
                 .expectNextMatches(identified ->
                         identified.isIdentified()
-                                && identified.getMovieId().equals(MovieId.of(50L)))
+                                && identified.getCatalogItemId().equals(CatalogItemId.of(50L)))
                 .verifyComplete();
 
-        verify(this.catalogItemEnricher).enrich(MovieId.of(50L), 157336L);
+        verify(this.catalogItemEnricher).enrich(CatalogItemId.of(50L), 157336L);
     }
 
     @Test
@@ -197,8 +197,8 @@ class IdentifyAssetUseCaseTest {
         when(this.identifyAssetTransaction.execute(
                         eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
                 .thenReturn(Mono.just(new IdentificationResult(
-                        asset.identify(MovieId.of(50L)), MovieId.of(50L))));
-        when(this.catalogItemEnricher.enrich(MovieId.of(50L), 123L))
+                        asset.identify(CatalogItemId.of(50L)), CatalogItemId.of(50L))));
+        when(this.catalogItemEnricher.enrich(CatalogItemId.of(50L), 123L))
                 .thenReturn(Mono.error(new IllegalStateException("TMDB down")));
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", 123L, null))
@@ -229,8 +229,8 @@ class IdentifyAssetUseCaseTest {
         when(this.identifyAssetTransaction.execute(
                         eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
                 .thenReturn(Mono.just(new IdentificationResult(
-                        asset.identify(MovieId.of(50L)), MovieId.of(50L))));
-        when(this.catalogItemEnricher.enrich(MovieId.of(50L), 123L))
+                        asset.identify(CatalogItemId.of(50L)), CatalogItemId.of(50L))));
+        when(this.catalogItemEnricher.enrich(CatalogItemId.of(50L), 123L))
                 .thenReturn(Mono.never());
 
         StepVerifier.withVirtualTime(() ->
@@ -238,7 +238,7 @@ class IdentifyAssetUseCaseTest {
                 .thenAwait(java.time.Duration.ofSeconds(21))
                 .expectNextMatches(identified ->
                         identified.isIdentified()
-                                && identified.getMovieId().equals(MovieId.of(50L)))
+                                && identified.getCatalogItemId().equals(CatalogItemId.of(50L)))
                 .verifyComplete();
 
         verify(this.identifyAssetTransaction).execute(

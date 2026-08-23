@@ -10,6 +10,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,7 +35,7 @@ class LibraryCatalogItemAccessTest {
         Movie movie = movie(MovieVisibility.SHARED, Set.of("Maria"));
         when(this.movieRepository.findById(MovieId.of(10L))).thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.access.requireVisible(MovieId.of(10L), "Maria"))
+        StepVerifier.create(this.access.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .verifyComplete();
     }
 
@@ -43,7 +44,7 @@ class LibraryCatalogItemAccessTest {
         Movie movie = movie(MovieVisibility.PRIVATE, Set.of());
         when(this.movieRepository.findById(MovieId.of(10L))).thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.access.requireVisible(MovieId.of(10L), "Maria"))
+        StepVerifier.create(this.access.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
     }
@@ -52,7 +53,7 @@ class LibraryCatalogItemAccessTest {
     void doesNotRevealWhetherCatalogItemExists() {
         when(this.movieRepository.findById(MovieId.of(10L))).thenReturn(Mono.empty());
 
-        StepVerifier.create(this.access.requireVisible(MovieId.of(10L), "Maria"))
+        StepVerifier.create(this.access.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .expectError(MovieAccessDeniedException.class)
                 .verify();
     }

@@ -11,6 +11,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundExc
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +38,7 @@ class LibraryCatalogItemEnricherTest {
         when(this.movieRepository.findById(MovieId.of(50L))).thenReturn(Mono.just(movie));
         when(this.enrichMovieUseCase.enrich(movie, 123L)).thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.enricher.enrich(MovieId.of(50L), 123L))
+        StepVerifier.create(this.enricher.enrich(CatalogItemId.of(50L), 123L))
                 .verifyComplete();
 
         verify(this.enrichMovieUseCase).enrich(movie, 123L);
@@ -47,7 +48,7 @@ class LibraryCatalogItemEnricherTest {
     void reportsWhenTheCreatedCatalogItemCannotBeReloaded() {
         when(this.movieRepository.findById(MovieId.of(50L))).thenReturn(Mono.empty());
 
-        StepVerifier.create(this.enricher.enrich(MovieId.of(50L), 123L))
+        StepVerifier.create(this.enricher.enrich(CatalogItemId.of(50L), 123L))
                 .expectError(MovieNotFoundException.class)
                 .verify();
     }

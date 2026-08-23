@@ -1,7 +1,5 @@
 package com.gcorp.service.app.mvflix_movies.library.domain;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -12,12 +10,12 @@ public interface MediaAssetRepository {
     Mono<MediaAsset> findById(MediaAssetId id);
 
     /** Compare-and-set: vincula únicamente si el asset continúa sin identificar. */
-    Mono<MediaAsset> identifyIfUnidentified(MediaAssetId assetId, MovieId movieId);
+    Mono<MediaAsset> identifyIfUnidentified(MediaAssetId assetId, CatalogItemId catalogItemId);
 
-    Mono<MediaAsset> findByMovieId(MovieId movieId);
+    Mono<MediaAsset> findByCatalogItemId(CatalogItemId catalogItemId);
 
     /** Desvincula los assets de una película sin borrar el catálogo del filesystem. */
-    Mono<Long> unlinkByMovieId(MovieId movieId);
+    Mono<Long> unlinkByCatalogItemId(CatalogItemId catalogItemId);
 
     Mono<MediaAsset> findByLibraryAndPath(Long libraryId, String relativePath);
 

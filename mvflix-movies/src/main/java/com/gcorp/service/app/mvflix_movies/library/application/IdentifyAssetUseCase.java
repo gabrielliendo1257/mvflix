@@ -2,13 +2,13 @@ package com.gcorp.service.app.mvflix_movies.library.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemEnricher;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +57,7 @@ public class IdentifyAssetUseCase {
                 .getAuthenticatedUser()
                 .flatMap(user -> this.identifyAssetTransaction.execute(
                         asset, user.subject(), title, resolvedKind))
-                .flatMap(result -> this.enrichIfRequested(result.movieId(), tmdbId)
+                .flatMap(result -> this.enrichIfRequested(result.catalogItemId(), tmdbId)
                         .thenReturn(result.asset()))
                 .onErrorResume(
                         MediaAssetAlreadyIdentifiedException.class,
@@ -68,7 +68,7 @@ public class IdentifyAssetUseCase {
                 .doOnNext(identified -> log.info(
                         "Asset {} identificado: path={} -> movie_id={}",
                         asset.getId(), asset.getRelativePath(),
-                        identified.getMovieId().value()));
+                        identified.getCatalogItemId().value()));
     }
 
     /**
@@ -79,19 +79,19 @@ public class IdentifyAssetUseCase {
      */
     private static final Duration ENRICH_TIMEOUT = Duration.ofSeconds(20);
 
-    private Mono<Void> enrichIfRequested(MovieId movieId, Long tmdbId) {
+    private Mono<Void> enrichIfRequested(CatalogItemId catalogItemId, Long tmdbId) {
         if (tmdbId == null) {
             return Mono.empty();
         }
         return this.catalogItemEnricher
-                .enrich(movieId, tmdbId)
+                .enrich(catalogItemId, tmdbId)
                 .timeout(this.ENRICH_TIMEOUT)
                 .doOnSuccess(ignored -> log.info(
                         "Asset autocompletado con TMDB {} -> movie {} ENRICHED",
-                        tmdbId, movieId.value()))
+                        tmdbId, catalogItemId.value()))
                 .onErrorResume(error -> {
                     log.warn("Autocompletado TMDB {} fallido para movie {}: queda RAW: {}",
-                            tmdbId, movieId.value(), error.getMessage());
+                            tmdbId, catalogItemId.value(), error.getMessage());
                     return Mono.empty();
                 });
     }

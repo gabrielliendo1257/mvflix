@@ -92,6 +92,15 @@ class LayerDependencyTest {
             .because("las invariantes de Catalog no deben depender del módulo Library");
 
     @ArchTest
+    static final ArchRule library_domain_is_independent_from_catalog = noClasses()
+            .that()
+            .resideInAPackage("..library.domain..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..catalog..")
+            .because("Library debe modelar localmente sus referencias a Catalog");
+
+    @ArchTest
     static final ArchRule catalog_bulk_uses_its_library_port = noClasses()
             .that()
             .haveSimpleName("BulkVisibilityUseCase")

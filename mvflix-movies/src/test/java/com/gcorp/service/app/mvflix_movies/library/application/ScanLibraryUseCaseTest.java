@@ -10,7 +10,7 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,7 +64,7 @@ class ScanLibraryUseCaseTest {
                         200,
                         "video/x-matroska",
                         MediaAssetStatus.IDENTIFIED,
-                        MovieId.of(9L),
+                        CatalogItemId.of(9L),
                         true,
                         Instant.now(),
                         Instant.now());
@@ -79,7 +79,7 @@ class ScanLibraryUseCaseTest {
                 .expectNextMatches(asset ->
                         asset.getRelativePath().equals("vanished.mkv")
                                 && asset.isMissing()
-                                && asset.getMovieId() != null)
+                                && asset.getCatalogItemId() != null)
                 .verifyComplete();
     }
 
@@ -124,7 +124,7 @@ class ScanLibraryUseCaseTest {
                         100,
                         "video/mp4",
                         MediaAssetStatus.IDENTIFIED,
-                        MovieId.of(3L),
+                        CatalogItemId.of(3L),
                         false,
                         Instant.now(),
                         Instant.now());

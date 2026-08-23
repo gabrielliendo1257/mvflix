@@ -12,6 +12,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,7 +51,7 @@ class LibraryCatalogItemCreatorTest {
 
         StepVerifier.create(this.creator.createFromLibrary(
                         "Javier", "Dune", MediaKind.MOVIE))
-                .expectNext(MovieId.of(50L))
+                .expectNext(CatalogItemId.of(50L))
                 .verifyComplete();
 
         ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);

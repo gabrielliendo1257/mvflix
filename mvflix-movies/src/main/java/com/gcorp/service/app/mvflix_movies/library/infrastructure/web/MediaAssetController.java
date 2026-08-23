@@ -3,9 +3,9 @@ package com.gcorp.service.app.mvflix_movies.library.infrastructure.web;
 import com.gcorp.service.app.mvflix_movies.library.application.IdentifyAssetUseCase;
 import com.gcorp.service.app.mvflix_movies.library.application.MediaAssetQueries;
 import com.gcorp.service.app.mvflix_movies.library.application.ScanLibraryUseCase;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.IdentifyAssetRequest;
 import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.MediaAssetResponse;
 import com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto.ScanLibraryRequest;
@@ -77,7 +77,7 @@ public class MediaAssetController {
     @GetMapping("/media-assets/by-movie/{movieId}")
     public Mono<MediaAssetResponse> assetByMovie(@PathVariable Long movieId) {
         return this.mediaAssetQueries
-                .findByMovie(MovieId.of(movieId))
+                .findByCatalogItem(CatalogItemId.of(movieId))
                 .map(this.mapper::toResponse);
     }
 

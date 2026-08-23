@@ -29,6 +29,6 @@ public class MediaAssetApiMapper {
                 asset.getSize(),
                 asset.getMimeType(),
                 asset.getStatus().name(),
-                asset.getMovieId() == null ? null : asset.getMovieId().value());
+                asset.getCatalogItemId() == null ? null : asset.getCatalogItemId().value());
     }
 }

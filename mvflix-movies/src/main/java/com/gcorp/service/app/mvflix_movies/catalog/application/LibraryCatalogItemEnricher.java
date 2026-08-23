@@ -4,6 +4,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemEnricher;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,7 +21,8 @@ public class LibraryCatalogItemEnricher implements CatalogItemEnricher {
     private final EnrichMovieUseCase enrichMovieUseCase;
 
     @Override
-    public Mono<Void> enrich(MovieId movieId, Long externalMetadataId) {
+    public Mono<Void> enrich(CatalogItemId catalogItemId, Long externalMetadataId) {
+        MovieId movieId = MovieId.of(catalogItemId.value());
         return this.movieRepository
                 .findById(movieId)
                 .switchIfEmpty(Mono.error(new MovieNotFoundException(

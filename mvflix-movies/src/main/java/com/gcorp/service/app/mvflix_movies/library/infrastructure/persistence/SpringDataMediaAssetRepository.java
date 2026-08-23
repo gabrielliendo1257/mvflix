@@ -1,10 +1,10 @@
 package com.gcorp.service.app.mvflix_movies.library.infrastructure.persistence;
 
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -65,17 +65,18 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                         .bind("status", asset.getStatus().name())
                         .bind("present", asset.getPresent())
                         .bind("id", asset.getId().value());
-        return bindMovieId(spec, asset.getMovieId())
+        return bindCatalogItemId(spec, asset.getCatalogItemId())
                 .map((row, metadata) -> this.toDomain(row))
                 .one();
     }
 
-    private static org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec bindMovieId(
-            org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec spec, MovieId movieId) {
-        if (movieId == null) {
+    private static org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec bindCatalogItemId(
+            org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec spec,
+            CatalogItemId catalogItemId) {
+        if (catalogItemId == null) {
             return spec.bindNull("movie_id", Long.class);
         }
-        return spec.bind("movie_id", movieId.value());
+        return spec.bind("movie_id", catalogItemId.value());
     }
 
     @Override
@@ -95,7 +96,8 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
     }
 
     @Override
-    public Mono<MediaAsset> identifyIfUnidentified(MediaAssetId assetId, MovieId movieId) {
+    public Mono<MediaAsset> identifyIfUnidentified(
+            MediaAssetId assetId, CatalogItemId catalogItemId) {
         return this.databaseClient
                 .sql(
                         """
@@ -106,14 +108,14 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                           AND movie_id IS NULL
                         RETURNING
                         """ + ASSET_COLUMNS)
-                .bind("movie_id", movieId.value())
+                .bind("movie_id", catalogItemId.value())
                 .bind("asset_id", assetId.value())
                 .map((row, metadata) -> this.toDomain(row))
                 .one();
     }
 
     @Override
-    public Mono<MediaAsset> findByMovieId(MovieId movieId) {
+    public Mono<MediaAsset> findByCatalogItemId(CatalogItemId catalogItemId) {
         return this.databaseClient
                 .sql(
                         """
@@ -125,13 +127,13 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                         ORDER BY id
                         LIMIT 1
                         """)
-                .bind("movie_id", movieId.value())
+                .bind("movie_id", catalogItemId.value())
                 .map((row, metadata) -> this.toDomain(row))
                 .one();
     }
 
     @Override
-    public Mono<Long> unlinkByMovieId(MovieId movieId) {
+    public Mono<Long> unlinkByCatalogItemId(CatalogItemId catalogItemId) {
         return this.databaseClient
                 .sql(
                         """
@@ -139,7 +141,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                         SET status = 'UNIDENTIFIED', movie_id = NULL, updated_at = NOW()
                         WHERE movie_id = :movie_id
                         """)
-                .bind("movie_id", movieId.value())
+                .bind("movie_id", catalogItemId.value())
                 .fetch()
                 .rowsUpdated()
                 .map(Long::valueOf);
@@ -207,7 +209,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                 row.get("size", Long.class),
                 row.get("mime_type", String.class),
                 MediaAssetStatus.valueOf(row.get("status", String.class)),
-                movieId == null ? null : MovieId.of(movieId),
+                movieId == null ? null : CatalogItemId.of(movieId),
                 present == null || present,
                 row.get("created_at", Instant.class),
                 row.get("updated_at", Instant.class));

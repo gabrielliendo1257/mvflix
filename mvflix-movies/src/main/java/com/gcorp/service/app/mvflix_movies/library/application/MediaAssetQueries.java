@@ -1,13 +1,13 @@
 package com.gcorp.service.app.mvflix_movies.library.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
+import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemAccess;
+import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemAccess;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,14 +37,14 @@ public class MediaAssetQueries {
                         new MediaAssetNotFoundException("Media asset not found: " + id.value())));
     }
 
-    public Mono<MediaAsset> findByMovie(MovieId movieId) {
+    public Mono<MediaAsset> findByCatalogItem(CatalogItemId catalogItemId) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.catalogItemAccess
-                        .requireVisible(movieId, user.subject())
+                        .requireVisible(catalogItemId, user.subject())
                         .then(Mono.defer(() -> this.assetRepository
-                                .findByMovieId(movieId)
+                                .findByCatalogItemId(catalogItemId)
                                 .switchIfEmpty(Mono.error(new MediaAssetNotFoundException(
-                                        "No media asset for movie: " + movieId.value()))))));
+                                        "No media asset for movie: " + catalogItemId.value()))))));
     }
 }

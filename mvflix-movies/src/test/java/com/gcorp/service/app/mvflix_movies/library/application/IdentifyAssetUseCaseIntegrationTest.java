@@ -47,8 +47,8 @@ class IdentifyAssetUseCaseIntegrationTest extends PostgresIntegrationTest {
     StepVerifier.create(Mono.zip(first, second))
         .assertNext(
             results -> {
-              assertThat(results.getT1().getMovieId()).isNotNull();
-              assertThat(results.getT2().getMovieId()).isEqualTo(results.getT1().getMovieId());
+              assertThat(results.getT1().getCatalogItemId()).isNotNull();
+              assertThat(results.getT2().getCatalogItemId()).isEqualTo(results.getT1().getCatalogItemId());
             })
         .verifyComplete();
 

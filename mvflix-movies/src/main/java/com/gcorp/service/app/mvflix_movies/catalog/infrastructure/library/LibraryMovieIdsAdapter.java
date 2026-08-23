@@ -24,7 +24,8 @@ public class LibraryMovieIdsAdapter implements LibraryMovieIds {
     public Flux<MovieId> findIdentifiedByLibraryIds(List<Long> libraryIds) {
         return Flux.fromIterable(libraryIds)
                 .flatMap(this.mediaAssetRepository::findAllByLibraryId)
-                .mapNotNull(MediaAsset::getMovieId)
+                .mapNotNull(MediaAsset::getCatalogItemId)
+                .map(catalogItemId -> MovieId.of(catalogItemId.value()))
                 .distinct();
     }
 }
