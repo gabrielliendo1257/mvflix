@@ -1,4 +1,4 @@
-package com.guille.media.reproductor.uploader.storage.infrastructure.library;
+package com.guille.media.reproductor.uploader.storage.domain.vos;
 
 /**
  * Archivo de biblioteca LOCAL resuelto y validado (contenido en el root).

@@ -1,6 +1,8 @@
 package com.guille.media.reproductor.uploader.storage.infrastructure.library;
 
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
+import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryContentResolver;
+import com.guille.media.reproductor.uploader.storage.domain.vos.LibraryFileHandle;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,8 +20,9 @@ import java.nio.file.Path;
  */
 @Slf4j
 @Component
-public class LocalLibraryFileResolver {
+public class LocalLibraryFileResolver implements LibraryContentResolver {
 
+    @Override
     public Mono<LibraryFileHandle> resolve(MediaLibrary library, String relativePath) {
         return Mono.fromCallable(() -> {
             Path root;

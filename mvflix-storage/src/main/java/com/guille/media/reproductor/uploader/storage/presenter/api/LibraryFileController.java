@@ -1,8 +1,8 @@
 package com.guille.media.reproductor.uploader.storage.presenter.api;
 
 import com.guille.media.reproductor.uploader.storage.app.service.LibraryService;
-import com.guille.media.reproductor.uploader.storage.infrastructure.library.LibraryFileHandle;
-import com.guille.media.reproductor.uploader.storage.infrastructure.library.LocalLibraryFileResolver;
+import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryContentResolver;
+import com.guille.media.reproductor.uploader.storage.domain.vos.LibraryFileHandle;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -42,9 +42,9 @@ public class LibraryFileController {
     private static final int BUFFER_SIZE = 64 * 1024;
 
     private final LibraryService libraryService;
-    private final LocalLibraryFileResolver fileResolver;
+    private final LibraryContentResolver fileResolver;
 
-    public LibraryFileController(LibraryService libraryService, LocalLibraryFileResolver fileResolver) {
+    public LibraryFileController(LibraryService libraryService, LibraryContentResolver fileResolver) {
         this.libraryService = libraryService;
         this.fileResolver = fileResolver;
     }

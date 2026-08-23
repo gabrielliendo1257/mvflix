@@ -1,6 +1,5 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -13,7 +12,9 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPa
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryPathNotAllowedException;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibraryType;
+import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryRootResolver;
 import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;
+import com.guille.media.reproductor.uploader.storage.infrastructure.library.FilesystemLibraryRootResolver;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ class RegisterLibraryUseCaseTest {
     @Mock private MediaLibraryRepository libraryRepository;
     @Mock private UserProvider userProvider;
 
+    private LibraryRootResolver rootResolver;
     private LibraryRegistryProperties properties;
     private RegisterLibraryUseCase useCase;
 
@@ -44,8 +46,9 @@ class RegisterLibraryUseCaseTest {
     void setUp() {
         this.properties = new LibraryRegistryProperties();
         this.properties.setAllowedRoots(List.of(this.tempDir.toString()));
+        this.rootResolver = new FilesystemLibraryRootResolver(this.properties);
         this.useCase =
-                new RegisterLibraryUseCase(this.libraryRepository, this.userProvider, this.properties);
+                new RegisterLibraryUseCase(this.libraryRepository, this.userProvider, this.rootResolver);
     }
 
     private void authenticateAsJavier() {
@@ -75,24 +78,26 @@ class RegisterLibraryUseCaseTest {
     }
 
     @Test
-    void rejectsNonExistingDirectory() throws Exception {
+    void rejectsNonExistingDirectory() {
         String missing = this.tempDir.resolve("no-existe").toString();
-        assertThrows(
-                LibraryPathInvalidException.class, () -> this.useCase.execute(missing));
+        StepVerifier.create(this.useCase.execute(missing))
+                .expectError(LibraryPathInvalidException.class)
+                .verify();
     }
 
     @Test
     void rejectsFileInsteadOfDirectory() throws Exception {
         Path file = Files.createFile(this.tempDir.resolve("nota.txt"));
-        assertThrows(
-                LibraryPathInvalidException.class, () -> this.useCase.execute(file.toString()));
+        StepVerifier.create(this.useCase.execute(file.toString()))
+                .expectError(LibraryPathInvalidException.class)
+                .verify();
     }
 
     @Test
-    void rejectsPathOutsideAllowedRoot() throws Exception {
-        assertThrows(
-                LibraryPathNotAllowedException.class,
-                () -> this.useCase.execute("/etc"));
+    void rejectsPathOutsideAllowedRoot() {
+        StepVerifier.create(this.useCase.execute("/etc"))
+                .expectError(LibraryPathNotAllowedException.class)
+                .verify();
     }
 
     @Test
