@@ -46,7 +46,14 @@ public record AddMediaProcess(
         AddMediaPhase.WAITING_FOR_UPLOAD, null, this.version + 1);
   }
 
+  /**
+   * Pasa a verificación. Idempotente en la MISMA fase: reintentar complete
+   * mientras storage verifica es legítimo y no genera nueva versión.
+   */
   public AddMediaProcess verifying() {
+    if (this.phase == AddMediaPhase.VERIFYING_UPLOAD) {
+      return this;
+    }
     if (this.phase != AddMediaPhase.WAITING_FOR_UPLOAD) {
       throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.VERIFYING_UPLOAD);
     }

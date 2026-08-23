@@ -103,6 +103,25 @@ class CompleteProcessAddMediaTest {
   }
 
   @Test
+  void retryAfterVerifyingCompletesWhenUploadFinallyArrives() {
+    String id = this.preparedProcess();
+    when(this.completion.complete(anyLong(), any()))
+        .thenReturn(Mono.just(new UploadCompletionOutcome.StillVerifying(42L)))
+        .thenReturn(Mono.just(new UploadCompletionOutcome.Completed(movie(7L))));
+
+    StepVerifier.create(this.useCase.handle("pepe", id, null))
+        .assertNext(view -> assertThat(view.phase()).isEqualTo(AddMediaPhase.VERIFYING_UPLOAD))
+        .verifyComplete();
+
+    StepVerifier.create(this.useCase.handle("pepe", id, null))
+        .assertNext(view -> {
+          assertThat(view.phase()).isEqualTo(AddMediaPhase.READY);
+          assertThat(view.movieId()).isEqualTo(7L);
+        })
+        .verifyComplete();
+  }
+
+  @Test
   void readyProcessIsIdempotent() {
     AddMediaId id = AddMediaId.newId();
     this.processes.save(

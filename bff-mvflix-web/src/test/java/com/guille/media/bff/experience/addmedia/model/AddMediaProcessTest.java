@@ -35,6 +35,18 @@ class AddMediaProcessTest {
   }
 
   @Test
+  void verifyingIsIdempotentWhileAlreadyVerifying() {
+    AddMediaProcess verifying = AddMediaProcess.starting(this.id, "pepe")
+        .uploadPrepared(11L, 42L)
+        .verifying();
+
+    AddMediaProcess again = verifying.verifying();
+
+    assertThat(again).isSameAs(verifying);
+    assertThat(again.version()).isEqualTo(verifying.version());
+  }
+
+  @Test
   void invalidJumpsAreRejected() {
     AddMediaProcess starting = AddMediaProcess.starting(this.id, "pepe");
     assertThatThrownBy(starting::ready).isInstanceOf(InvalidAddMediaTransition.class);

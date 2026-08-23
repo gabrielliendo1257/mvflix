@@ -64,8 +64,12 @@ public class CompleteProcessAddMedia {
 
   private Mono<AddMediaView> completeViaStorage(AddMediaProcess process,
       Long reportedSizeBytes) {
-    return this.processes
-        .save(process.verifying())
+    // Reintento en VERIFYING: la fase ya es correcta, no re-persistir.
+    Mono<AddMediaProcess> ensureVerifying =
+        process.phase() == AddMediaPhase.VERIFYING_UPLOAD
+            ? Mono.just(process)
+            : this.processes.save(process.verifying());
+    return ensureVerifying
         .flatMap(verify ->
             this.completion.complete(process.movieId(),
                     new CompleteMovieRequest(process.uploadId(), reportedSizeBytes))
