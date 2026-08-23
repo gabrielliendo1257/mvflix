@@ -19,6 +19,7 @@ import com.guille.media.reproductor.uploader.storage.domain.ports.StorageReposit
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PermissionUrl;
+import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
 
@@ -38,7 +40,8 @@ class StreamingServiceImplTest {
   private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
 
   private final StreamingServiceImpl service =
-      new StreamingServiceImpl(objectStoragePort, storageRepository, userStorageRepository);
+      new StreamingServiceImpl(
+          objectStoragePort, storageRepository, userStorageRepository, Duration.ofHours(3));
 
   private static final UserStorage PEPE_STORAGE =
       new UserStorage(
@@ -75,6 +78,35 @@ class StreamingServiceImplTest {
         .verifyComplete();
 
     verify(this.storageRepository).touchLastSeen(org.mockito.ArgumentMatchers.eq(7L), any(Instant.class));
+  }
+
+  @Test
+  void generateStreamingSessionUsesConfiguredTtl() {
+    StoreObject completed = this.object(7L, StorageSessionStatus.COMPLETED);
+    Duration configuredTtl = Duration.ofMinutes(2);
+    StreamingServiceImpl customService =
+        new StreamingServiceImpl(
+            objectStoragePort, storageRepository, userStorageRepository, configuredTtl);
+
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(completed));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.createStreamingUrl(any(), any(StorageLocation.class)))
+        .thenReturn(Mono.just(new PermissionUrl("http://minio/stream", "GET", Map.of())));
+    when(this.storageRepository.touchLastSeen(any(Long.class), any(Instant.class)))
+        .thenReturn(Mono.empty());
+
+    StepVerifier.create(customService.generateStreamingSession(new StreamingCommand("7")))
+        .assertNext(session -> {
+          assertThat(session.expiresAt())
+              .isAfterOrEqualTo(Instant.now().plus(configuredTtl).minusSeconds(5));
+        })
+        .verifyComplete();
+
+    org.mockito.ArgumentCaptor<PresignedUploadRequest> requestCaptor =
+        org.mockito.ArgumentCaptor.forClass(PresignedUploadRequest.class);
+    verify(this.objectStoragePort)
+        .createStreamingUrl(requestCaptor.capture(), any(StorageLocation.class));
+    assertThat(requestCaptor.getValue().getExpiration()).isEqualTo(configuredTtl);
   }
 
   @Test

@@ -43,6 +43,8 @@ storage:
   session:
     time-to-live: 60m
     expiration-check-ms: 60000
+  streaming:
+    url-ttl: 3h
   # Bibliotecas del operador (media server). LOCAL -> directorio del filesystem.
   # Son también las raíces permitidas para las bibliotecas registradas en runtime.
   # En dev se acepta cualquier directorio (USB, Descargas, etc.); para restringir,

@@ -1,12 +1,16 @@
 package com.guille.media.reproductor.uploader.storage.app.service;
 
+import java.time.Duration;
+import java.time.Instant;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.StreamingCommand;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject;
-import com.guille.media.reproductor.uploader.storage.domain.models.UploadConfiguration;
-import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
 import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
@@ -15,25 +19,25 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadR
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 
 import lombok.extern.slf4j.Slf4j;
-
-import org.springframework.stereotype.Service;
-
 import reactor.core.publisher.Mono;
-
-import java.time.Duration;
-import java.time.Instant;
 
 @Slf4j
 @Service
 public class StreamingServiceImpl implements StreamingService {
 
   /**
-   * TTL de la URL presigned de streaming: 1 hora cubre una película completa
-   * (si se agota, el front renueva con una nueva sesión de streaming).
-   * No reutiliza el TTL de la politica de upload (30 min / 6 h): son vidas
-   * distintas (subir archivo vs. reproducir).
+   * TTL de la URL presigned de streaming: 1 hora cubre una película completa (si se agota, el front
+   * renueva con una nueva sesión de streaming). No reutiliza el TTL de la politica de upload (30
+   * min / 6 h): son vidas distintas (subir archivo vs. reproducir).
    */
-  private static final Duration STREAMING_EXPIRATION = Duration.ofHours(1);
+  /**
+   * TTL de la URL presigned de streaming, configurable vía
+   * {@code storage.streaming.url-ttl} (ISO-8601, por defecto 3h). Debe cubrir la
+   * reproducción más larga esperada; si se agota, el front solicita una nueva
+   * sesión. No reutiliza el TTL de la política de upload: son vidas distintas
+   * (subir archivo vs. reproducir).
+   */
+  private final Duration streamingUrlTtl;
 
   private final ObjectStorageService objectStoragePort;
   private final StorageRepository storageRepository;
@@ -42,10 +46,12 @@ public class StreamingServiceImpl implements StreamingService {
   public StreamingServiceImpl(
       ObjectStorageService objectStorageService,
       StorageRepository storageRepository,
-      UserStorageRepository userStorageRepository) {
+      UserStorageRepository userStorageRepository,
+      @Value("${storage.streaming.url-ttl:PT3H}") Duration streamingUrlTtl) {
     this.objectStoragePort = objectStorageService;
     this.storageRepository = storageRepository;
     this.userStorageRepository = userStorageRepository;
+    this.streamingUrlTtl = streamingUrlTtl;
   }
 
   @Override
@@ -61,8 +67,7 @@ public class StreamingServiceImpl implements StreamingService {
                     "Storage object not available: " + command.objectId())))
         .flatMap(this::createStreamingSession)
         .doOnNext(
-            session -> log.info(
-                    "Streaming session created: uploadId={}", session.uploadId()));
+            session -> log.info("Streaming session created: uploadId={}", session.uploadId()));
   }
 
   private Mono<StreamingSession> createStreamingSession(StoreObject object) {
@@ -78,8 +83,7 @@ public class StreamingServiceImpl implements StreamingService {
             userStorage -> {
               StorageLocation location =
                   new StorageLocation(userStorage.getBucketName(), object.getStorageKey());
-              PresignedUploadRequest request =
-                  new PresignedUploadRequest(STREAMING_EXPIRATION);
+              PresignedUploadRequest request = new PresignedUploadRequest(this.streamingUrlTtl);
 
               return this.objectStoragePort
                   .createStreamingUrl(request, location)
@@ -100,7 +104,7 @@ public class StreamingServiceImpl implements StreamingService {
                                       String.valueOf(object.getStorageId()),
                                       permissionUrl.presignedUrl(),
                                       object.getStorageKey(),
-                                      Instant.now().plus(STREAMING_EXPIRATION),
+                                      Instant.now().plus(this.streamingUrlTtl),
                                       permissionUrl.method())));
             });
   }
