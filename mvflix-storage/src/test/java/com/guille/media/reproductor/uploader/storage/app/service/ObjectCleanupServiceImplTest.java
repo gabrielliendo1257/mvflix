@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -129,22 +131,96 @@ class ObjectCleanupServiceImplTest {
   }
 
   @Test
-  void deleteObjectDoesNotTouchBlobWhenTransitionIsRejected() {
+  void deleteObjectRemovesBlobFirstAndKeepsAccountingWhenTransitionIsRejected() {
     StoreObject object = completedObject(7L, "pepe");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
     when(this.storageRepository.updateStatus(object, StorageSessionStatus.COMPLETED))
-        .thenReturn(Mono.error(new IllegalStateTransitionException("row no longer COMPLETED")));
+        .thenReturn(Mono.error(new IllegalStateTransitionException("already DELETED")));
 
     StepVerifier.create(this.service.deleteObject(7L))
         .expectError(IllegalStateTransitionException.class)
         .verify();
 
-    // Perdió el CAS: no libera cuota ni borra blob.
+    // Blob eliminado (idempotente, seguro de reintentar); cuota intacta:
+    // solo el ganador del CAS libera bytes.
+    verify(this.objectStoragePort)
+        .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
     verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
-    verify(this.objectStoragePort, never()).delete(any(StorageLocation.class));
+  }
+
+  @Test
+  void deleteObjectFailsFastWithoutTouchingDatabaseWhenObjectStoreUnavailable() {
+    StoreObject object = completedObject(7L, "pepe");
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    doThrow(new StorageException("minio down"))
+        .when(this.objectStoragePort)
+        .delete(any(StorageLocation.class));
+    // Si la tx llegara a SUSCRIBIRSE, el test fallaría con esta aserción.
+    when(this.storageRepository.updateStatus(any(StoreObject.class), any()))
+        .thenReturn(Mono.error(new AssertionError("DB must not be touched when MinIO fails")));
+    when(this.userStorageRepository.releaseStorage(anyString(), anyLong()))
+        .thenReturn(Mono.error(new AssertionError("quota must not be released when MinIO fails")));
+
+    StepVerifier.create(this.service.deleteObject(7L))
+        .expectError(StorageException.class)
+        .verify();
+  }
+
+  @Test
+  void deleteObjectKeepsAccountingWhenTransitionIsRejected() {
+    StoreObject object = completedObject(7L, "pepe");
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.storageRepository.updateStatus(object, StorageSessionStatus.COMPLETED))
+        .thenReturn(Mono.error(new IllegalStateTransitionException("already DELETED")));
+
+    StepVerifier.create(this.service.deleteObject(7L))
+        .expectError(IllegalStateTransitionException.class)
+        .verify();
+
+    // Carrera perdida (ya DELETED): el segundo DELETE es inofensivo y nadie
+    // libera cuota dos veces.
+    verify(this.objectStoragePort)
+        .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
+    verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
+  }
+
+  @Test
+  void retryAfterDatabaseFailureCompletesDeletion() {
+    StoreObject firstAttempt = completedObject(7L, "pepe");
+    StoreObject retry = completedObject(7L, "pepe");
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(7L))
+        .thenReturn(Mono.just(firstAttempt), Mono.just(retry));
+    when(this.userStorageRepository.findByOwnerUsername("pepe"))
+        .thenReturn(Mono.just(PEPE_STORAGE));
+    // Primer intento: la tx falla tras el release. Reintento: gana el CAS.
+    when(this.userStorageRepository.releaseStorage(anyString(), anyLong()))
+        .thenReturn(Mono.error(new RuntimeException("db connection lost")), Mono.just(1L));
+    when(this.storageRepository.updateStatus(
+            any(StoreObject.class), eq(StorageSessionStatus.COMPLETED)))
+        .thenReturn(Mono.just(retry));
+
+    StepVerifier.create(this.service.deleteObject(7L))
+        .expectError(RuntimeException.class)
+        .verify();
+    StepVerifier.create(this.service.deleteObject(7L)).verifyComplete();
+
+    // El blob se borró en ambos intentos (idempotente); el reintento completó
+    // la transición. La garantía de liberación-exactamente-una-vez se prueba
+    // contra PostgreSQL real en UploadReservationRollbackTest.
+    verify(this.objectStoragePort, times(2))
+        .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
+    assertThat(retry.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.DELETED);
   }
 
   @Test

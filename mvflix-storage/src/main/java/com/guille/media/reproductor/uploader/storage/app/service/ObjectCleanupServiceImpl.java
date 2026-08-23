@@ -62,6 +62,21 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
                         }));
   }
 
+  /**
+   * Borrado retry-safe. Orden deliberado:
+   *
+   * <ol>
+   *   <li>DELETE en MinIO: idempotente y fail-fast. Si el object store está
+   *       caído la operación falla sin tocar PostgreSQL; reintentar es seguro
+   *       porque repetir el DELETE no tiene efecto.</li>
+   *   <li>Transacción local: CAS COMPLETED→DELETED + liberación de cuota,
+   *       atómicos. Un fallo de DB deja la fila COMPLETED con su cuota; el
+   *       reintento repite el DELETE (no-op) y vuelve a intentar la tx.</li>
+   * </ol>
+   *
+   * <p>El caso perdido del CAS es una eliminación ya completada por otro
+   * hilo: el segundo DELETE es inofensivo y nadie libera cuota dos veces.
+   */
   private Mono<Void> deleteOwnedObject(StoreObject object) {
     return this.userStorageRepository
         .findByOwnerUsername(object.getOwnerUsername())
@@ -74,16 +89,14 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
               if (!object.markDeleted()) {
                 return Mono.empty();
               }
-              // CAS primero: solo quien gana COMPLETED->DELETED libera cuota.
-              // Transición + liberación atómicas en una tx local; el blob se
-              // borra después, best effort: un crash deja un blob huérfano
-              // (reconciliable por eventos/lifecycle), nunca cuota corrupta ni
-              // una fila DELETED que retiene bytes contabilizados.
-              return this.terminalTransition
-                  .transitionAndRelease(object, StorageSessionStatus.COMPLETED)
-                  .flatMap(
-                      deleted ->
-                          this.deleteObjectBestEffort(deleted, userStorage.getBucketName()))
+              return Mono.<Void>fromRunnable(
+                      () ->
+                          this.objectStoragePort.delete(
+                              new StorageLocation(
+                                  userStorage.getBucketName(), object.getStorageKey())))
+                  .then(
+                      this.terminalTransition.transitionAndRelease(
+                          object, StorageSessionStatus.COMPLETED))
                   .then();
             });
   }
