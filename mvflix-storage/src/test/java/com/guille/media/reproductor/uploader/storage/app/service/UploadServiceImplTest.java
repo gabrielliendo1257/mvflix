@@ -457,15 +457,32 @@ class UploadServiceImplTest {
 
     when(this.storageRepository.findByObjectKey(anyString())).thenReturn(Mono.just(pending));
     when(this.userStorageRepository.releaseStorage("pepe", 1024L)).thenReturn(Mono.just(1L));
-    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.FAILED))
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
         .thenReturn(Mono.just(pending));
 
     StepVerifier.create(this.service.handleObjectRemoved("k1")).verifyComplete();
 
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
+    // El CAS espera PENDING en la fila: es el estado previo real, no el nuevo.
+    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.PENDING);
+    // La cuota se libera solo después de ganar el CAS.
     verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
-    verify(this.storageRepository).updateStatus(pending, StorageSessionStatus.FAILED);
     verify(this.eventPublisher).publish(any(UploadFailedEvent.class));
+  }
+
+  @Test
+  void handleObjectRemovedDoesNotReleaseQuotaWhenItLosesTheRace() {
+    StoreObject pending = this.pendingObject(7L);
+
+    when(this.storageRepository.findByObjectKey(anyString())).thenReturn(Mono.just(pending));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
+        .thenReturn(Mono.error(new IllegalStateTransitionException("row already COMPLETED")));
+
+    StepVerifier.create(this.service.handleObjectRemoved("k1")).verifyComplete();
+
+    // Perdió la transición (otro hilo completó): no toca cuota ni publica evento.
+    verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
+    verify(this.eventPublisher, never()).publish(any());
   }
 
   @Test

@@ -178,11 +178,18 @@ public class UploadServiceImpl implements UploadService {
                 return Mono.<StoreObject>empty();
               }
               object.markFailed();
-              return this.userStorageRepository
-                  .releaseStorage(object.getOwnerUsername(), object.sizeInBytes())
-                  .then(
-                      this.storageRepository.updateStatus(
-                          object, StorageSessionStatus.FAILED));
+              // El segundo parámetro de updateStatus es el estado ANTERIOR
+              // esperado en la fila (CAS). La fila sigue PENDING: si se
+              // esperara FAILED el CAS nunca matchearía. Además el CAS va
+              // primero: solo quien gana la transición libera cuota, evitando
+              // liberar bytes de un objeto que completó concurrentemente.
+              return this.storageRepository
+                  .updateStatus(object, StorageSessionStatus.PENDING)
+                  .flatMap(
+                      failed ->
+                          this.userStorageRepository
+                              .releaseStorage(failed.getOwnerUsername(), failed.sizeInBytes())
+                              .thenReturn(failed));
             })
         .doOnNext(failed -> this.publishFailed(failed, new StorageObjectRemovedException()))
         .onErrorResume(
