@@ -7,7 +7,7 @@ import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
-import com.guille.media.bff.experience.addmedia.web.AddMediaView;
+import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
 import com.guille.media.bff.shared.error.EntityNotFound;
 
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class CancelAddMedia {
   private final AddMediaStorage storage;
   private final AddMediaMovies movies;
 
-  public Mono<AddMediaView> handle(String ownerSubject, String addMediaId) {
+  public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId) {
     return this.processes
         .findById(new AddMediaId(addMediaId))
         .filter(process -> process.ownedBy(ownerSubject))
@@ -40,7 +40,7 @@ public class CancelAddMedia {
         .flatMap(this::cancelIfAllowed);
   }
 
-  private Mono<AddMediaView> cancelIfAllowed(AddMediaProcess process) {
+  private Mono<AddMediaResult> cancelIfAllowed(AddMediaProcess process) {
     if (process.phase() == AddMediaPhase.READY
         || process.phase() == AddMediaPhase.CANCELLED
         || process.phase() == AddMediaPhase.FAILED
@@ -59,7 +59,7 @@ public class CancelAddMedia {
           }
           return this.compensate(process)
               .then(this.processes.save(process.cancelling().cancelled()))
-              .map(AddMediaView::from);
+              .map(AddMediaResult::from);
         });
   }
 

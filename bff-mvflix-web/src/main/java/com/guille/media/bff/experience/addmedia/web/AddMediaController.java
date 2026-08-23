@@ -80,19 +80,21 @@ public class AddMediaController {
 
   @Operation(summary = "Inicia el alta: draft identificado + sesión de upload (idempotente)")
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<ResponseEntity<AddMediaView>> start(
+  public Mono<ResponseEntity<AddMediaResponse>> start(
       @Valid @RequestBody StartAddMediaRequest request) {
     return this.ownerSubject()
-        .flatMap(owner -> this.startAddMedia.handle(owner, request))
-        .map(view -> ResponseEntity.status(HttpStatus.CREATED).body(view));
+        .flatMap(owner -> this.startAddMedia.handle(owner, request.toCommand()))
+        .map(result -> ResponseEntity.status(HttpStatus.CREATED)
+            .body(AddMediaResponse.from(result)));
   }
 
   @Operation(summary = "Estado del proceso; restaura instrucciones frescas mientras espera upload")
   @GetMapping("/{addMediaId}")
-  public Mono<AddMediaView> status(
+  public Mono<AddMediaResponse> status(
       @PathVariable String addMediaId) {
     return this.ownerSubject()
-        .flatMap(owner -> this.getStatus.handle(owner, addMediaId));
+        .flatMap(owner -> this.getStatus.handle(owner, addMediaId))
+        .map(AddMediaResponse::from);
   }
 
   /**
@@ -100,23 +102,24 @@ public class AddMediaController {
    * verifica, 409 ante veredicto definitivo (rollback ya ejecutado).
    */
   @PostMapping(value = "/{addMediaId}/complete", consumes = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<ResponseEntity<AddMediaView>> complete(
+  public Mono<ResponseEntity<AddMediaResponse>> complete(
       @PathVariable String addMediaId,
       @RequestBody(required = false) CompleteSizeRequest request) {
     Long sizeBytes = request == null ? null : request.sizeBytes();
     return this.ownerSubject()
         .flatMap(owner -> this.completeProcess.handle(owner, addMediaId, sizeBytes))
-        .map(view -> view.phase() == com.guille.media.bff.experience.addmedia.model.AddMediaPhase.READY
-            ? ResponseEntity.ok(view)
-            : ResponseEntity.accepted().body(view));
+        .map(result -> result.phase() == com.guille.media.bff.experience.addmedia.model.AddMediaPhase.READY
+            ? ResponseEntity.ok(AddMediaResponse.from(result))
+            : ResponseEntity.accepted().body(AddMediaResponse.from(result)));
   }
 
   /** Cancelación del proceso con compensaciones acotadas. */
   @Operation(summary = "Cancela el proceso y compensa recursos ya creados")
   @PostMapping("/{addMediaId}/cancel")
-  public Mono<AddMediaView> cancel(@PathVariable String addMediaId) {
+  public Mono<AddMediaResponse> cancel(@PathVariable String addMediaId) {
     return this.ownerSubject()
-        .flatMap(owner -> this.cancelAddMedia.handle(owner, addMediaId));
+        .flatMap(owner -> this.cancelAddMedia.handle(owner, addMediaId))
+        .map(AddMediaResponse::from);
   }
 
   public record CompleteSizeRequest(Long sizeBytes) {}

@@ -7,7 +7,7 @@ import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
-import com.guille.media.bff.experience.addmedia.web.AddMediaView;
+import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +36,7 @@ public class CompleteProcessAddMedia {
   private final AddMediaProcessRepository processes;
   private final CompleteAddMedia completion;
 
-  public Mono<AddMediaView> handle(String ownerSubject, String addMediaId, Long reportedSizeBytes) {
+  public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId, Long reportedSizeBytes) {
     return this.processes
         .findById(new AddMediaId(addMediaId))
         .filter(process -> process.ownedBy(ownerSubject))
@@ -45,7 +45,7 @@ public class CompleteProcessAddMedia {
         .flatMap(process -> {
           // Idempotencia: READY responde siempre la misma vista.
           if (process.phase() == AddMediaPhase.READY) {
-            return Mono.just(AddMediaView.from(process));
+            return Mono.just(AddMediaResult.from(process));
           }
           if (process.phase() == AddMediaPhase.CANCELLED
               || process.phase() == AddMediaPhase.CANCELLING
@@ -59,7 +59,7 @@ public class CompleteProcessAddMedia {
         });
   }
 
-  private Mono<AddMediaView> claimAndComplete(AddMediaProcess process, Long reportedSizeBytes) {
+  private Mono<AddMediaResult> claimAndComplete(AddMediaProcess process, Long reportedSizeBytes) {
     return this.processes
         .tryFinalizeClaim(process.id())
         .flatMap(claimed -> {
@@ -74,7 +74,7 @@ public class CompleteProcessAddMedia {
         });
   }
 
-  private Mono<AddMediaView> runCompletion(AddMediaProcess finalizing, Long reportedSizeBytes) {
+  private Mono<AddMediaResult> runCompletion(AddMediaProcess finalizing, Long reportedSizeBytes) {
     return this.completion
         .complete(finalizing.movieId(),
             new CompleteMovieRequest(finalizing.uploadId(), reportedSizeBytes))
@@ -82,12 +82,12 @@ public class CompleteProcessAddMedia {
           if (outcome instanceof Completed completed) {
             return this.processes
                 .save(finalizing.ready())
-                .map(saved -> withMovie(AddMediaView.from(saved), completed.movie()));
+                .map(saved -> withMovie(AddMediaResult.from(saved), completed.movie()));
           }
           // PENDING en storage o fallo transitorio: soltar el claim y permitir retry.
           return this.processes
               .save(finalizing.backToVerifying())
-              .map(saved -> withFailureCode(AddMediaView.from(saved), null));
+              .map(saved -> withFailureCode(AddMediaResult.from(saved), null));
         })
         .onErrorResume(VerdictAppliedException.class,
             verdict -> this.processes
@@ -104,14 +104,14 @@ public class CompleteProcessAddMedia {
             });
   }
 
-  private static AddMediaView withFailureCode(AddMediaView view, String code) {
-    return new AddMediaView(view.addMediaId(), view.ownerSubject(), view.phase(),
+  private static AddMediaResult withFailureCode(AddMediaResult view, String code) {
+    return new AddMediaResult(view.addMediaId(), view.ownerSubject(), view.phase(),
         view.movieId(), view.uploadId(), view.upload(), code);
   }
 
-  private static AddMediaView withMovie(AddMediaView view,
+  private static AddMediaResult withMovie(AddMediaResult view,
       com.guille.media.bff.app.dto.MovieDto movie) {
-    return new AddMediaView(view.addMediaId(), view.ownerSubject(),
+    return new AddMediaResult(view.addMediaId(), view.ownerSubject(),
         com.guille.media.bff.experience.addmedia.model.AddMediaPhase.READY,
         movie.id(), view.uploadId(), view.upload(), view.failureCode());
   }

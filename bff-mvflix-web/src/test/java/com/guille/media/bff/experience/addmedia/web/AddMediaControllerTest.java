@@ -150,7 +150,7 @@ class AddMediaControllerTest {
     String addMediaId = this.client.post().uri("/web/add-media")
         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
         .bodyValue(startBody).exchange().expectStatus().isCreated()
-        .expectBody(com.guille.media.bff.experience.addmedia.web.AddMediaView.class)
+        .expectBody(com.guille.media.bff.experience.addmedia.application.AddMediaResult.class)
         .returnResult().getResponseBody().addMediaId();
 
     // El dueño lo ve.

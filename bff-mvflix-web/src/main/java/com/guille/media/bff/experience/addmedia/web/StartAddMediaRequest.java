@@ -42,4 +42,19 @@ public record StartAddMediaRequest(
    * guardián de que SHARED requiera usuarios.
    */
   public record InitialAccess(String visibility, List<String> sharedWith) {}
+
+
+  public com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand toCommand() {
+    return new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand(
+        new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand.FileSelection(
+            file.filename(), file.sizeBytes(), file.mimeType()),
+        new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand.MovieSelection(
+            movie.providerId(), movie.draft()),
+        access == null
+            ? new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand.InitialAccess(
+                null, null)
+            : new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand.InitialAccess(
+                access.visibility(), access.sharedWith()),
+        idempotencyKey);
+  }
 }

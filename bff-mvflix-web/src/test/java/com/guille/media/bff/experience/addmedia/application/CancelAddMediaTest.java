@@ -17,7 +17,7 @@ import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
-import com.guille.media.bff.experience.addmedia.web.AddMediaView;
+import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
 import com.guille.media.bff.infrastructure.persistence.InMemoryAddMediaProcessRepository;
 
 import org.junit.jupiter.api.BeforeEach;

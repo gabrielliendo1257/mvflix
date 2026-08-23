@@ -10,8 +10,8 @@ import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcess
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
-import com.guille.media.bff.experience.addmedia.web.AddMediaView;
-import com.guille.media.bff.experience.addmedia.web.StartAddMediaRequest;
+import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
+import com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -48,26 +48,26 @@ public class StartAddMedia {
     this.users = users;
   }
 
-  public Mono<AddMediaView> handle(String ownerSubject, StartAddMediaRequest request) {
+  public Mono<AddMediaResult> handle(String ownerSubject, StartAddMediaCommand command) {
     return this.processes
-        .createIfAbsent(ownerSubject, request.idempotencyKey(), fingerprintOf(request))
+        .createIfAbsent(ownerSubject, command.idempotencyKey(), fingerprintOf(command))
         .flatMap(process -> {
           if (process.phase() == AddMediaPhase.WAITING_FOR_UPLOAD
               && process.uploadId() != null) {
             // Replay tras recarga/pérdida de la primera respuesta: restaurar
             // las instrucciones de subida con un presigned fresco.
             return this.storage.refreshInstructions(process.uploadId())
-                .map(session -> AddMediaView.waitingForUpload(process, session))
+                .map(session -> AddMediaResult.waitingForUpload(process, session))
                 .onErrorResume(error -> {
                   log.warn("add-media replay: no se pudo renovar URL para {}: {}",
                       process.id(), error.getMessage());
-                  return Mono.just(AddMediaView.from(process));
+                  return Mono.just(AddMediaResult.from(process));
                 });
           }
           if (process.phase() != AddMediaPhase.STARTING) {
             log.info("add-media replay: process={} phase={}",
                 process.id(), process.phase());
-            return Mono.just(AddMediaView.from(process));
+            return Mono.just(AddMediaResult.from(process));
           }
           // Claim atómico: solo un request ejecuta los side effects.
           return this.processes
@@ -79,13 +79,13 @@ public class StartAddMedia {
                       process.id());
                   return this.processes
                       .findById(process.id())
-                      .map(AddMediaView::from);
+                      .map(AddMediaResult::from);
                 }
                 // Continuar sobre la instancia ya reclamada (PREPARING).
                 return this.processes
                     .findById(process.id())
                     .flatMap(claimedProcess ->
-                        this.startFresh(claimedProcess, request)
+                        this.startFresh(claimedProcess, command)
                             .onErrorResume(error ->
                                 this.processes.releaseClaim(process.id())
                                     .then(Mono.error(error))));
@@ -98,12 +98,12 @@ public class StartAddMedia {
    * La política vive en users; aquí solo se traduce a un error amigable antes
    * de gastar recursos en drafts/uploads.
    */
-  private Mono<AddMediaView> startFresh(AddMediaProcess process, StartAddMediaRequest request) {
+  private Mono<AddMediaResult> startFresh(AddMediaProcess process, StartAddMediaCommand command) {
     return this.users
         .me()
         .flatMap(profile -> this.guardBlocked(profile)
             // defer: si el gate falla, la continuación ni se construye.
-            .then(Mono.defer(() -> this.createDraftAndUpload(process, request))));
+            .then(Mono.defer(() -> this.createDraftAndUpload(process, command))));
   }
 
   private Mono<Void> guardBlocked(UserProfile profile) {
@@ -116,35 +116,36 @@ public class StartAddMedia {
     return Mono.empty();
   }
 
-  private Mono<AddMediaView> createDraftAndUpload(AddMediaProcess process,
-      StartAddMediaRequest request) {
+  private Mono<AddMediaResult> createDraftAndUpload(AddMediaProcess process,
+      StartAddMediaCommand command) {
     // Default EXPLÍCITO: la ausencia de intención es PRIVATE.
-    var access = request.access() == null
-        ? new StartAddMediaRequest.InitialAccess("PRIVATE", java.util.List.of())
-        : request.access();
+    // Default EXPLÍCITO: la ausencia de intención es PRIVATE.
+    var access = command.access() == null
+        ? new StartAddMediaCommand.InitialAccess("PRIVATE", java.util.List.of())
+        : command.access();
     IdentifiedDraft identified = new IdentifiedDraft(
-        request.movie().draft(),
-        request.movie().providerId(),
+        command.movie().draft(),
+        command.movie().providerId(),
         access.visibility() == null ? "PRIVATE" : access.visibility(),
         access.sharedWith());
     return this.movies
         .createIdentifiedDraft(identified)
         .flatMap(
             draft ->
-                this.prepareUpload(process, draft.id(), request)
+                this.prepareUpload(process, draft.id(), command)
                     // El upload ya se compensó dentro de prepareUpload (si
                     // llegó a existir); aquí solo queda el draft.
                     .onErrorResume(
                         error -> this.compensateDraft(draft.id()).then(Mono.error(error))));
   }
 
-  private Mono<AddMediaView> prepareUpload(
-      AddMediaProcess process, Long movieId, StartAddMediaRequest request) {
+  private Mono<AddMediaResult> prepareUpload(
+      AddMediaProcess process, Long movieId, StartAddMediaCommand command) {
     UploadCreateRequest uploadRequest =
         new UploadCreateRequest(
-            request.file().filename(),
-            request.file().sizeBytes(),
-            request.file().mimeType());
+            command.file().filename(),
+            command.file().sizeBytes(),
+            command.file().mimeType());
     return this.storage
         .prepareUpload(uploadRequest)
         .flatMap(session -> {
@@ -159,11 +160,11 @@ public class StartAddMedia {
         });
   }
 
-  private Mono<AddMediaView> persistPrepared(
+  private Mono<AddMediaResult> persistPrepared(
       AddMediaProcess process, UploadSessionDto session) {
     return this.processes
         .save(process)
-        .map(saved -> AddMediaView.waitingForUpload(saved, session));
+        .map(saved -> AddMediaResult.waitingForUpload(saved, session));
   }
 
   private static Long strictParseUploadId(String uploadId) {
@@ -192,19 +193,19 @@ public class StartAddMedia {
   }
 
   /** Huella canónica del intento; pública para que los tests usen la MISMA. */
-  static String fingerprintOf(StartAddMediaRequest request) {
+  static String fingerprintOf(StartAddMediaCommand command) {
     return RequestFingerprint.of(java.util.Map.of(
-        "file", request.file(),
+        "file", command.file(),
         "movie", java.util.Map.of(
-            "providerId", request.movie().providerId() == null ? "" : request.movie().providerId(),
-            "draft", request.movie().draft()),
-        "access", accessOf(request)));
+            "providerId", command.movie().providerId() == null ? "" : command.movie().providerId(),
+            "draft", command.movie().draft()),
+        "access", accessOf(command)));
   }
 
-  private static StartAddMediaRequest.InitialAccess accessOf(StartAddMediaRequest request) {
-    return request.access() == null
-        ? new StartAddMediaRequest.InitialAccess("PRIVATE", java.util.List.of())
-        : request.access();
+  private static StartAddMediaCommand.InitialAccess accessOf(StartAddMediaCommand command) {
+    return command.access() == null
+        ? new StartAddMediaCommand.InitialAccess("PRIVATE", java.util.List.of())
+        : command.access();
   }
 
   /** Compensación best-effort: si el discard falla queda pendiente en el log. */

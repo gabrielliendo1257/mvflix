@@ -19,7 +19,7 @@ import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies.
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
-import com.guille.media.bff.experience.addmedia.web.AddMediaView;
+import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
 import com.guille.media.bff.experience.addmedia.web.StartAddMediaRequest;
 import com.guille.media.bff.infrastructure.persistence.InMemoryAddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.application.UploadCompletionOutcome;
@@ -70,8 +70,12 @@ class StartAddMediaTest {
         List.of(), null, null, null, List.of(), null, null, null, null, null, null, null);
   }
 
-  private Mono<AddMediaView> start() {
-    return this.useCase.handle("pepe", request("intent-1"));
+  private StartAddMediaCommand command(String key) {
+    return request(key).toCommand();
+  }
+
+  private Mono<AddMediaResult> start() {
+    return this.useCase.handle("pepe", command("intent-1"));
   }
 
   @Test
@@ -115,8 +119,8 @@ class StartAddMediaTest {
             "pepe/videos/a.mp4", "PUT", "PENDING",
             new UploadSessionDto.ExpectedObjectData(1024L, "video/mp4"))));
 
-    AddMediaView first = start().block();
-    AddMediaView replay = start().block();
+    AddMediaResult first = start().block();
+    AddMediaResult replay = start().block();
 
     assertThat(replay.addMediaId()).isEqualTo(first.addMediaId());
     assertThat(replay.uploadId()).isEqualTo(42L);
@@ -134,8 +138,8 @@ class StartAddMediaTest {
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
 
-    Mono<AddMediaView> v1 = start();
-    Mono<AddMediaView> v2 = start();
+    Mono<AddMediaResult> v1 = start();
+    Mono<AddMediaResult> v2 = start();
     StepVerifier.create(Mono.zip(v1, v2))
         .assertNext(tuple -> {
           // Uno gana y termina WAITING_FOR_UPLOAD; el otro ve PREPARING o
@@ -156,10 +160,10 @@ class StartAddMediaTest {
     // Proceso existente ya reclamado por otro request en vuelo.
     this.processes.createIfAbsent("pepe", "intent-1",
         com.guille.media.bff.experience.addmedia.application.StartAddMedia
-            .fingerprintOf(request("intent-1"))).block();
+            .fingerprintOf(request("intent-1").toCommand())).block();
     String id = this.processes.createIfAbsent("pepe", "intent-1",
         com.guille.media.bff.experience.addmedia.application.StartAddMedia
-            .fingerprintOf(request("intent-1"))).block().id().value();
+            .fingerprintOf(request("intent-1").toCommand())).block().id().value();
     org.assertj.core.api.Assertions.assertThat(
         this.processes.tryClaim(com.guille.media.bff.experience.addmedia.model.AddMediaId
             .parse(id)).block()).isTrue();
@@ -191,7 +195,7 @@ class StartAddMediaTest {
     // El proceso queda en STARTING: un replay con la misma key reintenta limpio.
     this.processes.createIfAbsent("pepe", "intent-1",
         com.guille.media.bff.experience.addmedia.application.StartAddMedia
-            .fingerprintOf(request("intent-1")))
+            .fingerprintOf(request("intent-1").toCommand()))
         .as(StepVerifier::create)
         .assertNext(process -> {
           assertThat(process.phase()).isEqualTo(AddMediaPhase.STARTING);
@@ -245,7 +249,7 @@ class StartAddMediaTest {
     when(this.storage.cancelUpload(42L)).thenReturn(Mono.empty());
     when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
 
-    StepVerifier.create(useCaseFailing.handle("pepe", request("intent-x")))
+    StepVerifier.create(useCaseFailing.handle("pepe", request("intent-x").toCommand()))
         .expectErrorMessage("db down")
         .verify();
 
@@ -268,7 +272,7 @@ class StartAddMediaTest {
         new StartAddMediaRequest.InitialAccess("PRIVATE", List.of()),
         "intent-1");
 
-    StepVerifier.create(this.useCase.handle("pepe", other))
+    StepVerifier.create(this.useCase.handle("pepe", other.toCommand()))
         .expectError(com.guille.media.bff.experience.addmedia.application.
             IdempotencyConflictException.class)
         .verify();
@@ -281,13 +285,15 @@ class StartAddMediaTest {
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
 
+    var baseReq = request("intent-2");
     StartAddMediaRequest withoutAccess = new StartAddMediaRequest(
-        request("intent-2").file(),
+        new StartAddMediaRequest.FileSelection(baseReq.file().filename(),
+            baseReq.file().sizeBytes(), baseReq.file().mimeType()),
         request("intent-2").movie(),
         null,
         "intent-2");
 
-    StepVerifier.create(this.useCase.handle("pepe", withoutAccess))
+    StepVerifier.create(this.useCase.handle("pepe", withoutAccess.toCommand()))
         .assertNext(view -> assertThat(view.phase())
             .isEqualTo(AddMediaPhase.WAITING_FOR_UPLOAD))
         .verifyComplete();
