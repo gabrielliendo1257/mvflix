@@ -4,6 +4,7 @@ import com.guille.media.bff.app.dto.CreateMovieRequest;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 import org.hibernate.validator.constraints.Length;
@@ -18,8 +19,8 @@ import java.util.List;
  *        la misma clave no duplican draft/upload.
  */
 public record StartAddMediaRequest(
-    @Valid FileSelection file,
-    @Valid MovieSelection movie,
+    @Valid @NotNull FileSelection file,
+    @Valid @NotNull MovieSelection movie,
     InitialAccess access,
     @NotBlank @Length(max = 128) String idempotencyKey) {
 
@@ -33,7 +34,7 @@ public record StartAddMediaRequest(
    * Los overrides finos de metadata TMDB quedan diferidos al enrichment de
    * Movies, dueño del proveedor.
    */
-  public record MovieSelection(Long providerId, @Valid CreateMovieRequest draft) {}
+  public record MovieSelection(Long providerId, @Valid @NotNull CreateMovieRequest draft) {}
 
   /**
    * Preferencia inicial de acceso. PRIVATE es el default presentado en UI,

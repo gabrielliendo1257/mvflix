@@ -2,6 +2,7 @@ package com.guille.media.bff.presenter.api;
 
 import com.guille.media.bff.app.service.StreamTicketException;
 import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
+import com.guille.media.bff.experience.addmedia.application.IdempotencyConflictException;
 import com.guille.media.bff.shared.error.EntityNotFound;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.presenter.api.dto.OrchestrationError;
@@ -52,6 +53,18 @@ public class ApiExceptionHandler {
             .contentType(MediaType.APPLICATION_JSON)
             .body(new OrchestrationError(
                 HttpStatus.NOT_FOUND.value(), "NOT_FOUND", ex.getMessage())));
+  }
+
+  /** Misma idempotencyKey con payload distinto: conflicto, no silencio. */
+  @ExceptionHandler(IdempotencyConflictException.class)
+  public Mono<ResponseEntity<OrchestrationError>> idempotencyConflict(
+      IdempotencyConflictException ex) {
+    log.warn("Conflicto de idempotencia: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.CONFLICT.value(), ex.getCode(), ex.getMessage())));
   }
 
   /** Fase del proceso incompatible con la operación pedida. */

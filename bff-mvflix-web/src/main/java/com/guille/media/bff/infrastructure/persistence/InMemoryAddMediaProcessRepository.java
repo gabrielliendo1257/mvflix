@@ -24,11 +24,18 @@ public class InMemoryAddMediaProcessRepository implements AddMediaProcessReposit
 
   private final Map<AddMediaId, AddMediaProcess> processes = new ConcurrentHashMap<>();
   private final Map<String, AddMediaId> idempotencyIndex = new ConcurrentHashMap<>();
+  private final Map<String, String> fingerprints = new ConcurrentHashMap<>();
 
   @Override
-  public Mono<AddMediaProcess> createIfAbsent(String ownerSubject, String idempotencyKey) {
+  public Mono<AddMediaProcess> createIfAbsent(
+      String ownerSubject, String idempotencyKey, String requestFingerprint) {
     return Mono.defer(() -> {
       String key = ownerSubject + ":" + idempotencyKey;
+      String existingFingerprint = this.fingerprints.putIfAbsent(key, requestFingerprint);
+      if (existingFingerprint != null && !existingFingerprint.equals(requestFingerprint)) {
+        return Mono.error(new com.guille.media.bff.experience.addmedia.application.
+            IdempotencyConflictException(idempotencyKey));
+      }
       AtomicReference<AddMediaId> resolved = new AtomicReference<>();
       this.idempotencyIndex.compute(key, (k, existingId) -> {
         if (existingId != null) {

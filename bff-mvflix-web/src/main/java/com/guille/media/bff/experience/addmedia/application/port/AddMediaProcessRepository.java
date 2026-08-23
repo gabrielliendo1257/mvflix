@@ -14,9 +14,12 @@ public interface AddMediaProcessRepository {
 
   /**
    * Devuelve el proceso existente para el par (owner, idempotencyKey) o crea
-   * uno nuevo en fase STARTING. Atómico respecto a la unicidad.
+   * uno nuevo en fase STARTING. Atómico respecto a la unicidad. Si la key
+   * existe con OTRO fingerprint, falla con IdempotencyConflictException: la
+   * misma key solo es válida para el MISMO payload.
    */
-  Mono<AddMediaProcess> createIfAbsent(String ownerSubject, String idempotencyKey);
+  Mono<AddMediaProcess> createIfAbsent(
+      String ownerSubject, String idempotencyKey, String requestFingerprint);
 
   Mono<AddMediaProcess> findById(AddMediaId id);
 

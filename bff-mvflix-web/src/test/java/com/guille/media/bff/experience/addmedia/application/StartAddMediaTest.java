@@ -154,8 +154,12 @@ class StartAddMediaTest {
   @Test
   void loserOfTheClaimSeesPreparingWithoutSideEffects() {
     // Proceso existente ya reclamado por otro request en vuelo.
-    this.processes.createIfAbsent("pepe", "intent-1").block();
-    String id = this.processes.createIfAbsent("pepe", "intent-1").block().id().value();
+    this.processes.createIfAbsent("pepe", "intent-1",
+        com.guille.media.bff.experience.addmedia.application.StartAddMedia
+            .fingerprintOf(request("intent-1"))).block();
+    String id = this.processes.createIfAbsent("pepe", "intent-1",
+        com.guille.media.bff.experience.addmedia.application.StartAddMedia
+            .fingerprintOf(request("intent-1"))).block().id().value();
     org.assertj.core.api.Assertions.assertThat(
         this.processes.tryClaim(com.guille.media.bff.experience.addmedia.model.AddMediaId
             .parse(id)).block()).isTrue();
@@ -185,7 +189,9 @@ class StartAddMediaTest {
     // Compensación acotada: solo el draft de este intento.
     verify(this.movies).discardDraft(7L);
     // El proceso queda en STARTING: un replay con la misma key reintenta limpio.
-    this.processes.createIfAbsent("pepe", "intent-1")
+    this.processes.createIfAbsent("pepe", "intent-1",
+        com.guille.media.bff.experience.addmedia.application.StartAddMedia
+            .fingerprintOf(request("intent-1")))
         .as(StepVerifier::create)
         .assertNext(process -> {
           assertThat(process.phase()).isEqualTo(AddMediaPhase.STARTING);
@@ -249,6 +255,50 @@ class StartAddMediaTest {
     // Upload cancelado (cuota liberada) y draft descartado: cero huérfanos.
     verify(this.storage).cancelUpload(42L);
     verify(this.movies).discardDraft(7L);
+  }
+
+  @Test
+  void sameKeyWithDifferentPayloadIsRejectedAsIdempotencyConflict() {
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
+        .thenReturn(Mono.just(session()));
+    start().block();
+
+    // Misma key, OTRO archivo: conflicto explícito, no replay silencioso.
+    StartAddMediaRequest other = new StartAddMediaRequest(
+        new StartAddMediaRequest.FileSelection("OTRO.mp4", 9999L, "video/mp4"),
+        new StartAddMediaRequest.MovieSelection(348L, request("intent-1").movie().draft()),
+        new StartAddMediaRequest.InitialAccess("PRIVATE", List.of()),
+        "intent-1");
+
+    StepVerifier.create(this.useCase.handle("pepe", other))
+        .expectError(com.guille.media.bff.experience.addmedia.application.
+            IdempotencyConflictException.class)
+        .verify();
+  }
+
+  @Test
+  void omittedAccessDefaultsToExplicitPrivate() {
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class)))
+        .thenReturn(Mono.just(draft()));
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
+        .thenReturn(Mono.just(session()));
+
+    StartAddMediaRequest withoutAccess = new StartAddMediaRequest(
+        request("intent-2").file(),
+        request("intent-2").movie(),
+        null,
+        "intent-2");
+
+    StepVerifier.create(this.useCase.handle("pepe", withoutAccess))
+        .assertNext(view -> assertThat(view.phase())
+            .isEqualTo(AddMediaPhase.WAITING_FOR_UPLOAD))
+        .verifyComplete();
+
+    org.mockito.ArgumentCaptor<IdentifiedDraft> captor =
+        org.mockito.ArgumentCaptor.forClass(IdentifiedDraft.class);
+    verify(this.movies).createIdentifiedDraft(captor.capture());
+    assertThat(captor.getValue().visibility()).isEqualTo("PRIVATE");
   }
 
   @Test

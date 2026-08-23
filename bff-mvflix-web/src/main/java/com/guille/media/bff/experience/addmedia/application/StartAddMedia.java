@@ -51,7 +51,7 @@ public class StartAddMedia {
 
   public Mono<AddMediaView> handle(String ownerSubject, StartAddMediaRequest request) {
     return this.processes
-        .createIfAbsent(ownerSubject, request.idempotencyKey())
+        .createIfAbsent(ownerSubject, request.idempotencyKey(), fingerprintOf(request))
         .flatMap(process -> {
           if (process.phase() == AddMediaPhase.WAITING_FOR_UPLOAD
               && process.uploadId() != null) {
@@ -119,12 +119,15 @@ public class StartAddMedia {
 
   private Mono<AddMediaView> createDraftAndUpload(AddMediaProcess process,
       StartAddMediaRequest request) {
-    var access = request.access();
+    // Default EXPLÍCITO: la ausencia de intención es PRIVATE.
+    var access = request.access() == null
+        ? new StartAddMediaRequest.InitialAccess("PRIVATE", java.util.List.of())
+        : request.access();
     IdentifiedDraft identified = new IdentifiedDraft(
         request.movie().draft(),
         request.movie().providerId(),
-        access == null ? null : access.visibility(),
-        access == null ? null : access.sharedWith());
+        access.visibility() == null ? "PRIVATE" : access.visibility(),
+        access.sharedWith());
     return this.movies
         .createIdentifiedDraft(identified)
         .flatMap(
@@ -189,6 +192,22 @@ public class StartAddMedia {
               uploadId, err.getMessage());
           return Mono.empty();
         });
+  }
+
+  /** Huella canónica del intento; pública para que los tests usen la MISMA. */
+  static String fingerprintOf(StartAddMediaRequest request) {
+    return RequestFingerprint.of(java.util.Map.of(
+        "file", request.file(),
+        "movie", java.util.Map.of(
+            "providerId", request.movie().providerId() == null ? "" : request.movie().providerId(),
+            "draft", request.movie().draft()),
+        "access", accessOf(request)));
+  }
+
+  private static StartAddMediaRequest.InitialAccess accessOf(StartAddMediaRequest request) {
+    return request.access() == null
+        ? new StartAddMediaRequest.InitialAccess("PRIVATE", java.util.List.of())
+        : request.access();
   }
 
   /** Compensación best-effort: si el discard falla queda pendiente en el log. */
