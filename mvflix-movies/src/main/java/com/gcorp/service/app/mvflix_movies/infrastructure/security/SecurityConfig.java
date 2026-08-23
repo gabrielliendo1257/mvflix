@@ -22,6 +22,9 @@ public class SecurityConfig {
                         exchanges
                             .pathMatchers("/error")
                             .permitAll()
+                            .pathMatchers(
+                        "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                            .permitAll()
                             .anyExchange()
                             .authenticated())
                 .oauth2ResourceServer(

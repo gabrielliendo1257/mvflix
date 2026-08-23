@@ -32,6 +32,8 @@ import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.Update
 
 import jakarta.validation.Valid;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -49,6 +51,7 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+@Tag(name = "Movies", description = "Catálogo: drafts (incl. identificados), READY, visibilidad, shares, enriquecimiento TMDB")
 @RestController
 @RequestMapping(
     path = "/api/v1/movies",
@@ -107,7 +110,8 @@ public class MovieController {
     @PostMapping(
         value = "/identified-drafts",
         consumes = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<MovieResponse> createIdentifiedDraft(
+    @Operation(summary = "Draft identificado con acceso inicial, aplicado atómicamente")
+  public Mono<MovieResponse> createIdentifiedDraft(
             @Valid @RequestBody CreateIdentifiedDraftRequest request) {
         return this.createIdentifiedDraftUseCase
                 .execute(this.toCommand(request))
