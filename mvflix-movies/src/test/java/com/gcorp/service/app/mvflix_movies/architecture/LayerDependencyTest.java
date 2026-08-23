@@ -24,7 +24,6 @@ class LayerDependencyTest {
                     "..application..",
                     "..infrastructure..",
                     "..presenter..",
-                    "..advisors..",
                     "org.springframework..")
             .because("el dominio debe permanecer independiente de Spring y sus adapters");
 
@@ -34,7 +33,7 @@ class LayerDependencyTest {
             .resideInAPackage("..application..")
             .should()
             .dependOnClassesThat()
-            .resideInAnyPackage("..infrastructure..", "..presenter..", "..advisors..")
+            .resideInAnyPackage("..infrastructure..", "..presenter..")
             .because("Application coordina dominio y puertos, no implementaciones externas");
 
     @ArchTest

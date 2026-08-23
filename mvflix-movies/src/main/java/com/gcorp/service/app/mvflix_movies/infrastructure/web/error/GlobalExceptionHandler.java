@@ -1,12 +1,13 @@
-package com.gcorp.service.app.mvflix_movies.advisors;
+package com.gcorp.service.app.mvflix_movies.infrastructure.web.error;
 
-import com.gcorp.service.app.mvflix_movies.advisors.models.ErrorResponse;
-import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
-import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieConflictException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
+import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
+
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
