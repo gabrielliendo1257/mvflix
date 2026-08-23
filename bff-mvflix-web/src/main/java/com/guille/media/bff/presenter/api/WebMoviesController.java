@@ -13,6 +13,7 @@ import com.guille.media.bff.app.dto.MovieSharesRequest;
 import com.guille.media.bff.app.dto.MovieUpdateRequest;
 import com.guille.media.bff.app.dto.MovieVisibilityRequest;
 import com.guille.media.bff.app.service.Job;
+import com.guille.media.bff.app.service.UploadCompletionOutcome;
 import com.guille.media.bff.app.service.WebMoviesService;
 
 import org.springframework.http.MediaType;
@@ -119,9 +120,22 @@ public class WebMoviesController {
       value = "/{movieId}/complete",
       produces = MediaType.APPLICATION_JSON_VALUE,
       consumes = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<ResponseEntity<MovieDto>> complete(
+  public Mono<ResponseEntity<?>> complete(
       @PathVariable Long movieId, @RequestBody CompleteMovieRequest request) {
-    return this.webMoviesService.complete(movieId, request).map(ResponseEntity::ok);
+    return this.webMoviesService
+        .complete(movieId, request)
+        .map(outcome -> {
+          if (outcome instanceof UploadCompletionOutcome.Completed completed) {
+            return ResponseEntity.ok((Object) completed.movie());
+          }
+          // PENDING no es fallo: verificación asíncrona, el front reintenta.
+          UploadCompletionOutcome.StillVerifying verifying =
+              (UploadCompletionOutcome.StillVerifying) outcome;
+          return ResponseEntity.accepted()
+              .body((Object) java.util.Map.of(
+                  "status", "VERIFYING_UPLOAD",
+                  "storageId", verifying.uploadId() == null ? "" : verifying.uploadId()));
+        });
   }
 
   /** Edición manual de la metadata (merge: null conserva el valor actual); solo el dueño. */

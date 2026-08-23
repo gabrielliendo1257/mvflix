@@ -75,7 +75,9 @@ class WebMoviesServiceCompleteFlowTest {
     when(this.moviesWebClient.movieById(7L)).thenReturn(Mono.just(ready));
 
     StepVerifier.create(this.service.complete(7L, new CompleteMovieRequest(42L, 1024L)))
-        .expectNext(ready)
+        .assertNext(outcome -> {
+          assertThat(((UploadCompletionOutcome.Completed) outcome).movie()).isEqualTo(ready);
+        })
         .verifyComplete();
 
     verifyNoStorageInteractions();
@@ -91,7 +93,10 @@ class WebMoviesServiceCompleteFlowTest {
         .thenReturn(Mono.just(ready));
 
     StepVerifier.create(this.service.complete(7L, new CompleteMovieRequest(42L, 1024L)))
-        .expectNext(ready)
+        .assertNext(outcome -> {
+          assertThat(outcome).isInstanceOf(UploadCompletionOutcome.Completed.class);
+          assertThat(((UploadCompletionOutcome.Completed) outcome).movie()).isEqualTo(ready);
+        })
         .verifyComplete();
 
     verify(this.moviesWebClient).completeMovie(7L, 42L, "pepe/videos/a.mp4");
@@ -131,10 +136,15 @@ class WebMoviesServiceCompleteFlowTest {
    * del webhook de un fallo definitivo. El commit que convierte PENDING en
    * verificación asíncrona (202) reemplazará este comportamiento.
    */
+  /**
+   * COMPORTAMIENTO NUEVO (reemplaza al defecto caracterizado antes): PENDING
+   * es verificación asíncrona. Un solo sondeo, sin reintentos, sin rollback y
+   * sin penalidad; el resultado StillVerifying se traduce en HTTP 202 para que
+   * el front consulte de nuevo.
+   */
   @Test
-  void pendingUploadExhaustsRetriesAndEscapesRawWithoutRollback() {
+  void pendingUploadReturnsVerifyingWithoutAnyRollback() {
     this.stubDraftMovie();
-    // Siempre PENDING: intento inicial + 3 reintentos del backoff actual.
     java.util.concurrent.atomic.AtomicInteger polls =
         new java.util.concurrent.atomic.AtomicInteger();
     when(this.storageWebClient.uploadStatus(42L))
@@ -144,16 +154,15 @@ class WebMoviesServiceCompleteFlowTest {
                     .doOnSubscribe(sub -> polls.incrementAndGet()));
 
     StepVerifier.create(this.service.complete(7L, new CompleteMovieRequest(42L, 1024L)))
-        .expectErrorSatisfies(error -> {
-          // RetryExhaustedException no es publica en reactor.core: se verifica
-          // por nombre y por su causa.
-          assertThat(error.getClass().getName()).contains("RetryExhausted");
-          assertThat(error.getCause()).isInstanceOf(PendingUploadException.class);
+        .assertNext(outcome -> {
+          assertThat(outcome).isInstanceOf(UploadCompletionOutcome.StillVerifying.class);
+          assertThat(((UploadCompletionOutcome.StillVerifying) outcome).uploadId())
+              .isEqualTo(42L);
         })
-        .verify();
+        .verifyComplete();
 
-    assertThat(polls.get()).isEqualTo(4);
-    // El rollback de UPLOAD_PENDING es código muerto hoy: nunca corre.
+    assertThat(polls.get()).isEqualTo(1);
+    // Ni borrado de draft, ni borrado de objeto, ni violación por una espera.
     verify(this.moviesWebClient, never()).deleteMovie(anyLong());
     verify(this.storageWebClient, never()).deleteObject(anyLong());
     verify(this.usersWebPort, never()).reportViolation(anyString());
@@ -210,7 +219,9 @@ class WebMoviesServiceCompleteFlowTest {
     when(this.moviesWebClient.movieById(7L)).thenReturn(Mono.just(ready));
 
     StepVerifier.create(this.service.complete(7L, new CompleteMovieRequest(42L, 1024L)))
-        .expectNext(ready)
+        .assertNext(outcome -> {
+          assertThat(((UploadCompletionOutcome.Completed) outcome).movie()).isEqualTo(ready);
+        })
         .verifyComplete();
 
     verify(this.moviesWebClient, never()).deleteMovie(anyLong());

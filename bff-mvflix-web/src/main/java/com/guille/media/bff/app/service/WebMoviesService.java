@@ -351,7 +351,7 @@ public class WebMoviesService {
   /**
    * Complete orquestado del alta: delegado en {@link AddMediaCompletion}.
    */
-  public Mono<MovieDto> complete(Long movieId, CompleteMovieRequest request) {
+  public Mono<UploadCompletionOutcome> complete(Long movieId, CompleteMovieRequest request) {
     return this.addMediaCompletion.complete(movieId, request);
   }
 
