@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.presenter.api;
 
-import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;
+import com.guille.media.reproductor.uploader.storage.app.service.LibraryService;
 import com.guille.media.reproductor.uploader.storage.infrastructure.library.LibraryFileHandle;
 import com.guille.media.reproductor.uploader.storage.infrastructure.library.LocalLibraryFileResolver;
 
@@ -41,12 +41,11 @@ public class LibraryFileController {
 
     private static final int BUFFER_SIZE = 64 * 1024;
 
-    private final MediaLibraryRepository libraryRepository;
+    private final LibraryService libraryService;
     private final LocalLibraryFileResolver fileResolver;
 
-    public LibraryFileController(
-            MediaLibraryRepository libraryRepository, LocalLibraryFileResolver fileResolver) {
-        this.libraryRepository = libraryRepository;
+    public LibraryFileController(LibraryService libraryService, LocalLibraryFileResolver fileResolver) {
+        this.libraryService = libraryService;
         this.fileResolver = fileResolver;
     }
 
@@ -57,10 +56,8 @@ public class LibraryFileController {
         if (relativePath == null || relativePath.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "relative path vacio");
         }
-        return this.libraryRepository
-                .findById(libraryId)
-                .switchIfEmpty(Mono.error(
-                        new ResponseStatusException(HttpStatus.NOT_FOUND, "Library not found")))
+        return this.libraryService
+                .findAccessibleLibrary(libraryId)
                 .flatMap(library -> this.fileResolver.resolve(library, relativePath))
                 .switchIfEmpty(Mono.error(
                         new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found")))

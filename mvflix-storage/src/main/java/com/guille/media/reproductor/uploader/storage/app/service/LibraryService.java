@@ -39,15 +39,19 @@ public class LibraryService {
                         this.libraryRepository.findAllAccessibleTo(user.subject()));
     }
 
-    public Mono<MediaLibrary> findLibrary(Long libraryId) {
-        return this.libraryRepository
-                .findById(libraryId)
-                .filter(MediaLibrary::isEnabled)
-                .switchIfEmpty(Mono.error(new EntityNotFound("Library not found: " + libraryId)));
+    public Mono<MediaLibrary> findAccessibleLibrary(Long libraryId) {
+        return this.userProvider
+                .getAuthenticatedUser()
+                .flatMap(user ->
+                        this.libraryRepository
+                                .findById(libraryId)
+                                .filter(library -> library.isAccessibleTo(user.subject()))
+                                .switchIfEmpty(
+                                        Mono.error(new EntityNotFound("Library not found: " + libraryId))));
     }
 
     public Flux<DiscoveredFile> scanLibrary(Long libraryId) {
-        return this.findLibrary(libraryId)
+        return this.findAccessibleLibrary(libraryId)
                 .flatMapMany(
                         library -> this.libraryScanner
                                 .scan(library.getRootPath())
@@ -58,7 +62,7 @@ public class LibraryService {
     }
 
     public Mono<Void> cancelScan(Long libraryId) {
-        return this.findLibrary(libraryId)
+        return this.findAccessibleLibrary(libraryId)
                 .doOnNext(library ->
                         this.cancellationRegistry.cancel(library.getRootPath()))
                 .then();

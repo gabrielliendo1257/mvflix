@@ -41,6 +41,16 @@ public class MediaLibrary {
         return this.ownerUsername != null && this.ownerUsername.equals(username);
     }
 
+    /**
+     * Regla de visibilidad coherente con el listado accesible
+     * ({@code owner IS NULL OR owner = :owner} y {@code enabled}): las
+     * bibliotecas del operador son compartidas; las de usuario, privadas.
+     * Protege scan/serving igual que el listado para no abrir huecos por ID.
+     */
+    public boolean isAccessibleTo(String username) {
+        return this.enabled && (this.ownerUsername == null || this.ownerUsername.equals(username));
+    }
+
     public Long getId() {
         return this.id;
     }
