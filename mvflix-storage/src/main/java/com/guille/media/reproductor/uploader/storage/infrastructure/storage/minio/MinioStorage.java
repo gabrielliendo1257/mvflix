@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
@@ -70,7 +71,7 @@ public class MinioStorage implements ObjectStorageService {
             .method(method)
             .bucket(location.bucket().bucketName())
             .object(location.storageKey().key())
-            .expiry((int) request.getExpiration().toMinutes());
+            .expiry((int) request.getExpiration().toMinutes(), TimeUnit.MINUTES);
 
     if (request.getHeaders() != null && !request.getHeaders().isEmpty()) {
       presigned.extraHeaders(request.getHeaders());
