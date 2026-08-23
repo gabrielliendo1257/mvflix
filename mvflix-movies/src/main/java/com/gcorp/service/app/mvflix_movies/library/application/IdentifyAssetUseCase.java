@@ -8,7 +8,6 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdent
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +35,8 @@ public class IdentifyAssetUseCase {
     private final CatalogItemEnricher catalogItemEnricher;
     private final IdentifyAssetTransaction identifyAssetTransaction;
 
-    public Mono<MediaAsset> execute(MediaAssetId assetId, String title, Long tmdbId, MediaKind kind) {
+    public Mono<MediaAsset> execute(
+            MediaAssetId assetId, String title, Long tmdbId, CatalogItemKind kind) {
         return this.assetRepository
                 .findById(assetId)
                 .switchIfEmpty(Mono.defer(() -> Mono.error(
@@ -51,8 +51,9 @@ public class IdentifyAssetUseCase {
                 });
     }
 
-    private Mono<MediaAsset> linkToMovie(MediaAsset asset, String title, Long tmdbId, MediaKind kind) {
-        MediaKind resolvedKind = kind == null ? MediaKind.MOVIE : kind;
+    private Mono<MediaAsset> linkToMovie(
+            MediaAsset asset, String title, Long tmdbId, CatalogItemKind kind) {
+        CatalogItemKind resolvedKind = kind == null ? CatalogItemKind.MOVIE : kind;
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.identifyAssetTransaction.execute(

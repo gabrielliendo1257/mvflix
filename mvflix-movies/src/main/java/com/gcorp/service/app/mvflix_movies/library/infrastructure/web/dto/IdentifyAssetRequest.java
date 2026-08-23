@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.library.infrastructure.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.library.application.CatalogItemKind;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
@@ -15,4 +15,4 @@ import jakarta.validation.constraints.Positive;
 public record IdentifyAssetRequest(
     @NotBlank String title,
     @JsonProperty("tmdb_id") @Positive Long tmdbId,
-    MediaKind kind) {}
+    CatalogItemKind kind) {}

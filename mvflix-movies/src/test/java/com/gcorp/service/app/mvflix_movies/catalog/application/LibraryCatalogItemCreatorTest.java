@@ -12,6 +12,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.library.application.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,7 @@ class LibraryCatalogItemCreatorTest {
                 });
 
         StepVerifier.create(this.creator.createFromLibrary(
-                        "Javier", "Dune", MediaKind.MOVIE))
+                        "Javier", "Dune", CatalogItemKind.MOVIE))
                 .expectNext(CatalogItemId.of(50L))
                 .verifyComplete();
 
@@ -63,5 +64,34 @@ class LibraryCatalogItemCreatorTest {
         assertThat(newMovie.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(newMovie.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
         assertThat(newMovie.getObjectId()).isNull();
+        assertThat(newMovie.getKind()).isEqualTo(MediaKind.MOVIE);
+    }
+
+    @Test
+    void translatesOtherLibraryKindToCatalogClassification() {
+        when(this.movieRepository.save(any(Movie.class)))
+                .thenAnswer(invocation -> {
+                    Movie movie = invocation.getArgument(0);
+                    return Mono.just(new Movie(
+                            MovieId.of(51L),
+                            movie.getOwnerUsername(),
+                            movie.getTitle(),
+                            movie.getStatus(),
+                            movie.getEnrichmentStatus(),
+                            movie.getObjectId(),
+                            movie.getMetadata(),
+                            movie.getVisibility(),
+                            movie.getSharedWith(),
+                            movie.getKind()));
+                });
+
+        StepVerifier.create(this.creator.createFromLibrary(
+                        "Javier", "Live concert", CatalogItemKind.OTHER))
+                .expectNext(CatalogItemId.of(51L))
+                .verifyComplete();
+
+        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        verify(this.movieRepository).save(captor.capture());
+        assertThat(captor.getValue().getKind()).isEqualTo(MediaKind.OTHER);
     }
 }

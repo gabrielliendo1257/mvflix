@@ -15,7 +15,6 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
@@ -57,7 +56,7 @@ class IdentifyAssetUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.identifyAssetTransaction.execute(
-                        eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
+                        eq(asset), eq("Javier"), eq("Dune"), eq(CatalogItemKind.MOVIE)))
                 .thenReturn(Mono.just(new IdentificationResult(
                         asset.identify(CatalogItemId.of(50L)), CatalogItemId.of(50L))));
 
@@ -68,7 +67,7 @@ class IdentifyAssetUseCaseTest {
                 .verifyComplete();
 
         verify(this.identifyAssetTransaction).execute(
-                asset, "Javier", "Dune", MediaKind.MOVIE);
+                asset, "Javier", "Dune", CatalogItemKind.MOVIE);
         verify(this.catalogItemEnricher, never()).enrich(any(CatalogItemId.class), any(Long.class));
     }
 
@@ -98,7 +97,7 @@ class IdentifyAssetUseCaseTest {
                         any(MediaAsset.class),
                         any(String.class),
                         any(String.class),
-                        any(MediaKind.class));
+                        any(CatalogItemKind.class));
         verify(this.catalogItemEnricher, never()).enrich(any(CatalogItemId.class), any(Long.class));
     }
 
@@ -132,7 +131,7 @@ class IdentifyAssetUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.identifyAssetTransaction.execute(
-                        eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
+                        eq(asset), eq("Javier"), eq("Dune"), eq(CatalogItemKind.MOVIE)))
                 .thenReturn(Mono.error(
                         new MediaAssetAlreadyIdentifiedException("already identified")));
 
@@ -162,7 +161,7 @@ class IdentifyAssetUseCaseTest {
                         eq(asset),
                         eq("Javier"),
                         eq("Interstellar (2014)"),
-                        eq(MediaKind.MOVIE)))
+                        eq(CatalogItemKind.MOVIE)))
                 .thenReturn(Mono.just(new IdentificationResult(
                         asset.identify(CatalogItemId.of(50L)), CatalogItemId.of(50L))));
         when(this.catalogItemEnricher.enrich(CatalogItemId.of(50L), 157336L))
@@ -195,7 +194,7 @@ class IdentifyAssetUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.identifyAssetTransaction.execute(
-                        eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
+                        eq(asset), eq("Javier"), eq("Dune"), eq(CatalogItemKind.MOVIE)))
                 .thenReturn(Mono.just(new IdentificationResult(
                         asset.identify(CatalogItemId.of(50L)), CatalogItemId.of(50L))));
         when(this.catalogItemEnricher.enrich(CatalogItemId.of(50L), 123L))
@@ -206,7 +205,7 @@ class IdentifyAssetUseCaseTest {
                 .verifyComplete();
 
         verify(this.identifyAssetTransaction).execute(
-                asset, "Javier", "Dune", MediaKind.MOVIE);
+                asset, "Javier", "Dune", CatalogItemKind.MOVIE);
     }
 
     @Test
@@ -227,7 +226,7 @@ class IdentifyAssetUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.identifyAssetTransaction.execute(
-                        eq(asset), eq("Javier"), eq("Dune"), eq(MediaKind.MOVIE)))
+                        eq(asset), eq("Javier"), eq("Dune"), eq(CatalogItemKind.MOVIE)))
                 .thenReturn(Mono.just(new IdentificationResult(
                         asset.identify(CatalogItemId.of(50L)), CatalogItemId.of(50L))));
         when(this.catalogItemEnricher.enrich(CatalogItemId.of(50L), 123L))
@@ -242,6 +241,6 @@ class IdentifyAssetUseCaseTest {
                 .verifyComplete();
 
         verify(this.identifyAssetTransaction).execute(
-                asset, "Javier", "Dune", MediaKind.MOVIE);
+                asset, "Javier", "Dune", CatalogItemKind.MOVIE);
     }
 }

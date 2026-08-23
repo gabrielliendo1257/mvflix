@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,9 +39,9 @@ class IdentifyAssetUseCaseIntegrationTest extends PostgresIntegrationTest {
             .block();
 
     Mono<MediaAsset> first =
-        this.useCase.execute(asset.getId(), "Dune", null, MediaKind.MOVIE);
+        this.useCase.execute(asset.getId(), "Dune", null, CatalogItemKind.MOVIE);
     Mono<MediaAsset> second =
-        this.useCase.execute(asset.getId(), "Dune", null, MediaKind.MOVIE);
+        this.useCase.execute(asset.getId(), "Dune", null, CatalogItemKind.MOVIE);
 
     StepVerifier.create(Mono.zip(first, second))
         .assertNext(

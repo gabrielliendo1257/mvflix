@@ -1,6 +1,5 @@
 package com.gcorp.service.app.mvflix_movies.library.application;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemCreator;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
@@ -20,7 +19,7 @@ class IdentifyAssetTransaction {
 
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
     Mono<IdentificationResult> execute(
-            MediaAsset asset, String ownerUsername, String title, MediaKind kind) {
+            MediaAsset asset, String ownerUsername, String title, CatalogItemKind kind) {
         return this.catalogItemCreator
                 .createFromLibrary(ownerUsername, title, kind)
                 .flatMap(catalogItemId -> this.assetRepository
