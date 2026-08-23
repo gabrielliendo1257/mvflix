@@ -47,7 +47,9 @@ class WebMoviesServiceCompleteFlowTest {
             this.storageWebClient,
             this.usersWebPort,
             new StreamTicketService("test-secret", 300),
-            new JobStore());
+            new JobStore(),
+            new AddMediaCompletion(this.moviesWebClient, this.storageWebClient,
+                this.usersWebPort));
   }
 
   private static MovieDto movie(Long id, String status) {

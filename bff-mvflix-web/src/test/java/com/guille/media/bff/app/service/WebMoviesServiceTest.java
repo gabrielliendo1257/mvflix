@@ -46,7 +46,9 @@ class WebMoviesServiceTest {
   void setUp() {
     this.jobStore = new JobStore();
     this.service = new WebMoviesService(this.moviesWebClient, this.storageWebClient,
-        this.usersWebPort, this.streamTicketService, this.jobStore);
+        this.usersWebPort, this.streamTicketService, this.jobStore,
+        new AddMediaCompletion(this.moviesWebClient, this.storageWebClient,
+            this.usersWebPort));
   }
 
   private static MovieDto movie(Long id, Long objectId) {
