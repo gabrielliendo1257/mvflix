@@ -98,4 +98,31 @@ class StorageSecurityMatrixTest {
         .expectStatus()
         .isNotFound();
   }
+
+  @Test
+  void catalogStreamingRequiresStorageStreamScope() {
+    this.client
+        .post()
+        .uri(BASE + "/catalog/streaming")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+
+    this.client
+        .mutateWith(mockJwt())
+        .post()
+        .uri(BASE + "/catalog/streaming")
+        .exchange()
+        .expectStatus()
+        .isForbidden();
+
+    this.client
+        .mutateWith(
+            mockJwt().authorities(new SimpleGrantedAuthority("SCOPE_storage.stream")))
+        .post()
+        .uri(BASE + "/catalog/streaming")
+        .exchange()
+        .expectStatus()
+        .isNotFound();
+  }
 }

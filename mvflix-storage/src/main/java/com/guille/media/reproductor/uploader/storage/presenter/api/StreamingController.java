@@ -36,4 +36,18 @@ public class StreamingController {
         .map(this.uploadMapper::toStreamingSessionResponse)
         .map(ResponseEntity::ok);
   }
+
+  /**
+   * Playback M2M del catálogo: requiere scope {@code storage.stream}. El
+   * servicio invocante (movies/BFF) ya validó visibilidad; storage solo
+   * comprueba disponibilidad del objeto y emite la URL presignada.
+   */
+  @PostMapping(value = "/catalog/streaming", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<StreamingSessionResponse>> catalogStreaming(
+      @Valid @RequestBody StreamingRequest streamingRequest) {
+    return this.streamingService
+        .generateCatalogStreamingSession(this.uploadMapper.toStreamingCommand(streamingRequest))
+        .map(this.uploadMapper::toStreamingSessionResponse)
+        .map(ResponseEntity::ok);
+  }
 }

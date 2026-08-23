@@ -79,6 +79,11 @@ public class SecurityConfiguration {
                     .authenticated()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/streaming")
                     .authenticated()
+                    // M2M playback del catálogo: movies/BFF validó visibilidad
+                    // y pide bytes con scope dedicado (ver ADR 0002).
+                    .pathMatchers(
+                        HttpMethod.POST, this.apiPathBase + "/storage/catalog/streaming")
+                    .hasAuthority("SCOPE_storage.stream")
                     .pathMatchers(
                         HttpMethod.GET,
                         this.apiPathBase + "/storage/uploads",

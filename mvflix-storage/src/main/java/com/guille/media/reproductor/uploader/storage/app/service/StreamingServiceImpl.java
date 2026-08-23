@@ -4,9 +4,11 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.guille.media.reproductor.uploader.storage.app.commands.requests.StreamingCommand;
+import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
@@ -38,15 +40,18 @@ public class StreamingServiceImpl implements StreamingService {
    */
   private final Duration streamingUrlTtl;
 
+  private final UserProvider userProvider;
   private final ObjectStorageService objectStoragePort;
   private final StorageRepository storageRepository;
   private final UserStorageRepository userStorageRepository;
 
   public StreamingServiceImpl(
+      UserProvider userProvider,
       ObjectStorageService objectStorageService,
       StorageRepository storageRepository,
       UserStorageRepository userStorageRepository,
       @Value("${storage.streaming.url-ttl:PT3H}") Duration streamingUrlTtl) {
+    this.userProvider = userProvider;
     this.objectStoragePort = objectStorageService;
     this.storageRepository = storageRepository;
     this.userStorageRepository = userStorageRepository;
@@ -64,9 +69,36 @@ public class StreamingServiceImpl implements StreamingService {
             Mono.error(
                 new StorageObjectNotAvailable(
                     "Storage object not available: " + command.objectId())))
+        .flatMap(
+            object ->
+                this.userProvider
+                    .getAuthenticatedUser()
+                    .switchIfEmpty(
+                        Mono.error(new AuthenticationCredentialsNotFoundException("No authenticated user")))
+                    .map(user -> {
+                      object.ensureOwnedBy(user.subject());
+                      return object;
+                    }))
         .flatMap(this::createStreamingSession)
         .doOnNext(
             session -> log.info("Streaming session created: uploadId={}", session.uploadId()));
+  }
+
+  @Override
+  public Mono<StreamingSession> generateCatalogStreamingSession(StreamingCommand command) {
+    return Mono.fromCallable(() -> Long.parseLong(command.objectId()))
+        .onErrorMap(
+            NumberFormatException.class,
+            ex -> new IllegalArgumentException("Invalid objectId: " + command.objectId()))
+        .flatMap(this.storageRepository::findById)
+        .switchIfEmpty(
+            Mono.error(
+                new StorageObjectNotAvailable(
+                    "Storage object not available: " + command.objectId())))
+        .flatMap(this::createStreamingSession)
+        .doOnNext(
+            session ->
+                log.info("Catalog streaming session created: uploadId={}", session.uploadId()));
   }
 
   private Mono<StreamingSession> createStreamingSession(StoreObject object) {
