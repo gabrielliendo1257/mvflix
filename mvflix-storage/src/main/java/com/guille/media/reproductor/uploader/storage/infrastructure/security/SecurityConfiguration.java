@@ -44,14 +44,18 @@ public class SecurityConfiguration {
   private String jwkSetUriOverride;
 
   /**
-   * Cadena para los endpoints internos ({@code /internal/**}): el webhook de MinIO no firma JWT
-   * (envía el token como {@code Authorization: Bearer <webhook-token>}) y el filtro de resource
-   * server lo rechazaría con 401 antes de llegar al controlador. Aquí no hay resource server.
+   * Cadena para el webhook de MinIO: no firma JWT (envía el token como
+   * {@code Authorization: Bearer <webhook-token>}, validado en el controller)
+   * y el filtro de resource server lo rechazaría con 401. El matcher es el
+   * path EXACTO del webhook, no {@code /internal/**}: cualquier endpoint
+   * interno futuro cae en la cadena JWT principal y su denyAll, nunca queda
+   * abierto por accidente.
    */
   @Bean
   @Order(0)
   SecurityWebFilterChain internalSecurityWebFilterChain(ServerHttpSecurity http) {
-    http.securityMatcher(ServerWebExchangeMatchers.pathMatchers("/internal/**"))
+    http.securityMatcher(
+            ServerWebExchangeMatchers.pathMatchers(HttpMethod.POST, "/internal/minio/events"))
         .csrf(ServerHttpSecurity.CsrfSpec::disable)
         .httpBasic(ServerHttpSecurity.HttpBasicSpec::disable)
         .formLogin(ServerHttpSecurity.FormLoginSpec::disable)

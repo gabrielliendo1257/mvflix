@@ -100,6 +100,32 @@ class StorageSecurityMatrixTest {
   }
 
   @Test
+  void internalChainIsLimitedToTheExactWebhookPath() {
+    // El path exacto del webhook pasa la capa de seguridad (404 sin handler).
+    this.client
+        .post()
+        .uri("/internal/minio/events")
+        .exchange()
+        .expectStatus()
+        .isNotFound();
+
+    // Cualquier otro endpoint interno cae en la cadena JWT principal:
+    // 401 sin token, nunca abierto por heredar el permitAll.
+    this.client
+        .get()
+        .uri("/internal/minio/events")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+    this.client
+        .post()
+        .uri("/internal/future-endpoint")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+  }
+
+  @Test
   void catalogStreamingRequiresStorageStreamScope() {
     this.client
         .post()
