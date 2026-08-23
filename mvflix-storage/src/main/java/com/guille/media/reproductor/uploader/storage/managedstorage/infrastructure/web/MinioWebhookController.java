@@ -5,6 +5,7 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.infrastructu
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -29,6 +30,7 @@ import java.nio.charset.StandardCharsets;
  * token configurado en el target webhook de MinIO (header {@code X-Minio-Token}).
  */
 @Slf4j
+@Tag(name = "Interno · Webhook MinIO", description = "Eventos ObjectCreated/ObjectRemoved para reconciliación")
 @RestController
 @RequestMapping(path = "/internal/minio/events", produces = MediaType.APPLICATION_JSON_VALUE)
 public class MinioWebhookController {

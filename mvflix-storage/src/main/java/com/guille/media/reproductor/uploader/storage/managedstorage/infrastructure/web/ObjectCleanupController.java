@@ -2,6 +2,7 @@ package com.guille.media.reproductor.uploader.storage.managedstorage.infrastruct
 
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.ObjectCleanupService;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Mono;
 
+@Tag(name = "Limpieza", description = "Borrado lógico de objetos y expiración de sesiones")
 @RestController
 @RequestMapping(value = "/api/v1/movie/storage", produces = MediaType.APPLICATION_JSON_VALUE)
 public class ObjectCleanupController {

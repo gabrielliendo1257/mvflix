@@ -125,6 +125,8 @@ public class SecurityConfiguration {
                     .hasAuthority("SCOPE_storage.write")
                     .pathMatchers(HttpMethod.DELETE, this.apiPathBase + "/storage/*")
                     .authenticated()
+                    .pathMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
+                    .permitAll()
                     .anyExchange()
                     .denyAll())
         .oauth2ResourceServer(

@@ -7,6 +7,7 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.infrastructu
 
 import jakarta.validation.Valid;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Mono;
 
+@Tag(name = "Streaming", description = "URLs presignadas de reproducción (preview del dueño y M2M catálogo)")
 @RestController
 @RequestMapping(value = "/api/v1/movie/storage", produces = MediaType.APPLICATION_JSON_VALUE)
 public class StreamingController {

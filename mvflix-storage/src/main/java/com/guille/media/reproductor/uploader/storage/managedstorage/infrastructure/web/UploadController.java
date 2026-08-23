@@ -9,6 +9,8 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.infrastructu
 
 import jakarta.validation.Valid;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Tag(name = "Uploads", description = "Sesiones de upload con cuota: creación, estado, renovación de instrucciones, cancel, complete")
 @RestController
 @RequestMapping(value = "/api/v1/movie/storage", produces = MediaType.APPLICATION_JSON_VALUE)
 public class UploadController {
@@ -40,6 +43,7 @@ public class UploadController {
     return this.uploadService.listUploads(limit).map(this.uploadMapper::toUploadSummaryResponse);
   }
 
+  @Operation(summary = "Crea la sesión y reserva cuota atómicamente")
   @PostMapping(
       value = "/upload",
       consumes = MediaType.APPLICATION_JSON_VALUE,
@@ -61,6 +65,7 @@ public class UploadController {
   }
 
   /** Regenera instrucciones de subida para una sesión PENDING propia. */
+  @Operation(summary = "Regenera instrucciones presigned para una sesión PENDING propia")
   @PostMapping(
       value = "/upload/{uploadId}/instructions",
       produces = MediaType.APPLICATION_JSON_VALUE)
@@ -77,6 +82,7 @@ public class UploadController {
     return this.uploadService.cancelUpload(uploadId).thenReturn(ResponseEntity.ok().build());
   }
 
+  @Operation(summary = "Verifica contra MinIO y reconcilia el webhook (202 si aún no llegó)")
   @PostMapping(value = "/upload/{uploadId}/complete")
   public Mono<ResponseEntity<Void>> completeUpload(@PathVariable Long uploadId) {
     return this.uploadService

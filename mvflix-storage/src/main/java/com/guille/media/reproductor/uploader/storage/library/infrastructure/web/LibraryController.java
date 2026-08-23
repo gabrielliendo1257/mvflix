@@ -8,6 +8,7 @@ import com.guille.media.reproductor.uploader.storage.library.infrastructure.web.
 import com.guille.media.reproductor.uploader.storage.library.infrastructure.web.LibraryResponse;
 import com.guille.media.reproductor.uploader.storage.library.infrastructure.web.LibraryMapper;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Tag(name = "Bibliotecas", description = "Registro de raíces locales, escaneo y cancelación")
 @RestController
 @RequestMapping(value = "/api/v1/movie/storage/libraries", produces = MediaType.APPLICATION_JSON_VALUE)
 public class LibraryController {

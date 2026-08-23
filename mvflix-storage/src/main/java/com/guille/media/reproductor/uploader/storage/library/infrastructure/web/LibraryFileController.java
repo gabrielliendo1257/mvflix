@@ -6,6 +6,7 @@ import com.guille.media.reproductor.uploader.storage.library.domain.model.Librar
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.HttpHeaders;
@@ -35,6 +36,7 @@ import java.util.List;
  * directamente (o via el proxy del BFF).
  */
 @Slf4j
+@Tag(name = "Bibliotecas · Archivos", description = "Servir bytes locales con soporte HTTP Range")
 @RestController
 @RequestMapping(value = "/api/v1/movie/storage/libraries")
 public class LibraryFileController {
