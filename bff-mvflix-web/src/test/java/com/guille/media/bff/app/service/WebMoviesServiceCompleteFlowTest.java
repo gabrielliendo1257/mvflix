@@ -42,6 +42,9 @@ class WebMoviesServiceCompleteFlowTest {
 
   @BeforeEach
   void setUp() {
+    // Toda ruta de verificación pide primero el complete a storage.
+    when(this.storageWebClient.completeUpload(org.mockito.ArgumentMatchers.anyLong()))
+        .thenReturn(Mono.just(HttpStatus.OK));
     when(this.usersWebPort.reportViolation(anyString())).thenReturn(Mono.empty());
     this.service =
         new WebMoviesService(
@@ -168,6 +171,7 @@ class WebMoviesServiceCompleteFlowTest {
         .verifyComplete();
 
     assertThat(polls.get()).isEqualTo(1);
+    verify(this.storageWebClient).completeUpload(42L);
     // Ni borrado de draft, ni borrado de objeto, ni violación por una espera.
     verify(this.moviesWebClient, never()).deleteMovie(anyLong());
     verify(this.storageWebClient, never()).deleteObject(anyLong());

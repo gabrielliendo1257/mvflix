@@ -16,6 +16,13 @@ public interface AddMediaStorage {
   /** Crea la sesión y devuelve instrucciones para el PUT directo del navegador. */
   Mono<UploadSessionDto> prepareUpload(UploadCreateRequest file);
 
+  /**
+   * Pide a Storage verificar AHORA (chequeo directo contra MinIO y
+   * reconciliación del webhook perdido o retrasado). Puede responder "aún no
+   * llegó" sin ser un fallo.
+   */
+  Mono<Void> requestCompletion(Long uploadId);
+
   /** Estado REAL de la sesión (fuente de verdad del objeto físico). */
   Mono<UploadStatusDto> getUploadState(Long uploadId);
 

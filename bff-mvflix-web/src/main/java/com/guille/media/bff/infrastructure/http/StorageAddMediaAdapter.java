@@ -25,6 +25,11 @@ public class StorageAddMediaAdapter implements AddMediaStorage {
   }
 
   @Override
+  public Mono<Void> requestCompletion(Long uploadId) {
+    return this.delegate.completeUpload(uploadId).then();
+  }
+
+  @Override
   public Mono<UploadStatusDto> getUploadState(Long uploadId) {
     return this.delegate.uploadStatus(uploadId);
   }

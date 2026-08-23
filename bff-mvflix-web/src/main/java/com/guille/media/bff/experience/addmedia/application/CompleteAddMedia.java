@@ -67,8 +67,11 @@ public class CompleteAddMedia {
 
   private Mono<UploadCompletionOutcome> completeFromDraft(Long movieId,
       CompleteMovieRequest request) {
+    // Sin esta petición, un webhook perdido/retrasado dejaría el upload
+    // PENDING indefinidamente: Storage verifica contra MinIO ahora.
     return this.storage
-        .getUploadState(request.storageId())
+        .requestCompletion(request.storageId())
+        .then(this.storage.getUploadState(request.storageId()))
         .flatMap(status -> this.evaluateStatus(movieId, request, status))
         .onErrorResume(UploadVerdictException.class,
             ex -> this.rollback(movieId, request, ex.getCode(), ex.getMessage(), true))
