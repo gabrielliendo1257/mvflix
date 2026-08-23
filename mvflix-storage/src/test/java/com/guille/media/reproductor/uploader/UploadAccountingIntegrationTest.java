@@ -2,16 +2,16 @@ package com.guille.media.reproductor.uploader;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.guille.media.reproductor.uploader.storage.app.service.TerminalUploadTransition;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
-import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
-import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject;
-import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
-import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
-import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
-import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
-import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
-import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
+import com.guille.media.reproductor.uploader.storage.managedstorage.application.TerminalUploadTransition;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.IllegalStateTransitionException;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageKey;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UserStorage;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.UserStorageRepository;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.BucketName;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageMetadata;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

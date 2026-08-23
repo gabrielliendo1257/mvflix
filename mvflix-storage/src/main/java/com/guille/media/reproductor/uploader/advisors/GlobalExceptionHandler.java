@@ -1,19 +1,19 @@
 package com.guille.media.reproductor.uploader.advisors;
 
 import com.guille.media.reproductor.uploader.advisors.models.ErrorResponse;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.BucketNotFoundException;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.InvalidObjectContentError;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.BucketNotFoundException;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.ExceededQuotaException;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.IllegalStateTransitionException;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.InvalidObjectContentError;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryAccessDeniedException;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryPathInvalidException;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryPathNotAllowedException;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryRootUnavailableException;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.ScanLimitExceededException;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.ObjectAlreadyExistsException;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.ObjectAlreadyExistsException;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.shared.error.EntityNotFound;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

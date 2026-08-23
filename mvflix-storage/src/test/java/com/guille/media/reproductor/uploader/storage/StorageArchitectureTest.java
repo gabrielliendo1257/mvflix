@@ -9,41 +9,41 @@ import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
 /**
- * Fronteras arquitectónicas del módulo storage. Reglas mínimas que protegen lo
- * ya corregido; se amplían con cada movimiento estructural.
+ * Fronteras del módulo storage tras la modularización en bounded contexts:
+ *
+ * <ul>
+ *   <li>{@code managedstorage} - sesiones de upload, cuota, objetos MinIO;</li>
+ *   <li>{@code library} - bibliotecas locales, escaneo y serving;</li>
+ *   <li>{@code shared} - seguridad e errores transversales (hoja).</li>
+ * </ul>
  */
 @AnalyzeClasses(packages = "com.guille.media.reproductor.uploader.storage", importOptions = ImportOption.DoNotIncludeTests.class)
 class StorageArchitectureTest {
 
   @ArchTest
-  static final ArchRule domain_does_not_depend_on_outer_layers =
+  static final ArchRule managedstorage_domain_is_pure =
       noClasses()
           .that()
-          .resideInAPackage("..storage.domain..")
+          .resideInAPackage("..storage.managedstorage.domain..")
           .should()
           .dependOnClassesThat()
           .resideInAnyPackage(
-              "..storage.app..", "..storage.infrastructure..", "..storage.presenter..");
-
-  @ArchTest
-  static final ArchRule domain_is_spring_free =
-      noClasses().that().resideInAPackage("..storage.domain..").should().dependOnClassesThat()
-          .resideInAnyPackage("org.springframework..");
+              "..storage.managedstorage.application..",
+              "..storage.managedstorage.infrastructure..",
+              "..storage.library..",
+              "..storage.shared..",
+              "org.springframework..");
   // Mono/Flux sí están permitidos en domain: los puertos exponen contratos
-  // reactivos porque TODO el servicio es reactivo (WebFlux + R2DBC). Esa es la
-  // razón arquitectónica concreta; si el dominio empezara a depender de
-  // anotaciones o infraestructura de Spring, esta regla lo detecta.
+  // reactivos porque TODO el servicio es reactivo (WebFlux + R2DBC).
 
   @ArchTest
-  static final ArchRule application_does_not_depend_on_infrastructure_web_or_presenter =
+  static final ArchRule managedstorage_application_does_not_reach_infrastructure_or_library =
       noClasses()
           .that()
-          .resideInAPackage("..storage.app..")
+          .resideInAPackage("..storage.managedstorage.application..")
           .should()
           .dependOnClassesThat()
-          .resideInAnyPackage(
-              "..storage.presenter..", "..storage.infrastructure.http..",
-              "..storage.infrastructure.security..");
+          .resideInAnyPackage("..storage.managedstorage.infrastructure..", "..storage.library..");
 
   @ArchTest
   static final ArchRule library_is_self_contained =
@@ -52,22 +52,25 @@ class StorageArchitectureTest {
           .resideInAPackage("..storage.library..")
           .should()
           .dependOnClassesThat()
-          .resideInAnyPackage(
-              "..storage.app..",
-              "..storage.domain..",
-              "..storage.infrastructure..",
-              "..storage.presenter..");
+          .resideInAPackage("..storage.managedstorage..");
 
   @ArchTest
-  static final ArchRule legacy_layers_do_not_reach_into_library =
+  static final ArchRule managedstorage_does_not_reach_into_library =
       noClasses()
           .that()
-          .resideInAnyPackage(
-              "..storage.app..", "..storage.domain..",
-              "..storage.infrastructure..", "..storage.presenter..")
+          .resideInAPackage("..storage.managedstorage..")
           .should()
           .dependOnClassesThat()
           .resideInAPackage("..storage.library..");
+
+  @ArchTest
+  static final ArchRule shared_is_a_leaf =
+      noClasses()
+          .that()
+          .resideInAPackage("..storage.shared..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage("..storage.managedstorage..", "..storage.library..");
 
   @ArchTest
   static final ArchRule bounded_contexts_are_acyclic =
