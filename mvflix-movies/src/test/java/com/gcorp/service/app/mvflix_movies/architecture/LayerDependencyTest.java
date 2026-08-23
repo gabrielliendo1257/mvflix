@@ -90,4 +90,13 @@ class LayerDependencyTest {
             .dependOnClassesThat()
             .resideInAPackage("..library..")
             .because("Catalog debe resolver bibliotecas mediante un puerto definido por Catalog");
+
+    @ArchTest
+    static final ArchRule catalog_delete_uses_its_library_port = noClasses()
+            .that()
+            .haveSimpleName("DeleteMovieUseCase")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("..library..")
+            .because("Catalog debe desvincular assets mediante un puerto definido por Catalog");
 }

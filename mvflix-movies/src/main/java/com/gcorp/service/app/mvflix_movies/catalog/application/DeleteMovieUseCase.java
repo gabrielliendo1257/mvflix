@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryAssetLinks;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
@@ -21,7 +21,7 @@ import reactor.core.publisher.Mono;
 public class DeleteMovieUseCase {
 
     private final MovieRepository movieRepository;
-    private final MediaAssetRepository mediaAssetRepository;
+    private final LibraryAssetLinks libraryAssetLinks;
     private final UserProvider userProvider;
 
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
@@ -35,7 +35,7 @@ public class DeleteMovieUseCase {
                         .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(new MovieNotFoundException(
                                 "Movie not found: " + id)))
-                        .flatMap(movie -> this.mediaAssetRepository
+                        .flatMap(movie -> this.libraryAssetLinks
                                 .unlinkByMovieId(id)
                                 .then(this.movieRepository.deleteById(id))
                                 .flatMap(deleted -> {
