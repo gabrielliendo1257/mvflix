@@ -7,7 +7,6 @@ import com.guille.media.bff.experience.addmedia.application.GetAddMediaStatus;
 import com.guille.media.bff.experience.addmedia.application.PreviewMovieCandidate;
 import com.guille.media.bff.experience.addmedia.application.SearchMovieCandidates;
 import com.guille.media.bff.experience.addmedia.application.StartAddMedia;
-import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 
 import org.springframework.http.HttpStatus;
@@ -43,7 +42,6 @@ public class AddMediaController {
   private final CompleteProcessAddMedia completeProcess;
   private final CancelAddMedia cancelAddMedia;
   private final GetAddMediaStatus getStatus;
-  private final AddMediaProcessRepository processes;
   private final WebSessionService session;
 
   public AddMediaController(
@@ -53,7 +51,6 @@ public class AddMediaController {
       CompleteProcessAddMedia completeProcess,
       CancelAddMedia cancelAddMedia,
       GetAddMediaStatus getStatus,
-      AddMediaProcessRepository processes,
       WebSessionService session) {
     this.searchMovieCandidates = searchMovieCandidates;
     this.previewMovieCandidate = previewMovieCandidate;
@@ -61,7 +58,6 @@ public class AddMediaController {
     this.completeProcess = completeProcess;
     this.cancelAddMedia = cancelAddMedia;
     this.getStatus = getStatus;
-    this.processes = processes;
     this.session = session;
   }
 

@@ -62,7 +62,6 @@ class AddMediaControllerTest {
             completeProcess,
             new CancelAddMedia(this.processes, storageAdapter, moviesAdapter),
             getStatus,
-            this.processes,
             this.session);
     this.client = WebTestClient.bindToController(controller)
         .controllerAdvice(new com.guille.media.bff.presenter.api.ApiExceptionHandler())
