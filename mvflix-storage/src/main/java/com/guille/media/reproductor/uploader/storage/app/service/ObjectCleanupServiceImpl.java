@@ -15,6 +15,7 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.reactive.TransactionalOperator;
 
 import reactor.core.publisher.Mono;
 
@@ -28,16 +29,19 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
   private final ObjectStorageService objectStoragePort;
   private final StorageRepository storageRepository;
   private final UserStorageRepository userStorageRepository;
+  private final TransactionalOperator transactionalOperator;
 
   public ObjectCleanupServiceImpl(
       UserProvider userProvider,
       ObjectStorageService objectStorageService,
       StorageRepository storageRepository,
-      UserStorageRepository userStorageRepository) {
+      UserStorageRepository userStorageRepository,
+      TransactionalOperator transactionalOperator) {
     this.userProvider = userProvider;
     this.objectStoragePort = objectStorageService;
     this.storageRepository = storageRepository;
     this.userStorageRepository = userStorageRepository;
+    this.transactionalOperator = transactionalOperator;
   }
 
   @Override
@@ -71,17 +75,24 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
               if (!object.markDeleted()) {
                 return Mono.empty();
               }
-              return Mono.fromRunnable(
-                      () ->
-                          this.objectStoragePort.delete(
-                              new StorageLocation(
-                                  userStorage.getBucketName(), object.getStorageKey())))
-                  .then(
-                      this.userStorageRepository.releaseStorage(
-                          object.getOwnerUsername(), object.sizeInBytes()))
-                  .then(
-                      this.storageRepository.updateStatus(
-                          object, StorageSessionStatus.COMPLETED))
+              // CAS primero: solo quien gana COMPLETED->DELETED libera cuota.
+              // Transición + liberación atómicas en una tx local; el blob se
+              // borra después, best effort: un crash deja un blob huérfano
+              // (reconciliable por eventos/lifecycle), nunca cuota corrupta ni
+              // una fila DELETED que retiene bytes contabilizados.
+              return this.transactionalOperator
+                  .transactional(
+                      this.storageRepository
+                          .updateStatus(object, StorageSessionStatus.COMPLETED)
+                          .flatMap(
+                              deleted ->
+                                  this.userStorageRepository
+                                      .releaseStorage(
+                                          deleted.getOwnerUsername(), deleted.sizeInBytes())
+                                      .thenReturn(deleted)))
+                  .flatMap(
+                      deleted ->
+                          this.deleteObjectBestEffort(deleted, userStorage.getBucketName()))
                   .then();
             });
   }
@@ -95,8 +106,9 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
   }
 
   /**
-   * Expira una sesión PENDING caducada: persiste la transición (CAS sobre PENDING) y, solo si
-   * ganó la carrera, borra el objeto del bucket (best effort) y libera la cuota reservada.
+   * Expira una sesión PENDING caducada. La transición (CAS sobre PENDING) y la liberación de
+   * cuota son atómicas: si la liberación falla la tx revierte el CAS, la sesión sigue PENDING y
+   * el scheduler la reintentará. El blob se borra después de confirmar la tx (best effort).
    */
   private Mono<StoreObject> expireStaleSession(StoreObject object) {
     if (!object.expire()) {
@@ -106,19 +118,20 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
         .findByOwnerUsername(object.getOwnerUsername())
         .flatMap(
             userStorage ->
-                this.storageRepository
-                    .updateStatus(object, StorageSessionStatus.PENDING)
+                this.transactionalOperator
+                    .transactional(
+                        this.storageRepository
+                            .updateStatus(object, StorageSessionStatus.PENDING)
+                            .flatMap(
+                                expired ->
+                                    this.userStorageRepository
+                                        .releaseStorage(
+                                            expired.getOwnerUsername(), expired.sizeInBytes())
+                                        .thenReturn(expired)))
                     .flatMap(
                         expired ->
                             this.deleteObjectBestEffort(expired, userStorage.getBucketName())
-                                .then(
-                                    Mono.defer(
-                                        () ->
-                                            this.userStorageRepository
-                                                .releaseStorage(
-                                                    expired.getOwnerUsername(),
-                                                    expired.sizeInBytes())
-                                                .thenReturn(expired))))
+                                .thenReturn(expired))
                     .onErrorResume(
                         IllegalStateTransitionException.class,
                         race -> {

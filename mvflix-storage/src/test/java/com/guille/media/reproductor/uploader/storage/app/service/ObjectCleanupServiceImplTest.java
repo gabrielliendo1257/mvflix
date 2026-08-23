@@ -2,14 +2,18 @@ package com.guille.media.reproductor.uploader.storage.app.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.storage.app.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
@@ -25,7 +29,10 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import org.springframework.transaction.reactive.TransactionalOperator;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -39,10 +46,22 @@ class ObjectCleanupServiceImplTest {
   private final ObjectStorageService objectStoragePort = mock(ObjectStorageService.class);
   private final StorageRepository storageRepository = mock(StorageRepository.class);
   private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
+  private final TransactionalOperator transactionalOperator =
+      mock(TransactionalOperator.class);
 
   private final ObjectCleanupServiceImpl service =
       new ObjectCleanupServiceImpl(
-          userProvider, objectStoragePort, storageRepository, userStorageRepository);
+          userProvider,
+          objectStoragePort,
+          storageRepository,
+          userStorageRepository,
+          transactionalOperator);
+
+  @BeforeEach
+  void passThroughTransaction() {
+    when(this.transactionalOperator.transactional(any(Mono.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+  }
 
   private static final AuthenticatedUser PEPE = new AuthenticatedUser("pepe", "pepe@mvflix.dev");
 
@@ -103,6 +122,53 @@ class ObjectCleanupServiceImplTest {
     StepVerifier.create(this.service.deleteObject(99L))
         .expectError(StorageObjectNotAvailable.class)
         .verify();
+  }
+
+  @Test
+  void deleteObjectDoesNotTouchBlobWhenTransitionIsRejected() {
+    StoreObject object = completedObject(7L, "pepe");
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.storageRepository.updateStatus(object, StorageSessionStatus.COMPLETED))
+        .thenReturn(Mono.error(new IllegalStateTransitionException("row no longer COMPLETED")));
+
+    StepVerifier.create(this.service.deleteObject(7L))
+        .expectError(IllegalStateTransitionException.class)
+        .verify();
+
+    // Perdió el CAS: no libera cuota ni borra blob.
+    verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
+    verify(this.objectStoragePort, never()).delete(any(StorageLocation.class));
+  }
+
+  @Test
+  void expireStaleSessionFailsAtomicallyWhenReleaseFails() {
+    StoreObject pending =
+        new StoreObject(
+            "pepe",
+            new StorageKey("k1"),
+            new StorageMetadata("video/mp4", 1024, null, Instant.now()),
+            Instant.now(),
+            1L,
+            StorageSessionStatus.PENDING);
+
+    when(this.storageRepository.findPendingCreatedBefore(any(Instant.class)))
+        .thenReturn(Flux.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
+        .thenReturn(Mono.just(pending));
+    // La liberación falla: la tx debe revertir también la transición de estado.
+    when(this.userStorageRepository.releaseStorage("pepe", 1024L))
+        .thenReturn(Mono.error(new RuntimeException("db connection lost")));
+
+    StepVerifier.create(this.service.expireStaleSessions(Instant.now()))
+        .expectError(RuntimeException.class)
+        .verify();
+
+    // Sin liberación exitosa no hay borrado de blob ni estado EXPIRED en memoria.
+    verify(this.objectStoragePort, never()).delete(any(StorageLocation.class));
   }
 
   @Test

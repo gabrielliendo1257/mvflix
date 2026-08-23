@@ -180,16 +180,19 @@ public class UploadServiceImpl implements UploadService {
               object.markFailed();
               // El segundo parámetro de updateStatus es el estado ANTERIOR
               // esperado en la fila (CAS). La fila sigue PENDING: si se
-              // esperara FAILED el CAS nunca matchearía. Además el CAS va
-              // primero: solo quien gana la transición libera cuota, evitando
-              // liberar bytes de un objeto que completó concurrentemente.
-              return this.storageRepository
-                  .updateStatus(object, StorageSessionStatus.PENDING)
-                  .flatMap(
-                      failed ->
-                          this.userStorageRepository
-                              .releaseStorage(failed.getOwnerUsername(), failed.sizeInBytes())
-                              .thenReturn(failed));
+              // esperara FAILED el CAS nunca matchearía. Transición y liberación
+              // comparten transacción: o ambas, o ninguna (MinIO ya eliminó el
+              // blob; este evento es la reconciliación de ese borrado).
+              return this.transactionalOperator
+                  .transactional(
+                      this.storageRepository
+                          .updateStatus(object, StorageSessionStatus.PENDING)
+                          .flatMap(
+                              failed ->
+                                  this.userStorageRepository
+                                      .releaseStorage(
+                                          failed.getOwnerUsername(), failed.sizeInBytes())
+                                      .thenReturn(failed)));
             })
         .doOnNext(failed -> this.publishFailed(failed, new StorageObjectRemovedException()))
         .onErrorResume(
@@ -246,23 +249,32 @@ public class UploadServiceImpl implements UploadService {
                     object.getStorageObjectStatus());
                 return Mono.<StoreObject>empty();
               }
-              object.markFailed();
-              return this.userStorageRepository
-                  .findByOwnerUsername(object.getOwnerUsername())
-                  .flatMap(
-                      userStorage ->
-                          this.storageRepository
-                              .updateStatus(object, StorageSessionStatus.PENDING)
+                          object.markFailed();
+                          return this.userStorageRepository
+                              .findByOwnerUsername(object.getOwnerUsername())
                               .flatMap(
-                                  failed ->
-                                      this.deleteObjectBestEffort(
-                                              failed, userStorage.getBucketName())
-                                          .then(
-                                              this.userStorageRepository
-                                                  .releaseStorage(
-                                                      failed.getOwnerUsername(),
-                                                      failed.sizeInBytes())
-                                                  .thenReturn(failed))))
+                                  userStorage ->
+                                      // Transición + liberación atómicas: si el
+                                      // release falla, la tx revierte el CAS y la
+                                      // sesión sigue PENDING para reintentar. El
+                                      // blob se borra después, fuera de la tx.
+                                      this.transactionalOperator
+                                          .transactional(
+                                              this.storageRepository
+                                                  .updateStatus(
+                                                      object, StorageSessionStatus.PENDING)
+                                                  .flatMap(
+                                                      failed ->
+                                                          this.userStorageRepository
+                                                              .releaseStorage(
+                                                                  failed.getOwnerUsername(),
+                                                                  failed.sizeInBytes())
+                                                              .thenReturn(failed)))
+                                          .flatMap(
+                                              failed ->
+                                                  this.deleteObjectBestEffort(
+                                                          failed, userStorage.getBucketName())
+                                                      .thenReturn(failed)))
                   .onErrorResume(
                       IllegalStateTransitionException.class,
                       race -> {
@@ -522,16 +534,20 @@ public class UploadServiceImpl implements UploadService {
           if (!object.markFailed()) {
             return Mono.error(error);
           }
-          return this.storageRepository
-              .updateStatus(object, StorageSessionStatus.PENDING)
-              .flatMap(
-                  failed ->
-                      this.deleteObjectBestEffort(failed, bucket)
-                          .then(
+          // Transición + liberación atómicas (misma tx local); el borrado del
+          // blob ocurre después y best effort: un blob huérfano es
+          // reconciliable, una cuota descontada dos veces no.
+          return this.transactionalOperator
+              .transactional(
+                  this.storageRepository
+                      .updateStatus(object, StorageSessionStatus.PENDING)
+                      .flatMap(
+                          failed ->
                               this.userStorageRepository
                                   .releaseStorage(
                                       failed.getOwnerUsername(), failed.sizeInBytes())
                                   .thenReturn(failed)))
+              .flatMap(failed -> this.deleteObjectBestEffort(failed, bucket).thenReturn(failed))
               .doOnNext(failed -> this.publishFailed(failed, error))
               .onErrorResume(
                   IllegalStateTransitionException.class,
