@@ -7,7 +7,7 @@ import com.guille.media.reproductor.uploader.advisors.GlobalExceptionHandler;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
 import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
-import com.guille.media.reproductor.uploader.storage.domain.service.UserStorageService;
+import com.guille.media.reproductor.uploader.storage.app.service.UserStorageService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 
 import org.junit.jupiter.api.Test;

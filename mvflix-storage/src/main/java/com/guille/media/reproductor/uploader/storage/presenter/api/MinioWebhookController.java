@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.presenter.api;
 
-import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
+import com.guille.media.reproductor.uploader.storage.app.service.UploadService;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.request.MinioEventNotification;
 
 import lombok.extern.slf4j.Slf4j;

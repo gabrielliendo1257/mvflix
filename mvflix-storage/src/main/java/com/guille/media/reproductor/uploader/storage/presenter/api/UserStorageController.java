@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.presenter.api;
 
-import com.guille.media.reproductor.uploader.storage.domain.service.UserStorageService;
+import com.guille.media.reproductor.uploader.storage.app.service.UserStorageService;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.request.ProvisionRequest;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.QuotaResponse;
 

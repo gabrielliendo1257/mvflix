@@ -3,7 +3,7 @@ package com.guille.media.reproductor.uploader.storage.app.service;
 import com.guille.media.reproductor.uploader.storage.app.security.UserProvider;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAccessDeniedException;
 import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;
-import com.guille.media.reproductor.uploader.storage.infrastructure.errors.EntityNotFound;
+import com.guille.media.reproductor.uploader.storage.app.errors.EntityNotFound;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

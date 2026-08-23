@@ -12,8 +12,8 @@ import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibraryType;
 import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryScanner;
 import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;
-import com.guille.media.reproductor.uploader.storage.infrastructure.errors.EntityNotFound;
-import com.guille.media.reproductor.uploader.storage.infrastructure.library.ScanCancellationRegistry;
+import com.guille.media.reproductor.uploader.storage.app.errors.EntityNotFound;
+import com.guille.media.reproductor.uploader.storage.domain.ports.ScanCancellation;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,8 +27,8 @@ class LibraryServiceTest {
   private final MediaLibraryRepository libraryRepository = mock(MediaLibraryRepository.class);
   private final LibraryScanner libraryScanner = mock(LibraryScanner.class);
   private final UserProvider userProvider = mock(UserProvider.class);
-  private final ScanCancellationRegistry cancellationRegistry =
-      mock(ScanCancellationRegistry.class);
+  private final ScanCancellation cancellationRegistry =
+      mock(ScanCancellation.class);
 
   private final LibraryService service =
       new LibraryService(

@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import com.guille.media.reproductor.uploader.storage.domain.service.ObjectCleanupService;
+import com.guille.media.reproductor.uploader.storage.app.service.ObjectCleanupService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

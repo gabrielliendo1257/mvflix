@@ -1,4 +1,4 @@
-package com.guille.media.reproductor.uploader.storage.domain.service;
+package com.guille.media.reproductor.uploader.storage.app.service;
 
 import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
 

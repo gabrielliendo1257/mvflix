@@ -2,7 +2,7 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.seed;
 
 import com.guille.mvflix.devseed.DevUser;
 import com.guille.mvflix.devseed.DevUserSeeder;
-import com.guille.media.reproductor.uploader.storage.domain.service.UserStorageService;
+import com.guille.media.reproductor.uploader.storage.app.service.UserStorageService;
 
 import lombok.extern.slf4j.Slf4j;
 

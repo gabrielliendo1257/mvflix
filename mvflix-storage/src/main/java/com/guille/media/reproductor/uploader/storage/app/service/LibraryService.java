@@ -12,8 +12,8 @@ import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
 import com.guille.media.reproductor.uploader.storage.domain.ports.LibraryScanner;
 import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;
 import com.guille.media.reproductor.uploader.storage.domain.vos.DiscoveredFile;
-import com.guille.media.reproductor.uploader.storage.infrastructure.errors.EntityNotFound;
-import com.guille.media.reproductor.uploader.storage.infrastructure.library.ScanCancellationRegistry;
+import com.guille.media.reproductor.uploader.storage.app.errors.EntityNotFound;
+import com.guille.media.reproductor.uploader.storage.domain.ports.ScanCancellation;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -30,7 +30,7 @@ public class LibraryService {
     private final MediaLibraryRepository libraryRepository;
     private final LibraryScanner libraryScanner;
     private final UserProvider userProvider;
-    private final ScanCancellationRegistry cancellationRegistry;
+    private final ScanCancellation cancellationRegistry;
 
     public Flux<MediaLibrary> listLibraries() {
         return this.userProvider

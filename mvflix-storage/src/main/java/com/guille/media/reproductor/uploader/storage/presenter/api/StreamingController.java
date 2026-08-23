@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.presenter.api;
 
-import com.guille.media.reproductor.uploader.storage.domain.service.StreamingService;
+import com.guille.media.reproductor.uploader.storage.app.service.StreamingService;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.request.StreamingRequest;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.StreamingSessionResponse;
 import com.guille.media.reproductor.uploader.storage.presenter.mapper.UploadMapper;

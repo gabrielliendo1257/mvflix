@@ -8,7 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.guille.mvflix.devseed.DevUser;
-import com.guille.media.reproductor.uploader.storage.domain.service.UserStorageService;
+import com.guille.media.reproductor.uploader.storage.app.service.UserStorageService;
 
 import org.junit.jupiter.api.Test;
 

@@ -1,7 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.presenter.api;
 
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
-import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
+import com.guille.media.reproductor.uploader.storage.app.service.UploadService;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.request.UploadRequest;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadResponse;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadSummaryResponse;

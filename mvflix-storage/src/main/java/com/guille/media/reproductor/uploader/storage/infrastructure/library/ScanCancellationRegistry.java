@@ -15,7 +15,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 @Slf4j
 @Component
-public class ScanCancellationRegistry {
+public class ScanCancellationRegistry implements com.guille.media.reproductor.uploader.storage.domain.ports.ScanCancellation {
+
 
     private final Map<String, AtomicBoolean> cancelled = new ConcurrentHashMap<>();
 

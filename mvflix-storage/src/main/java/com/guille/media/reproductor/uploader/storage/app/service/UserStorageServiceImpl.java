@@ -7,7 +7,6 @@ import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
 import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
 import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
-import com.guille.media.reproductor.uploader.storage.domain.service.UserStorageService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 
 import org.springframework.beans.factory.annotation.Value;

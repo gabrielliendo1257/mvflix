@@ -10,7 +10,7 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.LibraryAc
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibrary;
 import com.guille.media.reproductor.uploader.storage.domain.models.MediaLibraryType;
 import com.guille.media.reproductor.uploader.storage.domain.ports.MediaLibraryRepository;
-import com.guille.media.reproductor.uploader.storage.infrastructure.errors.EntityNotFound;
+import com.guille.media.reproductor.uploader.storage.app.errors.EntityNotFound;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

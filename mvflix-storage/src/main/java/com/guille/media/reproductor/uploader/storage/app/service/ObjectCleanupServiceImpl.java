@@ -9,7 +9,6 @@ import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.S
 import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.domain.ports.UserStorageRepository;
-import com.guille.media.reproductor.uploader.storage.domain.service.ObjectCleanupService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 

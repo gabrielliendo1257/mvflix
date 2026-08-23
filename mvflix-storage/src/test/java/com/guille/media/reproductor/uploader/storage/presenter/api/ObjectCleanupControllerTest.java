@@ -5,7 +5,7 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.advisors.GlobalExceptionHandler;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
-import com.guille.media.reproductor.uploader.storage.domain.service.ObjectCleanupService;
+import com.guille.media.reproductor.uploader.storage.app.service.ObjectCleanupService;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.reactive.server.WebTestClient;

@@ -10,7 +10,7 @@ import com.guille.media.reproductor.uploader.storage.app.commands.response.Uploa
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadSummary;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.UploadCompletionResult;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
-import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
+import com.guille.media.reproductor.uploader.storage.app.service.UploadService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadResponse;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.UploadSummaryResponse;

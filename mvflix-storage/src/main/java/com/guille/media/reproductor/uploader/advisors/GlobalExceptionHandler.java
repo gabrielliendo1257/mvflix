@@ -14,7 +14,7 @@ import com.guille.media.reproductor.uploader.storage.domain.exceptions.ScanLimit
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.ObjectAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.domain.exceptions.UserStorageNotFoundException;
-import com.guille.media.reproductor.uploader.storage.infrastructure.errors.EntityNotFound;
+import com.guille.media.reproductor.uploader.storage.app.errors.EntityNotFound;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

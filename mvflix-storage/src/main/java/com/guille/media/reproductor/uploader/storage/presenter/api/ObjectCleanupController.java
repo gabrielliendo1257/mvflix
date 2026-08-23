@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.presenter.api;
 
-import com.guille.media.reproductor.uploader.storage.domain.service.ObjectCleanupService;
+import com.guille.media.reproductor.uploader.storage.app.service.ObjectCleanupService;
 
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;

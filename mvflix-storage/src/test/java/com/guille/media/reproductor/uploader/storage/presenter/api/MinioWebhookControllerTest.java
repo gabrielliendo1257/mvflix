@@ -6,7 +6,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.guille.media.reproductor.uploader.storage.domain.service.UploadService;
+import com.guille.media.reproductor.uploader.storage.app.service.UploadService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

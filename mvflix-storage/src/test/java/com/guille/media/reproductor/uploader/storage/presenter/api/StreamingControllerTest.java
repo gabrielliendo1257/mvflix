@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.advisors.GlobalExceptionHandler;
 import com.guille.media.reproductor.uploader.storage.app.commands.response.StreamingSession;
-import com.guille.media.reproductor.uploader.storage.domain.service.StreamingService;
+import com.guille.media.reproductor.uploader.storage.app.service.StreamingService;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.presenter.dto.response.StreamingSessionResponse;
 import com.guille.media.reproductor.uploader.storage.presenter.mapper.UploadMapper;
