@@ -8,8 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
-import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieDetail;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.MetadataSource;

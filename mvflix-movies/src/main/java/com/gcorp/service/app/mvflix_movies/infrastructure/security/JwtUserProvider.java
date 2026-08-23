@@ -1,4 +1,7 @@
-package com.gcorp.service.app.mvflix_movies.app.security;
+package com.gcorp.service.app.mvflix_movies.infrastructure.security;
+
+import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;

@@ -38,6 +38,15 @@ class LayerDependencyTest {
             .because("Application coordina dominio y puertos, no implementaciones externas");
 
     @ArchTest
+    static final ArchRule shared_security_contract_does_not_depend_on_spring = noClasses()
+            .that()
+            .resideInAPackage("..shared.application.security..")
+            .should()
+            .dependOnClassesThat()
+            .resideInAPackage("org.springframework..")
+            .because("el contrato de usuario actual debe permanecer independiente de Spring Security");
+
+    @ArchTest
     static final ArchRule controllers_do_not_depend_on_repositories = noClasses()
             .that()
             .areAnnotatedWith(RestController.class)

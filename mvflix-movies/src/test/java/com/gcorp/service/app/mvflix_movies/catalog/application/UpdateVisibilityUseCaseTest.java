@@ -6,8 +6,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
-import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;

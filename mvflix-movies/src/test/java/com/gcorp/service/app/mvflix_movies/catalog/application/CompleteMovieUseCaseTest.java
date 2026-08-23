@@ -2,8 +2,8 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.app.security.AuthenticatedUser;
-import com.gcorp.service.app.mvflix_movies.app.security.UserProvider;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
