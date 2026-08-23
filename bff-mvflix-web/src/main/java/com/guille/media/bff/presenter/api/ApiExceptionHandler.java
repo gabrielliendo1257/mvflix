@@ -1,7 +1,11 @@
 package com.guille.media.bff.presenter.api;
 
 import com.guille.media.bff.app.service.StreamTicketException;
-import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
+import com.guille.media.bff.experience.addmedia.application.DownstreamUnavailableException;
+import com.guille.media.bff.experience.addmedia.application.IdempotencyConflictException;
+import com.guille.media.bff.experience.addmedia.application.InvalidStorageResponseException;
+import com.guille.media.bff.experience.addmedia.application.UserBlockedException;
+import com.guille.media.bff.experience.addmedia.application.VerdictAppliedException;
 import com.guille.media.bff.experience.addmedia.application.IdempotencyConflictException;
 import com.guille.media.bff.shared.error.EntityNotFound;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
@@ -33,17 +37,6 @@ public class ApiExceptionHandler {
                 HttpStatus.UNAUTHORIZED.value(), "STREAM_TICKET_INVALID", ex.getMessage())));
   }
 
-  /** Veredicto del flujo orquestado: el BFF ya ejecutó rollback/penalidad y diagnostica. */
-  @ExceptionHandler(UploadOrchestrationException.class)
-  public Mono<ResponseEntity<OrchestrationError>> orchestration(
-      UploadOrchestrationException ex) {
-    log.warn("Orquestación fallida: code={} message={}", ex.getCode(), ex.getMessage());
-    return Mono.just(
-        ResponseEntity.status(ex.getStatus())
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(new OrchestrationError(ex.getStatus().value(), ex.getCode(), ex.getMessage())));
-  }
-
   /** Recurso de aplicación inexistente (p.ej. proceso Add Media ajeno). */
   @ExceptionHandler(EntityNotFound.class)
   public Mono<ResponseEntity<OrchestrationError>> entityNotFound(EntityNotFound ex) {
@@ -53,6 +46,52 @@ public class ApiExceptionHandler {
             .contentType(MediaType.APPLICATION_JSON)
             .body(new OrchestrationError(
                 HttpStatus.NOT_FOUND.value(), "NOT_FOUND", ex.getMessage())));
+  }
+
+  /** Veredicto definitivo ya aplicado (rollback ejecutado). */
+  @ExceptionHandler(VerdictAppliedException.class)
+  public Mono<ResponseEntity<OrchestrationError>> verdict(VerdictAppliedException ex) {
+    log.warn("Veredicto aplicado: code={} message={}", ex.getCode(), ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.CONFLICT.value(), ex.getCode(), ex.getMessage())));
+  }
+
+  /** Caída reintentable de un servicio aguas abajo. */
+  @ExceptionHandler(DownstreamUnavailableException.class)
+  public Mono<ResponseEntity<OrchestrationError>> downstream(
+      DownstreamUnavailableException ex) {
+    log.warn("Aguas abajo caído: {} {}", ex.getCode(), ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(ex.getUpstreamStatus())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                ex.getUpstreamStatus(), ex.getCode(), ex.getMessage())));
+  }
+
+  /** Usuario bloqueado por la política de users. */
+  @ExceptionHandler(UserBlockedException.class)
+  public Mono<ResponseEntity<OrchestrationError>> userBlocked(UserBlockedException ex) {
+    log.warn("Usuario bloqueado: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.FORBIDDEN.value(), "USER_BLOCKED", ex.getMessage())));
+  }
+
+  /** Contrato violado por un servicio aguas abajo. */
+  @ExceptionHandler(InvalidStorageResponseException.class)
+  public Mono<ResponseEntity<OrchestrationError>> invalidStorage(
+      InvalidStorageResponseException ex) {
+    log.error("Respuesta inválida de storage: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.BAD_GATEWAY.value(), "INVALID_UPLOAD_RESPONSE", ex.getMessage())));
   }
 
   /** Misma idempotencyKey con payload distinto: conflicto, no silencio. */

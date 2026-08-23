@@ -211,11 +211,8 @@ class StartAddMediaTest {
 
     StepVerifier.create(start())
         .expectErrorSatisfies(error -> {
-          assertThat(error).isInstanceOf(
-              com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException.class);
-          assertThat(((com.guille.media.bff.experience.addmedia.application.
-              UploadOrchestrationException) error).getCode())
-              .isEqualTo("INVALID_UPLOAD_RESPONSE");
+          assertThat(error).isInstanceOf(InvalidStorageResponseException.class);
+          assertThat(error.getMessage()).contains("no-es-numerico");
         })
         .verify();
 
@@ -307,12 +304,7 @@ class StartAddMediaTest {
         "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 5, true)));
 
     StepVerifier.create(start())
-        .expectErrorSatisfies(error -> {
-          com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException ex =
-              (com.guille.media.bff.experience.addmedia.application.
-                  UploadOrchestrationException) error;
-            assertThat(ex.getCode()).isEqualTo("USER_BLOCKED");
-          })
+        .expectError(UserBlockedException.class)
         .verify();
 
     verify(this.storage, never()).prepareUpload(any());

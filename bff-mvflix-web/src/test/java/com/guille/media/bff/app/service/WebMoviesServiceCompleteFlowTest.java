@@ -23,8 +23,9 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
+import com.guille.media.bff.experience.addmedia.application.DownstreamUnavailableException;
 import com.guille.media.bff.experience.addmedia.application.UploadCompletionOutcome;
-import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
+import com.guille.media.bff.experience.addmedia.application.VerdictAppliedException;
 
 /**
  * Tests de caracterización del flujo completo de alta (POST /web/movies/{id}/complete).
@@ -122,11 +123,9 @@ class WebMoviesServiceCompleteFlowTest {
 
     StepVerifier.create(this.service.complete(7L, new CompleteMovieRequest(42L, 1024L)))
         .expectErrorSatisfies(error -> {
-          assertThat(error).isInstanceOf(UploadOrchestrationException.class);
-          assertThat(((UploadOrchestrationException) error).getCode())
+          assertThat(error).isInstanceOf(VerdictAppliedException.class);
+          assertThat(((VerdictAppliedException) error).getCode())
               .isEqualTo("UPLOAD_INCONSISTENT");
-          assertThat(((UploadOrchestrationException) error).getStatus())
-              .isEqualTo(HttpStatus.CONFLICT);
         })
         .verify();
 
@@ -187,7 +186,7 @@ class WebMoviesServiceCompleteFlowTest {
 
     StepVerifier.create(this.service.complete(7L, new CompleteMovieRequest(42L, 1024L)))
         .expectErrorSatisfies(error -> {
-          assertThat(((UploadOrchestrationException) error).getCode()).isEqualTo("UPLOAD_FAILED");
+          assertThat(((VerdictAppliedException) error).getCode()).isEqualTo("UPLOAD_FAILED");
         })
         .verify();
 
@@ -208,7 +207,7 @@ class WebMoviesServiceCompleteFlowTest {
 
     StepVerifier.create(this.service.complete(7L, new CompleteMovieRequest(42L, 1024L)))
         .expectErrorSatisfies(error -> {
-          assertThat(((UploadOrchestrationException) error).getCode()).isEqualTo("MOVIE_MISSING");
+          assertThat(((VerdictAppliedException) error).getCode()).isEqualTo("MOVIE_MISSING");
         })
         .verify();
 
@@ -246,9 +245,11 @@ class WebMoviesServiceCompleteFlowTest {
 
     StepVerifier.create(this.service.complete(7L, new CompleteMovieRequest(42L, 1024L)))
         .expectErrorSatisfies(error -> {
-          assertThat(error).isInstanceOf(UploadOrchestrationException.class);
-          assertThat(((UploadOrchestrationException) error).getCode())
+          assertThat(error).isInstanceOf(DownstreamUnavailableException.class);
+          assertThat(((DownstreamUnavailableException) error).getCode())
               .isEqualTo("DOWNSTREAM_UNAVAILABLE");
+          assertThat(((DownstreamUnavailableException) error).getUpstreamStatus())
+              .isEqualTo(503);
         })
         .verify();
 

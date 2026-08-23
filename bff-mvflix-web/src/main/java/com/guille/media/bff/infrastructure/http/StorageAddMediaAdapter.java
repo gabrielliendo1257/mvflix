@@ -21,31 +21,56 @@ public class StorageAddMediaAdapter implements AddMediaStorage {
 
   @Override
   public Mono<UploadSessionDto> prepareUpload(UploadCreateRequest file) {
-    return this.delegate.createUpload(file);
+    return this.translate(this.delegate.createUpload(file));
   }
 
   @Override
   public Mono<Void> requestCompletion(Long uploadId) {
-    return this.delegate.completeUpload(uploadId).then();
+    return this.translate(this.delegate.completeUpload(uploadId)).then();
   }
 
   @Override
   public Mono<UploadStatusDto> getUploadState(Long uploadId) {
-    return this.delegate.uploadStatus(uploadId);
+    return this.translate(this.delegate.uploadStatus(uploadId));
   }
 
   @Override
   public Mono<UploadSessionDto> refreshInstructions(Long uploadId) {
-    return this.delegate.renewInstructions(uploadId);
+    return this.translate(this.delegate.renewInstructions(uploadId));
   }
 
   @Override
   public Mono<Void> cancelUpload(Long uploadId) {
-    return this.delegate.cancelUpload(uploadId);
+    return this.translate(this.delegate.cancelUpload(uploadId));
   }
 
   @Override
   public Mono<Void> deleteObject(Long storageId) {
-    return this.delegate.deleteObject(storageId);
+    return this.translate(this.delegate.deleteObject(storageId));
+  }
+
+  /**
+   * Frontera de traducción: los errores HTTP/WebClient no cruzan hacia la
+   * aplicación. 5xx y fallos de conexión son CAÍDAS reintentables; los 4xx se
+   * preservan como rechazo con status para decisiones (404/409).
+   */
+  private <T> reactor.core.publisher.Mono<T> translate(
+      reactor.core.publisher.Mono<T> call) {
+    return call.onErrorResume(
+        org.springframework.web.reactive.function.client.WebClientResponseException.class,
+        ex -> {
+          if (ex.getStatusCode().is5xxServerError()) {
+            return Mono.error(new com.guille.media.bff.experience.addmedia.application.
+                DownstreamUnavailableException(ex.getStatusCode().value(),
+                    "DOWNSTREAM_UNAVAILABLE", ex.getMessage()));
+          }
+          return Mono.error(new com.guille.media.bff.experience.addmedia.application.
+              DownstreamRejectionException(ex.getStatusCode().value(), ex.getMessage()));
+        })
+        .onErrorResume(
+            org.springframework.web.reactive.function.client.WebClientRequestException.class,
+            ex -> Mono.error(new com.guille.media.bff.experience.addmedia.application.
+                DownstreamUnavailableException(503,
+                    "DOWNSTREAM_UNREACHABLE", ex.getMessage())));
   }
 }

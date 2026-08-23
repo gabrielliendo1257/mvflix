@@ -38,7 +38,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
-import com.guille.media.bff.experience.addmedia.application.UploadOrchestrationException;
 
 /**
  * Orquestador del flujo de alta de película. El front solo llama al complete; el BFF
@@ -345,8 +344,9 @@ public class WebMoviesService {
           if (profile.blocked()) {
             log.warn("create bloqueado: usuario={} violaciones={}",
                 profile.username(), profile.violations());
-            return Mono.error(new UploadOrchestrationException(HttpStatus.FORBIDDEN,
-                "USER_BLOCKED", "El usuario está bloqueado por violaciones repetidas"));
+            return Mono.error(new com.guille.media.bff.experience.addmedia.application.UserBlockedException(
+                profile.username() == null ? "?" : profile.username(),
+                profile.violations()));
           }
           log.info("create: usuario={} title={}", profile.username(), request.title());
           return this.moviesWebClient.createMovie(request);

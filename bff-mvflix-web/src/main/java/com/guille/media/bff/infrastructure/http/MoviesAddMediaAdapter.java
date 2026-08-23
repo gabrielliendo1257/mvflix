@@ -25,32 +25,77 @@ public class MoviesAddMediaAdapter implements AddMediaMovies {
 
   @Override
   public Flux<MovieEnrichmentSearchDto> searchCandidates(String query, Integer year) {
-    return this.delegate.searchCandidates(query, year);
+    return this.translate(this.delegate.searchCandidates(query, year));
   }
 
   @Override
   public Mono<MovieEnrichmentPreviewDto> previewCandidate(Long providerId) {
-    return this.delegate.previewCandidate(providerId);
+    return this.translate(this.delegate.previewCandidate(providerId));
   }
 
   @Override
   public Mono<MovieDto> createIdentifiedDraft(IdentifiedDraft command) {
-    return this.delegate.createIdentifiedDraft(
-        command.draft(), command.tmdbId(), command.visibility(), command.sharedWith());
+    return this.translate(this.delegate.createIdentifiedDraft(
+        command.draft(), command.tmdbId(), command.visibility(), command.sharedWith()));
   }
 
   @Override
   public Mono<MovieDto> getMovie(Long movieId) {
-    return this.delegate.movieById(movieId);
+    return this.translate(this.delegate.movieById(movieId));
   }
 
   @Override
   public Mono<MovieDto> completeDraft(Long movieId, Long objectId, String objectKey) {
-    return this.delegate.completeMovie(movieId, objectId, objectKey);
+    return this.translate(this.delegate.completeMovie(movieId, objectId, objectKey));
   }
 
   @Override
   public Mono<Void> discardDraft(Long movieId) {
-    return this.delegate.deleteMovie(movieId);
+    return this.translate(this.delegate.deleteMovie(movieId));
+  }
+
+  /**
+   * Frontera de traducción: los errores HTTP/WebClient no cruzan hacia la
+   * aplicación. 5xx y fallos de conexión son CAÍDAS reintentables; los 4xx se
+   * preservan como rechazo con status para decisiones (404/409).
+   */
+  private <T> reactor.core.publisher.Flux<T> translate(
+      reactor.core.publisher.Flux<T> call) {
+    return call.onErrorResume(
+        org.springframework.web.reactive.function.client.WebClientResponseException.class,
+        ex -> {
+          if (ex.getStatusCode().is5xxServerError()) {
+            return Mono.error(new com.guille.media.bff.experience.addmedia.application.
+                DownstreamUnavailableException(ex.getStatusCode().value(),
+                    "DOWNSTREAM_UNAVAILABLE", ex.getMessage()));
+          }
+          return Mono.error(new com.guille.media.bff.experience.addmedia.application.
+              DownstreamRejectionException(ex.getStatusCode().value(), ex.getMessage()));
+        })
+        .onErrorResume(
+            org.springframework.web.reactive.function.client.WebClientRequestException.class,
+            ex -> Mono.error(new com.guille.media.bff.experience.addmedia.application.
+                DownstreamUnavailableException(503,
+                    "DOWNSTREAM_UNREACHABLE", ex.getMessage())));
+  }
+
+  private <T> reactor.core.publisher.Mono<T> translate(
+      reactor.core.publisher.Mono<T> call) {
+    return call.onErrorResume(
+        org.springframework.web.reactive.function.client.WebClientResponseException.class,
+        ex -> {
+          if (ex.getStatusCode().is5xxServerError()) {
+            return Mono.error(new com.guille.media.bff.experience.addmedia.application.
+                DownstreamUnavailableException(ex.getStatusCode().value(),
+                    "DOWNSTREAM_UNAVAILABLE", ex.getMessage()));
+          }
+          return Mono.error(new com.guille.media.bff.experience.addmedia.application.
+              DownstreamRejectionException(ex.getStatusCode().value(), ex.getMessage()));
+        })
+        .onErrorResume(
+            org.springframework.web.reactive.function.client.WebClientRequestException.class,
+            ex -> Mono.error(new com.guille.media.bff.experience.addmedia.application.
+                DownstreamUnavailableException(503,
+                    "DOWNSTREAM_UNREACHABLE", ex.getMessage())));
   }
 }

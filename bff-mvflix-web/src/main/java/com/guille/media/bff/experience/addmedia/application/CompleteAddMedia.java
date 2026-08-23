@@ -2,53 +2,47 @@ package com.guille.media.bff.experience.addmedia.application;
 
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.MovieDto;
-import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
-import com.guille.media.bff.app.ports.UsersWebPort;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClientRequestException;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 
 import reactor.core.publisher.Mono;
 
 /**
  * Flujo de cierre del alta de contenido: verifica el estado REAL del upload en
- * storage (el objeto puede llegar por webhook en cualquier momento), clasifica
- * un veredicto y ejecuta rollback + penalidad cuando corresponde.
+ * storage, clasifica un veredicto y ejecuta rollback + penalidad cuando
+ * corresponde.
  *
- * <p>Extraído de WebMoviesService: la coordinación de alta no debe vivir
- * mezclada con catálogo/playback/visibilidad.
+ * <p>Capa limpia: solo puertos propios y excepciones de aplicación. La
+ * traducción de errores HTTP/WebClient vive en los adapters.
  */
 @Slf4j
 @Service
 public class CompleteAddMedia {
 
+  private static final int PENDING_RETRIES = 3;
+
   private final AddMediaMovies movies;
   private final AddMediaStorage storage;
-  private final UsersWebPort users;
+  private final com.guille.media.bff.app.ports.UsersWebPort users;
 
   public CompleteAddMedia(
       AddMediaMovies movies,
       AddMediaStorage storage,
-      UsersWebPort users) {
+      com.guille.media.bff.app.ports.UsersWebPort users) {
     this.movies = movies;
     this.storage = storage;
     this.users = users;
   }
 
+
   /**
    * Complete orquestado: idempotente (si ya está READY responde sin tocar nada)
    * y con veredicto clasificado a partir del estado real del storage.
-   *
-   * <p>PENDING NO es fallo: una demora del webhook o la verificación asíncrona
-   * del storage se traduce en {@link UploadCompletionOutcome.StillVerifying}
-   * para que el front consulte de nuevo. Nunca se borra Movie ni el objeto por
-   * una espera, y nunca se penaliza al usuario por un tiempo.
    */
   public Mono<UploadCompletionOutcome> complete(Long movieId, CompleteMovieRequest request) {
     log.info("complete: movie={} storageId={} sizeBytes={}",
@@ -67,26 +61,19 @@ public class CompleteAddMedia {
 
   private Mono<UploadCompletionOutcome> completeFromDraft(Long movieId,
       CompleteMovieRequest request) {
-    // Sin esta petición, un webhook perdido/retrasado dejaría el upload
-    // PENDING indefinidamente: Storage verifica contra MinIO ahora.
     return this.storage
         .requestCompletion(request.storageId())
         .then(this.storage.getUploadState(request.storageId()))
         .flatMap(status -> this.evaluateStatus(movieId, request, status))
         .onErrorResume(UploadVerdictException.class,
-            ex -> this.rollback(movieId, request, ex.getCode(), ex.getMessage(), true))
-        .onErrorResume(WebClientResponseException.class,
-            ex -> this.downstreamUnavailable(movieId, ex))
-        .onErrorResume(WebClientRequestException.class,
-            ex -> this.downstreamUnreachable(movieId, ex))
-        .doOnError(err -> log.warn("complete: movie={} terminó en error: {}", movieId,
-            err.getMessage()));
+            ex -> this.rollback(movieId, request, ex.getCode(), ex.getMessage(), true));
   }
 
   private Mono<UploadCompletionOutcome> evaluateStatus(Long movieId,
-      CompleteMovieRequest request, UploadStatusDto status) {
+      CompleteMovieRequest request, com.guille.media.bff.app.dto.UploadStatusDto status) {
     String state = status.status() == null ? "" : status.status();
-    log.debug("add-media complete: movie={} estado storage={} key={}", movieId, state, status.storageKey());
+    log.debug("add-media complete: movie={} estado storage={} key={}",
+        movieId, state, status.storageKey());
     switch (state) {
       case "COMPLETED":
         if (request.sizeBytes() != null
@@ -116,7 +103,7 @@ public class CompleteAddMedia {
   }
 
   private Mono<UploadCompletionOutcome> persistReady(Long movieId, CompleteMovieRequest request,
-      UploadStatusDto status) {
+      com.guille.media.bff.app.dto.UploadStatusDto status) {
     log.info("complete: movie={} veredicto OK, persistiendo READY con object_key={}",
         movieId, status.storageKey());
     return this.movies
@@ -124,8 +111,10 @@ public class CompleteAddMedia {
         .doOnSuccess(movie -> log.info("complete: movie={} READY persistida", movieId))
         .map((MovieDto movie) -> (UploadCompletionOutcome)
             new UploadCompletionOutcome.Completed(movie))
-        .onErrorResume(WebClientResponseException.class,
-            ex -> this.onMoviesCompleteError(movieId, request, ex));
+        .onErrorResume(com.guille.media.bff.experience.addmedia.application.DownstreamUnavailableException.class,
+            ex -> this.onMoviesDownstreamError(movieId, ex))
+        .onErrorResume(com.guille.media.bff.experience.addmedia.application.DownstreamRejectionException.class,
+            ex -> this.onMoviesCompleteError(movieId, request, ex.status()));
   }
 
   private Long toStorageId(String uploadId) {
@@ -137,14 +126,14 @@ public class CompleteAddMedia {
     }
   }
 
-  private Mono<UploadCompletionOutcome> onMoviesCompleteError(Long movieId,
-      CompleteMovieRequest request, WebClientResponseException ex) {
-    if (ex.getStatusCode().value() == 404) {
+  private Mono<UploadCompletionOutcome> onMoviesCompleteError(Long movieId, CompleteMovieRequest request,
+      int downstreamStatus) {
+    if (downstreamStatus == 404) {
       log.warn("complete: movie={} no existe al persistir; rollback de objeto", movieId);
       return this.rollback(movieId, request, "MOVIE_MISSING",
           "La película no existe al momento del complete", false);
     }
-    if (ex.getStatusCode().value() == 409) {
+    if (downstreamStatus == 409) {
       // Reconciliación: otro camino pudo haber completado la película.
       return this.movies
           .getMovie(movieId)
@@ -157,7 +146,13 @@ public class CompleteAddMedia {
           .switchIfEmpty(Mono.error(new UploadVerdictException("MOVIE_MISSING",
               "La película no existe al reconciliar el conflicto")));
     }
-    return this.downstreamUnavailable(movieId, ex);
+    return this.downstreamUnavailable(movieId, downstreamStatus);
+  }
+
+  private Mono<UploadCompletionOutcome> onMoviesDownstreamError(Long movieId,
+      DownstreamUnavailableException ex) {
+    log.error("complete: movie={} servicio aguas abajo caído: {}", movieId, ex.getMessage());
+    return Mono.error(ex);
   }
 
   /** Rollback: elimina la película + el objeto (restaura cuota). Opcionalmente penaliza. */
@@ -178,32 +173,16 @@ public class CompleteAddMedia {
                     movieId, code))
                 .onErrorResume(err -> this.logRollbackFailure("violación de movie " + movieId,
                     err))
-                .then(Mono.error(
-                    new UploadOrchestrationException(HttpStatus.CONFLICT, code, reason)));
+                .then(Mono.error(new VerdictAppliedException(code, reason)));
           }
-          return Mono.error(
-              new UploadOrchestrationException(HttpStatus.CONFLICT, code, reason));
+          return Mono.error(new VerdictAppliedException(code, reason));
         }));
   }
 
-  /** Servicio aguas abajo no disponible: sin rollback, el front puede reintentar. */
-  private Mono<UploadCompletionOutcome> downstreamUnavailable(Long movieId,
-      WebClientResponseException ex) {
-    log.error("complete: movie={} servicio aguas abajo no disponible: status={} {}",
-        movieId, ex.getStatusCode(), ex.getMessage());
-    return Mono.error(new UploadOrchestrationException(
-        HttpStatus.valueOf(ex.getStatusCode().value()), "DOWNSTREAM_UNAVAILABLE",
-        "Servicio aguas abajo no disponible: " + ex.getStatusCode()));
-  }
-
-  /** Servicio aguas abajo inalcanzable (conexión): sin rollback, el front puede reintentar. */
-  private Mono<UploadCompletionOutcome> downstreamUnreachable(Long movieId,
-      WebClientRequestException ex) {
-    log.error("complete: movie={} servicio aguas abajo inalcanzable: {}", movieId,
-        ex.getMessage());
-    return Mono.error(new UploadOrchestrationException(HttpStatus.SERVICE_UNAVAILABLE,
-        "DOWNSTREAM_UNREACHABLE",
-        "Servicio aguas abajo inalcanzable: " + ex.getMessage()));
+  private Mono<UploadCompletionOutcome> downstreamUnavailable(Long movieId, int status) {
+    log.error("complete: movie={} servicio aguas abajo no disponible: status={}", movieId, status);
+    return Mono.error(new DownstreamUnavailableException(status,
+        "DOWNSTREAM_UNAVAILABLE", "Servicio aguas abajo no disponible: " + status));
   }
 
   private Mono<Void> logRollbackFailure(String what, Throwable err) {

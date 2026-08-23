@@ -12,7 +12,6 @@ import com.guille.media.bff.experience.addmedia.web.AddMediaView;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
@@ -90,12 +89,10 @@ public class CompleteProcessAddMedia {
               .save(finalizing.backToVerifying())
               .map(saved -> withFailureCode(AddMediaView.from(saved), null));
         })
-        .onErrorResume(
-            error -> error instanceof UploadOrchestrationException orchestration
-                && orchestration.getStatus() == HttpStatus.CONFLICT,
-            error -> this.processes
-                .save(finalizing.failed(failureCodeOf(error)))
-                .then(Mono.error(error)))
+        .onErrorResume(VerdictAppliedException.class,
+            verdict -> this.processes
+                .save(finalizing.failed(verdict.getCode()))
+                .then(Mono.error(verdict)))
         .onErrorResume(error -> {
               // Cualquier otro fallo (incluido CAS perdido por cancel):
               // devolver el claim a VERIFYING salvo que el proceso ya no sea
@@ -119,10 +116,4 @@ public class CompleteProcessAddMedia {
         movie.id(), view.uploadId(), view.upload(), view.failureCode());
   }
 
-  private static String failureCodeOf(Throwable error) {
-    if (error instanceof UploadOrchestrationException orchestration) {
-      return orchestration.getCode();
-    }
-    return "ADD_MEDIA_FAILED";
-  }
 }

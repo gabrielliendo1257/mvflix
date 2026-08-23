@@ -15,7 +15,6 @@ import com.guille.media.bff.experience.addmedia.web.StartAddMediaRequest;
 
 import lombok.extern.slf4j.Slf4j;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
@@ -111,8 +110,8 @@ public class StartAddMedia {
     if (profile.blocked()) {
       log.warn("add-media bloqueado: usuario={} violaciones={}",
           profile.username(), profile.violations());
-      return Mono.error(new UploadOrchestrationException(HttpStatus.FORBIDDEN,
-          "USER_BLOCKED", "El usuario está bloqueado por violaciones repetidas"));
+      return Mono.error(new UserBlockedException(
+          profile.username() == null ? "?" : profile.username(), profile.violations()));
     }
     return Mono.empty();
   }
@@ -169,15 +168,13 @@ public class StartAddMedia {
 
   private static Long strictParseUploadId(String uploadId) {
     if (uploadId == null || !uploadId.chars().allMatch(Character::isDigit)) {
-      throw new UploadOrchestrationException(HttpStatus.BAD_GATEWAY,
-          "INVALID_UPLOAD_RESPONSE",
+      throw new InvalidStorageResponseException(
           "Storage devolvió un uploadId no válido: " + uploadId);
     }
     try {
       return Long.valueOf(uploadId);
     } catch (NumberFormatException e) {
-      throw new UploadOrchestrationException(HttpStatus.BAD_GATEWAY,
-          "INVALID_UPLOAD_RESPONSE",
+      throw new InvalidStorageResponseException(
           "Storage devolvió un uploadId no válido: " + uploadId);
     }
   }

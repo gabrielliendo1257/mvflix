@@ -13,6 +13,8 @@ import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.ports.StorageWebClient;
 import com.guille.media.bff.app.service.WebMoviesService;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
+import com.guille.media.bff.experience.addmedia.application.DownstreamUnavailableException;
+import com.guille.media.bff.experience.addmedia.application.VerdictAppliedException;
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
@@ -88,11 +90,11 @@ class CompleteProcessAddMediaTest {
   void definitiveFailureMarksProcessFailedAndPropagates() {
     String id = this.preparedProcess();
     when(this.completion.complete(anyLong(), any()))
-        .thenReturn(Mono.error(new UploadOrchestrationException(
-            org.springframework.http.HttpStatus.CONFLICT, "UPLOAD_FAILED", "cuarentena")));
+        .thenReturn(Mono.error(new VerdictAppliedException(
+            "UPLOAD_FAILED", "cuarentena")));
 
     StepVerifier.create(this.useCase.handle("pepe", id, null))
-        .expectError(UploadOrchestrationException.class)
+        .expectError(VerdictAppliedException.class)
         .verify();
 
     StepVerifier.create(this.processes.findById(new AddMediaId(id)))
@@ -128,13 +130,12 @@ class CompleteProcessAddMediaTest {
     // Movies caído: CompleteAddMedia mapea a DOWNSTREAM_UNAVAILABLE (503),
     // que NO es veredicto definitivo.
     when(this.completion.complete(anyLong(), any()))
-        .thenReturn(Mono.error(new UploadOrchestrationException(
-            org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
-            "DOWNSTREAM_UNAVAILABLE", "movies no responde")))
+        .thenReturn(Mono.error(new DownstreamUnavailableException(
+            503, "DOWNSTREAM_UNAVAILABLE", "movies no responde")))
         .thenReturn(Mono.just(new UploadCompletionOutcome.Completed(movie(7L))));
 
     StepVerifier.create(this.useCase.handle("pepe", id, null))
-        .expectError(UploadOrchestrationException.class)
+        .expectError(DownstreamUnavailableException.class)
         .verify();
 
     // El proceso NO quedó FAILado por un timeout: sigue VERIFYING.
