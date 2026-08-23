@@ -10,7 +10,6 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadR
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageKey;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
-import com.guille.media.reproductor.uploader.storage.domain.vos.StoredObjectSummary;
 import io.minio.MinioAsyncClient;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
@@ -105,15 +104,12 @@ class MinioStorageTest {
 
     storage.ensureUserStorageLayout(bucket, username).block();
 
-    List<StoredObjectSummary> objects = storage.list(bucket, username + "/");
-    assertThat(objects)
-        .extracting(StoredObjectSummary::objectName)
-        .containsExactlyInAnyOrder(
-            username + "/images/",
-            username + "/videos/",
-            username + "/compressed/",
-            username + "/executables/",
-            username + "/private/");
+    for (String folder :
+        new String[] {"images/", "videos/", "compressed/", "executables/", "private/"}) {
+      assertThat(storage.objectExists(location(bucket, username + "/" + folder)).block())
+          .as("folder marker %s", folder)
+          .isTrue();
+    }
   }
 
   @Test
@@ -217,32 +213,15 @@ class MinioStorageTest {
   }
 
   @Test
-  void copyMoveDeleteAndList_workAgainstRealBucket() throws Exception {
+  void delete_workAgainstRealBucket() throws Exception {
     BucketName bucket = BucketName.of("test-ops-bucket");
     storage.createBucket(bucket.bucketName()).block();
 
     upload(bucket, "folder/a.txt", "aaa");
-    upload(bucket, "folder/b.txt", "bbb");
-    upload(bucket, "other/c.txt", "ccc");
 
     StorageLocation source = location(bucket, "folder/a.txt");
-    StorageLocation copyTarget = location(bucket, "folder/a-copy.txt");
-    StorageLocation movedTarget = location(bucket, "other/a-moved.txt");
 
-    storage.copy(source, copyTarget);
-    assertThat(storage.objectExists(copyTarget).block()).isTrue();
-
-    storage.move(source, movedTarget);
+    storage.delete(source);
     assertThat(storage.objectExists(source).block()).isFalse();
-    assertThat(storage.objectExists(movedTarget).block()).isTrue();
-
-    storage.delete(movedTarget);
-    assertThat(storage.objectExists(movedTarget).block()).isFalse();
-
-    List<StoredObjectSummary> summaries = storage.list(bucket, "folder/");
-    assertThat(summaries)
-        .extracting(StoredObjectSummary::objectName)
-        .containsExactlyInAnyOrder("folder/a-copy.txt", "folder/b.txt");
-    assertThat(summaries).extracting(StoredObjectSummary::contentLength).containsExactly(3L, 3L);
   }
 }

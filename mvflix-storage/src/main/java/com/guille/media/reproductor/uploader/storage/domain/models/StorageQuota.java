@@ -14,10 +14,6 @@ public final class StorageQuota {
   private static final long MB = KB * 1024L;
   private static final long GB = MB * 1024L;
 
-  private static final long PRO_QUOTA = 100L * GB;
-  private static final long ENTERPRISE_QUOTA = 50L * GB;
-  private static final long FREE_QUOTA = 500L * MB;
-
   private final long maxBytes;
 
   /**
@@ -31,18 +27,6 @@ public final class StorageQuota {
       throw new IllegalArgumentException("Storage quota cannot be negative");
     }
     this.maxBytes = maxBytes;
-  }
-
-  public static StorageQuota getQuota(Plan plan) {
-    return switch (plan) {
-      case FREE -> new StorageQuota(FREE_QUOTA);
-      case ENTERPRISE -> new StorageQuota(ENTERPRISE_QUOTA);
-      case PRO -> new StorageQuota(PRO_QUOTA);
-    };
-  }
-
-  public static StorageQuota unlimited() {
-    return new StorageQuota(Long.MAX_VALUE);
   }
 
   public static StorageQuota ofGigabytes(long gigabytes) {
@@ -63,32 +47,6 @@ public final class StorageQuota {
   /** Retorna el límite máximo en bytes. */
   public long maxBytes() {
     return maxBytes;
-  }
-
-  /**
-   * Determina si el uso supera la cuota.
-   *
-   * @param storageUsage uso actual de almacenamiento.
-   * @return {@code true} si el uso supera el límite.
-   */
-  public boolean isExceeded(StorageUsage storageUsage) {
-    return maxBytes < storageUsage.getCurrentBytesUsage();
-  }
-
-  // ── Factory methods ──────────────────────────────────────────────────────
-
-  /**
-   * Determina si es posible agregar bytes adicionales.
-   *
-   * @param usedBytes bytes actualmente usados.
-   * @param additionalBytes bytes que se quieren añadir.
-   * @return {@code true} si la suma no supera la cuota.
-   */
-  public boolean canAllocate(long usedBytes, long additionalBytes) {
-    if (usedBytes < 0 || additionalBytes < 0) {
-      throw new IllegalArgumentException("Bytes values cannot be negative");
-    }
-    return usedBytes + additionalBytes <= maxBytes;
   }
 
   /**

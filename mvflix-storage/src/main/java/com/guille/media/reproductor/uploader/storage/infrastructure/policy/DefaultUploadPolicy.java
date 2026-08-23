@@ -2,7 +2,6 @@ package com.guille.media.reproductor.uploader.storage.infrastructure.policy;
 
 import com.guille.media.reproductor.uploader.storage.app.errors.UploadSizeExceededException;
 import com.guille.media.reproductor.uploader.storage.domain.models.UploadConfiguration;
-import com.guille.media.reproductor.uploader.storage.domain.models.UploadType;
 import com.guille.media.reproductor.uploader.storage.domain.service.UploadPolicy;
 import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
 import com.guille.media.reproductor.uploader.storage.infrastructure.errors.UnsupportedMimeTypeException;
@@ -17,23 +16,20 @@ public class DefaultUploadPolicy implements UploadPolicy {
   private static final long GB = MB * 1024L;
 
   private static final long MAX_UPLOAD_SIZE = 20L * GB;
-  private static final long STANDARD_MAX_UPLOAD_SIZE = 10L * GB;
-  private static final long FREE_MAX_UPLOAD_SIZE = 500L * MB;
 
-  private static final long MULTIPART_THRESHOLD = 500L * MB;
+  /**
+   * Todas las sesiones usan un único presigned PUT: el protocolo multipart no
+   * está implementado, así que declararlo sería mentir sobre las capacidades
+   * reales. Reintroducir la variante multipart cuando uploads grandes
+   * necesiten reanudación.
+   */
+  private static final Duration SIMPLE_UPLOAD_EXPIRATION = Duration.ofMinutes(30);
 
   @Override
   public UploadConfiguration resolve(long size, MimeType mimeType) {
     validateSize(size);
-    MimeType validatedMimetype = validateMimeType(mimeType);
-
-    if (size >= MULTIPART_THRESHOLD) {
-      return new UploadConfiguration(
-          Duration.ofHours(6), UploadType.MULTIPART, 50L * MB, validatedMimetype);
-    }
-
-    return new UploadConfiguration(
-        Duration.ofMinutes(30), UploadType.SIMPLE, null, validatedMimetype);
+    validateMimeType(mimeType);
+    return new UploadConfiguration(SIMPLE_UPLOAD_EXPIRATION);
   }
 
   @Override

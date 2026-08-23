@@ -2,25 +2,16 @@ package com.guille.media.reproductor.uploader.storage.domain.models;
 
 import lombok.Getter;
 
+/**
+ * Uso acumulado de bytes de una cuenta. Es un valor de lectura (proyección):
+ * las mutaciones autoritativas ocurren en la base de datos mediante los
+ * updates atómicos de {@code UserStorageRepository}.
+ */
 @Getter
 public class StorageUsage {
-    private long currentBytesUsage;
+    private final long currentBytesUsage;
 
     public StorageUsage(long currentBytesUsage) {
         this.currentBytesUsage = currentBytesUsage;
-    }
-
-    public StorageUsage addBytes(long bytes) {
-        this.currentBytesUsage = this.currentBytesUsage + bytes;
-        return this;
-    }
-
-    public StorageUsage dismissBytes(long bytes) {
-        this.currentBytesUsage = this.currentBytesUsage - bytes;
-        return this;
-    }
-
-    public long remaining(StorageQuota storageQuota) {
-        return storageQuota.getUserBytesQuota() - this.currentBytesUsage;
     }
 }

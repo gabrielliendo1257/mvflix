@@ -1,13 +1,12 @@
 package com.guille.media.reproductor.uploader.storage.domain.models;
 
-import com.guille.media.reproductor.uploader.storage.domain.vos.MimeType;
-
 import java.time.Duration;
 
-public record UploadConfiguration(
-		Duration expiration,
-		UploadType uploadType,
-		Long chunkSize,
-		MimeType mimeType) {
+/**
+ * Configuración de una sesión de upload. Hoy solo hay un mecanismo real
+ * (presigned PUT simple); cuando exista upload multipart/resumable, este
+ * registro expresará la variante elegida.
+ */
+public record UploadConfiguration(Duration expiration) {
 
 }

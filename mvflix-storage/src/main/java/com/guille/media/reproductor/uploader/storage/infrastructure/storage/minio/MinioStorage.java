@@ -7,12 +7,9 @@ import com.guille.media.reproductor.uploader.storage.domain.vos.PermissionUrl;
 import com.guille.media.reproductor.uploader.storage.domain.vos.PresignedUploadRequest;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.domain.vos.StorageMetadata;
-import com.guille.media.reproductor.uploader.storage.domain.vos.StoredObjectSummary;
 import io.minio.BucketExistsArgs;
 import io.minio.CopyObjectArgs;
-import io.minio.CopySource;
 import io.minio.GetPresignedObjectUrlArgs;
-import io.minio.ListObjectsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioAsyncClient;
 import io.minio.MinioClient;
@@ -182,77 +179,6 @@ public class MinioStorage implements ObjectStorageService {
     } catch (Exception e) {
       log.error("Error deleting object {}", location.storageKey().key(), e);
       throw new StorageException("Error deleting object: " + location.storageKey().key(), e);
-    }
-  }
-
-  @Override
-  public void copy(StorageLocation source, StorageLocation target) {
-    try {
-      this.minioClient.copyObject(
-          CopyObjectArgs.builder()
-              .bucket(target.bucket().bucketName())
-              .object(target.storageKey().key())
-              .source(
-                  CopySource.builder()
-                      .bucket(source.bucket().bucketName())
-                      .object(source.storageKey().key())
-                      .build())
-              .build());
-    } catch (Exception e) {
-      log.error("Error copying {} to {}", source.storageKey().key(), target.storageKey().key(), e);
-      throw new StorageException(
-          "Error copying object: " + source.storageKey().key() + " -> " + target.storageKey().key(),
-          e);
-    }
-  }
-
-  @Override
-  public void move(StorageLocation source, StorageLocation target) {
-    try {
-      this.minioClient.copyObject(
-          CopyObjectArgs.builder()
-              .bucket(target.bucket().bucketName())
-              .object(target.storageKey().key())
-              .source(
-                  CopySource.builder()
-                      .bucket(source.bucket().bucketName())
-                      .object(source.storageKey().key())
-                      .build())
-              .build());
-      this.delete(source);
-    } catch (StorageException e) {
-      throw e;
-    } catch (Exception e) {
-      log.error("Error moving {} to {}", source.storageKey().key(), target.storageKey().key(), e);
-      throw new StorageException(
-          "Error moving object: " + source.storageKey().key() + " -> " + target.storageKey().key(),
-          e);
-    }
-  }
-
-  @Override
-  public List<StoredObjectSummary> list(BucketName bucketName, String prefix) {
-    try {
-      Iterable<io.minio.Result<io.minio.messages.Item>> results =
-          this.minioClient.listObjects(
-              ListObjectsArgs.builder()
-                  .bucket(bucketName.bucketName())
-                  .prefix(prefix)
-                  .recursive(true)
-                  .build());
-
-      List<StoredObjectSummary> objects = new java.util.ArrayList<>();
-      for (io.minio.Result<io.minio.messages.Item> result : results) {
-        io.minio.messages.Item item = result.get();
-        objects.add(
-            new StoredObjectSummary(
-                item.objectName(), item.size(), item.etag(), item.lastModified().toInstant()));
-      }
-      return objects;
-    } catch (Exception e) {
-      log.error(
-          "Error listing objects with prefix {} in bucket {}", prefix, bucketName.bucketName(), e);
-      throw new StorageException("Error listing objects with prefix: " + prefix, e);
     }
   }
 

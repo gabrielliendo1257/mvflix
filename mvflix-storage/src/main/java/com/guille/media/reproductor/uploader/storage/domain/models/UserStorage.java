@@ -1,13 +1,16 @@
 package com.guille.media.reproductor.uploader.storage.domain.models;
 
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.ExceededQuotaException;
-import com.guille.media.reproductor.uploader.storage.domain.exceptions.IllegalConsumeBytes;
-
 import com.guille.media.reproductor.uploader.storage.domain.vos.BucketName;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.ToString;
 
+/**
+ * Cuenta de almacenamiento de un usuario: bucket dedicado, cuota y uso. La
+ * invariante cuota/uso NO se aplica aquí: la autoritativa es el UPDATE
+ * condicional atómico de {@code UserStorageRepository.consumeStorage}, que es
+ * quien puede garantizarla bajo concurrencia (ver ADR 0001).
+ */
 @Getter
 @ToString
 @AllArgsConstructor
@@ -17,17 +20,4 @@ public class UserStorage {
   private final String ownerUsername;
   private StorageQuota storageQuota;
   private StorageUsage storageUsage;
-
-  public void consumeStorage(long bytes) {
-    if (bytes <= 0) {
-      throw new IllegalConsumeBytes("Los bytes deben ser mayores que cero");
-    }
-    StorageUsage nextUsage = this.storageUsage.addBytes(bytes);
-
-    if (this.storageQuota.isExceeded(nextUsage)) {
-      throw new ExceededQuotaException("Excede el storage permitido.");
-    }
-
-    this.storageUsage = nextUsage;
-  }
 }

@@ -218,7 +218,6 @@ public final class StoreObject {
   }
 
   public enum StorageSessionStatus {
-    PROCESSING,
     PENDING,
     COMPLETED,
     FAILED,

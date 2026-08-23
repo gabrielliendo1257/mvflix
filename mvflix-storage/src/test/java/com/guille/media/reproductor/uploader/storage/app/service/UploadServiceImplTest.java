@@ -27,7 +27,6 @@ import com.guille.media.reproductor.uploader.storage.domain.models.StorageUsage;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject;
 import com.guille.media.reproductor.uploader.storage.domain.models.StoreObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.domain.models.UploadConfiguration;
-import com.guille.media.reproductor.uploader.storage.domain.models.UploadType;
 import com.guille.media.reproductor.uploader.storage.domain.models.UserStorage;
 import com.guille.media.reproductor.uploader.storage.domain.ports.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.domain.ports.StorageEventPublisher;
@@ -82,9 +81,7 @@ class UploadServiceImplTest {
   @BeforeEach
   void setUp() {
     when(this.uploadPolicy.resolve(anyLong(), any(MimeType.class)))
-        .thenReturn(
-            new UploadConfiguration(
-                Duration.ofMinutes(15), UploadType.SIMPLE, null, MimeType.of("video/mp4")));
+        .thenReturn(new UploadConfiguration(Duration.ofMinutes(15)));
   }
 
   private StoreObject pendingObject(long storageId) {
