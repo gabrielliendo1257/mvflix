@@ -48,7 +48,11 @@ class WebMoviesServiceTest {
     this.service = new WebMoviesService(this.moviesWebClient, this.storageWebClient,
         this.usersWebPort, this.streamTicketService, this.jobStore,
         new com.guille.media.bff.experience.addmedia.application.CompleteAddMedia(
-            this.moviesWebClient, this.storageWebClient, this.usersWebPort));
+            new com.guille.media.bff.infrastructure.http.MoviesAddMediaAdapter(
+                this.moviesWebClient),
+            new com.guille.media.bff.infrastructure.http.StorageAddMediaAdapter(
+                this.storageWebClient),
+            this.usersWebPort));
   }
 
   private static MovieDto movie(Long id, Long objectId) {

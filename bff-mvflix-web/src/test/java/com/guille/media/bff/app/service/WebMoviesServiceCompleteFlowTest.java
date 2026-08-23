@@ -51,7 +51,11 @@ class WebMoviesServiceCompleteFlowTest {
             new StreamTicketService("test-secret", 300),
             new JobStore(),
             new com.guille.media.bff.experience.addmedia.application.CompleteAddMedia(
-                this.moviesWebClient, this.storageWebClient, this.usersWebPort));
+                new com.guille.media.bff.infrastructure.http.MoviesAddMediaAdapter(
+                    this.moviesWebClient),
+                new com.guille.media.bff.infrastructure.http.StorageAddMediaAdapter(
+                    this.storageWebClient),
+                this.usersWebPort));
   }
 
   private static MovieDto movie(Long id, String status) {

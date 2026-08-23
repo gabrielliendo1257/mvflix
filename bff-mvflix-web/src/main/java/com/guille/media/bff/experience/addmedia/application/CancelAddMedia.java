@@ -1,8 +1,8 @@
 package com.guille.media.bff.experience.addmedia.application;
 
-import com.guille.media.bff.app.ports.StorageWebClient;
-import com.guille.media.bff.app.service.WebMoviesService;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
@@ -27,13 +27,13 @@ import reactor.core.publisher.Mono;
 public class CancelAddMedia {
 
   private final AddMediaProcessRepository processes;
-  private final StorageWebClient storage;
-  private final WebMoviesService movies;
+  private final AddMediaStorage storage;
+  private final AddMediaMovies movies;
 
   public CancelAddMedia(
       AddMediaProcessRepository processes,
-      StorageWebClient storage,
-      WebMoviesService movies) {
+      AddMediaStorage storage,
+      AddMediaMovies movies) {
     this.processes = processes;
     this.storage = storage;
     this.movies = movies;

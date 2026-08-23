@@ -11,8 +11,10 @@ import com.guille.media.bff.app.dto.CreateMovieRequest;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.UploadCreateRequest;
 import com.guille.media.bff.app.dto.UploadSessionDto;
-import com.guille.media.bff.app.ports.StorageWebClient;
-import com.guille.media.bff.app.service.WebMoviesService;
+import com.guille.media.bff.app.dto.UserProfile;
+import com.guille.media.bff.app.ports.UsersWebPort;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.web.AddMediaView;
@@ -31,8 +33,9 @@ import java.util.List;
 
 class StartAddMediaTest {
 
-  private final WebMoviesService movies = mock(WebMoviesService.class);
-  private final StorageWebClient storage = mock(StorageWebClient.class);
+  private final AddMediaMovies movies = mock(AddMediaMovies.class);
+  private final AddMediaStorage storage = mock(AddMediaStorage.class);
+  private final UsersWebPort users = mock(UsersWebPort.class);
   private final InMemoryAddMediaProcessRepository processes =
       new InMemoryAddMediaProcessRepository();
 
@@ -40,7 +43,9 @@ class StartAddMediaTest {
 
   @BeforeEach
   void setUp() {
-    this.useCase = new StartAddMedia(this.movies, this.storage, this.processes);
+    when(this.users.me()).thenReturn(Mono.just(new UserProfile(
+        "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 0, false)));
+    this.useCase = new StartAddMedia(this.movies, this.storage, this.processes, this.users);
   }
 
   private StartAddMediaRequest request(String idempotencyKey) {
@@ -69,8 +74,8 @@ class StartAddMediaTest {
 
   @Test
   void happyPathCreatesDraftPreparesUploadAndPersistsWaitingForUpload() {
-    when(this.movies.create(any())).thenReturn(Mono.just(draft()));
-    when(this.storage.createUpload(any(UploadCreateRequest.class)))
+    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
 
     StepVerifier.create(start())
@@ -84,15 +89,15 @@ class StartAddMediaTest {
         })
         .verifyComplete();
 
-    verify(this.movies).create(any());
-    verify(this.storage).createUpload(any(UploadCreateRequest.class));
+    verify(this.movies).createDraft(any());
+    verify(this.storage).prepareUpload(any(UploadCreateRequest.class));
     verify(this.movies, never()).discardDraft(any());
   }
 
   @Test
   void replayWithSameIdempotencyKeyReturnsSameProcessWithoutSideEffects() {
-    when(this.movies.create(any())).thenReturn(Mono.just(draft()));
-    when(this.storage.createUpload(any(UploadCreateRequest.class)))
+    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
 
     AddMediaView first = start().block();
@@ -101,15 +106,15 @@ class StartAddMediaTest {
     assertThat(replay.addMediaId()).isEqualTo(first.addMediaId());
     assertThat(replay.uploadId()).isEqualTo(42L);
     // Un solo draft y una sola sesión de upload para el mismo intento.
-    verify(this.movies, org.mockito.Mockito.times(1)).create(any());
-    verify(this.storage, org.mockito.Mockito.times(1)).createUpload(any());
+    verify(this.movies, org.mockito.Mockito.times(1)).createDraft(any());
+    verify(this.storage, org.mockito.Mockito.times(1)).prepareUpload(any());
   }
 
   @Test
   void storageFailureDiscardsOnlyThisProcessDraftAndPropagates() {
-    when(this.movies.create(any())).thenReturn(Mono.just(draft()));
+    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
     when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
-    when(this.storage.createUpload(any(UploadCreateRequest.class)))
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.error(new RuntimeException("storage unavailable")));
 
     StepVerifier.create(start())
@@ -130,9 +135,8 @@ class StartAddMediaTest {
 
   @Test
   void blockedUserSurfacesForbiddenWithoutPreparingUpload() {
-    when(this.movies.create(any()))
-        .thenReturn(Mono.error(new com.guille.media.bff.experience.addmedia.application.
-            UploadOrchestrationException(HttpStatus.FORBIDDEN, "USER_BLOCKED", "bloqueado")));
+    when(this.users.me()).thenReturn(Mono.just(new UserProfile(
+        "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 5, true)));
 
     StepVerifier.create(start())
         .expectErrorSatisfies(error -> {
@@ -143,7 +147,7 @@ class StartAddMediaTest {
           })
         .verify();
 
-    verify(this.storage, never()).createUpload(any());
+    verify(this.storage, never()).prepareUpload(any());
     verify(this.movies, never()).discardDraft(any());
   }
 }

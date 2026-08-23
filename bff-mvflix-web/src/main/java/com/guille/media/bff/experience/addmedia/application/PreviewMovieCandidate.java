@@ -1,7 +1,7 @@
 package com.guille.media.bff.experience.addmedia.application;
 
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
-import com.guille.media.bff.app.ports.MoviesWebClient;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 
 import org.springframework.stereotype.Service;
 
@@ -11,9 +11,9 @@ import reactor.core.publisher.Mono;
 @Service
 public class PreviewMovieCandidate {
 
-  private final MoviesWebClient movies;
+  private final AddMediaMovies movies;
 
-  public PreviewMovieCandidate(MoviesWebClient movies) {
+  public PreviewMovieCandidate(AddMediaMovies movies) {
     this.movies = movies;
   }
 

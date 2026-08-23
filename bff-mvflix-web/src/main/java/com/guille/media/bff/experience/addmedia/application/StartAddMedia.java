@@ -2,9 +2,11 @@ package com.guille.media.bff.experience.addmedia.application;
 
 import com.guille.media.bff.app.dto.UploadCreateRequest;
 import com.guille.media.bff.app.dto.UploadSessionDto;
-import com.guille.media.bff.app.ports.StorageWebClient;
-import com.guille.media.bff.app.service.WebMoviesService;
+import com.guille.media.bff.app.dto.UserProfile;
+import com.guille.media.bff.app.ports.UsersWebPort;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.web.AddMediaView;
@@ -12,6 +14,7 @@ import com.guille.media.bff.experience.addmedia.web.StartAddMediaRequest;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
@@ -29,17 +32,20 @@ import reactor.core.publisher.Mono;
 @Service
 public class StartAddMedia {
 
-  private final WebMoviesService movies;
-  private final StorageWebClient storage;
+  private final AddMediaMovies movies;
+  private final AddMediaStorage storage;
   private final AddMediaProcessRepository processes;
+  private final UsersWebPort users;
 
   public StartAddMedia(
-      WebMoviesService movies,
-      StorageWebClient storage,
-      AddMediaProcessRepository processes) {
+      AddMediaMovies movies,
+      AddMediaStorage storage,
+      AddMediaProcessRepository processes,
+      UsersWebPort users) {
     this.movies = movies;
     this.storage = storage;
     this.processes = processes;
+    this.users = users;
   }
 
   public Mono<AddMediaView> handle(String ownerSubject, StartAddMediaRequest request) {
@@ -56,9 +62,33 @@ public class StartAddMedia {
         });
   }
 
+  /**
+   * Gate de experiencia: un usuario bloqueado por violaciones no inicia altas.
+   * La política vive en users; aquí solo se traduce a un error amigable antes
+   * de gastar recursos en drafts/uploads.
+   */
   private Mono<AddMediaView> startFresh(AddMediaProcess process, StartAddMediaRequest request) {
+    return this.users
+        .me()
+        .flatMap(profile -> this.guardBlocked(profile)
+            // defer: si el gate falla, la continuación ni se construye.
+            .then(Mono.defer(() -> this.createDraftAndUpload(process, request))));
+  }
+
+  private Mono<Void> guardBlocked(UserProfile profile) {
+    if (profile.blocked()) {
+      log.warn("add-media bloqueado: usuario={} violaciones={}",
+          profile.username(), profile.violations());
+      return Mono.error(new UploadOrchestrationException(HttpStatus.FORBIDDEN,
+          "USER_BLOCKED", "El usuario está bloqueado por violaciones repetidas"));
+    }
+    return Mono.empty();
+  }
+
+  private Mono<AddMediaView> createDraftAndUpload(AddMediaProcess process,
+      StartAddMediaRequest request) {
     return this.movies
-        .create(request.movie().draft())
+        .createDraft(request.movie().draft())
         .flatMap(
             draft ->
                 this.prepareUpload(process, draft.id(), request)
@@ -75,7 +105,7 @@ public class StartAddMedia {
             request.file().sizeBytes(),
             request.file().mimeType());
     return this.storage
-        .createUpload(uploadRequest)
+        .prepareUpload(uploadRequest)
         .flatMap(session -> this.persistPrepared(process, movieId, session))
         .doOnNext(view -> log.info("add-media started: process={} movie={} upload={}",
             view.addMediaId(), view.movieId(), view.uploadId()));

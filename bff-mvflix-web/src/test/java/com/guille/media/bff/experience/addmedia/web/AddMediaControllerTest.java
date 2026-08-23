@@ -9,7 +9,9 @@ import com.guille.media.bff.app.dto.UploadSessionDto;
 import com.guille.media.bff.infrastructure.persistence.InMemoryAddMediaProcessRepository;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
-import com.guille.media.bff.app.service.WebMoviesService;
+import com.guille.media.bff.app.ports.UsersWebPort;
+import com.guille.media.bff.infrastructure.http.MoviesAddMediaAdapter;
+import com.guille.media.bff.infrastructure.http.StorageAddMediaAdapter;
 import com.guille.media.bff.app.service.WebSessionService;
 import com.guille.media.bff.experience.addmedia.application.CancelAddMedia;
 import com.guille.media.bff.experience.addmedia.application.CompleteAddMedia;
@@ -33,7 +35,6 @@ import reactor.core.publisher.Mono;
 class AddMediaControllerTest {
 
   private final MoviesWebClient moviesWebClient = mock(MoviesWebClient.class);
-  private final WebMoviesService webMoviesService = mock(WebMoviesService.class);
   private final StorageWebClient storageWebClient = mock(StorageWebClient.class);
   private final InMemoryAddMediaProcessRepository processes =
       new InMemoryAddMediaProcessRepository();
@@ -44,14 +45,20 @@ class AddMediaControllerTest {
   @BeforeEach
   void setUp() {
     when(this.session.currentSubject()).thenReturn(Mono.just("pepe"));
-    CompleteAddMedia completion = mock(CompleteAddMedia.class);
+    MoviesAddMediaAdapter moviesAdapter = new MoviesAddMediaAdapter(this.moviesWebClient);
+    StorageAddMediaAdapter storageAdapter = new StorageAddMediaAdapter(this.storageWebClient);
+    UsersWebPort users = mock(UsersWebPort.class);
+    when(users.me()).thenReturn(Mono.just(new com.guille.media.bff.app.dto.UserProfile(
+        "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 0, false)));
+    CompleteProcessAddMedia completeProcess =
+        new CompleteProcessAddMedia(this.processes, mock(CompleteAddMedia.class));
     AddMediaController controller =
         new AddMediaController(
-            new SearchMovieCandidates(this.moviesWebClient),
-            new PreviewMovieCandidate(this.moviesWebClient),
-            new StartAddMedia(this.webMoviesService, this.storageWebClient, this.processes),
-            new CompleteProcessAddMedia(this.processes, completion),
-            new CancelAddMedia(this.processes, this.storageWebClient, this.webMoviesService),
+            new SearchMovieCandidates(moviesAdapter),
+            new PreviewMovieCandidate(moviesAdapter),
+            new StartAddMedia(moviesAdapter, storageAdapter, this.processes, users),
+            completeProcess,
+            new CancelAddMedia(this.processes, storageAdapter, moviesAdapter),
             this.processes,
             this.session);
     this.client = WebTestClient.bindToController(controller).build();
@@ -59,7 +66,7 @@ class AddMediaControllerTest {
 
   @Test
   void startReturnsCreatedWithUploadInstructions() {
-    when(this.webMoviesService.create(ArgumentMatchers.any()))
+    when(this.moviesWebClient.createMovie(ArgumentMatchers.any()))
         .thenReturn(Mono.just(new com.guille.media.bff.app.dto.MovieDto(7L, "DRAFT", null,
             "PRIVATE", "MOVIE", "Alien", null, 1979, List.of(), null, null, null,
             List.of(), null, null, null, null, null, null, null)));
@@ -92,7 +99,7 @@ class AddMediaControllerTest {
   @Test
   void statusIsOwnerScopedAndHidesForeignProcesses() {
     when(this.session.currentSubject()).thenReturn(Mono.just("pepe"));
-    when(this.webMoviesService.create(ArgumentMatchers.any()))
+    when(this.moviesWebClient.createMovie(ArgumentMatchers.any()))
         .thenReturn(Mono.just(new com.guille.media.bff.app.dto.MovieDto(7L, "DRAFT", null,
             "PRIVATE", "MOVIE", "Alien", null, 1979, List.of(), null, null, null,
             List.of(), null, null, null, null, null, null, null)));

@@ -8,7 +8,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.bff.app.ports.StorageWebClient;
-import com.guille.media.bff.app.service.WebMoviesService;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
@@ -23,8 +24,8 @@ import reactor.test.StepVerifier;
 
 class CancelAddMediaTest {
 
-  private final StorageWebClient storage = mock(StorageWebClient.class);
-  private final WebMoviesService movies = mock(WebMoviesService.class);
+  private final AddMediaStorage storage = mock(AddMediaStorage.class);
+  private final AddMediaMovies movies = mock(AddMediaMovies.class);
   private final InMemoryAddMediaProcessRepository processes =
       new InMemoryAddMediaProcessRepository();
 

@@ -3,8 +3,8 @@ package com.guille.media.bff.experience.addmedia.application;
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.UploadStatusDto;
-import com.guille.media.bff.app.ports.MoviesWebClient;
-import com.guille.media.bff.app.ports.StorageWebClient;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.app.ports.UsersWebPort;
 
 import lombok.extern.slf4j.Slf4j;
@@ -28,17 +28,17 @@ import reactor.core.publisher.Mono;
 @Service
 public class CompleteAddMedia {
 
-  private final MoviesWebClient moviesWebClient;
-  private final StorageWebClient storageWebClient;
-  private final UsersWebPort usersWebPort;
+  private final AddMediaMovies movies;
+  private final AddMediaStorage storage;
+  private final UsersWebPort users;
 
   public CompleteAddMedia(
-      MoviesWebClient moviesWebClient,
-      StorageWebClient storageWebClient,
-      UsersWebPort usersWebPort) {
-    this.moviesWebClient = moviesWebClient;
-    this.storageWebClient = storageWebClient;
-    this.usersWebPort = usersWebPort;
+      AddMediaMovies movies,
+      AddMediaStorage storage,
+      UsersWebPort users) {
+    this.movies = movies;
+    this.storage = storage;
+    this.users = users;
   }
 
   /**
@@ -53,8 +53,8 @@ public class CompleteAddMedia {
   public Mono<UploadCompletionOutcome> complete(Long movieId, CompleteMovieRequest request) {
     log.info("complete: movie={} storageId={} sizeBytes={}",
         movieId, request.storageId(), request.sizeBytes());
-    return this.moviesWebClient
-        .movieById(movieId)
+    return this.movies
+        .getMovie(movieId)
         .flatMap(movie -> {
           if ("READY".equals(movie.status())) {
             log.info("complete: movie={} ya READY, no-op idempotente", movieId);
@@ -67,8 +67,8 @@ public class CompleteAddMedia {
 
   private Mono<UploadCompletionOutcome> completeFromDraft(Long movieId,
       CompleteMovieRequest request) {
-    return this.storageWebClient
-        .uploadStatus(request.storageId())
+    return this.storage
+        .getUploadState(request.storageId())
         .flatMap(status -> this.evaluateStatus(movieId, request, status))
         .onErrorResume(UploadVerdictException.class,
             ex -> this.rollback(movieId, request, ex.getCode(), ex.getMessage(), true))
@@ -116,8 +116,8 @@ public class CompleteAddMedia {
       UploadStatusDto status) {
     log.info("complete: movie={} veredicto OK, persistiendo READY con object_key={}",
         movieId, status.storageKey());
-    return this.moviesWebClient
-        .completeMovie(movieId, this.toStorageId(status.uploadId()), status.storageKey())
+    return this.movies
+        .completeDraft(movieId, this.toStorageId(status.uploadId()), status.storageKey())
         .doOnSuccess(movie -> log.info("complete: movie={} READY persistida", movieId))
         .map((MovieDto movie) -> (UploadCompletionOutcome)
             new UploadCompletionOutcome.Completed(movie))
@@ -143,8 +143,8 @@ public class CompleteAddMedia {
     }
     if (ex.getStatusCode().value() == 409) {
       // Reconciliación: otro camino pudo haber completado la película.
-      return this.moviesWebClient
-          .movieById(movieId)
+      return this.movies
+          .getMovie(movieId)
           .flatMap(movie -> "READY".equals(movie.status())
               ? Mono.just((UploadCompletionOutcome)
                   new UploadCompletionOutcome.Completed(movie))
@@ -163,13 +163,13 @@ public class CompleteAddMedia {
     log.warn("ROLLBACK movie={} storageId={} code={} reason={}",
         movieId, request.storageId(), code, reason);
     return Mono.when(
-            this.moviesWebClient.deleteMovie(movieId).onErrorResume(
+            this.movies.discardDraft(movieId).onErrorResume(
                 err -> this.logRollbackFailure("película " + movieId, err)),
-            this.storageWebClient.deleteObject(request.storageId()).onErrorResume(
+            this.storage.deleteObject(request.storageId()).onErrorResume(
                 err -> this.logRollbackFailure("objeto storageId=" + request.storageId(), err)))
         .then(Mono.defer(() -> {
           if (penalize) {
-            return this.usersWebPort
+            return this.users
                 .reportViolation(code + ": " + reason)
                 .doOnSuccess(v -> log.warn("ROLLBACK: violación registrada para movie={} ({})",
                     movieId, code))

@@ -1,7 +1,7 @@
 package com.guille.media.bff.experience.addmedia.application;
 
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
-import com.guille.media.bff.app.ports.MoviesWebClient;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,7 +17,7 @@ import reactor.core.publisher.Flux;
 @RequiredArgsConstructor
 public class SearchMovieCandidates {
 
-  private final MoviesWebClient movies;
+  private final AddMediaMovies movies;
 
   public Flux<MovieEnrichmentSearchDto> search(String query, Integer year) {
     return this.movies.searchCandidates(query, year);
