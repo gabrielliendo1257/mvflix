@@ -92,6 +92,20 @@ public record AddMediaProcess(
         AddMediaPhase.READY, null, this.version + 1);
   }
 
+  /**
+   * Reclamo de cancelación: bloquea complete/cancel competidores ANTES de
+   * tocar los microservicios. Solo desde fases activas.
+   */
+  public AddMediaProcess cancelling() {
+    if (this.phase != AddMediaPhase.WAITING_FOR_UPLOAD
+        && this.phase != AddMediaPhase.VERIFYING_UPLOAD) {
+      throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.CANCELLING);
+    }
+    return new AddMediaProcess(
+        this.id, this.ownerSubject, this.movieId, this.uploadId,
+        AddMediaPhase.CANCELLING, null, this.version + 1);
+  }
+
   public AddMediaProcess failed(String failureCode) {
     if (this.phase == AddMediaPhase.READY || this.phase == AddMediaPhase.CANCELLED) {
       throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.FAILED);
@@ -101,8 +115,9 @@ public record AddMediaProcess(
         AddMediaPhase.FAILED, failureCode, this.version + 1);
   }
 
+  /** Persiste la cancelación; solo alcanzable desde CANCELLING. */
   public AddMediaProcess cancelled() {
-    if (this.phase == AddMediaPhase.READY || this.phase == AddMediaPhase.CANCELLED) {
+    if (this.phase != AddMediaPhase.CANCELLING) {
       throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.CANCELLED);
     }
     return new AddMediaProcess(

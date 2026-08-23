@@ -53,6 +53,7 @@ public class CompleteProcessAddMedia {
           }
           // Terminales no reabren; sin upload preparado no hay qué verificar.
           if (process.phase() == AddMediaPhase.CANCELLED
+              || process.phase() == AddMediaPhase.CANCELLING
               || process.phase() == AddMediaPhase.FAILED
               || process.phase() == AddMediaPhase.STARTING
               || process.phase() == AddMediaPhase.PREPARING) {

@@ -86,11 +86,18 @@ class AddMediaProcessTest {
 
   @Test
   void cancelIsAllowedWhileWaitingForUpload() {
-    AddMediaProcess cancelled = AddMediaProcess.starting(this.id, "pepe")
+    AddMediaProcess waiting = AddMediaProcess.starting(this.id, "pepe")
         .preparing()
-        .uploadPrepared(1L, 2L)
-        .cancelled();
+        .uploadPrepared(1L, 2L);
 
+    assertThatThrownBy(waiting::cancelled).isInstanceOf(InvalidAddMediaTransition.class);
+
+    // Reclamo de cancelación válido desde fases activas.
+    assertThat(waiting.cancelling().phase()).isEqualTo(AddMediaPhase.CANCELLING);
+    AddMediaProcess verifyingCancel = waiting.verifying().cancelling();
+    assertThat(verifyingCancel.phase()).isEqualTo(AddMediaPhase.CANCELLING);
+
+    AddMediaProcess cancelled = waiting.cancelling().cancelled();
     assertThat(cancelled.phase()).isEqualTo(AddMediaPhase.CANCELLED);
   }
 }

@@ -32,6 +32,12 @@ public interface AddMediaProcessRepository {
    */
   Mono<Boolean> tryClaim(AddMediaId id);
 
+  /**
+   * Reclamo atómico de cancelación desde fases activas
+   * (WAITING_FOR_UPLOAD | VERIFYING_UPLOAD -> CANCELLING).
+   */
+  Mono<Boolean> tryCancelClaim(AddMediaId id);
+
   /** Devuelve un reclamo fallido a STARTING para habilitar el reintento. */
   Mono<AddMediaProcess> releaseClaim(AddMediaId id);
 }

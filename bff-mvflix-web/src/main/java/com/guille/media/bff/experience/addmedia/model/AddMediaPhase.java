@@ -14,5 +14,7 @@ public enum AddMediaPhase {
   FINALIZING,
   READY,
   FAILED,
+  /** Reclamado por una cancelación en curso. */
+  CANCELLING,
   CANCELLED
 }
