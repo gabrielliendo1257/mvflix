@@ -20,7 +20,7 @@ import reactor.core.publisher.Mono;
  * sobre MinIO NO viven aquí: se ejecutan después del commit, en cada flujo.
  */
 @Component
-class TerminalUploadTransition {
+public class TerminalUploadTransition {
 
   private final StorageRepository storageRepository;
   private final UserStorageRepository userStorageRepository;
@@ -41,7 +41,7 @@ class TerminalUploadTransition {
    * {@code IllegalStateTransitionException} si otro hilo ganó la carrera; en
    * ese caso no toca la cuota.
    */
-  Mono<StoreObject> transitionAndRelease(
+  public Mono<StoreObject> transitionAndRelease(
       StoreObject object, StorageSessionStatus expectedStatus) {
     return this.transactionalOperator.transactional(
         this.storageRepository
