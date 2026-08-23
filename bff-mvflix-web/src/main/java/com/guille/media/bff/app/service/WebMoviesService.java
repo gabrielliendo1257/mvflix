@@ -333,6 +333,11 @@ public class WebMoviesService {
     return this.moviesWebClient.updateMovie(movieId, request);
   }
 
+  /** Descarte de un draft creado por el flujo Add Media (compensación). */
+  public Mono<Void> discardDraft(Long movieId) {
+    return this.moviesWebClient.deleteMovie(movieId);
+  }
+
   public Mono<MovieDto> create(CreateMovieRequest request) {
     return this.usersWebPort
         .me()
