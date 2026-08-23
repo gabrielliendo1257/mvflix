@@ -1,0 +1,101 @@
+package com.guille.media.reproductor.uploader.storage.infrastructure.security;
+
+import static org.springframework.security.test.web.reactive.server.SecurityMockServerConfigurers.mockJwt;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.web.reactive.server.WebTestClient;
+
+/**
+ * Matriz de seguridad de la cadena JWT (perfil !sandbox). Sin controladores en
+ * el slice: un request que pasa la capa de seguridad responde 404 (no hay
+ * handler); uno denegado responde 401/403. Protege contra reglas ausentes que
+ * caen silenciosamente en el denyAll final.
+ */
+@WebFluxTest(controllers = StorageSecurityMatrixTest.NoControllers.class)
+@Import(SecurityConfiguration.class)
+@TestPropertySource(
+    properties = {
+      "services.authorization.url=http://authorization.invalid",
+      "api.path.base=/api/v1/movie"
+    })
+class StorageSecurityMatrixTest {
+
+  /** Clase no-controlador: limita el scan del slice a cero controladores. */
+  abstract static class NoControllers {}
+
+  private static final String BASE = "/api/v1/movie/storage";
+
+  @Autowired private WebTestClient client;
+
+  @Test
+  void uploadEndpointsRequireAuthentication() {
+    this.client.post().uri(BASE + "/upload").exchange().expectStatus().isUnauthorized();
+    this.client.get().uri(BASE + "/quota").exchange().expectStatus().isUnauthorized();
+  }
+
+  @Test
+  void provisionRequiresStorageWriteScope() {
+    this.client
+        .post()
+        .uri(BASE + "/users/ana/provision")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+
+    this.client
+        .mutateWith(
+            mockJwt().authorities(new SimpleGrantedAuthority("SCOPE_storage.read")))
+        .post()
+        .uri(BASE + "/users/ana/provision")
+        .exchange()
+        .expectStatus()
+        .isForbidden();
+
+    this.client
+        .mutateWith(
+            mockJwt().authorities(new SimpleGrantedAuthority("SCOPE_storage.write")))
+        .post()
+        .uri(BASE + "/users/ana/provision")
+        .exchange()
+        .expectStatus()
+        .isNotFound();
+  }
+
+  @Test
+  void objectDeleteIsReachableForAuthenticatedUsers() {
+    this.client.delete().uri(BASE + "/42").exchange().expectStatus().isUnauthorized();
+
+    this.client
+        .mutateWith(mockJwt())
+        .delete()
+        .uri(BASE + "/42")
+        .exchange()
+        .expectStatus()
+        .isNotFound();
+  }
+
+  @Test
+  void m2mQuotaEndpointRequiresStorageReadScope() {
+    this.client
+        .mutateWith(mockJwt())
+        .get()
+        .uri(BASE + "/users/pepe/quota")
+        .exchange()
+        .expectStatus()
+        .isForbidden();
+
+    this.client
+        .mutateWith(
+            mockJwt().authorities(new SimpleGrantedAuthority("SCOPE_storage.read")))
+        .get()
+        .uri(BASE + "/users/pepe/quota")
+        .exchange()
+        .expectStatus()
+        .isNotFound();
+  }
+}

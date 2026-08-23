@@ -105,6 +105,13 @@ public class SecurityConfiguration {
                         this.apiPathBase + "/storage/upload",
                         this.apiPathBase + "/storage/upload/*/cancel")
                     .authenticated()
+                    // M2M: aprovisiona user_storage para un usuario (cuota la decide users,
+                    // ver ADR 0001). Tras las reglas de libraries para no sombrearlas.
+                    .pathMatchers(
+                        HttpMethod.POST, this.apiPathBase + "/storage/users/*/provision")
+                    .hasAuthority("SCOPE_storage.write")
+                    .pathMatchers(HttpMethod.DELETE, this.apiPathBase + "/storage/*")
+                    .authenticated()
                     .anyExchange()
                     .denyAll())
         .oauth2ResourceServer(
