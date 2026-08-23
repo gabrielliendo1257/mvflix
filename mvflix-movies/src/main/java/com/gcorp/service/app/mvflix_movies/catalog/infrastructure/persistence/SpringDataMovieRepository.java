@@ -84,6 +84,12 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
+    public Mono<Movie> saveDraftWithAccess(Movie movie) {
+        return this.save(movie).then(this.replaceShares(movie));
+    }
+
+    @Override
     public Mono<Movie> findById(MovieId id) {
         return this.databaseClient
                 .sql(

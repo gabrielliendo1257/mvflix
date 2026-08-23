@@ -10,6 +10,14 @@ public interface MovieRepository {
 
     Mono<Movie> save(Movie movie);
 
+    /**
+     * Alta atómica del borrador identificado: INSERT de la película junto a su
+     * acceso inicial (visibilidad + compartidos) como una sola unidad. La
+     * decisión de negocio la tomó el agregado; acá solo se garantiza que no
+     * exista un instante con película visible pero sin sus shares.
+     */
+    Mono<Movie> saveDraftWithAccess(Movie movie);
+
     Mono<Movie> findById(MovieId id);
 
     /**

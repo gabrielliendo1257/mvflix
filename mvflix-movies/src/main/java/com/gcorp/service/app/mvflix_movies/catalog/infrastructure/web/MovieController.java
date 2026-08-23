@@ -3,6 +3,9 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 import com.gcorp.service.app.mvflix_movies.catalog.application.BulkVisibilityUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CompleteMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateMovieCommand;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedDraftCommand;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedDraftUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.GetMovieUseCase;
@@ -10,10 +13,12 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.ListMoviesUseCase
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityResponse;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CompleteMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateIdentifiedDraftRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichMovieRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichMovieSearchResponse;
@@ -51,6 +56,7 @@ import java.util.List;
 public class MovieController {
 
     private final CreateMovieUseCase createMovieUseCase;
+    private final CreateIdentifiedDraftUseCase createIdentifiedDraftUseCase;
     private final GetMovieUseCase getMovieUseCase;
     private final ListMoviesUseCase listMoviesUseCase;
     private final UpdateVisibilityUseCase updateVisibilityUseCase;
@@ -64,6 +70,7 @@ public class MovieController {
 
     public MovieController(
             CreateMovieUseCase createMovieUseCase,
+            CreateIdentifiedDraftUseCase createIdentifiedDraftUseCase,
             GetMovieUseCase getMovieUseCase,
             ListMoviesUseCase listMoviesUseCase,
             UpdateVisibilityUseCase updateVisibilityUseCase,
@@ -75,6 +82,7 @@ public class MovieController {
             EnrichMovieUseCase enrichMovieUseCase,
             MovieApiMapper mapper) {
         this.createMovieUseCase = createMovieUseCase;
+        this.createIdentifiedDraftUseCase = createIdentifiedDraftUseCase;
         this.getMovieUseCase = getMovieUseCase;
         this.listMoviesUseCase = listMoviesUseCase;
         this.updateVisibilityUseCase = updateVisibilityUseCase;
@@ -93,6 +101,29 @@ public class MovieController {
         return this.createMovieUseCase
                 .execute(new CreateMovieCommand(this.mapper.toMetadata(request), kind))
                 .map(this.mapper::toResponse);
+    }
+
+    /** Alta guiada (Add Media): draft identificado + acceso inicial, atómicos. */
+    @PostMapping(
+        value = "/identified-drafts",
+        consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<MovieResponse> createIdentifiedDraft(
+            @Valid @RequestBody CreateIdentifiedDraftRequest request) {
+        return this.createIdentifiedDraftUseCase
+                .execute(this.toCommand(request))
+                .map(this.mapper::toResponse);
+    }
+
+    private CreateIdentifiedDraftCommand toCommand(CreateIdentifiedDraftRequest request) {
+        MovieMetadata metadata = this.mapper.toMetadata(request.draft());
+        if (request.tmdbId() != null && request.draft().kind() != MediaKind.OTHER) {
+            metadata = metadata.withTmdbId(request.tmdbId());
+        }
+        return new CreateIdentifiedDraftCommand(
+                metadata,
+                request.draft().kind(),
+                request.visibility() == null ? null : MovieVisibility.valueOf(request.visibility()),
+                request.sharedWith() == null ? java.util.List.of() : java.util.List.copyOf(request.sharedWith()));
     }
 
     @GetMapping("/{id}")

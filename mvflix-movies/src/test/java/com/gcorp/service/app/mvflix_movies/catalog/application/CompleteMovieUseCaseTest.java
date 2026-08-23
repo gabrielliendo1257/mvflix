@@ -303,6 +303,11 @@ class CompleteMovieUseCaseTest {
     private Mono<Movie> completeIfDraftResult = unexpectedMono("completeIfDraft");
 
     @Override
+    public Mono<Movie> saveDraftWithAccess(Movie movie) {
+      return unexpectedMono("saveDraftWithAccess");
+    }
+
+    @Override
     public Mono<Movie> save(Movie movie) {
       return unexpectedMono("save");
     }

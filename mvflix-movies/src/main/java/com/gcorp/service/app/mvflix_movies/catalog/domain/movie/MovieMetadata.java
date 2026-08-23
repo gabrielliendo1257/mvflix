@@ -33,6 +33,29 @@ public record MovieMetadata(
     }
 
     /**
+     * Copia identificada: fija el identificador estable del proveedor sin
+     * alterar el resto de la metadata aportada por el usuario o el preview.
+     */
+    public MovieMetadata withTmdbId(Long tmdbId) {
+        return new MovieMetadata(
+                this.title,
+                this.originalTitle,
+                this.year,
+                this.genres,
+                this.popularity,
+                this.duration,
+                this.director,
+                this.cast,
+                this.overview,
+                this.posterPath,
+                this.releaseDate,
+                this.country,
+                this.language,
+                this.awards,
+                tmdbId);
+    }
+
+    /**
      * Desvincula la metadata del proveedor externo: limpia tmdbId, posterPath y
      * popularity (los datos que solo aporta TMDB) y conserva lo que el usuario
      * haya rellenado a mano. Sirve para media que no representa una pelicula.
