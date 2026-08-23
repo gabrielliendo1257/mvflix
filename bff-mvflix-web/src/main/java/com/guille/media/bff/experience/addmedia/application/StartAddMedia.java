@@ -5,6 +5,7 @@ import com.guille.media.bff.app.dto.UploadSessionDto;
 import com.guille.media.bff.app.dto.UserProfile;
 import com.guille.media.bff.app.ports.UsersWebPort;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies.IdentifiedDraft;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
@@ -118,8 +119,14 @@ public class StartAddMedia {
 
   private Mono<AddMediaView> createDraftAndUpload(AddMediaProcess process,
       StartAddMediaRequest request) {
+    var access = request.access();
+    IdentifiedDraft identified = new IdentifiedDraft(
+        request.movie().draft(),
+        request.movie().providerId(),
+        access == null ? null : access.visibility(),
+        access == null ? null : access.sharedWith());
     return this.movies
-        .createDraft(request.movie().draft())
+        .createIdentifiedDraft(identified)
         .flatMap(
             draft ->
                 this.prepareUpload(process, draft.id(), request)

@@ -15,6 +15,7 @@ import com.guille.media.bff.app.dto.UploadSessionDto;
 import com.guille.media.bff.app.dto.UserProfile;
 import com.guille.media.bff.app.ports.UsersWebPort;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies.IdentifiedDraft;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
@@ -75,7 +76,7 @@ class StartAddMediaTest {
 
   @Test
   void happyPathCreatesDraftPreparesUploadAndPersistsWaitingForUpload() {
-    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
 
@@ -90,14 +91,22 @@ class StartAddMediaTest {
         })
         .verifyComplete();
 
-    verify(this.movies).createDraft(any());
+    verify(this.movies).createIdentifiedDraft(any(IdentifiedDraft.class));
     verify(this.storage).prepareUpload(any(UploadCreateRequest.class));
     verify(this.movies, never()).discardDraft(any());
+
+    // La intención del usuario llega COMPLETA a Movies: candidato + acceso.
+    org.mockito.ArgumentCaptor<IdentifiedDraft> captor =
+        org.mockito.ArgumentCaptor.forClass(IdentifiedDraft.class);
+    verify(this.movies, org.mockito.Mockito.atLeastOnce())
+        .createIdentifiedDraft(captor.capture());
+    assertThat(captor.getValue().tmdbId()).isEqualTo(348L);
+    assertThat(captor.getValue().visibility()).isEqualTo("PRIVATE");
   }
 
   @Test
   void replayWithSameIdempotencyKeyReturnsSameProcessWithoutSideEffects() {
-    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
     // El replay renueva las instrucciones en vez de devolver upload=null.
@@ -114,13 +123,13 @@ class StartAddMediaTest {
     assertThat(replay.phase()).isEqualTo(AddMediaPhase.WAITING_FOR_UPLOAD);
     assertThat(replay.upload().url()).isEqualTo("http://minio/fresh");
     // Un solo draft y una sola sesión de upload para el mismo intento.
-    verify(this.movies, org.mockito.Mockito.times(1)).createDraft(any());
+    verify(this.movies, org.mockito.Mockito.times(1)).createIdentifiedDraft(any(IdentifiedDraft.class));
     verify(this.storage, org.mockito.Mockito.times(1)).prepareUpload(any());
   }
 
   @Test
   void concurrentStartsWithSameKeyCreateSideEffectsOnlyOnce() {
-    when(this.movies.createDraft(any())).thenAnswer(
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenAnswer(
         inv -> Mono.delay(java.time.Duration.ofMillis(50)).thenReturn(draft()));
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
@@ -138,7 +147,7 @@ class StartAddMediaTest {
         })
         .verifyComplete();
 
-    verify(this.movies, org.mockito.Mockito.times(1)).createDraft(any());
+    verify(this.movies, org.mockito.Mockito.times(1)).createIdentifiedDraft(any(IdentifiedDraft.class));
     verify(this.storage, org.mockito.Mockito.times(1)).prepareUpload(any());
   }
 
@@ -158,13 +167,13 @@ class StartAddMediaTest {
         })
         .verifyComplete();
 
-    verify(this.movies, never()).createDraft(any());
+    verify(this.movies, never()).createIdentifiedDraft(any(IdentifiedDraft.class));
     verify(this.storage, never()).prepareUpload(any());
   }
 
   @Test
   void storageFailureDiscardsOnlyThisProcessDraftAndPropagates() {
-    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
     when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.error(new RuntimeException("storage unavailable")));
@@ -187,7 +196,7 @@ class StartAddMediaTest {
 
   @Test
   void invalidStorageUploadIdAbortsWithoutPersisting() {
-    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
     when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(new UploadSessionDto("no-es-numerico", "http://minio/put",
@@ -227,7 +236,7 @@ class StartAddMediaTest {
 
     when(this.users.me()).thenReturn(Mono.just(new UserProfile(
         "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 0, false)));
-    when(this.movies.createDraft(any())).thenReturn(Mono.just(draft()));
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
     when(this.storage.cancelUpload(42L)).thenReturn(Mono.empty());

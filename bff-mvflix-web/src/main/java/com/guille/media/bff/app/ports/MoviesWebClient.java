@@ -23,6 +23,10 @@ public interface MoviesWebClient {
 
   Mono<MovieDto> createMovie(CreateMovieRequest request);
 
+  /** Alta guiada: draft identificado con acceso inicial aplicado por Movies. */
+  Mono<MovieDto> createIdentifiedDraft(
+      CreateMovieRequest draft, Long tmdbId, String visibility, java.util.List<String> sharedWith);
+
   /** Transición DRAFT -> READY con el object_id (visible al front) y object_key (solo servidores). */
   Mono<MovieDto> completeMovie(Long movieId, Long objectId, String objectKey);
 

@@ -19,9 +19,18 @@ public interface AddMediaMovies {
 
   Mono<MovieEnrichmentPreviewDto> previewCandidate(Long providerId);
 
-  /** Crea la película en estado DRAFT. La política de usuario bloqueado se
-   * aplica aguas arriba (users); Movies valida visibilidad y catálogo. */
-  Mono<MovieDto> createDraft(CreateMovieRequest draft);
+  /**
+   * Comando de alta guiada para MOVIES: metadata del preview + identidad
+   * TMDB + acceso inicial. Movies aplica y valida todo como una unidad.
+   */
+  record IdentifiedDraft(
+      CreateMovieRequest draft, Long tmdbId, String visibility,
+      java.util.List<String> sharedWith) {}
+
+  /** Crea la película en estado DRAFT ya identificado, con acceso inicial.
+   * La política de usuario bloqueado se aplica aguas arriba (users); Movies
+   * valida visibilidad, compartidos y catálogo. */
+  Mono<MovieDto> createIdentifiedDraft(IdentifiedDraft command);
 
   Mono<MovieDto> getMovie(Long movieId);
 

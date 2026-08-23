@@ -66,6 +66,28 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
+  public Mono<MovieDto> createIdentifiedDraft(
+      CreateMovieRequest draft, Long tmdbId, String visibility,
+      java.util.List<String> sharedWith) {
+    java.util.Map<String, Object> payload = new java.util.HashMap<>();
+    payload.put("draft", draft);
+    payload.put("tmdb_id", tmdbId);
+    if (visibility != null) {
+      payload.put("visibility", visibility);
+    }
+    if (sharedWith != null && !sharedWith.isEmpty()) {
+      payload.put("shared_with", sharedWith);
+    }
+    return this.moviesWebClient
+        .post()
+        .uri(API + "/identified-drafts")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(payload)
+        .retrieve()
+        .bodyToMono(MovieDto.class);
+  }
+
+  @Override
   public Mono<MovieDto> completeMovie(Long movieId, Long objectId, String objectKey) {
     return this.moviesWebClient
         .post()

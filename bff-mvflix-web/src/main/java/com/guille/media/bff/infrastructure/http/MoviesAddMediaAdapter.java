@@ -7,6 +7,8 @@ import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies.IdentifiedDraft;
+
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Component;
@@ -32,8 +34,9 @@ public class MoviesAddMediaAdapter implements AddMediaMovies {
   }
 
   @Override
-  public Mono<MovieDto> createDraft(CreateMovieRequest draft) {
-    return this.delegate.createMovie(draft);
+  public Mono<MovieDto> createIdentifiedDraft(IdentifiedDraft command) {
+    return this.delegate.createIdentifiedDraft(
+        command.draft(), command.tmdbId(), command.visibility(), command.sharedWith());
   }
 
   @Override
