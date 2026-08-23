@@ -36,6 +36,12 @@ public class WebUploadsController {
     return this.webUploadsService.list(limit);
   }
 
+  /**
+   * @deprecated Paso técnico de la coreografía antigua. Usar
+   *             {@code POST /web/add-media}, que devuelve las instrucciones de
+   *             subida junto al proceso completo.
+   */
+  @Deprecated
   @PostMapping(
       produces = MediaType.APPLICATION_JSON_VALUE,
       consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -53,6 +59,12 @@ public class WebUploadsController {
     return this.webUploadsService.cancel(uploadId).thenReturn(ResponseEntity.ok().build());
   }
 
+  /**
+   * @deprecated Finalización de sesión aislada. Usar
+   *             {@code POST /web/add-media/{addMediaId}/complete}, que además
+   *             verifica y persiste la película.
+   */
+  @Deprecated
   @PostMapping("/{uploadId}/complete")
   public Mono<ResponseEntity<Void>> complete(@PathVariable Long uploadId) {
     return this.webUploadsService

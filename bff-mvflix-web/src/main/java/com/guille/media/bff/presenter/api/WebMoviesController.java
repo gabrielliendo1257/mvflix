@@ -109,6 +109,12 @@ public class WebMoviesController {
         .map(job -> ResponseEntity.accepted().body(job));
   }
 
+  /**
+   * @deprecated Parte de la coreografía técnica del alta. Usar
+   *             {@code POST /web/add-media}, que orquesta draft + upload con
+   *             idempotencia y compensaciones.
+   */
+  @Deprecated
   @PostMapping(
       produces = MediaType.APPLICATION_JSON_VALUE,
       consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -116,6 +122,11 @@ public class WebMoviesController {
     return this.webMoviesService.create(request).map(ResponseEntity::ok);
   }
 
+  /**
+   * @deprecated Verificación manual por parte del front. Usar
+   *             {@code POST /web/add-media/{addMediaId}/complete}.
+   */
+  @Deprecated
   @PostMapping(
       value = "/{movieId}/complete",
       produces = MediaType.APPLICATION_JSON_VALUE,
