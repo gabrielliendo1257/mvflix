@@ -81,6 +81,10 @@ public class SecurityConfiguration {
                     .hasAuthority("SCOPE_storage.read")
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload/*/complete")
                     .authenticated()
+                    .pathMatchers(
+                        HttpMethod.POST,
+                        this.apiPathBase + "/storage/upload/*/instructions")
+                    .authenticated()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/streaming")
                     .authenticated()
                     // M2M playback del catálogo: movies/BFF validó visibilidad

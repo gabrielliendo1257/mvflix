@@ -16,6 +16,7 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.excep
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.UploadCancelledByUserException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.ExpectedObjectData;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.MimeType;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageKeyGenerator;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
@@ -108,6 +109,51 @@ public class UploadServiceImpl implements UploadService {
                           return this.createSession(userStorage, command);
                         }))
         .doOnNext(session -> log.info("Upload session created: uploadId={}", session.uploadId()));
+  }
+
+  @Override
+  public Mono<UploadSession> renewInstructions(Long uploadId) {
+    log.info("Renewing upload instructions: uploadId={}", uploadId);
+    return this.userProvider
+        .getAuthenticatedUser()
+        .switchIfEmpty(
+            Mono.error(new AuthenticationCredentialsNotFoundException("No authenticated user")))
+        .flatMap(user -> this.storageRepository
+            .findById(uploadId)
+            .switchIfEmpty(Mono.error(
+                new StorageObjectNotAvailable("Storage object not available: " + uploadId)))
+            .doOnNext(object -> object.ensureOwnedBy(user.subject()))
+            .filter(object -> object.getStorageObjectStatus() == StorageSessionStatus.PENDING)
+            .switchIfEmpty(Mono.error(new IllegalStateTransitionException(
+                "Only PENDING sessions can renew instructions: " + uploadId)))
+            .flatMap(object -> this.userStorageRepository
+                .findByOwnerUsername(object.getOwnerUsername())
+                .switchIfEmpty(Mono.error(new UserStorageNotFoundException(
+                    "No storage registered for user: " + object.getOwnerUsername())))
+                .flatMap(userStorage -> {
+                  StorageLocation location = new StorageLocation(
+                      userStorage.getBucketName(), object.getStorageKey());
+                  UploadConfiguration configuration = this.uploadPolicy.resolve(
+                      object.sizeInBytes(),
+                      MimeType.of(object.contentType()));
+                  PresignedUploadRequest presignedRequest =
+                      new PresignedUploadRequest(configuration.expiration());
+                  presignedRequest.setContentType(MimeType.of(object.contentType()));
+                  return this.objectStoragePort
+                      .createUploadUrl(presignedRequest, location)
+                      .map(permissionUrl -> new UploadSession(
+                          String.valueOf(object.getStorageId()),
+                          permissionUrl.presignedUrl(),
+                          object.getStorageKey(),
+                          permissionUrl.method(),
+                          Instant.now().plus(configuration.expiration()),
+                          object.getStorageObjectStatus(),
+                          new ExpectedObjectData(
+                              object.sizeInBytes(), object.contentType())));
+                }))
+            .doOnNext(session -> log.info(
+                "Upload instructions renewed: uploadId={} expiresAt={}",
+                session.uploadId(), session.expiresAt())));
   }
 
   private Mono<UploadSession> createSession(UserStorage userStorage, CreateUploadCommand command) {

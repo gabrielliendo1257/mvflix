@@ -409,6 +409,66 @@ class UploadServiceImplTest {
   }
 
   @Test
+  void renewInstructionsReturnsFreshUrlForOwnPendingSession() {
+    StoreObject pending = this.pendingObject(9L);
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(9L)).thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe"))
+        .thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.objectStoragePort.createUploadUrl(any(PresignedUploadRequest.class),
+        any(com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageLocation.class)))
+        .thenReturn(Mono.just(new PermissionUrl(
+            "http://minio/fresh", "PUT", java.util.Map.of())));
+
+    StepVerifier.create(this.service.renewInstructions(9L))
+        .assertNext(session -> {
+          assertThat(session.uploadId()).isEqualTo("9");
+          assertThat(session.uploadUrl()).isEqualTo("http://minio/fresh");
+          assertThat(session.method()).isEqualTo("PUT");
+          assertThat(session.currentStatus()).isEqualTo(StorageSessionStatus.PENDING);
+        })
+        .verifyComplete();
+
+    // Renovar NO toca cuota ni estado: la reserva original sigue vigente.
+    verify(this.userStorageRepository, never()).consumeStorage(anyString(), anyLong());
+    verify(this.storageRepository, never())
+        .updateStatus(any(StoreObject.class), any(StorageSessionStatus.class));
+  }
+
+  @Test
+  void renewInstructionsRejectsNonOwner() {
+    StoreObject anasPending = this.objectOwnedBy(9L, StorageSessionStatus.PENDING, "ana");
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(9L)).thenReturn(Mono.just(anasPending));
+
+    StepVerifier.create(this.service.renewInstructions(9L))
+        .expectError(
+            com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable.class)
+        .verify();
+
+    verify(this.objectStoragePort, never())
+        .createUploadUrl(any(PresignedUploadRequest.class), any());
+  }
+
+  @Test
+  void renewInstructionsRejectsNonPendingSession() {
+    StoreObject completed = this.completedObject(9L);
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(9L)).thenReturn(Mono.just(completed));
+
+    StepVerifier.create(this.service.renewInstructions(9L))
+        .expectError(
+            com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.IllegalStateTransitionException.class)
+        .verify();
+
+    verify(this.objectStoragePort, never())
+        .createUploadUrl(any(PresignedUploadRequest.class), any());
+  }
+
+  @Test
   void cancelUploadRejectsNonOwnerWithoutLeakingExistence() {
     StoreObject anasPendingUpload = this.objectOwnedBy(7L, StorageSessionStatus.PENDING, "ana");
 

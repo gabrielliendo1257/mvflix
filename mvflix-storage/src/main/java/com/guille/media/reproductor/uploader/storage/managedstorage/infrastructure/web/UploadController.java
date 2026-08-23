@@ -60,6 +60,18 @@ public class UploadController {
         .map(ResponseEntity::ok);
   }
 
+  /** Regenera instrucciones de subida para una sesión PENDING propia. */
+  @PostMapping(
+      value = "/upload/{uploadId}/instructions",
+      produces = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<ResponseEntity<UploadResponse>> renewInstructions(
+      @PathVariable Long uploadId) {
+    return this.uploadService
+        .renewInstructions(uploadId)
+        .map(this.uploadMapper::toUploadResponse)
+        .map(ResponseEntity::ok);
+  }
+
   @PostMapping(value = "/upload/{uploadId}/cancel")
   public Mono<ResponseEntity<Void>> cancelUpload(@PathVariable Long uploadId) {
     return this.uploadService.cancelUpload(uploadId).thenReturn(ResponseEntity.ok().build());

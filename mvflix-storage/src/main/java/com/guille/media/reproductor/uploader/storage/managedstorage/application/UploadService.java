@@ -12,6 +12,14 @@ import reactor.core.publisher.Mono;
 public interface UploadService {
   Mono<UploadSession> createUploadSession(CreateUploadCommand command);
 
+  /**
+   * Regenera las instrucciones de subida (presigned PUT fresco) para una
+   * sesión PENDING propia. Permite que un cliente que perdió la respuesta
+   * original (recarga, caída de red) pueda subir sin crear otra sesión ni
+   * reservar cuota dos veces.
+   */
+  Mono<UploadSession> renewInstructions(Long uploadId);
+
   /** Lista las últimas sesiones de subida del usuario autenticado. */
   Flux<UploadSummary> listUploads(int limit);
 
