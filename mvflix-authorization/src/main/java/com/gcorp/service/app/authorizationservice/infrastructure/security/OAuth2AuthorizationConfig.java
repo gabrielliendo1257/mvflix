@@ -115,6 +115,21 @@ public class OAuth2AuthorizationConfig {
 			repository.save(storageServiceRegisteredClient);
 		}
 
+		// Machine-client de playback: Movies/BFF lo usa para pedir bytes a
+		// Storage (POST /catalog/streaming) tras validar visibilidad, con el
+		// scope dedicado storage.stream. Client_credentials puro: sin usuario.
+		if (repository.findByClientId("movies-playback") == null) {
+			var playbackServiceRegisteredClient = RegisteredClient.withId("movies-playback-app")
+					.clientId("movies-playback")
+					.clientSecret(passwordEncoder.encode(
+							this.oauth2PropertiesConfig.getFrontClientSecret()))
+					.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+					.scope("storage.stream")
+					.build();
+			log.info("Playback machine client registered: {}", playbackServiceRegisteredClient);
+			repository.save(playbackServiceRegisteredClient);
+		}
+
 		return repository;
 	}
 
