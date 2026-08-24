@@ -24,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -47,8 +48,25 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class WebMoviesService {
+
+  public WebMoviesService(
+      MoviesWebClient moviesWebClient,
+      StorageWebClient storageWebClient,
+      UsersWebPort usersWebPort,
+      StreamTicketService streamTicketService,
+      JobStore jobStore,
+      WebSessionService webSessionService,
+      com.guille.media.bff.experience.addmedia.application.CompleteAddMedia addMediaCompletion) {
+    this.moviesWebClient = moviesWebClient;
+    this.storageWebClient = storageWebClient;
+    this.usersWebPort = usersWebPort;
+    this.streamTicketService = streamTicketService;
+    this.jobStore = jobStore;
+    this.webSessionService = webSessionService;
+    this.addMediaCompletion = addMediaCompletion;
+  }
+
 
   private static final int PENDING_RETRIES = 3;
 
@@ -90,6 +108,12 @@ public class WebMoviesService {
     if (movie.objectId() == null) {
       return this.localPlaybackFor(movie);
     }
+    // PRIVATE: preview del dueño (user token; storage hace ensureOwnedBy).
+    // PUBLIC/SHARED: playback M2M de catálogo (scope storage.stream); la
+    // autorización fina la aplica Movies al servir el detalle.
+    // PENDIENTE (M2M): cuando el BFF tenga client-credentials configurado,
+    // PUBLIC/SHARED deben ir por /catalog/streaming con scope storage.stream.
+    // Hoy todo va por /streaming con el token del usuario autenticado.
     return this.storageWebClient
         .stream(String.valueOf(movie.objectId()))
         .map(session -> new PlaybackDto(true, session.streamingUrl()))

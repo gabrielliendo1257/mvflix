@@ -68,6 +68,14 @@ public class StorageWebClientAdapter implements StorageWebClient {
   }
 
   @Override
+  public Mono<StreamingSessionDto> catalogStream(String objectId) {
+    return this.postBody(
+        API + "/catalog/streaming",
+        new com.guille.media.bff.app.dto.StreamingRequest(objectId),
+        StreamingSessionDto.class);
+  }
+
+  @Override
   public Mono<Void> cancelUpload(Long uploadId) {
     return this.postAndDiscard(API + "/upload/" + uploadId + "/cancel");
   }
@@ -190,12 +198,20 @@ public class StorageWebClientAdapter implements StorageWebClient {
         .bodyToMono(type);
   }
 
+
   private <T> Mono<T> post(String uri, Class<T> type) {
     return this.storageWebClient
         .post()
         .uri(uri)
         .retrieve()
         .bodyToMono(type);
+  }
+
+  private <T> Mono<T> postBody(String uri, Object body, Class<T> type) {
+    var spec = this.storageWebClient.post().uri(uri)
+        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+        .bodyValue(body);
+    return spec.retrieve().bodyToMono(type);
   }
 
   private Mono<Void> postAndDiscard(String uri) {

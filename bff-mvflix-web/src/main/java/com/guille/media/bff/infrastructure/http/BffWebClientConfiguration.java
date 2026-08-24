@@ -13,6 +13,7 @@ import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizationContext;
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProvider;
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientProviderBuilder;
+import com.guille.media.bff.app.ports.StorageWebClient;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
@@ -180,6 +181,7 @@ public class BffWebClientConfiguration {
   }
 
   @Bean
+  @org.springframework.context.annotation.Primary
   WebClient storageWebClient(
       ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
       ObjectProvider<ExchangeFilterFunction> devOutboundAuthFilter,
@@ -192,6 +194,22 @@ public class BffWebClientConfiguration {
         this.outboundAuthFilter(oauth2AuthorizedClientFilter, devOutboundAuthFilter, oauth2AccessTokenRefreshFilter),
         connectTimeoutMs,
         responseTimeoutMs);
+  }
+
+  /** WebClient M2M con Bearer del machine-client movies-playback. */
+  @Bean
+  WebClient playbackWebClient(
+      StoragePlaybackTokenProvider tokenProvider,
+      @Value("${services.storage.url}") String storageUrl,
+      @Value("${bff.webclient.connect-timeout-ms:2000}") int connectTimeoutMs,
+      @Value("${bff.webclient.response-timeout-ms:10000}") long responseTimeoutMs) {
+    var bearerFilter = org.springframework.web.reactive.function.client.ExchangeFilterFunction
+        .ofRequestProcessor(request -> tokenProvider.token().map(token ->
+            org.springframework.web.reactive.function.client.ClientRequest
+                .from(request)
+                .headers(h -> h.setBearerAuth(token))
+                .build()));
+    return this.build(storageUrl, bearerFilter, connectTimeoutMs, responseTimeoutMs);
   }
 
   @Bean

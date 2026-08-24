@@ -37,6 +37,9 @@ public interface StorageWebClient {
   /** Sesión de streaming (URL firmada) del objeto ya subido al object store. */
   Mono<StreamingSessionDto> stream(String objectId);
 
+  /** Playback M2M de catálogo: requiere scope storage.stream (movies-playback). */
+  Mono<StreamingSessionDto> catalogStream(String objectId);
+
   /** Rollback: borra el objeto en el object store y restaura la cuota del usuario. */
   Mono<Void> deleteObject(Long storageId);
 
