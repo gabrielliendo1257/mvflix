@@ -16,8 +16,7 @@ import com.guille.media.bff.app.dto.MovieVisibilityRequest;
 import com.guille.media.bff.app.dto.MoviesCompletePayload;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 
-import lombok.RequiredArgsConstructor;
-
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -29,12 +28,15 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-@RequiredArgsConstructor
 public class MoviesWebClientAdapter implements MoviesWebClient {
 
   private static final String API = "/api/v1/movies";
 
   private final WebClient moviesWebClient;
+
+  public MoviesWebClientAdapter(@Qualifier("moviesWebClient") WebClient moviesWebClient) {
+    this.moviesWebClient = moviesWebClient;
+  }
 
   @Override
   public Flux<MovieDto> listMovies(int limit) {

@@ -11,8 +11,7 @@ import com.guille.media.bff.app.dto.UploadSessionDto;
 import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.ports.StorageWebClient;
 
-import lombok.RequiredArgsConstructor;
-
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -25,12 +24,15 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 @Component
-@RequiredArgsConstructor
 public class StorageWebClientAdapter implements StorageWebClient {
 
   private static final String API = "/api/v1/movie/storage";
 
   private final WebClient storageWebClient;
+
+  public StorageWebClientAdapter(@Qualifier("storageWebClient") WebClient storageWebClient) {
+    this.storageWebClient = storageWebClient;
+  }
 
   @Override
   public Mono<QuotaSnapshot> quota() {

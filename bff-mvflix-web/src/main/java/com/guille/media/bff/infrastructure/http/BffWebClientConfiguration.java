@@ -181,7 +181,6 @@ public class BffWebClientConfiguration {
   }
 
   @Bean
-  @org.springframework.context.annotation.Primary
   WebClient storageWebClient(
       ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
       ObjectProvider<ExchangeFilterFunction> devOutboundAuthFilter,
