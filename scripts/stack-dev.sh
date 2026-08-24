@@ -5,24 +5,48 @@
 #
 #   ./scripts/stack-dev.sh start | stop | status
 #
-# Requiere: docker compose up (postgres+minio) y, opcionalmente, TMDB_API_TOKEN
-# exportado para que el enriquecimiento funcione.
+# Requiere: PostgreSQL y MinIO accesibles (locales o configurados en envs/.env)
+# y, opcionalmente, TMDB_API_TOKEN para que el enriquecimiento funcione.
 set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+ENV_FILE="${PROJECT_ROOT}/envs/.env"
 
 # Credenciales privadas de dev (TMDB, etc.) desde envs/.env (gitignored).
 # Quedan en el entorno para que las apps las lean via ${VAR:default}.
-set -a
-# shellcheck disable=SC1091
-source "$(dirname "$0")/../envs/.env"
-set +a
+if [ -f "${ENV_FILE}" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${ENV_FILE}"
+  set +a
+else
+  echo "[WARN] ${ENV_FILE} no existe; se usaran los defaults de dev"
+fi
+
+cd "${PROJECT_ROOT}"
+
+if [ -x "${PROJECT_ROOT}/mvnw" ]; then
+  MVN_CMD="${PROJECT_ROOT}/mvnw"
+elif command -v mvn >/dev/null 2>&1; then
+  MVN_CMD="$(command -v mvn)"
+else
+  echo "No se encontro Maven ni ${PROJECT_ROOT}/mvnw" >&2
+  exit 1
+fi
 
 AUTH_PORT=9090
 USERS_PORT=8080
 STORAGE_PORT=6060
 MOVIES_PORT=4040
 BFF_PORT=9091
-LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mvflix-dev/logs"
-mkdir -p "$LOG_DIR"
+DB_TARGET_HOST="${DB_HOST:-127.0.0.1}"
+DB_TARGET_PORT="${DB_PORT:-5432}"
+MINIO_TARGET_URL="${MINIO_URL:-http://127.0.0.1:9000}"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mvflix-dev"
+LOG_DIR="${STATE_DIR}/logs"
+PID_DIR="${STATE_DIR}/pids"
+mkdir -p "${LOG_DIR}" "${PID_DIR}"
 
 declare -A SERVICES=(
   [mvflix-authorization]=$AUTH_PORT
@@ -36,7 +60,7 @@ wait_port() {
   local port=$1
   local name=$2
   for _ in $(seq 1 90); do
-    if curl -s -o /dev/null "http://127.0.0.1:${port}/" 2>/dev/null; then
+    if http_responding "${port}"; then
       return 0
     fi
     sleep 1
@@ -44,49 +68,112 @@ wait_port() {
   echo "  [WARN] ${name} no respondio en 90s (revisa ${LOG_DIR}/stack-${name}.log)"
 }
 
+http_responding() {
+  local port=$1
+  url_responding "http://127.0.0.1:${port}/"
+}
+
+url_responding() {
+  local url=$1
+  curl --silent --output /dev/null --connect-timeout 1 --max-time 2 \
+    "${url}" 2>/dev/null
+}
+
+tcp_open() {
+  local host=$1
+  local port=$2
+  if command -v timeout >/dev/null 2>&1; then
+    timeout 2 bash -c 'exec 3<>"/dev/tcp/${1}/${2}"' _ "${host}" "${port}" 2>/dev/null
+  else
+    (exec 3<>"/dev/tcp/${host}/${port}") 2>/dev/null
+  fi
+}
+
 port_free() {
-  ! ss -tln 2>/dev/null | grep -q ":${1} "
+  ! tcp_open 127.0.0.1 "$1"
+}
+
+pid_file() {
+  printf '%s/%s.pid\n' "${PID_DIR}" "$1"
+}
+
+managed_pid() {
+  local name=$1
+  local file
+  local pid
+  file="$(pid_file "${name}")"
+  [ -f "${file}" ] || return 1
+  read -r pid < "${file}" || return 1
+  [[ "${pid}" =~ ^[0-9]+$ ]] || return 1
+  kill -0 "${pid}" 2>/dev/null || return 1
+  if command -v ps >/dev/null 2>&1; then
+    local command_line
+    command_line="$(ps -p "${pid}" -o args= 2>/dev/null || true)"
+    [[ "${command_line}" == *"${name}"* ]] || return 1
+  fi
+  printf '%s\n' "${pid}"
 }
 
 start_one() {
   local name=$1
   local port=${SERVICES[$name]}
+  local pid
+  if pid="$(managed_pid "${name}")"; then
+    echo "  [SKIP] ${name} ya fue iniciado por este script (pid ${pid})"
+    return
+  fi
   if ! port_free "$port"; then
     echo "  [SKIP] ${name} ya escucha en :${port} (instancia tuya? no la toco)"
     return
   fi
   echo "  [START] ${name} (dev) en :${port} ..."
-  TMDB_API_TOKEN="${TMDB_API_TOKEN:-}" nohup mvn -q -pl "${name}" spring-boot:run \
+  TMDB_API_TOKEN="${TMDB_API_TOKEN:-}" nohup "${MVN_CMD}" -q -pl "${name}" spring-boot:run \
     -Dspring-boot.run.profiles=dev > "${LOG_DIR}/stack-${name}.log" 2>&1 &
+  pid=$!
+  printf '%s\n' "${pid}" > "$(pid_file "${name}")"
+}
+
+terminate_tree() {
+  local pid=$1
+  local child
+  if command -v pgrep >/dev/null 2>&1; then
+    while read -r child; do
+      [ -n "${child}" ] && terminate_tree "${child}"
+    done < <(pgrep -P "${pid}" 2>/dev/null || true)
+  fi
+  kill "${pid}" 2>/dev/null || true
 }
 
 stop_one() {
   local name=$1
   local port=${SERVICES[$name]}
-  if port_free "$port"; then
-    echo "  [STOP] ${name}: :${port} ya estaba libre"
+  local pid
+  local file
+  file="$(pid_file "${name}")"
+  if pid="$(managed_pid "${name}")"; then
+    terminate_tree "${pid}"
+    rm -f "${file}"
+    echo "  [STOP] ${name} (pid raiz ${pid})"
     return
   fi
-  local pid
-  pid=$(ss -tlnp 2>/dev/null | grep ":${port} " | grep -oP 'pid=\K[0-9]+' | head -1)
-  if [ -n "$pid" ]; then
-    kill "$pid" 2>/dev/null || true
-    echo "  [STOP] ${name} (pid ${pid})"
+  rm -f "${file}"
+  if port_free "${port}"; then
+    echo "  [STOP] ${name}: :${port} ya estaba libre"
   else
-    echo "  [STOP] ${name}: sin pid visible en :${port}"
+    echo "  [SKIP] ${name}: :${port} pertenece a una instancia no gestionada"
   fi
 }
 
 start() {
-  if ! ss -tln 2>/dev/null | grep -q ":5432 "; then
-    echo "postgres no esta escuchando en :5432 -> make up-dev"
+  if ! tcp_open "${DB_TARGET_HOST}" "${DB_TARGET_PORT}"; then
+    echo "postgres no responde en ${DB_TARGET_HOST}:${DB_TARGET_PORT} -> revisa envs/.env"
   fi
-  if ! ss -tln 2>/dev/null | grep -q ":9000 "; then
-    echo "minio no esta escuchando en :9000 -> make up-dev"
+  if ! url_responding "${MINIO_TARGET_URL}"; then
+    echo "minio no responde en ${MINIO_TARGET_URL} -> revisa envs/.env"
   fi
 
   echo "== Compilando e instalando modulos compartidos =="
-  mvn -q -pl mvflix-devseed -am install -DskipTests
+  "${MVN_CMD}" -q -pl mvflix-devseed -am install -DskipTests
 
   echo "== Arrancando auth (obligatorio antes del BFF) =="
   start_one mvflix-authorization
@@ -126,12 +213,29 @@ stop() {
 
 status() {
   echo "== Estado del stack dev =="
+  if tcp_open "${DB_TARGET_HOST}" "${DB_TARGET_PORT}"; then
+    echo "  postgres: UP (${DB_TARGET_HOST}:${DB_TARGET_PORT})"
+  else
+    echo "  postgres: DOWN (${DB_TARGET_HOST}:${DB_TARGET_PORT})"
+  fi
+  if url_responding "${MINIO_TARGET_URL}"; then
+    echo "  minio: UP (${MINIO_TARGET_URL})"
+  else
+    echo "  minio: DOWN (${MINIO_TARGET_URL})"
+  fi
   for name in mvflix-authorization mvflix-users mvflix-storage mvflix-movies bff-mvflix-web; do
     local port=${SERVICES[$name]}
-    if port_free "$port"; then
-      echo "  ${name}: DOWN (:${port})"
+    local pid
+    if http_responding "${port}"; then
+      if pid="$(managed_pid "${name}")"; then
+        echo "  ${name}: UP (:${port}, pid ${pid})"
+      else
+        echo "  ${name}: UP (:${port}, proceso externo)"
+      fi
+    elif pid="$(managed_pid "${name}")"; then
+      echo "  ${name}: STARTING/UNHEALTHY (:${port}, pid ${pid})"
     else
-      echo "  ${name}: UP (:${port})"
+      echo "  ${name}: DOWN (:${port})"
     fi
   done
 }

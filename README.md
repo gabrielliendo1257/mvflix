@@ -96,6 +96,23 @@ make sandbox-test                      # smoke test del storage (perfil sandbox)
 `AUTHORIZATION_ISSUER_URL` (9090), `SERVICES_USERS_URL` (8080), `SERVICES_STORAGE_URL` (6060),
 `MINIO_URL` (9000), `BFF_ADDRESS` (http://127.0.0.1:9091, redirect del cliente OAuth2).
 
+### Ejecutar las aplicaciones desde Termux
+
+En Termux nativo, prepara Java 21 y las herramientas del proyecto con:
+
+```bash
+chmod +x scripts/setup-termux.sh
+./scripts/setup-termux.sh
+```
+
+Luego configura `envs/.env` y usa `./scripts/stack-dev.sh start|status|stop`.
+El estado no depende de `ss`: Android restringe la relacion entre sockets y
+procesos, por lo que el script utiliza probes HTTP/TCP y guarda los PID de los
+procesos que el mismo inicia.
+
+PostgreSQL y MinIO deben ejecutarse en un host accesible (o en un entorno Linux
+con Docker); Docker Compose no esta soportado directamente por Termux nativo.
+
 ### Levantar en LAN (192.168.x.x, desde otro equipo/telefono)
 
 Todo el stack corre en una maquina; el navegador (en otra maquina) solo ve **front (4200)**,
