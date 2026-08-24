@@ -15,11 +15,13 @@ import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
 import com.guille.media.bff.app.ports.UsersWebPort;
+import com.guille.media.bff.infrastructure.http.StoragePlaybackTokenProvider;
 import com.guille.media.bff.app.service.WebSessionService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import reactor.core.publisher.Mono;
@@ -39,6 +41,8 @@ class WebMoviesServiceCompleteFlowTest {
   private final MoviesWebClient moviesWebClient = mock(MoviesWebClient.class);
   private final StorageWebClient storageWebClient = mock(StorageWebClient.class);
   private final UsersWebPort usersWebPort = mock(UsersWebPort.class);
+  private final StoragePlaybackTokenProvider playbackTokenProvider = mock(StoragePlaybackTokenProvider.class);
+  private final WebClient playbackWebClient = mock(WebClient.class);
         private final WebSessionService webSessionService = mock(WebSessionService.class);
 
   private WebMoviesService service;
@@ -62,7 +66,8 @@ class WebMoviesServiceCompleteFlowTest {
                     this.moviesWebClient),
                 new com.guille.media.bff.infrastructure.http.StorageAddMediaAdapter(
                     this.storageWebClient),
-                this.usersWebPort));
+                this.usersWebPort),
+            null, null);
   }
 
   private static MovieDto movie(Long id, String status) {

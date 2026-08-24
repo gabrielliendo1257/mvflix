@@ -23,8 +23,10 @@ import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.beans.factory.annotation.Qualifier;
+import com.guille.media.bff.infrastructure.http.StoragePlaybackTokenProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
@@ -57,7 +59,10 @@ public class WebMoviesService {
       StreamTicketService streamTicketService,
       JobStore jobStore,
       WebSessionService webSessionService,
-      com.guille.media.bff.experience.addmedia.application.CompleteAddMedia addMediaCompletion) {
+      com.guille.media.bff.experience.addmedia.application.CompleteAddMedia addMediaCompletion,
+      StoragePlaybackTokenProvider playbackTokenProvider,
+      @org.springframework.beans.factory.annotation.Qualifier("playbackWebClient")
+      WebClient playbackWebClient) {
     this.moviesWebClient = moviesWebClient;
     this.storageWebClient = storageWebClient;
     this.usersWebPort = usersWebPort;
@@ -65,6 +70,8 @@ public class WebMoviesService {
     this.jobStore = jobStore;
     this.webSessionService = webSessionService;
     this.addMediaCompletion = addMediaCompletion;
+    this.playbackTokenProvider = playbackTokenProvider;
+    this.playbackWebClient = playbackWebClient;
   }
 
 
@@ -83,6 +90,9 @@ public class WebMoviesService {
   private final JobStore jobStore;
   private final WebSessionService webSessionService;
   private final com.guille.media.bff.experience.addmedia.application.CompleteAddMedia addMediaCompletion;
+  private final StoragePlaybackTokenProvider playbackTokenProvider;
+  private final @org.springframework.beans.factory.annotation.Qualifier("playbackWebClient")
+      WebClient playbackWebClient;
 
   public Flux<MovieListItemDto> list(int limit) {
     return this.moviesWebClient
@@ -111,16 +121,36 @@ public class WebMoviesService {
     // PRIVATE: preview del dueño (user token; storage hace ensureOwnedBy).
     // PUBLIC/SHARED: playback M2M de catálogo (scope storage.stream); la
     // autorización fina la aplica Movies al servir el detalle.
-    // PENDIENTE (M2M): cuando el BFF tenga client-credentials configurado,
-    // PUBLIC/SHARED deben ir por /catalog/streaming con scope storage.stream.
-    // Hoy todo va por /streaming con el token del usuario autenticado.
-    return this.storageWebClient
-        .stream(String.valueOf(movie.objectId()))
-        .map(session -> new PlaybackDto(true, session.streamingUrl()))
+    // PRIVATE: preview del dueño (user token; storage hace ensureOwnedBy).
+    // PUBLIC/SHARED: M2M presigned (scope storage.stream) sin identidad de usuario.
+    if ("PRIVATE".equals(movie.visibility())) {
+      return this.storageWebClient
+          .stream(String.valueOf(movie.objectId()))
+          .map(session -> new PlaybackDto(true, session.streamingUrl()))
+          .onErrorResume(error -> Mono.just(new PlaybackDto(false, null)));
+    }
+    return this.m2mPlayback(movie.objectId())
+        .map(url -> new PlaybackDto(true, url))
         .doOnError(error -> log.warn(
-            "detail: movie={} playback no disponible: {}",
+            "detail: movie={} m2m playback no disponible: {}",
             movie.id(), error.getMessage()))
         .onErrorResume(error -> Mono.just(new PlaybackDto(false, null)));
+  }
+
+  /**
+   * Presigned GET directo contra Storage usando el machine-client. Sin
+   * sesión de usuario: el BFF ya validó visibilidad al servir el detalle.
+   */
+  private Mono<String> m2mPlayback(Long objectId) {
+    return this.playbackTokenProvider.token().flatMap(token ->
+        this.playbackWebClient.post()
+            .uri("/api/v1/movie/storage/catalog/streaming")
+            .headers(h -> h.setBearerAuth(token))
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .bodyValue(java.util.Map.of("objectId", String.valueOf(objectId)))
+            .retrieve()
+            .bodyToMono(com.guille.media.bff.app.dto.StreamingSessionDto.class)
+            .map(session -> session.streamingUrl()));
   }
 
   /**
