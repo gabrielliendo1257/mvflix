@@ -1,14 +1,17 @@
-package com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.policy;
+package com.guille.media.reproductor.uploader.storage.managedstorage.domain.policy;
 
-import com.guille.media.reproductor.uploader.storage.managedstorage.application.error.UploadSizeExceededException;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UploadConfiguration;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.policy.UploadPolicy;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.UploadSizeExceededException;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.UnsupportedMimeTypeException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.MimeType;
-import com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.policy.UnsupportedMimeTypeException;
-import java.time.Duration;
-import org.springframework.stereotype.Service;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UploadConfiguration;
 
-@Service
+import java.time.Duration;
+
+/**
+ * Política de ingesta del contexto: tamaños, MIME soportados y expiración de
+ * la sesión. Reglas de DOMINIO puras (sin Spring); se registra como bean en
+ * {@code ManagedStorageBeanConfiguration}.
+ */
 public class DefaultUploadPolicy implements UploadPolicy {
 
   private static final long KB = 1024L;

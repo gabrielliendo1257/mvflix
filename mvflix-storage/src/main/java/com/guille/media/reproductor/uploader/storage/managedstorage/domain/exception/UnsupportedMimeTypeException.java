@@ -1,4 +1,4 @@
-package com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.policy;
+package com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception;
 
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.MimeType;
 

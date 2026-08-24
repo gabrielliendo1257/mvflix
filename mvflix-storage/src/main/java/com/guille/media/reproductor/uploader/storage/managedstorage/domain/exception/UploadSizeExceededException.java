@@ -1,4 +1,4 @@
-package com.guille.media.reproductor.uploader.storage.managedstorage.application.error;
+package com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception;
 
 import lombok.Getter;
 
