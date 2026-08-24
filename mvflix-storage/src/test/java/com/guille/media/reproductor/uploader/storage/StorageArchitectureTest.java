@@ -73,6 +73,37 @@ class StorageArchitectureTest {
           .resideInAnyPackage("..storage.managedstorage..", "..storage.library..");
 
   @ArchTest
+  static final ArchRule library_domain_is_pure =
+      noClasses()
+          .that()
+          .resideInAPackage("..storage.library.domain..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage(
+              "..storage.library.application..",
+              "..storage.library.infrastructure..",
+              "org.springframework..",
+              "java.nio.file..");
+
+  @ArchTest
+  static final ArchRule library_application_does_not_reach_infrastructure =
+      noClasses()
+          .that()
+          .resideInAPackage("..storage.library.application..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAPackage("..storage.library.infrastructure..");
+
+  @ArchTest
+  static final ArchRule managedstorage_domain_has_no_filesystem =
+      noClasses()
+          .that()
+          .resideInAPackage("..storage.managedstorage.domain..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAPackage("java.nio.file..");
+
+  @ArchTest
   static final ArchRule bounded_contexts_are_acyclic =
       slices().matching("com.guille.media.reproductor.uploader.storage.(*)..")
           .should().beFreeOfCycles();
