@@ -5,7 +5,7 @@ services:
 
     ports:
       - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9001:9001"
 
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?define MINIO_ROOT_USER en infra/docker/.env}
@@ -62,7 +62,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?define POSTGRES_PASSWORD en infra/docker/.env}
       POSTGRES_DB: ${POSTGRES_DB:-mvflix_app}
     ports:
-    - "5432:5432"
+    - "127.0.0.1:5432:5432"
     volumes:
       - pg_volume:/var/lib/postgresql/data:rw
       - ../postgres/postgres.conf:/etc/postgresql/postgresql.conf:ro
