@@ -2,6 +2,7 @@ package com.guille.media.bff.app.service;
 
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.bff.app.dto.DiscoveredFileDto;
@@ -28,6 +29,13 @@ class WebLibraryServiceTest {
 
   @Mock private StorageWebClient storageWebClient;
   @Mock private MoviesWebClient moviesWebClient;
+  @Mock private WebSessionService webSessionService;
+
+  @org.junit.jupiter.api.BeforeEach
+  void setUpSession() {
+    lenient().when(webSessionService.currentSubject())
+        .thenReturn(reactor.core.publisher.Mono.just("pepe"));
+  }
   @Spy private JobStore jobStore = new JobStore();
 
   @InjectMocks private WebLibraryService service;

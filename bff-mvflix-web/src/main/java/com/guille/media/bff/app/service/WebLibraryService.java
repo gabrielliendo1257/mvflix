@@ -31,6 +31,7 @@ public class WebLibraryService {
   private final StorageWebClient storageWebClient;
   private final MoviesWebClient moviesWebClient;
   private final JobStore jobStore;
+  private final WebSessionService webSessionService;
 
   public Flux<LibraryDto> libraries() {
     return this.storageWebClient.listLibraries();
@@ -55,16 +56,21 @@ public class WebLibraryService {
    */
   public Mono<MediaAssetPageDto> scan(Long libraryId, int page, int size) {
     log.info("scan: biblioteca={} page={} size={}", libraryId, page, size);
-    String jobId = UUID.randomUUID().toString();
-    Job job = this.jobStore.start(jobId, JobType.SCAN);
-    return this.storageWebClient
-        .listLibraryFiles(libraryId)
-        .collectList()
-        .flatMap(files -> this.reconcile(libraryId, files).collectList())
-        .map(all -> paginate(all, page, size))
-        .doOnSuccess(result -> this.jobStore.complete(jobId,
-            job.completed((int) result.total(), (int) result.total(), 0)))
-        .doOnError(error -> this.jobStore.complete(jobId, job.failed(0, 0, 0)));
+    return this.webSessionService
+        .currentSubject()
+        .defaultIfEmpty("anonymous")
+        .flatMap(owner -> {
+          String jobId = UUID.randomUUID().toString();
+          Job job = this.jobStore.start(jobId, owner, JobType.SCAN);
+          return this.storageWebClient
+              .listLibraryFiles(libraryId)
+              .collectList()
+              .flatMap(files -> this.reconcile(libraryId, files).collectList())
+              .map(all -> paginate(all, page, size))
+              .doOnSuccess(result -> this.jobStore.complete(jobId,
+                  job.completed((int) result.total(), (int) result.total(), 0)))
+              .doOnError(error -> this.jobStore.complete(jobId, job.failed(0, 0, 0)));
+        });
   }
 
   /** Cancela el escaneo en curso: el scanner corta en el siguiente archivo. */

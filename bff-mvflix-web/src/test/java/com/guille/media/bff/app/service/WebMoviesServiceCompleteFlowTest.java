@@ -15,6 +15,7 @@ import com.guille.media.bff.app.dto.UploadStatusDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
 import com.guille.media.bff.app.ports.UsersWebPort;
+import com.guille.media.bff.app.service.WebSessionService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,7 @@ class WebMoviesServiceCompleteFlowTest {
   private final MoviesWebClient moviesWebClient = mock(MoviesWebClient.class);
   private final StorageWebClient storageWebClient = mock(StorageWebClient.class);
   private final UsersWebPort usersWebPort = mock(UsersWebPort.class);
+        private final WebSessionService webSessionService = mock(WebSessionService.class);
 
   private WebMoviesService service;
 
@@ -54,6 +56,7 @@ class WebMoviesServiceCompleteFlowTest {
             this.usersWebPort,
             new StreamTicketService("test-secret", 300),
             new JobStore(),
+            this.webSessionService,
             new com.guille.media.bff.experience.addmedia.application.CompleteAddMedia(
                 new com.guille.media.bff.infrastructure.http.MoviesAddMediaAdapter(
                     this.moviesWebClient),

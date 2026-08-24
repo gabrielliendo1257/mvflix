@@ -20,6 +20,7 @@ import com.guille.media.bff.app.dto.StreamingSessionDto;
 import com.guille.media.bff.app.ports.MoviesWebClient;
 import com.guille.media.bff.app.ports.StorageWebClient;
 import com.guille.media.bff.app.ports.UsersWebPort;
+import com.guille.media.bff.app.service.WebSessionService;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,14 @@ class WebMoviesServiceTest {
   private final MoviesWebClient moviesWebClient = mock(MoviesWebClient.class);
   private final StorageWebClient storageWebClient = mock(StorageWebClient.class);
   private final UsersWebPort usersWebPort = mock(UsersWebPort.class);
+  private final WebSessionService webSessionService = mock(WebSessionService.class);
+
+  @org.junit.jupiter.api.BeforeEach
+  void setUpSession() {
+    org.mockito.Mockito.lenient()
+        .when(webSessionService.currentSubject())
+        .thenReturn(reactor.core.publisher.Mono.just("pepe"));
+  }
   private final StreamTicketService streamTicketService = new StreamTicketService("test-secret", 300);
   private JobStore jobStore;
   private WebMoviesService service;
@@ -47,6 +56,7 @@ class WebMoviesServiceTest {
     this.jobStore = new JobStore();
     this.service = new WebMoviesService(this.moviesWebClient, this.storageWebClient,
         this.usersWebPort, this.streamTicketService, this.jobStore,
+        this.webSessionService,
         new com.guille.media.bff.experience.addmedia.application.CompleteAddMedia(
             new com.guille.media.bff.infrastructure.http.MoviesAddMediaAdapter(
                 this.moviesWebClient),

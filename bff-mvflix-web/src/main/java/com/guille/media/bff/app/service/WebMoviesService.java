@@ -63,6 +63,7 @@ public class WebMoviesService {
   private final UsersWebPort usersWebPort;
   private final StreamTicketService streamTicketService;
   private final JobStore jobStore;
+  private final WebSessionService webSessionService;
   private final com.guille.media.bff.experience.addmedia.application.CompleteAddMedia addMediaCompletion;
 
   public Flux<MovieListItemDto> list(int limit) {
@@ -260,19 +261,24 @@ public class WebMoviesService {
               : "";
         })
         .switchIfEmpty(Mono.just(""))
-        .flatMap(token -> {
-          Job initial = this.jobStore.start(jobId, JobType.BULK_VISIBILITY);
-          this.resolveMovieIds(request)
-              .flatMap(ids -> this.runBulkJob(initial, ids, request, token))
-              .subscribe(
-                  finalState -> log.info("bulkVisibility {} -> {} (total={}, ok={}, fail={})",
-                      jobId, visibility, finalState.total(), finalState.done(), finalState.failed()),
-                  error -> {
-                    log.error("bulkVisibility {} fallo: {}", jobId, error.getMessage(), error);
-                    this.jobStore.complete(jobId, initial.failed(0, 0, 0));
-                  });
-          return Mono.just(initial);
-        });
+        .flatMap(token -> this.webSessionService
+            .currentSubject()
+            .defaultIfEmpty("anonymous")
+            .map(owner -> {
+              Job initial = this.jobStore.start(jobId, owner, JobType.BULK_VISIBILITY);
+              this.resolveMovieIds(request)
+                  .flatMap(ids -> this.runBulkJob(initial, ids, request, token))
+                  .subscribe(
+                      finalState -> log.info("bulkVisibility {} -> {} (total={}, ok={}, fail={})",
+                          jobId, visibility, finalState.total(), finalState.done(),
+                          finalState.failed()),
+                      error -> {
+                        log.error("bulkVisibility {} fallo: {}", jobId,
+                            error.getMessage(), error);
+                        this.jobStore.complete(jobId, initial.failed(0, 0, 0));
+                      });
+              return initial;
+            }));
   }
 
   /**
