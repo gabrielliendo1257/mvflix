@@ -25,9 +25,6 @@ public class SecurityConfig {
   @Value("${services.authorization.url}")
   private String authorizationUrl;
 
-  @Value("${api.path.base}")
-  private String apiPathBase;
-
   @Value("${security.oauth2.jwk-set-uri:}")
   private String jwkSetUriOverride;
 
