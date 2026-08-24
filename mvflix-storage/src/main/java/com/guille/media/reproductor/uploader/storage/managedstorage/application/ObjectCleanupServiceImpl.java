@@ -97,6 +97,24 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
                   .then(
                       this.terminalTransition.transitionAndRelease(
                           object, StorageSessionStatus.COMPLETED))
+                  // IDEMPOTENCIA: dos DELETE concurrentes borran el blob dos
+                  // veces (inofensivo) pero solo UNO gana el CAS y libera
+                  // cuota. El perdedor confirma que la fila quedó DELETED y
+                  // responde éxito en lugar de un 409 confuso.
+                  .onErrorResume(IllegalStateTransitionException.class,
+                      race -> this.storageRepository
+                          .findById(object.getStorageId())
+                          .flatMap(current -> {
+                            if (current.getStorageObjectStatus()
+                                == StorageSessionStatus.DELETED) {
+                              log.info("delete: objeto {} ya estaba DELETED "
+                                  + "(carrera entre deletes), tratando como éxito",
+                                  object.getStorageId());
+                              return Mono.just(current);
+                            }
+                            return Mono.error(race);
+                          })
+                          .then(Mono.empty()))
                   .then();
             });
   }

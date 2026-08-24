@@ -140,12 +140,11 @@ class ObjectCleanupServiceImplTest {
     when(this.storageRepository.updateStatus(object, StorageSessionStatus.COMPLETED))
         .thenReturn(Mono.error(new IllegalStateTransitionException("already DELETED")));
 
-    StepVerifier.create(this.service.deleteObject(7L))
-        .expectError(IllegalStateTransitionException.class)
-        .verify();
+    StepVerifier.create(this.service.deleteObject(7L)).verifyComplete();
 
-    // Blob eliminado (idempotente, seguro de reintentar); cuota intacta:
-    // solo el ganador del CAS libera bytes.
+    // Contrato IDEMPOTENTE: el perdedor de la carrera (fila ya DELETED)
+    // responde éxito; el blob se borró y la cuota quedó intacta (solo el
+    // ganador del CAS libera bytes).
     verify(this.objectStoragePort)
         .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
     verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
@@ -182,9 +181,7 @@ class ObjectCleanupServiceImplTest {
     when(this.storageRepository.updateStatus(object, StorageSessionStatus.COMPLETED))
         .thenReturn(Mono.error(new IllegalStateTransitionException("already DELETED")));
 
-    StepVerifier.create(this.service.deleteObject(7L))
-        .expectError(IllegalStateTransitionException.class)
-        .verify();
+    StepVerifier.create(this.service.deleteObject(7L)).verifyComplete();
 
     // Carrera perdida (ya DELETED): el segundo DELETE es inofensivo y nadie
     // libera cuota dos veces.
@@ -221,6 +218,25 @@ class ObjectCleanupServiceImplTest {
     verify(this.objectStoragePort, times(2))
         .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
     assertThat(retry.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.DELETED);
+  }
+
+  @Test
+  void concurrentDeleteLoserSucceedsWhenRowAlreadyDeleted() {
+    StoreObject object = completedObject(7L, "pepe");
+
+    when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.storageRepository.updateStatus(object, StorageSessionStatus.COMPLETED))
+        .thenReturn(Mono.error(new IllegalStateTransitionException("row already DELETED")));
+
+    // El blob ya se borró (idempotente); la fila ya estaba DELETED por otro
+    // hilo: resultado para ESTE llamador es éxito, no error.
+    StepVerifier.create(this.service.deleteObject(7L)).verifyComplete();
+
+    verify(this.objectStoragePort)
+        .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
+    verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
   }
 
   @Test
