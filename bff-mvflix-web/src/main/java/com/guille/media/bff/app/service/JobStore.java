@@ -57,6 +57,22 @@ public class JobStore {
         return Mono.justOrEmpty(this.jobs.get(id));
     }
 
+    /** Resumen de actividad propia (running/failed) para el Shell. */
+    public Mono<ActivityCounts> counts(String ownerSubject) {
+        return Mono.fromSupplier(() -> {
+            long running = 0;
+            long failed = 0;
+            for (Job job : this.jobs.values()) {
+                if (!job.ownedBy(ownerSubject)) continue;
+                if (job.status() == JobStatus.RUNNING) running++;
+                else if (job.status() == JobStatus.FAILED) failed++;
+            }
+            return new ActivityCounts(running, failed);
+        });
+    }
+
+    public record ActivityCounts(long running, long failed) {}
+
     /** Solo los jobs del propietario, más recientes primero. */
     public Flux<Job> recent(String ownerSubject, int limit) {
         int safeLimit = limit <= 0 ? 20 : limit;
