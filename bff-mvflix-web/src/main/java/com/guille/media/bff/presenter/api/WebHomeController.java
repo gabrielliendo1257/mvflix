@@ -6,10 +6,14 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.web.bind.annotation.RestController;
 
 import reactor.core.publisher.Mono;
 
+@Tag(name = "Dashboard", description = "Panel operativo: perfil, cuota y uploads recientes. NO es la Home de consumo")
 @RestController
 @RequestMapping(path = "/web", produces = MediaType.APPLICATION_JSON_VALUE)
 public class WebHomeController {
