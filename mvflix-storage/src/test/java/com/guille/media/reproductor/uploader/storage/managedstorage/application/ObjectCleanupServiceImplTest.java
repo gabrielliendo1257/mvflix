@@ -54,6 +54,8 @@ class ObjectCleanupServiceImplTest {
       mock(TransactionalOperator.class);
   private final TerminalUploadTransition terminalTransition =
       new TerminalUploadTransition(storageRepository, userStorageRepository, transactionalOperator);
+  private final com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue
+      orphanQueue = mock(com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue.class);
 
   private final ObjectCleanupServiceImpl service =
       new ObjectCleanupServiceImpl(
@@ -61,12 +63,19 @@ class ObjectCleanupServiceImplTest {
           objectStoragePort,
           storageRepository,
           userStorageRepository,
-          terminalTransition);
+          terminalTransition,
+          orphanQueue);
 
   @BeforeEach
   void passThroughTransaction() {
     when(this.transactionalOperator.transactional(any(Mono.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
+    org.mockito.Mockito.lenient()
+        .when(this.orphanQueue.enqueue(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyString()))
+        .thenReturn(Mono.empty());
   }
 
   private static final AuthenticatedUser PEPE = new AuthenticatedUser("pepe", "pepe@mvflix.dev");
@@ -148,6 +157,35 @@ class ObjectCleanupServiceImplTest {
     verify(this.objectStoragePort)
         .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
     verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
+  }
+
+  @Test
+  void failedBestEffortDeleteEnqueuesDurableOrphanTask() {
+    StoreObject pending =
+        new StoreObject(
+            "pepe",
+            new StorageKey("k1"),
+            new StorageMetadata("video/mp4", 1024L, null, Instant.now()),
+            Instant.now(),
+            1L,
+            StorageSessionStatus.PENDING);
+
+    when(this.storageRepository.findPendingCreatedBefore(any(Instant.class)))
+        .thenReturn(Flux.just(pending));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
+        .thenReturn(Mono.just(pending));
+    when(this.userStorageRepository.releaseStorage("pepe", 1024L)).thenReturn(Mono.just(1L));
+    doThrow(new StorageException("minio down"))
+        .when(this.objectStoragePort)
+        .delete(any(StorageLocation.class));
+
+    StepVerifier.create(this.service.expireStaleSessions(Instant.now()))
+        .expectNextCount(1)
+        .verifyComplete();
+
+    verify(this.orphanQueue).enqueue("movies", "k1", "pepe", "DELETE_FAILED");
+    assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.EXPIRED);
   }
 
   @Test
@@ -237,34 +275,6 @@ class ObjectCleanupServiceImplTest {
     verify(this.objectStoragePort)
         .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
     verify(this.userStorageRepository, never()).releaseStorage(anyString(), anyLong());
-  }
-
-  @Test
-  void expireStaleSessionFailsAtomicallyWhenReleaseFails() {
-    StoreObject pending =
-        new StoreObject(
-            "pepe",
-            new StorageKey("k1"),
-            new StorageMetadata("video/mp4", 1024, null, Instant.now()),
-            Instant.now(),
-            1L,
-            StorageSessionStatus.PENDING);
-
-    when(this.storageRepository.findPendingCreatedBefore(any(Instant.class)))
-        .thenReturn(Flux.just(pending));
-    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
-    when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
-        .thenReturn(Mono.just(pending));
-    // La liberación falla: la tx debe revertir también la transición de estado.
-    when(this.userStorageRepository.releaseStorage("pepe", 1024L))
-        .thenReturn(Mono.error(new RuntimeException("db connection lost")));
-
-    StepVerifier.create(this.service.expireStaleSessions(Instant.now()))
-        .expectError(RuntimeException.class)
-        .verify();
-
-    // Sin liberación exitosa no hay borrado de blob ni estado EXPIRED en memoria.
-    verify(this.objectStoragePort, never()).delete(any(StorageLocation.class));
   }
 
   @Test

@@ -7,6 +7,7 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.excep
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.UserStorageRepository;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.BucketName;
@@ -29,18 +30,21 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
   private final StorageRepository storageRepository;
   private final UserStorageRepository userStorageRepository;
   private final TerminalUploadTransition terminalTransition;
+  private final OrphanCleanupQueue orphanCleanupQueue;
 
   public ObjectCleanupServiceImpl(
       UserProvider userProvider,
       ObjectStorageService objectStorageService,
       StorageRepository storageRepository,
       UserStorageRepository userStorageRepository,
-      TerminalUploadTransition terminalTransition) {
+      TerminalUploadTransition terminalTransition,
+      OrphanCleanupQueue orphanCleanupQueue) {
     this.userProvider = userProvider;
     this.objectStoragePort = objectStorageService;
     this.storageRepository = storageRepository;
     this.userStorageRepository = userStorageRepository;
     this.terminalTransition = terminalTransition;
+    this.orphanCleanupQueue = orphanCleanupQueue;
   }
 
   @Override
@@ -161,6 +165,10 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
    * Borra el objeto del bucket sin romper el flujo si el storage está caído o el objeto no
    * existe (el DELETE de S3 es idempotente).
    */
+  /**
+   * DELETE best-effort: si falla, la tarea queda DURABLE en la cola de
+   * huérfanos y el scheduler la reintenta. Nunca se pierde un blob.
+   */
   private Mono<Void> deleteObjectBestEffort(StoreObject object, BucketName bucket) {
     return Mono.<Void>fromRunnable(
             () ->
@@ -168,11 +176,18 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
                     new StorageLocation(bucket, object.getStorageKey())))
         .onErrorResume(
             error -> {
-              log.warn(
-                  "Could not delete object from bucket (best effort), uploadId={}, cause={}",
-                  object.getStorageId(),
-                  error.getMessage());
-              return Mono.empty();
+              log.error(
+                  "DELETE falló, encolando tarea huérfana: bucket={} key={} cause={}",
+                  bucket.bucketName(), object.getStorageKey().key(), error.getMessage());
+              return this.orphanCleanupQueue
+                  .enqueue(bucket.bucketName(), object.getStorageKey().key(),
+                      object.getOwnerUsername(), "DELETE_FAILED")
+                  .onErrorResume(enqueueError -> {
+                    log.error("add-media: NO se pudo encolar huérfano {}:{}: {}",
+                        bucket.bucketName(), object.getStorageKey().key(),
+                        enqueueError.getMessage());
+                    return Mono.empty();
+                  });
             });
   }
 }
