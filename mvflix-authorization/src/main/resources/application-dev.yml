@@ -10,14 +10,14 @@ spring:
         issuer: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/mvflix_authorized_db
-    username: db_rw
-    password: 12345678
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/mvflix_authorized_db
+    username: ${DB_RW_USER:db_rw}
+    password: ${DB_RW_PASSWORD:12345678}
 
   flyway:
     enabled: true
     user: db_migrator
-    password: 12345678
+    password: ${DB_RW_PASSWORD:12345678}
 
   jpa:
     show-sql: true
