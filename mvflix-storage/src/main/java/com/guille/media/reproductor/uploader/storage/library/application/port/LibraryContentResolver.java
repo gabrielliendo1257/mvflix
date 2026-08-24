@@ -1,7 +1,7 @@
-package com.guille.media.reproductor.uploader.storage.library.domain.port;
+package com.guille.media.reproductor.uploader.storage.library.application.port;
 
 import com.guille.media.reproductor.uploader.storage.library.domain.model.MediaLibrary;
-import com.guille.media.reproductor.uploader.storage.library.domain.model.LibraryFileHandle;
+import com.guille.media.reproductor.uploader.storage.library.application.port.LibraryFileHandle;
 
 import reactor.core.publisher.Mono;
 

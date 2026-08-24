@@ -1,8 +1,8 @@
 package com.guille.media.reproductor.uploader.storage.library.infrastructure.filesystem;
 
 import com.guille.media.reproductor.uploader.storage.library.domain.model.MediaLibrary;
-import com.guille.media.reproductor.uploader.storage.library.domain.port.LibraryContentResolver;
-import com.guille.media.reproductor.uploader.storage.library.domain.model.LibraryFileHandle;
+import com.guille.media.reproductor.uploader.storage.library.application.port.LibraryContentResolver;
+import com.guille.media.reproductor.uploader.storage.library.application.port.LibraryFileHandle;
 
 import lombok.extern.slf4j.Slf4j;
 
