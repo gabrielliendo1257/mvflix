@@ -1,6 +1,7 @@
 package com.guille.media.bff.experience.addmedia.web;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
+import com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -44,16 +45,16 @@ public record StartAddMediaRequest(
   public record InitialAccess(String visibility, List<String> sharedWith) {}
 
 
-  public com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand toCommand() {
-    return new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand(
-        new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand.FileSelection(
+  public StartAddMediaCommand toCommand() {
+    return new StartAddMediaCommand(
+        new StartAddMediaCommand.FileSelection(
             file.filename(), file.sizeBytes(), file.mimeType()),
-        new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand.MovieSelection(
+        new StartAddMediaCommand.MovieSelection(
             movie.providerId(), movie.draft()),
         access == null
-            ? new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand.InitialAccess(
+            ? new StartAddMediaCommand.InitialAccess(
                 null, null)
-            : new com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand.InitialAccess(
+            : new StartAddMediaCommand.InitialAccess(
                 access.visibility(), access.sharedWith()),
         idempotencyKey);
   }

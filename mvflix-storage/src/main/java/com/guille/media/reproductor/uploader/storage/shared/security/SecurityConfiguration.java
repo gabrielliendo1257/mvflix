@@ -1,22 +1,21 @@
 package com.guille.media.reproductor.uploader.storage.shared.security;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.convert.converter.Converter;
 import org.springframework.core.annotation.Order;
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import reactor.core.publisher.Mono;
@@ -24,10 +23,10 @@ import reactor.core.publisher.Mono;
 /**
  * Resource server configuration.
  *
- * <p>Valida los JWT emitidos por el authorization-service (endpoint {@code /oauth2/jwks} cuya
- * URL se resuelve desde {@code services.authorization.url}, red interna de docker-compose) y
- * traduce el claim {@code roles} a autoridades. El claim ya contiene el prefijo {@code ROLE_}
- * (por ejemplo {@code ROLE_ADMIN}), por lo que el converter no añade prefijo.
+ * <p>Valida los JWT emitidos por el authorization-service (endpoint {@code /oauth2/jwks} cuya URL
+ * se resuelve desde {@code services.authorization.url}, red interna de docker-compose) y traduce el
+ * claim {@code roles} a autoridades. El claim ya contiene el prefijo {@code ROLE_} (por ejemplo
+ * {@code ROLE_ADMIN}), por lo que el converter no añade prefijo.
  */
 @Configuration
 @Profile("!sandbox")
@@ -44,12 +43,10 @@ public class SecurityConfiguration {
   private String jwkSetUriOverride;
 
   /**
-   * Cadena para el webhook de MinIO: no firma JWT (envía el token como
-   * {@code Authorization: Bearer <webhook-token>}, validado en el controller)
-   * y el filtro de resource server lo rechazaría con 401. El matcher es el
-   * path EXACTO del webhook, no {@code /internal/**}: cualquier endpoint
-   * interno futuro cae en la cadena JWT principal y su denyAll, nunca queda
-   * abierto por accidente.
+   * Cadena para el webhook de MinIO: no firma JWT (envía el token como {@code Authorization: Bearer
+   * <webhook-token>}, validado en el controller) y el filtro de resource server lo rechazaría con
+   * 401. El matcher es el path EXACTO del webhook, no {@code /internal/**}: cualquier endpoint
+   * interno futuro cae en la cadena JWT principal y su denyAll, nunca queda abierto por accidente.
    */
   @Bean
   @Order(0)
@@ -75,22 +72,18 @@ public class SecurityConfiguration {
                     .permitAll()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload")
                     .authenticated()
-                    .pathMatchers(
-                        HttpMethod.GET,
-                        this.apiPathBase + "/storage/users/*/quota")
+                    .pathMatchers(HttpMethod.GET, this.apiPathBase + "/storage/users/*/quota")
                     .hasAuthority("SCOPE_storage.read")
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/upload/*/complete")
                     .authenticated()
                     .pathMatchers(
-                        HttpMethod.POST,
-                        this.apiPathBase + "/storage/upload/*/instructions")
+                        HttpMethod.POST, this.apiPathBase + "/storage/upload/*/instructions")
                     .authenticated()
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/streaming")
                     .authenticated()
                     // M2M playback del catálogo: movies/BFF validó visibilidad
                     // y pide bytes con scope dedicado (ver ADR 0002).
-                    .pathMatchers(
-                        HttpMethod.POST, this.apiPathBase + "/storage/catalog/streaming")
+                    .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/catalog/streaming")
                     .hasAuthority("SCOPE_storage.stream")
                     .pathMatchers(
                         HttpMethod.GET,
@@ -104,9 +97,7 @@ public class SecurityConfiguration {
                         this.apiPathBase + "/storage/libraries/*/files",
                         this.apiPathBase + "/storage/libraries/*/files/**")
                     .authenticated()
-                    .pathMatchers(
-                        HttpMethod.POST,
-                        this.apiPathBase + "/storage/libraries")
+                    .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/libraries")
                     .authenticated()
                     .pathMatchers(
                         HttpMethod.DELETE,
@@ -120,8 +111,7 @@ public class SecurityConfiguration {
                     .authenticated()
                     // M2M: aprovisiona user_storage para un usuario (cuota la decide users,
                     // ver ADR 0001). Tras las reglas de libraries para no sombrearlas.
-                    .pathMatchers(
-                        HttpMethod.POST, this.apiPathBase + "/storage/users/*/provision")
+                    .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/users/*/provision")
                     .hasAuthority("SCOPE_storage.write")
                     .pathMatchers(HttpMethod.DELETE, this.apiPathBase + "/storage/*")
                     .authenticated()
@@ -157,7 +147,7 @@ public class SecurityConfiguration {
       JwtGrantedAuthoritiesConverter scopeConverter,
       JwtGrantedAuthoritiesConverter rolesConverter,
       Jwt jwt) {
-    var authorities = new java.util.ArrayList<org.springframework.security.core.GrantedAuthority>();
+    var authorities = new ArrayList<GrantedAuthority>();
     if (scopeConverter.convert(jwt) != null) {
       authorities.addAll(scopeConverter.convert(jwt));
     }
