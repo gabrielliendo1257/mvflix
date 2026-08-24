@@ -85,6 +85,9 @@ start() {
     echo "minio no esta escuchando en :9000 -> make up-dev"
   fi
 
+  echo "== Compilando e instalando modulos compartidos =="
+  mvn -q -pl mvflix-devseed -am install -DskipTests
+
   echo "== Arrancando auth (obligatorio antes del BFF) =="
   start_one mvflix-authorization
   wait_port "$AUTH_PORT" mvflix-authorization
