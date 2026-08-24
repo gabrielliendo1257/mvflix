@@ -173,7 +173,14 @@ class MinioStorageTest {
             .block();
 
     assertThat(url.method()).isEqualTo("PUT");
-    assertThat(url.presignedUrl()).startsWith(MINIO_CONTAINER.getS3URL());
+    // El HOST de la URL presigned es exactamente el endpoint configurado en
+    // el MinioClient. Si MINIO_URL apunta a 127.0.0.1, solo el propio
+    // servidor puede subir; si apunta a la IP LAN, cualquier equipo puede.
+    // SigV4 firma el header Host: NO se puede cambiar después de firmar.
+    var uri = URI.create(url.presignedUrl());
+    assertThat(uri.getHost())
+        .as("presigned URL host debe coincidir con el endpoint de MinIO")
+        .isEqualTo(URI.create(MINIO_CONTAINER.getS3URL()).getHost());
 
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(url.presignedUrl()))
