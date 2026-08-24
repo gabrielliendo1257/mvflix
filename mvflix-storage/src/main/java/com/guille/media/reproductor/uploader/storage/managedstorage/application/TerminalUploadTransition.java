@@ -1,5 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.application;
 
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
@@ -50,6 +51,15 @@ public class TerminalUploadTransition {
                 updated ->
                     this.userStorageRepository
                         .releaseStorage(updated.getOwnerUsername(), updated.sizeInBytes())
+                        // 0 filas = la cuenta del dueño no existe: contabilidad
+                        // rota. Fallamos DENTRO de la tx para que el CAS también
+                        // revierta; nunca aceptamos un release fantasma.
+                        .filter(rows -> rows == 1)
+                        .switchIfEmpty(Mono.error(new StorageException(
+                            "Quota release affected 0 rows for owner="
+                                + updated.getOwnerUsername()
+                                + " (account row missing): uploadId="
+                                + updated.getStorageId())))
                         .thenReturn(updated)));
   }
 }
