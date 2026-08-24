@@ -1,12 +1,15 @@
 package com.guille.media.bff.presenter.api;
 
 import com.guille.media.bff.app.service.StreamTicketException;
+import com.guille.media.bff.experience.addmedia.application.DownstreamRejectionException;
 import com.guille.media.bff.experience.addmedia.application.DownstreamUnavailableException;
 import com.guille.media.bff.experience.addmedia.application.IdempotencyConflictException;
+import com.guille.media.bff.experience.addmedia.application.InvalidIntentException;
 import com.guille.media.bff.experience.addmedia.application.InvalidStorageResponseException;
 import com.guille.media.bff.experience.addmedia.application.UserBlockedException;
 import com.guille.media.bff.experience.addmedia.application.VerdictAppliedException;
 import com.guille.media.bff.experience.addmedia.application.IdempotencyConflictException;
+import com.guille.media.bff.experience.addmedia.application.InvalidIntentException;
 import com.guille.media.bff.shared.error.EntityNotFound;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.presenter.api.dto.OrchestrationError;
@@ -59,6 +62,22 @@ public class ApiExceptionHandler {
                 HttpStatus.CONFLICT.value(), ex.getCode(), ex.getMessage())));
   }
 
+  /**
+   * Rechazo 4xx de un servicio aguas abajo (validación, no encontrado,
+   * conflicto): se propaga el status y el mensaje para que el front sepa
+   * QUÉ corregir, en lugar de un 500 opaco.
+   */
+  @ExceptionHandler(DownstreamRejectionException.class)
+  public Mono<ResponseEntity<OrchestrationError>> downstreamRejection(
+      DownstreamRejectionException ex) {
+    log.warn("Aguas abajo rechazó la petición: status={} message={}", ex.status(), ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(ex.status())
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                ex.status(), "DOWNSTREAM_REJECTED", ex.getMessage())));
+  }
+
   /** Caída reintentable de un servicio aguas abajo. */
   @ExceptionHandler(DownstreamUnavailableException.class)
   public Mono<ResponseEntity<OrchestrationError>> downstream(
@@ -92,6 +111,17 @@ public class ApiExceptionHandler {
             .contentType(MediaType.APPLICATION_JSON)
             .body(new OrchestrationError(
                 HttpStatus.BAD_GATEWAY.value(), "INVALID_UPLOAD_RESPONSE", ex.getMessage())));
+  }
+
+  /** Intención incompleta: faltan datos obligatorios del candidato. */
+  @ExceptionHandler(InvalidIntentException.class)
+  public Mono<ResponseEntity<OrchestrationError>> invalidIntent(InvalidIntentException ex) {
+    log.warn("Intención de Add Media inválida: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.BAD_REQUEST)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.BAD_REQUEST.value(), "INVALID_INTENT", ex.getMessage())));
   }
 
   /** Misma idempotencyKey con payload distinto: conflicto, no silencio. */
