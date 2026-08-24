@@ -14,6 +14,11 @@ import reactor.core.publisher.Mono;
 
 import java.util.List;
 
+/**
+ * PANEL OPERATIVO del usuario (no es una Home de consumo): perfil, cuota y
+ * uploads recientes. La Home de consumo (continue watching, novedades,
+ * público, compartido conmigo) es una experiencia futura distinta.
+ */
 @Component
 @RequiredArgsConstructor
 public class WebHomeService {
