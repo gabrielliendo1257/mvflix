@@ -21,7 +21,7 @@ USERS_PORT=8080
 STORAGE_PORT=6060
 MOVIES_PORT=4040
 BFF_PORT=9091
-LOG_DIR=/tmp/mvflix-dev
+LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mvflix-dev/logs"
 mkdir -p "$LOG_DIR"
 
 declare -A SERVICES=(
