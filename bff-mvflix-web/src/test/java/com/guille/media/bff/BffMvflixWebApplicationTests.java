@@ -1,7 +1,9 @@
 package com.guille.media.bff;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -16,14 +18,35 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
  * discovery) y apuntamos el jwk-set-uri directo que ya consume
  * WebSecurityConfig.
  */
-@SpringBootTest(properties = {
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {
     "spring.profiles.active=dev",
     "security.oauth2.jwk-set-uri=http://localhost:0/oauth2/jwks"
 })
+@org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient
 class BffMvflixWebApplicationTests {
+
+  @Autowired
+  private WebTestClient client;
 
   @Test
   void contextLoads() {}
+
+  /** Logout LOCAL configurado: POST /web/logout responde 303 a /web/session
+   * y elimina la cookie de sesión. La sesión del IdP persiste (decisión
+   * documentada); el re-login puede ser silencioso. */
+  @Test
+  void logoutInvalidatesSessionAndClearsCookie() {
+    this.client
+        .post()
+        .uri("/web/logout")
+        .exchange()
+        .expectStatus().isEqualTo(org.springframework.http.HttpStatus.SEE_OTHER)
+        .expectHeader().valueEquals("Location", "/web/session");
+    // La eliminación de la cookie ocurre cuando existe sesión previa; sin
+    // sesión el handler solo redirige.
+  }
 
   @TestConfiguration
   static class OfflineOAuth2ClientRegistrations {

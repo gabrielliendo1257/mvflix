@@ -116,6 +116,20 @@ public class WebSecurityConfig {
                     .authenticated()
                     .anyExchange()
                     .denyAll())
+        // Logout LOCAL: invalida la WebSession (y con ella los authorized
+        // clients OAuth2 en sesión) y elimina la cookie __Host-SESSION.
+        // DECISIÓN DOCUMENTADA: no se hace RP-initiated logout contra el
+        // proveedor OIDC; su sesión persiste y un re-login puede ser
+        // silencioso. Si el producto exige cerrar también la sesión del IdP,
+        // se añadirá OidcClientInitiatedLogoutSuccessHandler.
+        .logout(logout -> logout
+            .logoutUrl("/web/logout")
+            .logoutSuccessHandler((webFilterExchange, authentication) -> {
+                var response = webFilterExchange.getExchange().getResponse();
+                response.setStatusCode(org.springframework.http.HttpStatus.SEE_OTHER);
+                response.getHeaders().setLocation(java.net.URI.create("/web/session"));
+                return reactor.core.publisher.Mono.empty();
+            }))
         // .exceptionHandling(handling -> handling.authenticationEntryPoint(delegatingEntryPoint()))
         .oauth2Login(
             oauth2 ->
