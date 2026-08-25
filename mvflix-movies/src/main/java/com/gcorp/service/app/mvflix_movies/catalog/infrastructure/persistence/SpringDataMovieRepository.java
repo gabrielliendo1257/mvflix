@@ -86,7 +86,22 @@ public class SpringDataMovieRepository implements MovieRepository {
     @Override
     @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
     public Mono<Movie> saveDraftWithAccess(Movie movie) {
-        return this.save(movie).then(this.replaceShares(movie));
+        // save() asigna el id generado (INSERT RETURNING); replaceShares
+        // necesita ese id para insertar en movie_shares. Se propaga el
+        // agregado guardado conservando los shares previstos del original.
+        return this.save(movie)
+            .flatMap(saved -> this.replaceShares(
+                new Movie(
+                    saved.getId(),
+                    saved.getOwnerUsername(),
+                    saved.getTitle(),
+                    saved.getStatus(),
+                    saved.getEnrichmentStatus(),
+                    saved.getObjectId(),
+                    saved.getMetadata(),
+                    saved.getVisibility(),
+                    movie.getSharedWith(),
+                    saved.getKind())));
     }
 
     @Override
