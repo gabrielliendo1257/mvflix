@@ -5,6 +5,8 @@ import com.guille.media.reproductor.users.domain.models.User;
 public record UserResponse(
     String id,
     String username,
+    String displayName,
+    String avatarUrl,
     String email,
     String plan,
     boolean enabled,
@@ -14,6 +16,8 @@ public record UserResponse(
         return new UserResponse(
                 user.getId().value().toString(),
                 user.getUsername().value(),
+                user.getDisplayName(),
+                user.getAvatarUrl(),
                 user.getEmail().value(),
                 user.getPlan().name(),
                 user.isEnabled(),

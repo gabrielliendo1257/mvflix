@@ -28,8 +28,15 @@ public class User {
   private boolean enabled;
   private int violations;
 
+  /** Nombre a mostrar en la UI; null = aún no definido (la UI usa username). */
+  private String displayName;
+
+  /** Avatar del perfil; null = sin imagen (la UI muestra iniciales). */
+  private String avatarUrl;
+
   public static User createNew(Username username, Email email) {
-    return new User(new UserId(UUID.randomUUID()), username, email, Plan.FREE, true, 0);
+    return new User(new UserId(UUID.randomUUID()), username, email, Plan.FREE, true, 0,
+        null, null);
   }
 
   public void changePlan(Plan plan) {

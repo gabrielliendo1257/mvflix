@@ -19,6 +19,8 @@ public class UserEntity {
     private final String plan;
     private final boolean enabled;
     private int violations;
+    private String displayName;
+    private String avatarUrl;
     private final Instant createdAt;
     private final Instant updatedAt;
 }

@@ -46,7 +46,7 @@ class SpringDataUserRepositoryTest extends AbstractR2dbcIntegrationTest {
     @BeforeEach
     void setUp() {
         User user = new User(new UserId(UUID.randomUUID()), new Username("Francis"),
-                new Email("francis@gmail.com"), Plan.FREE, true, 0);
+                new Email("francis@gmail.com"), Plan.FREE, true, 0, null, null);
 
         databaseClient.sql("DELETE FROM users")
                 .fetch()
@@ -59,7 +59,7 @@ class SpringDataUserRepositoryTest extends AbstractR2dbcIntegrationTest {
     @Test
     void shouldSaveUser() {
         User user = new User(new UserId(UUID.randomUUID()), new Username("Ejemplo"),
-                new Email("ejemplo@gmail.com"), Plan.FREE, true, 0);
+                new Email("ejemplo@gmail.com"), Plan.FREE, true, 0, null, null);
 
         Mono<User> savedUser = this.simpleUserRepository.save(user)
                 .doOnNext(saved -> System.out.println("Saved: " + saved.getId().value()))

@@ -55,7 +55,9 @@ class DefaultUserServiceTest extends AbstractR2dbcIntegrationTest {
                         new Email("francis@gmail.com"),
                         Plan.FREE,
                         true,
-                        0);
+                        0,
+                        null,
+                        null);
 
         databaseClient
                 .sql("DELETE FROM users")
