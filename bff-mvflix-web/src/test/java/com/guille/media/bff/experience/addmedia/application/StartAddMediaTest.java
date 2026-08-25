@@ -46,7 +46,7 @@ class StartAddMediaTest {
   @BeforeEach
   void setUp() {
     when(this.users.me()).thenReturn(Mono.just(new UserProfile(
-        "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 0, false)));
+        "u1", "pepe", null, null, "pepe@mvflix.dev", "FREE", true, 0, false)));
     this.useCase = new StartAddMedia(this.movies, this.storage, this.processes, this.users);
   }
 
@@ -242,7 +242,7 @@ class StartAddMediaTest {
         new StartAddMedia(this.movies, this.storage, failingSave, this.users);
 
     when(this.users.me()).thenReturn(Mono.just(new UserProfile(
-        "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 0, false)));
+        "u1", "pepe", null, null, "pepe@mvflix.dev", "FREE", true, 0, false)));
     when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
     when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
         .thenReturn(Mono.just(session()));
@@ -307,7 +307,7 @@ class StartAddMediaTest {
   @Test
   void blockedUserSurfacesForbiddenWithoutPreparingUpload() {
     when(this.users.me()).thenReturn(Mono.just(new UserProfile(
-        "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 5, true)));
+        "u1", "pepe", null, null, "pepe@mvflix.dev", "FREE", true, 5, true)));
 
     StepVerifier.create(start())
         .expectError(UserBlockedException.class)

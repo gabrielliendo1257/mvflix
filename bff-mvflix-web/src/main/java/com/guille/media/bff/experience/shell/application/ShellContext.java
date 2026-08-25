@@ -11,9 +11,10 @@ public record ShellContext(
     boolean authenticated,
     @Nullable ShellUser user,
     ShellCapabilities capabilities,
-    @Nullable ShellActivity activity) {
+    @Nullable ShellActivity activity,
+    @Nullable ShellQuota quota) {
 
   public static ShellContext anonymous() {
-    return new ShellContext(false, null, ShellCapabilities.none(), null);
+    return new ShellContext(false, null, ShellCapabilities.none(), null, null);
   }
 }

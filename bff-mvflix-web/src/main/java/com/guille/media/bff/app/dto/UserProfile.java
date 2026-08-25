@@ -6,6 +6,8 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 public record UserProfile(
     String id,
     String username,
+    String displayName,
+    String avatarUrl,
     String email,
     String plan,
     boolean enabled,

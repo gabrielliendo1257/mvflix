@@ -50,7 +50,7 @@ class AddMediaControllerTest {
     StorageAddMediaAdapter storageAdapter = new StorageAddMediaAdapter(this.storageWebClient);
     UsersWebPort users = mock(UsersWebPort.class);
     when(users.me()).thenReturn(Mono.just(new com.guille.media.bff.app.dto.UserProfile(
-        "u1", "pepe", "pepe@mvflix.dev", "FREE", true, 0, false)));
+        "u1", "pepe", null, null, "pepe@mvflix.dev", "FREE", true, 0, false)));
     CompleteProcessAddMedia completeProcess =
         new CompleteProcessAddMedia(this.processes, mock(CompleteAddMedia.class));
     GetAddMediaStatus getStatus = new GetAddMediaStatus(this.processes, storageAdapter);
