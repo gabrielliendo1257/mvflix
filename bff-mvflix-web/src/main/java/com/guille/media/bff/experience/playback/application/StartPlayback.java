@@ -1,0 +1,107 @@
+package com.guille.media.bff.experience.playback.application;
+
+import com.guille.media.bff.experience.playback.application.port.LocalPlaybackAccess;
+import com.guille.media.bff.experience.playback.application.port.ManagedContentAccess;
+import com.guille.media.bff.experience.playback.application.port.PlaybackCatalog;
+
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.stereotype.Service;
+
+import reactor.core.publisher.Mono;
+
+import java.util.UUID;
+
+/**
+ * "Quiero reproducir este contenido ahora."
+ *
+ * <p>Orquestación ligera de lecturas: autorización y resolución viven en los
+ * dueños (movies aplica visibilidad, storage valida el objeto); aquí solo se
+ * compone la experiencia. Sin Saga: no hay mutaciones distribuidas que
+ * compensar. El resultado es stateless: {@code sessionId} existe para
+ * correlación (logs/progreso futuro), no se persiste.
+ *
+ * <p>Seam de resume: {@code resumePosition} queda a {@code null} hasta que
+ * exista un dueño de watch history; el contrato HTTP ya reserva el campo.
+ */
+@Slf4j
+@Service
+public class StartPlayback {
+
+  static final String STATUS_READY = "READY";
+  static final String CODE_MEDIA_NOT_READY = "MEDIA_NOT_READY";
+  static final String CODE_NO_PLAYABLE_ASSET = "NO_PLAYABLE_ASSET";
+
+  private final PlaybackCatalog catalog;
+  private final ManagedContentAccess managedAccess;
+  private final LocalPlaybackAccess localAccess;
+
+  public StartPlayback(
+      PlaybackCatalog catalog,
+      ManagedContentAccess managedAccess,
+      LocalPlaybackAccess localAccess) {
+    this.catalog = catalog;
+    this.managedAccess = managedAccess;
+    this.localAccess = localAccess;
+  }
+
+  public Mono<PlaybackSession> handle(String subject, long mediaId) {
+    return this.catalog
+        .loadVisibleMedia(mediaId)
+        .flatMap(media -> this.requirePlayable(mediaId, media))
+        .flatMap(resolved -> this.openSource(subject, resolved)
+            .map(source -> this.compose(resolved, source)));
+  }
+
+  /**
+   * Estado del contenido: movies ya decidió qué significa READY/DRAFT con su
+   * propio modelo; la experiencia solo exige que esté publicado y con asset.
+   */
+  private Mono<Resolved> requirePlayable(long mediaId, PlaybackCatalog.PlaybackMedia media) {
+    if (!STATUS_READY.equals(media.movie().status())) {
+      return Mono.error(new AssetNotPlayableException(
+          CODE_MEDIA_NOT_READY, "La media " + mediaId + " aún no está lista"));
+    }
+    if (media.asset() == null) {
+      return Mono.error(new AssetNotPlayableException(
+          CODE_NO_PLAYABLE_ASSET, "No hay contenido reproducible para la media " + mediaId));
+    }
+    return Mono.just(new Resolved(media.movie(), media.asset()));
+  }
+
+  /** MANAGED: presigned directo a MinIO. LOCAL: capability del proxy del BFF. */
+  private Mono<DirectSource> openSource(String subject, Resolved playable) {
+    var asset = playable.asset();
+    if (asset.isManaged()) {
+      return this.managedAccess.openDirect(asset.objectId());
+    }
+    return this.localAccess
+        .mint(new LocalPlaybackAccess.LocalMintCommand(
+            asset.mediaId(), asset.assetId(), asset.libraryId(),
+            asset.relativePath(), subject))
+        .map(minted -> new DirectSource(
+            "/web/playback/assets/" + asset.assetId() + "/stream?token=" + minted.rawToken(),
+            minted.expiresAt(),
+            asset.mimeType()));
+  }
+
+  private PlaybackSession compose(Resolved resolved, DirectSource source) {
+    var movie = resolved.movie();
+    var session = new PlaybackSession(
+        UUID.randomUUID(),
+        movie.id(),
+        movie.title(),
+        movie.posterPath(),
+        movie.duration(),
+        PlaybackStrategy.DIRECT,
+        source,
+        null);
+    // Sin URLs firmadas ni tokens en logs: solo identificadores de correlación.
+    log.info("playback session started: sessionId={} media={} asset={} storage={} strategy=DIRECT",
+        session.sessionId(), movie.id(), resolved.asset().assetId(),
+        resolved.asset().isManaged() ? "MANAGED" : "LOCAL");
+    return session;
+  }
+
+  private record Resolved(PlaybackCatalog.PlaybackMovie movie, PlayableAsset asset) {}
+}

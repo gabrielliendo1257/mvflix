@@ -8,8 +8,11 @@ import com.guille.media.bff.experience.addmedia.application.InvalidIntentExcepti
 import com.guille.media.bff.experience.addmedia.application.InvalidStorageResponseException;
 import com.guille.media.bff.experience.addmedia.application.UserBlockedException;
 import com.guille.media.bff.experience.addmedia.application.VerdictAppliedException;
-import com.guille.media.bff.experience.addmedia.application.IdempotencyConflictException;
-import com.guille.media.bff.experience.addmedia.application.InvalidIntentException;
+import com.guille.media.bff.experience.playback.application.AssetNotPlayableException;
+import com.guille.media.bff.experience.playback.application.LocalStreamTokenException;
+import com.guille.media.bff.experience.playback.application.PlaybackForbiddenException;
+import com.guille.media.bff.experience.playback.application.PlaybackMediaNotFoundException;
+import com.guille.media.bff.experience.playback.application.PlaybackSourceUnavailableException;
 import com.guille.media.bff.shared.error.EntityNotFound;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.presenter.api.dto.OrchestrationError;
@@ -38,6 +41,67 @@ public class ApiExceptionHandler {
             .contentType(MediaType.APPLICATION_JSON)
             .body(new OrchestrationError(
                 HttpStatus.UNAUTHORIZED.value(), "STREAM_TICKET_INVALID", ex.getMessage())));
+  }
+
+  /** Playback: la media no existe (movies no revela existencia ajena). */
+  @ExceptionHandler(PlaybackMediaNotFoundException.class)
+  public Mono<ResponseEntity<OrchestrationError>> playbackMediaNotFound(
+      PlaybackMediaNotFoundException ex) {
+    log.warn("Playback media no encontrada: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.NOT_FOUND.value(), "MEDIA_NOT_FOUND", ex.getMessage())));
+  }
+
+  /** Playback: el usuario autenticado no puede reproducir la media. */
+  @ExceptionHandler(PlaybackForbiddenException.class)
+  public Mono<ResponseEntity<OrchestrationError>> playbackForbidden(
+      PlaybackForbiddenException ex) {
+    log.warn("Playback denegado: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.FORBIDDEN)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.FORBIDDEN.value(), "PLAYBACK_FORBIDDEN", ex.getMessage())));
+  }
+
+  /** Playback: la media existe y es visible, pero hoy no tiene contenido reproducible. */
+  @ExceptionHandler(AssetNotPlayableException.class)
+  public Mono<ResponseEntity<OrchestrationError>> assetNotPlayable(
+      AssetNotPlayableException ex) {
+    log.warn("Playback sin contenido reproducible: code={} message={}",
+        ex.getCode(), ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.CONFLICT.value(), ex.getCode(), ex.getMessage())));
+  }
+
+  /** Playback: storage/acceso al contenido temporalmente no disponible. */
+  @ExceptionHandler(PlaybackSourceUnavailableException.class)
+  public Mono<ResponseEntity<OrchestrationError>> sourceUnavailable(
+      PlaybackSourceUnavailableException ex) {
+    log.warn("Playback fuente no disponible: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.SERVICE_UNAVAILABLE.value(), "SOURCE_UNAVAILABLE", ex.getMessage())));
+  }
+
+  /** Capability de stream LOCAL inválida/expirada: el player pide sesión nueva. */
+  @ExceptionHandler(LocalStreamTokenException.class)
+  public Mono<ResponseEntity<OrchestrationError>> localStreamToken(
+      LocalStreamTokenException ex) {
+    log.warn("Capability local de playback rechazada: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.UNAUTHORIZED.value(), "STREAM_ACCESS_INVALID", ex.getMessage())));
   }
 
   /** Recurso de aplicación inexistente (p.ej. proceso Add Media ajeno). */

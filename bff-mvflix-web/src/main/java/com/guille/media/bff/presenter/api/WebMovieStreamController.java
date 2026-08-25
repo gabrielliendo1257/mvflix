@@ -24,7 +24,16 @@ import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-/** Stream LOCAL con Range: el <video> del front apunta aqui para movies de biblioteca. */
+/**
+ * Stream LOCAL con Range: el {@code <video>} del front apunta aqui para movies de biblioteca.
+ *
+ * @deprecated Flujo legacy de playback: el ticket embebe el JWT del usuario y
+ *     la experiencia no es componible. Usar {@code POST /web/playback/{mediaId}/session}
+ *     (experience/playback) y su entrega LOCAL en
+ *     {@code GET /web/playback/assets/{assetId}/stream}. Pendiente de eliminar
+ *     cuando el front migre.
+ */
+@Deprecated
 @Tag(name = "Web · Playback", description = "Tickets HMAC y proxy Range para reproducción")
 @RestController
 public class WebMovieStreamController {

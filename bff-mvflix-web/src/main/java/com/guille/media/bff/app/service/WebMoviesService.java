@@ -171,7 +171,10 @@ public class WebMoviesService {
   /**
    * Proxy de stream LOCAL: resuelve el asset de la movie y delega en el
    * storage, pasando Range y devolviendo status/headers/cuerpo tal cual.
+   *
+   * @deprecated usar la entrega LOCAL de experience/playback.
    */
+  @Deprecated
   public Mono<ResponseEntity<Flux<DataBuffer>>> stream(
       Long movieId, String rangeHeader, String ticket) {
     if (ticket == null || ticket.isBlank()) {
@@ -233,7 +236,10 @@ public class WebMoviesService {
    * Emite un ticket de stream (para el {@code <video>} del front, que no puede
    * mandar el JWT en header). {@code userJwt} llega ya resuelto por el controller
    * (Bearer o access token de sesion); el ticket expira a los pocos minutos.
+   *
+   * @deprecated usar la experiencia playback: {@code POST /web/playback/{mediaId}/session}.
    */
+  @Deprecated
   public Mono<StreamTicketDto> issueStreamTicket(Long movieId, String userJwt) {
     if (userJwt == null || userJwt.isBlank()) {
       return Mono.error(new StreamTicketException("Autenticación requerida"));

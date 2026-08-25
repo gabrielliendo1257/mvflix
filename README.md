@@ -168,6 +168,8 @@ cookie de sesion (httpOnly) y **nunca ve tokens JWT**. El BFF valida la sesion y
 | `POST` | `/web/uploads/{uploadId}/cancel` | sesion | Cancela y libera la reserva de cuota |
 | `POST` | `/web/uploads/{uploadId}/complete` | sesion | Confirma el fin del upload (fast path); devuelve el status HTTP del storage (200 si quedo COMPLETED) |
 | `POST` | `/web/uploads/streaming` | sesion | Sesion de streaming: body `{"objectId":"<id>"}` → `{uploadId, streamingUrl (GET presigned directo a MinIO), storageKey, expiresAt, method}`; la URL firmada soporta `Range` (206), clave para el seek del reproductor |
+| `POST` | `/web/playback/{mediaId}/session` | sesion | **Experiencia Playback**: autoriza (movies aplica visibilidad), resuelve asset y compone la sesión → `{sessionId, media{id,title,posterPath,duration}, playback{strategy,url,mimeType,expiresAt}, resume}`. MANAGED: URL presigned directa a MinIO; LOCAL: capability para `GET /web/playback/assets/{assetId}/stream?token=` |
+| `GET` | `/web/playback/assets/{assetId}/stream` | capability | Bytes LOCAL con Range (206); auth por token HMAC sin credenciales dentro (el `<video>` cross-origin no manda cookie). Los endpoints `/web/movies/{id}/stream-ticket` y `/web/movies/{id}/stream` quedan deprecated hasta que el front migre |
 
 **Seguridad:** `/web/session`, `/login/**`, `/oauth2/**` y `/error` son publicas; `/web/**`
 requiere sesion. Para el navegador (Accept: text/html) sin sesion se redirige al authorize del
