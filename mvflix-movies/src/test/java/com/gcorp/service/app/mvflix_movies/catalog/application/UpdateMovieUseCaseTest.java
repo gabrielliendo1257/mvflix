@@ -186,6 +186,42 @@ class UpdateMovieUseCaseTest {
     }
 
     @Test
+    void adminCanModerateMoviesOfOthers() {
+        Movie movie = movie(1L, "Javier", METADATA);
+
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Admin", "a@m.com",
+                        java.util.Set.of(AuthenticatedUser.ADMIN_ROLE))));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.movieRepository.updateDetails(any(Movie.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+                        "Moderado", null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, null)))
+                .expectNextCount(1)
+                .verifyComplete();
+
+        verify(this.movieRepository).updateDetails(any(Movie.class));
+    }
+
+    @Test
+    void adminWithoutRoleAuthorityIsJustAnotherNonOwner() {
+        Movie movie = movie(1L, "Javier", METADATA);
+
+        // Username "Admin" sin el rol: la política la decide el token, no el nombre.
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Admin", "a@m.com")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+                        "X", null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, null)))
+                .expectError(MovieAccessDeniedException.class)
+                .verify();
+    }
+
+    @Test
     void missingMovieIsDeniedWithoutRevealingExistence() {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));

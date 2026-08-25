@@ -30,7 +30,10 @@ public class JwtUserProvider implements UserProvider {
     }
     Object principal = authentication.getPrincipal();
     if (principal instanceof Jwt jwt) {
-      return Mono.just(new AuthenticatedUser(jwt.getSubject(), jwt.getClaimAsString("email")));
+      var roles = jwt.getClaimAsStringList("roles");
+      return Mono.just(new AuthenticatedUser(
+          jwt.getSubject(), jwt.getClaimAsString("email"),
+          roles == null ? java.util.Set.of() : java.util.Set.copyOf(roles)));
     }
     return Mono.error(
         new AuthenticationCredentialsNotFoundException(

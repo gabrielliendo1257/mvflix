@@ -40,13 +40,14 @@ public class UpdateMovieUseCase {
                         .findById(id)
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not accessible: " + id.value())))
-                        .filter(movie -> movie.isOwnedBy(user.subject()))
+                        .filter(movie -> movie.isOwnedBy(user.subject()) || user.isAdmin())
                         .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
                                 "Movie not owned: " + id.value())))
                         .flatMap(movie -> this.update(movie, command))
                         .doOnNext(updated -> log.info(
-                                "Movie {} metadata actualizada manualmente",
-                                id.value())));
+                                "Movie {} metadata actualizada manualmente{}",
+                                id.value(),
+                                updated.isOwnedBy(user.subject()) ? "" : " (moderacion)")));
     }
 
     /**

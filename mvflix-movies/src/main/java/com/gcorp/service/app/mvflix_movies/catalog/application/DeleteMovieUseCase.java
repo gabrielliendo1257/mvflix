@@ -32,7 +32,7 @@ public class DeleteMovieUseCase {
                         .findById(id)
                         .switchIfEmpty(Mono.error(new MovieNotFoundException(
                                 "Movie not found: " + id)))
-                        .filter(movie -> movie.isOwnedBy(user.subject()))
+                        .filter(movie -> movie.isOwnedBy(user.subject()) || user.isAdmin())
                         .switchIfEmpty(Mono.error(new MovieNotFoundException(
                                 "Movie not found: " + id)))
                         .flatMap(movie -> this.libraryAssetLinks
@@ -44,8 +44,13 @@ public class DeleteMovieUseCase {
                                                 new MovieNotFoundException(
                                                         "Movie not found: " + id));
                                     }
-                                    log.info("Pelicula eliminada (rollback): id={} owner={}",
-                                            id.value(), user.subject());
+                                    if (!movie.isOwnedBy(user.subject())) {
+                                        log.info("Pelicula eliminada por moderacion: id={} owner={} admin={}",
+                                                id.value(), movie.getOwnerUsername(), user.subject());
+                                    } else {
+                                        log.info("Pelicula eliminada (rollback): id={} owner={}",
+                                                id.value(), user.subject());
+                                    }
                                     return Mono.empty();
                                 })));
     }
