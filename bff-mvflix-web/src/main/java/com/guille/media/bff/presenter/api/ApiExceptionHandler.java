@@ -10,6 +10,7 @@ import com.guille.media.bff.experience.addmedia.application.UserBlockedException
 import com.guille.media.bff.experience.addmedia.application.VerdictAppliedException;
 import com.guille.media.bff.experience.playback.application.AssetNotPlayableException;
 import com.guille.media.bff.experience.playback.application.LocalStreamTokenException;
+import com.guille.media.bff.experience.playback.application.PlaybackContractViolationException;
 import com.guille.media.bff.experience.playback.application.PlaybackForbiddenException;
 import com.guille.media.bff.experience.playback.application.PlaybackMediaNotFoundException;
 import com.guille.media.bff.experience.playback.application.PlaybackSourceUnavailableException;
@@ -102,6 +103,18 @@ public class ApiExceptionHandler {
             .contentType(MediaType.APPLICATION_JSON)
             .body(new OrchestrationError(
                 HttpStatus.UNAUTHORIZED.value(), "STREAM_ACCESS_INVALID", ex.getMessage())));
+  }
+
+  /** Playback: el catálogo envió locators contradictorios (estado imposible). */
+  @ExceptionHandler(PlaybackContractViolationException.class)
+  public Mono<ResponseEntity<OrchestrationError>> contractViolation(
+      PlaybackContractViolationException ex) {
+    log.error("Violación de contrato del catálogo en playback: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.BAD_GATEWAY.value(), "PLAYBACK_CONTRACT_VIOLATION", ex.getMessage())));
   }
 
   /** Recurso de aplicación inexistente (p.ej. proceso Add Media ajeno). */

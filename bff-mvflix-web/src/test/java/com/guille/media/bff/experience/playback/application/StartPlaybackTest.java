@@ -38,19 +38,16 @@ class StartPlaybackTest {
         asset);
   }
 
-  private static PlayableAsset managedAsset() {
-    return new PlayableAsset(5L, 42L, "video/x-matroska", 2048L, 77L, null, null);
-  }
-
   private static PlayableAsset libraryAsset() {
     return new PlayableAsset(5L, 42L, "video/x-matroska", 2048L, null, 3L, "Movies/edward.mkv");
   }
 
   @Test
-  void authorizedReadyManagedReturnsPresignedDirectSource() {
+  void authorizedReadyManagedReturnsPresignedDirectSourceWithoutCatalogAsset() {
     Instant expiresAt = Instant.now().plus(Duration.ofHours(3));
+    // Los objetos subidos no generan MediaAsset: MANAGED se resuelve por objectId.
     org.mockito.Mockito.when(this.catalog.loadVisibleMedia(42L))
-        .thenReturn(Mono.just(media("READY", 77L, managedAsset())));
+        .thenReturn(Mono.just(media("READY", 77L, null)));
     org.mockito.Mockito.when(this.managedAccess.openDirect(77L))
         .thenReturn(Mono.just(new DirectSource(
             "https://minio.dev:9000/bucket/key?X-Amz-Signature=abc", expiresAt, null)));
@@ -141,7 +138,7 @@ class StartPlaybackTest {
   @Test
   void storageFailureSurfacesAsSourceUnavailable() {
     org.mockito.Mockito.when(this.catalog.loadVisibleMedia(42L))
-        .thenReturn(Mono.just(media("READY", 77L, managedAsset())));
+        .thenReturn(Mono.just(media("READY", 77L, null)));
     org.mockito.Mockito.when(this.managedAccess.openDirect(77L))
         .thenReturn(Mono.error(new PlaybackSourceUnavailableException(
             "storage no disponible para playback",

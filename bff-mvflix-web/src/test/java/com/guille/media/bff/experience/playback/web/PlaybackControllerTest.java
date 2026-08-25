@@ -59,11 +59,8 @@ class PlaybackControllerTest {
   }
 
   private void catalogReturns(String status, Long objectId, boolean withAsset) {
-    var asset = !withAsset ? null : objectId != null
-        ? new com.guille.media.bff.experience.playback.application.PlayableAsset(
-            5L, 42L, "video/x-matroska", 2048L, objectId, null, null)
-        : new com.guille.media.bff.experience.playback.application.PlayableAsset(
-            5L, 42L, "video/x-matroska", 2048L, null, 3L, "Movies/edward.mkv");
+    var asset = !withAsset ? null : new com.guille.media.bff.experience.playback.application.PlayableAsset(
+        5L, 42L, "video/x-matroska", 2048L, null, 3L, "Movies/edward.mkv");
     when(this.catalog.loadVisibleMedia(42L)).thenReturn(Mono.just(
         new PlaybackCatalog.PlaybackMedia(
             new PlaybackCatalog.PlaybackMovie(

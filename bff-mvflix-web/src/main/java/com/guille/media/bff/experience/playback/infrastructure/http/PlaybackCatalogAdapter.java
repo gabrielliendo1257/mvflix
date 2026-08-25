@@ -4,6 +4,7 @@ import com.guille.media.bff.app.dto.MediaAssetDto;
 import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.experience.playback.application.AssetNotPlayableException;
 import com.guille.media.bff.experience.playback.application.PlayableAsset;
+import com.guille.media.bff.experience.playback.application.PlaybackContractViolationException;
 import com.guille.media.bff.experience.playback.application.PlaybackForbiddenException;
 import com.guille.media.bff.experience.playback.application.PlaybackMediaNotFoundException;
 import com.guille.media.bff.experience.playback.application.PlaybackSourceUnavailableException;
@@ -20,7 +21,12 @@ import reactor.core.publisher.Mono;
  * Adapter del puerto {@link PlaybackCatalog} contra mvflix-movies. La
  * autorización REAL ocurre en movies ({@code isVisibleTo} bajo el JWT del
  * usuario, tanto al servir la media como el asset): aquí solo se traducen sus
- * respuestas a errores de la experiencia. Las dos lecturas corren en paralelo.
+ * respuestas a errores de la experiencia.
+ *
+ * <p>Composición de locators: el objectId (tabla {@code media} de movies)
+ * define MANAGED; el MediaAsset identificado ({@code media_assets}) define
+ * LOCAL. Ambos a la vez es un estado imposible del dominio y se rechaza como
+ * violación de contrato en lugar de preferir uno en silencio.
  */
 @Component
 public class PlaybackCatalogAdapter implements PlaybackCatalog {
@@ -50,21 +56,27 @@ public class PlaybackCatalogAdapter implements PlaybackCatalog {
         .uri(API + "/media-assets/by-movie/" + mediaId)
         .retrieve()
         .bodyToMono(MediaAssetDto.class)
-        // Sin asset vinculado (media recién creada) es estado del contenido,
-        // no fallo de permisos ni de infraestructura.
+        // Sin asset de biblioteca vinculado es estado normal (uploads MANAGED,
+        // o media recién creada), no fallo de permisos ni infraestructura.
         .onErrorResume(WebClientResponseException.NotFound.class, error -> Mono.empty())
         .onErrorMap(WebClientResponseException.class, error -> translate(mediaId, error));
     return Mono.zip(movie, asset.defaultIfEmpty(NO_ASSET))
-        .map(joined -> new PlaybackMedia(
-            new PlaybackMovie(
-                joined.getT1().id(), joined.getT1().title(), joined.getT1().status(),
-                joined.getT1().posterPath(), joined.getT1().duration(),
-                joined.getT1().objectId()),
-            joined.getT2().id() == null ? null : new PlayableAsset(
-                joined.getT2().id(), mediaId, joined.getT2().mimeType(),
-                joined.getT2().size(),
-                joined.getT1().objectId(),
-                joined.getT2().libraryId(), joined.getT2().relativePath())));
+        .map(joined -> compose(mediaId, joined.getT1(), joined.getT2()));
+  }
+
+  /** Puro y package-private para testearlo sin servidor HTTP. */
+  static PlaybackMedia compose(long mediaId, MovieDto movieDto, MediaAssetDto assetDto) {
+    var movie = new PlaybackMovie(
+        movieDto.id(), movieDto.title(), movieDto.status(),
+        movieDto.posterPath(), movieDto.duration(), movieDto.objectId());
+    if (movieDto.objectId() != null && assetDto.id() != null) {
+      throw new PlaybackContractViolationException(
+          "La media " + mediaId + " declara objeto MANAGED y asset de biblioteca a la vez");
+    }
+    var asset = assetDto.id() == null ? null : new PlayableAsset(
+        assetDto.id(), mediaId, assetDto.mimeType(), assetDto.size(),
+        null, assetDto.libraryId(), assetDto.relativePath());
+    return new PlaybackMedia(movie, asset);
   }
 
   private RuntimeException translateMovie(long mediaId, WebClientResponseException error) {

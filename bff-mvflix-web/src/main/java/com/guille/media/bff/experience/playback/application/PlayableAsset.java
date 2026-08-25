@@ -1,23 +1,39 @@
 package com.guille.media.bff.experience.playback.application;
 
 /**
- * Contenido reproducible resuelto desde el catalogo (movies). Una media puede
- * terminar con varios assets; el catalogo decide cual aplica y en que estado
- * esta: aqui solo llega lo que movies ya considera vinculado a la media.
+ * Contenido reproducible resuelto desde el catálogo. Un asset tiene EXACTAMENTE
+ * UN locator; esta clase es el único lugar del BFF que conoce esa convención
+ * (transitional mientras movies exponga storageType explícito):
  *
- * <p>Dualidad explicita de storage: {@link #objectId} no nulo = MANAGED
- * (objeto en MinIO, acceso via presigned); si es nulo, el asset vive en una
- * biblioteca LOCAL ({@code libraryId + relativePath}) y se entrega via el
- * proxy autorizado del BFF mientras el navegador no alcance a storage.
+ * <pre>
+ * MANAGED: objectId != null  && libraryId == null && relativePath == null
+ * LOCAL:   objectId == null  && libraryId != null && relativePath != null
+ * </pre>
+ *
+ * {@code assetId} es el id del MediaAsset de catálogo; para MANAGED puede ser
+ * {@code null} porque el objeto subido aún no genera MediaAsset.
  */
 public record PlayableAsset(
-    long assetId,
+    Long assetId,
     long mediaId,
     String mimeType,
     long sizeBytes,
     Long objectId,
     Long libraryId,
     String relativePath) {
+
+  public PlayableAsset {
+    boolean managed = objectId != null;
+    boolean local = libraryId != null || relativePath != null;
+    if (managed && local) {
+      throw new IllegalArgumentException(
+          "Locator ambiguo: objectId y biblioteca presentes para la media " + mediaId);
+    }
+    if (local && (libraryId == null || relativePath == null || relativePath.isBlank())) {
+      throw new IllegalArgumentException(
+          "Locator LOCAL incompleto para la media " + mediaId);
+    }
+  }
 
   public boolean isManaged() {
     return this.objectId != null;

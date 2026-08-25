@@ -55,26 +55,29 @@ public class StartPlayback {
 
   /**
    * Estado del contenido: movies ya decidió qué significa READY/DRAFT con su
-   * propio modelo; la experiencia solo exige que esté publicado y con asset.
+   * propio modelo; la experiencia solo exige que esté publicado y con locator.
+   * Un MANAGED no necesita MediaAsset de catálogo (el objeto subido aún no lo
+   * genera); un LOCAL sí.
    */
   private Mono<Resolved> requirePlayable(long mediaId, PlaybackCatalog.PlaybackMedia media) {
     if (!STATUS_READY.equals(media.movie().status())) {
       return Mono.error(new AssetNotPlayableException(
           CODE_MEDIA_NOT_READY, "La media " + mediaId + " aún no está lista"));
     }
-    if (media.asset() == null) {
+    if (media.movie().objectId() == null && media.asset() == null) {
       return Mono.error(new AssetNotPlayableException(
           CODE_NO_PLAYABLE_ASSET, "No hay contenido reproducible para la media " + mediaId));
     }
     return Mono.just(new Resolved(media.movie(), media.asset()));
   }
 
-  /** MANAGED: presigned directo a MinIO. LOCAL: capability del proxy del BFF. */
+  /** MANAGED: presigned directo al object store. LOCAL: capability del proxy del BFF. */
   private Mono<DirectSource> openSource(String subject, Resolved playable) {
-    var asset = playable.asset();
-    if (asset.isManaged()) {
-      return this.managedAccess.openDirect(asset.objectId());
+    var movie = playable.movie();
+    if (movie.objectId() != null) {
+      return this.managedAccess.openDirect(movie.objectId());
     }
+    var asset = playable.asset();
     return this.localAccess
         .mint(new LocalPlaybackAccess.LocalMintCommand(
             asset.mediaId(), asset.assetId(), asset.libraryId(),
@@ -97,9 +100,9 @@ public class StartPlayback {
         source,
         null);
     // Sin URLs firmadas ni tokens en logs: solo identificadores de correlación.
-    log.info("playback session started: sessionId={} media={} asset={} storage={} strategy=DIRECT",
-        session.sessionId(), movie.id(), resolved.asset().assetId(),
-        resolved.asset().isManaged() ? "MANAGED" : "LOCAL");
+    log.info("playback session started: sessionId={} media={} storage={} strategy=DIRECT",
+        session.sessionId(), movie.id(),
+        movie.objectId() != null ? "MANAGED object=" + movie.objectId() : "LOCAL asset=" + resolved.asset().assetId());
     return session;
   }
 
