@@ -19,13 +19,6 @@ public interface MoviesWebClient {
 
   Flux<MovieDto> listMovies(int limit);
 
-  /**
-   * Proyección owned paginada para la grilla de administración
-   * (movies:/api/v1/catalog). Parámetros ya normalizados por el caller.
-   */
-  Mono<com.guille.media.bff.experience.catalog.application.CatalogPage> catalogPage(
-      int page, int size, String search, String status, String sort, String direction);
-
   Mono<MovieDto> movieById(Long movieId);
 
   Mono<MovieDto> createMovie(CreateMovieRequest request);

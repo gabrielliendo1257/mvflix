@@ -12,7 +12,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
  * Fronteras internas de la experiencia Catalog en el BFF: application no
  * conoce HTTP ni la capa web; web solo habla con application.
  */
-@AnalyzeClasses(packages = "com.guille.media.bff.experience.catalog", importOptions = ImportOption.DoNotIncludeTests.class)
+@AnalyzeClasses(packages = "com.guille.media.bff", importOptions = ImportOption.DoNotIncludeTests.class)
 class CatalogLayerTest {
 
   @ArchTest
@@ -46,6 +46,16 @@ class CatalogLayerTest {
           .should()
           .dependOnClassesThat()
           .resideInAPackage("com.guille.media.bff.app.ports..");
+
+  /** Los puertos globales legacy tampoco deben apropiarse del modelo Catalog. */
+  @ArchTest
+  static final ArchRule legacy_global_ports_do_not_depend_on_catalog =
+      noClasses()
+          .that()
+          .resideInAPackage("com.guille.media.bff.app.ports..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAPackage("com.guille.media.bff.experience.catalog..");
 
   /** El wire (Jackson) es infraestructura: application queda puro. */
   @ArchTest
