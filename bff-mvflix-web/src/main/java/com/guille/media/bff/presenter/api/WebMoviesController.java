@@ -100,6 +100,11 @@ public class WebMoviesController {
     return this.webMoviesService.shares(movieId, request.usernames()).map(ResponseEntity::ok);
   }
 
+  /**
+   * @deprecated usar {@code POST /web/catalog/actions/change-visibility}
+   *     (experiencia catalog). Se conserva hasta que migre el front.
+   */
+  @Deprecated
   @PostMapping(
       value = "/visibility",
       produces = MediaType.APPLICATION_JSON_VALUE,
