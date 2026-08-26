@@ -1,6 +1,5 @@
 package com.guille.media.bff.experience.catalog.web;
 
-import com.guille.media.bff.experience.catalog.application.CatalogActionJobView;
 import com.guille.media.bff.experience.catalog.application.CatalogPage;
 import com.guille.media.bff.experience.catalog.application.ChangeCatalogVisibility;
 import com.guille.media.bff.experience.catalog.application.GetCatalog;
@@ -54,12 +53,12 @@ public class CatalogController {
   @Operation(summary = "Cambia visibilidad de la selección (202 con job; progreso por SSE)")
   @PostMapping(value = "/actions/change-visibility",
       consumes = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<ResponseEntity<CatalogActionJobView>> changeVisibility(
+  public Mono<ResponseEntity<CatalogActionResponse>> changeVisibility(
       @RequestBody ChangeVisibilityAction action) {
     return this.changeCatalogVisibility
         .execute(new ActionRequest(
             action.movieIds(), action.libraryIds(),
             action.visibility(), action.sharedWith()))
-        .map(job -> ResponseEntity.accepted().body(CatalogActionJobView.from(job)));
+        .map(job -> ResponseEntity.accepted().body(CatalogActionResponse.from(job)));
   }
 }

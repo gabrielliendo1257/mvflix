@@ -5,7 +5,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.guille.media.bff.experience.catalog.application.CatalogActionJobView;
 import com.guille.media.bff.experience.catalog.application.CatalogPage;
 import com.guille.media.bff.experience.catalog.application.GetCatalog;
 import com.guille.media.bff.experience.catalog.application.port.CatalogActions;
