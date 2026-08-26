@@ -30,6 +30,7 @@ public record CatalogPageResponse(
         KeyResponse key,
         Long mediaId,
         Long assetId,
+        Boolean assetPresent,
         String title,
         String posterUrl,
         Integer year,
@@ -45,7 +46,8 @@ public record CatalogPageResponse(
         public static ItemResponse from(CatalogItemView item) {
             return new ItemResponse(
                 new KeyResponse(item.key().type(), item.key().id()),
-                item.mediaId(), item.assetId(), item.title(), item.posterUrl(),
+                item.mediaId(), item.assetId(), item.assetPresent(),
+                item.title(), item.posterUrl(),
                 item.year(), item.duration(), item.kind(), item.status(),
                 item.displayStatus(), item.source(), item.visibility(),
                 item.sharedWithCount(), item.providerStatus());
