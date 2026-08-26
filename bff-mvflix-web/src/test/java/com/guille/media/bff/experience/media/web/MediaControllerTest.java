@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.bff.experience.media.application.MediaDetail;
 import com.guille.media.bff.experience.media.application.ChangeMediaAccess;
+import com.guille.media.bff.experience.media.application.DeleteMedia;
 import com.guille.media.bff.experience.media.application.GetMediaDetail;
 import com.guille.media.bff.experience.media.application.EditMediaMetadata;
 import com.guille.media.bff.experience.media.application.LinkMediaProvider;
@@ -13,6 +14,7 @@ import com.guille.media.bff.experience.media.application.UnlinkMediaProvider;
 import com.guille.media.bff.experience.media.application.port.MediaDetailProjection;
 import com.guille.media.bff.experience.media.application.port.MetadataActions;
 import com.guille.media.bff.experience.media.application.port.AccessActions;
+import com.guille.media.bff.experience.media.application.port.MediaDeletion;
 import com.guille.media.bff.experience.media.application.port.ProviderActions;
 import com.guille.media.bff.presenter.api.ApiExceptionHandler;
 
@@ -30,6 +32,7 @@ class MediaControllerTest {
   private final ProviderActions actions = mock(ProviderActions.class);
   private final MetadataActions metadataActions = mock(MetadataActions.class);
   private final AccessActions accessActions = mock(AccessActions.class);
+  private final MediaDeletion deletion = mock(MediaDeletion.class);
   private final MediaDetailProjection projection = mock(MediaDetailProjection.class);
   private WebTestClient client;
 
@@ -42,7 +45,8 @@ class MediaControllerTest {
             new LinkMediaProvider(this.actions, this.projection),
             new UnlinkMediaProvider(this.actions, this.projection),
             new EditMediaMetadata(this.metadataActions, this.projection),
-            new ChangeMediaAccess(this.accessActions, this.projection)))
+            new ChangeMediaAccess(this.accessActions, this.projection),
+            new DeleteMedia(this.deletion)))
         .controllerAdvice(new ApiExceptionHandler())
         .build();
   }
@@ -192,6 +196,26 @@ class MediaControllerTest {
             """)
         .exchange()
         .expectStatus().isBadRequest();
+  }
+
+  @Test
+  void deleteReturns204WhenMediaDeleted() {
+    when(this.deletion.deleteCatalog(42L)).thenReturn(Mono.just(true));
+
+    this.client.delete()
+        .uri("/web/media/42")
+        .exchange()
+        .expectStatus().isNoContent();
+  }
+
+  @Test
+  void deleteIsIdempotentWhenAlreadyAbsent() {
+    when(this.deletion.deleteCatalog(42L)).thenReturn(Mono.just(false));
+
+    this.client.delete()
+        .uri("/web/media/42")
+        .exchange()
+        .expectStatus().isNoContent();
   }
 
   @Test

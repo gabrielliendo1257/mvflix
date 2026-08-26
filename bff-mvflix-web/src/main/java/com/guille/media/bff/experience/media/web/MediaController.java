@@ -1,6 +1,7 @@
 package com.guille.media.bff.experience.media.web;
 
 import com.guille.media.bff.experience.media.application.ChangeMediaAccess;
+import com.guille.media.bff.experience.media.application.DeleteMedia;
 import com.guille.media.bff.experience.media.application.EditMediaMetadata;
 import com.guille.media.bff.experience.media.application.GetMediaDetail;
 import com.guille.media.bff.experience.media.application.LinkMediaProvider;
@@ -11,11 +12,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,18 +41,21 @@ public class MediaController {
   private final UnlinkMediaProvider unlinkMediaProvider;
   private final EditMediaMetadata editMediaMetadata;
   private final ChangeMediaAccess changeMediaAccess;
+  private final DeleteMedia deleteMedia;
 
   public MediaController(
       GetMediaDetail getMediaDetail,
       LinkMediaProvider linkMediaProvider,
       UnlinkMediaProvider unlinkMediaProvider,
       EditMediaMetadata editMediaMetadata,
-      ChangeMediaAccess changeMediaAccess) {
+      ChangeMediaAccess changeMediaAccess,
+      DeleteMedia deleteMedia) {
     this.getMediaDetail = getMediaDetail;
     this.linkMediaProvider = linkMediaProvider;
     this.unlinkMediaProvider = unlinkMediaProvider;
     this.editMediaMetadata = editMediaMetadata;
     this.changeMediaAccess = changeMediaAccess;
+    this.deleteMedia = deleteMedia;
   }
 
   @Operation(summary = "Detalle completo de una media propia/visible")
@@ -126,6 +130,14 @@ public class MediaController {
     return this.changeMediaAccess
         .execute(mediaId, request.visibility(), request.sharedWith())
         .map(MediaDetailResponse::from);
+  }
+
+  /** Elimina la media de forma idempotente: borrar lo ya borrado sigue siendo 204. */
+  @Operation(summary = "Elimina la media (idempotente; 204 aunque ya no exista)")
+  @DeleteMapping("/{mediaId}")
+  public Mono<ResponseEntity<Void>> delete(@PathVariable long mediaId) {
+    return this.deleteMedia.execute(mediaId)
+        .thenReturn(ResponseEntity.noContent().build());
   }
 
   public record ChangeAccessRequest(String visibility, java.util.List<String> sharedWith) {}
