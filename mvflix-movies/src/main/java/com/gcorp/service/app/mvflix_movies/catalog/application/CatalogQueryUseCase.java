@@ -29,8 +29,14 @@ public class CatalogQueryUseCase {
    * display_status de la proyección. DRAFT se acepta como alias legacy de
    * PROCESSING; cualquier otro valor se ignora (sin filtro) dejando warn.
    */
+  /**
+   * Vocabulario operacional aceptado por el filtro; coincide con
+   * display_status de la proyección. DRAFT se acepta como alias legacy de
+   * PROCESSING. INVALID NO es filtro: pertenece a source (la fila con doble
+   * origen se filtra como ATTENTION).
+   */
   private static final java.util.Set<String> FILTERABLE =
-      java.util.Set.of("READY", "PROCESSING", "MISSING", "ATTENTION", "INVALID", "DRAFT");
+      java.util.Set.of("READY", "PROCESSING", "MISSING", "ATTENTION", "DRAFT");
 
   private final CatalogViewRepository viewRepository;
   private final UserProvider userProvider;

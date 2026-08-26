@@ -87,9 +87,6 @@ class CatalogQueryUseCaseTest {
 
         this.useCase.execute(null, null, null, "missing", null, null).block();
         assertThat(this.lastCaptured().status()).isEqualTo("MISSING");
-
-        this.useCase.execute(null, null, null, "invalid", null, null).block();
-        assertThat(this.lastCaptured().status()).isEqualTo("INVALID");
     }
 
     @Test
