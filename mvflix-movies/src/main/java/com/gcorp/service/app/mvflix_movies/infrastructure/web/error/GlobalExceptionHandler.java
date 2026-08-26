@@ -1,5 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.web.error;
 
+import com.gcorp.service.app.mvflix_movies.catalog.application.InvalidCatalogStatusException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieConflictException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
@@ -40,9 +41,9 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, "MOVIE_ACCESS_DENIED", ex);
     }
 
-    @ExceptionHandler(com.gcorp.service.app.mvflix_movies.catalog.application.InvalidCatalogStatusException.class)
+    @ExceptionHandler(InvalidCatalogStatusException.class)
     public ResponseEntity<ErrorResponse> invalidCatalogStatus(
-            com.gcorp.service.app.mvflix_movies.catalog.application.InvalidCatalogStatusException ex) {
+            InvalidCatalogStatusException ex) {
         return error(HttpStatus.BAD_REQUEST, "INVALID_CATALOG_STATUS", ex);
     }
 

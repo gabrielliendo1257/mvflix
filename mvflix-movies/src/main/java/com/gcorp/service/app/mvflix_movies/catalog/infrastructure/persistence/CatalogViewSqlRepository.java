@@ -30,6 +30,12 @@ import java.util.List;
 @Repository
 public class CatalogViewSqlRepository implements CatalogViewRepository {
 
+    /**
+     * Una película puede tener varias versiones o calidades locales. Catálogo
+     * y playback eligen el asset presente de menor id; esta consulta debe
+     * mantenerse alineada con MediaAssetRepository.findByCatalogItemId.
+     * PlaybackAndCatalogAssetSelectionConsistencyTest protege esa política.
+     */
     private static final String ROWS_SELECT = """
             SELECT m.id, m.title, m.status, m.kind, m.visibility, m.display_status,
                    COALESCE(m.metadata->>'posterPath', '') AS poster_url,
@@ -40,15 +46,6 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                         WHEN m.has_managed THEN 'MANAGED'
                         WHEN m.has_local THEN 'LOCAL'
                         ELSE 'NONE' END AS source,
-                   /**
-                    * Cardinalidad decidida: una película puede tener VARIOS
-                    * assets locales identificados (versiones/calidades). El
-                    * asset de reproducción preferido es: presente primero,
-                    * luego el más antiguo — mismo criterio que
-                    * MediaAssetRepository.findByCatalogItemId (puerta de
-                    * playback); consistencia asegurada por
-                    * PlaybackAndCatalogAssetSelectionConsistencyTest.
-                    */
                    (SELECT ma.id FROM media_assets ma
                     WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
                     ORDER BY ma.present DESC, ma.id

@@ -27,11 +27,6 @@ public class CatalogQueryUseCase {
   /**
    * Vocabulario operacional aceptado por el filtro; coincide con
    * display_status de la proyección. DRAFT se acepta como alias legacy de
-   * PROCESSING; cualquier otro valor se ignora (sin filtro) dejando warn.
-   */
-  /**
-   * Vocabulario operacional aceptado por el filtro; coincide con
-   * display_status de la proyección. DRAFT se acepta como alias legacy de
    * PROCESSING. INVALID NO es filtro: pertenece a source (la fila con doble
    * origen se filtra como ATTENTION).
    */
