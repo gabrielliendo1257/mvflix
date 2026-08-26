@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.bff.experience.catalog.application.CatalogPage;
 import com.guille.media.bff.experience.catalog.application.GetCatalog;
+import com.guille.media.bff.experience.catalog.web.ChangeVisibilityAction;
 import com.guille.media.bff.experience.catalog.application.port.CatalogActions;
 import com.guille.media.bff.experience.catalog.web.ChangeVisibilityAction;
 

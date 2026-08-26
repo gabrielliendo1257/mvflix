@@ -56,6 +56,18 @@ public class ApiExceptionHandler {
                 HttpStatus.NOT_FOUND.value(), "MEDIA_NOT_FOUND", ex.getMessage())));
   }
 
+  /** Media Detail: la media no existe o no es visible para el sujeto. */
+  @ExceptionHandler(com.guille.media.bff.experience.media.application.MediaDetailNotFoundException.class)
+  public Mono<ResponseEntity<OrchestrationError>> mediaDetailNotFound(
+      com.guille.media.bff.experience.media.application.MediaDetailNotFoundException ex) {
+    log.warn("Media detail no encontrada: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.NOT_FOUND.value(), "MEDIA_NOT_FOUND", ex.getMessage())));
+  }
+
   /** Playback: el usuario autenticado no puede reproducir la media. */
   @ExceptionHandler(PlaybackForbiddenException.class)
   public Mono<ResponseEntity<OrchestrationError>> playbackForbidden(
