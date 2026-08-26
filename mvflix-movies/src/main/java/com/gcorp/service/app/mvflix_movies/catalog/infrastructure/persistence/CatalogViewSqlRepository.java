@@ -40,12 +40,22 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                         WHEN m.has_managed THEN 'MANAGED'
                         WHEN m.has_local THEN 'LOCAL'
                         ELSE 'NONE' END AS source,
+                   /**
+                    * Cardinalidad decidida: una película puede tener VARIOS
+                    * assets locales identificados (versiones/calidades). El
+                    * asset de reproducción preferido es: presente primero,
+                    * luego el más antiguo — mismo criterio en asset_id y
+                    * asset_present para que fila, capability y resumen
+                    * cuenten la misma historia.
+                    */
                    (SELECT ma.id FROM media_assets ma
                     WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
-                    ORDER BY ma.id LIMIT 1) AS asset_id,
+                    ORDER BY ma.present DESC, ma.id
+                    LIMIT 1) AS asset_id,
                    (SELECT ma.present FROM media_assets ma
                     WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
-                    ORDER BY ma.id LIMIT 1) AS asset_present,
+                    ORDER BY ma.present DESC, ma.id
+                    LIMIT 1) AS asset_present,
                    (SELECT COUNT(*) FROM movie_shares ms WHERE ms.movie_id = m.id) AS shared_count
             """;
 

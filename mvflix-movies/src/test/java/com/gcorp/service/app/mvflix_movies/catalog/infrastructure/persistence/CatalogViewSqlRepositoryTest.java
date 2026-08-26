@@ -175,6 +175,57 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
         assertThat(view.items()).noneMatch(i -> "Ajena".equals(i.title()));
     }
 
+    /** Inserta un asset identificado directo a la movie (multi-versión permitida). */
+    private MediaAsset addIdentifiedAsset(long movieId, String path, boolean present) {
+        MediaAsset created = this.mediaAssetRepository.save(
+                MediaAsset.create(7L, new ScannedFile(path, 10L, "video/mp4"), "admin")).block();
+        MediaAsset identified = created.identify(CatalogItemId.of(movieId));
+        return this.mediaAssetRepository.save(
+                present ? identified : identified.markMissing()).block();
+    }
+
+    private void setMissing(MediaAsset asset) {
+        this.mediaAssetRepository.save(
+                this.mediaAssetRepository.findById(asset.getId()).block().markMissing()).block();
+    }
+
+    @Test
+    void multipleIdentifiedAssetsPrefersThePlayableOne() {
+        // Versión vieja sin archivo (id menor) + versión presente (id mayor):
+        // el asset reproducible preferido es el PRESENTE, no el primero.
+        Movie movie = this.movieRepository.save(Movie.fromLibraryAsset(
+                "pepe", MovieMetadata.onlyTitle("Stalker"), MediaKind.MOVIE)).block();
+        long missingId = addIdentifiedAsset(movie.getId().value(),
+                "stalker-old.mp4", false).getId().value();
+        long presentId = addIdentifiedAsset(movie.getId().value(),
+                "stalker-remux.mp4", true).getId().value();
+
+        CatalogPageView view = page("Stalker", null);
+
+        var item = view.items().get(0);
+        assertThat(item.assetId()).isEqualTo(presentId);
+        assertThat(item.assetId()).isNotEqualTo(missingId);
+        assertThat(item.assetPresent()).isTrue();
+        assertThat(item.displayStatus()).isEqualTo("READY");
+        assertThat(view.summary().ready()).isEqualTo(1);
+    }
+
+    @Test
+    void whenNoVersionIsPresentTheOldestMissingOneIsReported() {
+        Movie movie = this.movieRepository.save(Movie.fromLibraryAsset(
+                "pepe", MovieMetadata.onlyTitle("Solaris"), MediaKind.MOVIE)).block();
+        var first = addIdentifiedAsset(movie.getId().value(), "solaris-a.mp4", false);
+        addIdentifiedAsset(movie.getId().value(), "solaris-b.mp4", false);
+        setMissing(first); // asegura estado MISSING persistido para ambos
+
+        CatalogPageView view = page("Solaris", null);
+
+        var item = view.items().get(0);
+        assertThat(item.displayStatus()).isEqualTo("MISSING");
+        assertThat(item.assetPresent()).isFalse();
+        assertThat(item.assetId()).isEqualTo(first.getId().value());
+    }
+
     @Test
     void movieWithMultipleMediaRowsAppearsExactlyOnceAndPaginationStaysConsistent() {
         // Segunda fila de media para la misma película (trailer futuro, etc.).
