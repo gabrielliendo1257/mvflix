@@ -90,7 +90,7 @@ public class MediaDetailProjectionAdapter implements MediaDetailProjection {
       String originalTitle,
       Integer year,
       String duration,
-      String posterPath,
+      @com.fasterxml.jackson.annotation.JsonProperty("poster_path") String posterPath,
       String overview,
       List<String> genres,
       String director,
@@ -100,7 +100,7 @@ public class MediaDetailProjectionAdapter implements MediaDetailProjection {
       String status,
       @com.fasterxml.jackson.annotation.JsonProperty("enrichment_status") String enrichmentStatus,
       @com.fasterxml.jackson.annotation.JsonProperty("object_id") Long objectId,
-      Long tmdbId) {}
+      @com.fasterxml.jackson.annotation.JsonProperty("tmdb_id") Long tmdbId) {}
 
   @JsonIgnoreProperties(ignoreUnknown = true)
   record DownstreamAsset(
