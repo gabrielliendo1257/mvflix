@@ -39,7 +39,9 @@ public record CatalogItemView(
   }
 
   public enum Source {
-    MANAGED, LOCAL, NONE
+    MANAGED, LOCAL, NONE,
+    /** Doble origen declarado (media + asset identificado): no se elige en silencio. */
+    INVALID
   }
 
   public enum ProviderStatus {

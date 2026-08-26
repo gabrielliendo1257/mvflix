@@ -187,6 +187,28 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void dualSourceMovieSurfacesAsInvalidAttentionAndLeavesReady() {
+        // Coraline ya es MANAGED; al identificarle además un asset local el
+        // catálogo no elige en silencio: marca INVALID/ATTENTION y la saca de
+        // ready (mismo criterio que playback: violación de contrato).
+        MediaAsset discovered = this.mediaAssetRepository.save(
+                MediaAsset.create(9L, new ScannedFile("Coraline.mp4", 10L, "video/mp4"), "admin")).block();
+        this.mediaAssetRepository.identifyIfUnidentified(
+                discovered.getId(), CatalogItemId.of(this.managedId)).block();
+
+        CatalogPageView view = page("Coraline", null);
+
+        var item = view.items().get(0);
+        assertThat(item.source()).isEqualTo(CatalogItemView.Source.INVALID.name());
+        assertThat(item.displayStatus()).isEqualTo("ATTENTION");
+
+        CatalogPageView whole = page(null, null);
+        assertThat(whole.summary().total()).isEqualTo(3);
+        assertThat(whole.summary().ready()).isEqualTo(1);
+        assertThat(whole.summary().needsAttention()).isEqualTo(2);
+    }
+
+    @Test
     void missingLocalAssetIsProjectedWithPresentFalseButStillLOCAL() {
         MediaAsset alien = this.mediaAssetRepository.findByCatalogItemId(
                 CatalogItemId.of(this.localId)).block();

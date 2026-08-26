@@ -27,16 +27,23 @@ import java.util.List;
 @Repository
 public class CatalogViewSqlRepository implements CatalogViewRepository {
 
+    /**
+     * Fuente y estado operacional derivados en SQL: doble origen es un estado
+     * que el catálogo NO oculta (INVALID/ATTENTION, play=false aguas abajo),
+     * mismo criterio que playback trata como violación de contrato.
+     */
     private static final String ROWS_HEAD = """
             SELECT m.id, m.title, m.status, m.kind, m.visibility,
                    COALESCE(m.metadata->>'posterPath', '') AS poster_url,
                    m.metadata->>'year' AS year_text,
                    m.metadata->>'duration' AS duration,
                    CASE WHEN m.metadata->>'tmdbId' IS NOT NULL THEN 'LINKED' ELSE 'NONE' END AS provider_status,
-                   CASE m.status WHEN 'DRAFT' THEN 'PROCESSING' ELSE 'READY' END AS display_status,
-                   CASE WHEN EXISTS(SELECT 1 FROM media md WHERE md.movie_id = m.id) THEN 'MANAGED'
-                        WHEN EXISTS(SELECT 1 FROM media_assets ma
-                                    WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED') THEN 'LOCAL'
+                   CASE WHEN m.has_managed AND m.has_local THEN 'ATTENTION'
+                        WHEN m.status = 'DRAFT' THEN 'PROCESSING'
+                        ELSE 'READY' END AS display_status,
+                   CASE WHEN m.has_managed AND m.has_local THEN 'INVALID'
+                        WHEN m.has_managed THEN 'MANAGED'
+                        WHEN m.has_local THEN 'LOCAL'
                         ELSE 'NONE' END AS source,
                    (SELECT ma.id FROM media_assets ma
                     WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
@@ -45,15 +52,26 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                     WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
                     ORDER BY ma.id LIMIT 1) AS asset_present,
                    (SELECT COUNT(*) FROM movie_shares ms WHERE ms.movie_id = m.id) AS shared_count
-            FROM movies m
-            WHERE m.owner_username = :owner
+            FROM (
+                SELECT m0.*, 
+                       EXISTS(SELECT 1 FROM media x WHERE x.movie_id = m0.id) AS has_managed,
+                       EXISTS(SELECT 1 FROM media_assets x
+                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local
+                FROM movies m0
+                WHERE m0.owner_username = :owner
             """;
 
     private static final String STATS_HEAD = """
-            SELECT COUNT(DISTINCT m.id) AS total,
-                   COUNT(DISTINCT m.id) FILTER (WHERE m.status = 'READY') AS ready
-            FROM movies m
-            WHERE m.owner_username = :owner
+            SELECT COUNT(*) AS total,
+                   COUNT(*) FILTER (WHERE m.status = 'READY'
+                                    AND NOT (m.has_managed AND m.has_local)) AS ready
+            FROM (
+                SELECT m0.status,
+                       EXISTS(SELECT 1 FROM media x WHERE x.movie_id = m0.id) AS has_managed,
+                       EXISTS(SELECT 1 FROM media_assets x
+                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local
+                FROM movies m0
+                WHERE m0.owner_username = :owner
             """;
 
     // Sin JOINs en el head: los orígenes se resuelven con subconsultas, así una
@@ -75,7 +93,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
 
     private Flux<CatalogItemView> rows(CatalogReadQuery query) {
         // ROWS_HEAD ya incluye FROM/WHERE owner; aquí solo filtros opcionales.
-        String sql = ROWS_HEAD + optionalFilters(query)
+        String sql = ROWS_HEAD + innerFilters(query) + "\n ) m"
                 + orderClause(query)
                 + " LIMIT :size OFFSET :offset";
 
@@ -89,7 +107,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
 
     private Mono<Stats> stats(CatalogReadQuery query) {
         // STATS_HEAD ya incluye FROM/WHERE owner.
-        String sql = STATS_HEAD + optionalFilters(query);
+        String sql = STATS_HEAD + innerFilters(query) + "\n ) m";
         GenericExecuteSpec spec = this.databaseClient.sql(sql)
                 .bind("owner", query.ownerUsername());
         spec = bindOptionals(spec, query);
@@ -109,13 +127,14 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
         return query.status() != null ? bound.bind("status", query.status()) : bound;
     }
 
-    private static String optionalFilters(CatalogReadQuery query) {
+    /** Filtros opcionales sobre la tabla interna (m0), no sobre la proyección. */
+    private static String innerFilters(CatalogReadQuery query) {
         var filters = new StringBuilder();
         if (query.search() != null) {
-            filters.append(" AND LOWER(m.title) LIKE :search");
+            filters.append(" AND LOWER(m0.title) LIKE :search");
         }
         if (query.status() != null) {
-            filters.append(" AND m.status = :status");
+            filters.append(" AND m0.status = :status");
         }
         return filters.toString();
     }
