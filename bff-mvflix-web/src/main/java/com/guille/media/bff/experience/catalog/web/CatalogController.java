@@ -1,7 +1,6 @@
 package com.guille.media.bff.experience.catalog.web;
 
-import com.guille.media.bff.app.dto.MovieListItemDto;
-import com.guille.media.bff.experience.catalog.application.CatalogQuery;
+import com.guille.media.bff.experience.catalog.application.CatalogPage;
 import com.guille.media.bff.experience.catalog.application.GetCatalog;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,12 +12,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 /**
  * Experiencia Catalog: administración del contenido propio. La autorización
- * real vive en movies (scope=owned bajo el JWT del usuario); aquí solo se
- * compone la vista.
+ * real vive en movies (proyección owned bajo el JWT del usuario); aquí solo
+ * se compone la vista para la grilla del front.
  */
 @Tag(name = "Catalog", description = "Grilla de administración del contenido propio")
 @RestController
@@ -31,9 +30,15 @@ public class CatalogController {
     this.getCatalog = getCatalog;
   }
 
-  @Operation(summary = "Mis películas (scope owned); fila → detalle para editar/administrar")
+  @Operation(summary = "Mis películas paginadas (owned): summary + items + metadatos de página")
   @GetMapping
-  public Flux<MovieListItemDto> catalog(@RequestParam(required = false) Integer limit) {
-    return this.getCatalog.execute(CatalogQuery.withLimit(limit));
+  public Mono<CatalogPage> catalog(
+      @RequestParam(required = false) Integer page,
+      @RequestParam(required = false) Integer size,
+      @RequestParam(required = false) String q,
+      @RequestParam(required = false) String status,
+      @RequestParam(required = false) String sort,
+      @RequestParam(required = false) String dir) {
+    return this.getCatalog.execute(page, size, q, status, sort, dir);
   }
 }

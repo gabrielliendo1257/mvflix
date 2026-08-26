@@ -60,6 +60,31 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
+  public Mono<com.guille.media.bff.experience.catalog.application.CatalogPage> catalogPage(
+      int page, int size, String search, String status, String sort, String direction) {
+    return this.moviesWebClient
+        .get()
+        .uri(uriBuilder -> uriBuilder.path(API + "/catalog")
+            .queryParam("page", page)
+            .queryParam("size", size)
+            .queryParamIfPresent("q",
+                search == null || search.isBlank()
+                    ? java.util.Optional.empty() : java.util.Optional.of(search))
+            .queryParamIfPresent("status",
+                status == null || status.isBlank()
+                    ? java.util.Optional.empty() : java.util.Optional.of(status))
+            .queryParamIfPresent("sort",
+                sort == null || sort.isBlank()
+                    ? java.util.Optional.empty() : java.util.Optional.of(sort))
+            .queryParamIfPresent("dir",
+                direction == null || direction.isBlank()
+                    ? java.util.Optional.empty() : java.util.Optional.of(direction))
+            .build())
+        .retrieve()
+        .bodyToMono(com.guille.media.bff.experience.catalog.application.CatalogPage.class);
+  }
+
+  @Override
   public Mono<MovieDto> movieById(Long movieId) {
     return this.moviesWebClient
         .get()

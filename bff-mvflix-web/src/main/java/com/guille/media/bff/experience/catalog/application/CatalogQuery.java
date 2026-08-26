@@ -7,7 +7,7 @@ package com.guille.media.bff.experience.catalog.application;
  */
 public record CatalogQuery(int limit) {
 
-  public static final int DEFAULT_LIMIT = 20;
+  public static final int DEFAULT_LIMIT = 25;
   public static final int MAX_LIMIT = 50;
 
   public static CatalogQuery withLimit(Integer limit) {
