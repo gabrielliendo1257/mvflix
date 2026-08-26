@@ -1,12 +1,14 @@
 package com.guille.media.reproductor.uploader.storage.library.application;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.reproductor.uploader.storage.library.infrastructure.LibraryRegistryProperties;
 import com.guille.media.reproductor.uploader.storage.shared.security.AuthenticatedUser;
 import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryAccessDeniedException;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryAlreadyExistsException;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryPathInvalidException;
 import com.guille.media.reproductor.uploader.storage.library.domain.exception.LibraryPathNotAllowedException;
@@ -52,8 +54,24 @@ class RegisterLibraryUseCaseTest {
     }
 
     private void authenticateAsJavier() {
+        // El registro de bibliotecas locales es exclusivo del admin.
         when(this.userProvider.getAuthenticatedUser())
-                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "javier@test")));
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "javier@test",
+                        java.util.Set.of(AuthenticatedUser.ADMIN_ROLE))));
+    }
+
+    @Test
+    void nonAdminCannotRegisterLocalLibraries() throws Exception {
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Maria", "maria@test")));
+        Path sub = Files.createDirectory(this.tempDir.resolve("intentada"));
+
+        StepVerifier.create(this.useCase.execute(sub.toString()))
+                .expectError(LibraryAccessDeniedException.class)
+                .verify();
+
+        verify(this.libraryRepository, never()).findByRootPath(any(String.class));
+        verify(this.libraryRepository, never()).save(any());
     }
 
     @Test
@@ -79,6 +97,7 @@ class RegisterLibraryUseCaseTest {
 
     @Test
     void rejectsNonExistingDirectory() {
+        this.authenticateAsJavier();
         String missing = this.tempDir.resolve("no-existe").toString();
         StepVerifier.create(this.useCase.execute(missing))
                 .expectError(LibraryPathInvalidException.class)
@@ -87,6 +106,7 @@ class RegisterLibraryUseCaseTest {
 
     @Test
     void rejectsFileInsteadOfDirectory() throws Exception {
+        this.authenticateAsJavier();
         Path file = Files.createFile(this.tempDir.resolve("nota.txt"));
         StepVerifier.create(this.useCase.execute(file.toString()))
                 .expectError(LibraryPathInvalidException.class)
@@ -95,6 +115,7 @@ class RegisterLibraryUseCaseTest {
 
     @Test
     void rejectsPathOutsideAllowedRoot() {
+        this.authenticateAsJavier();
         StepVerifier.create(this.useCase.execute("/etc"))
                 .expectError(LibraryPathNotAllowedException.class)
                 .verify();

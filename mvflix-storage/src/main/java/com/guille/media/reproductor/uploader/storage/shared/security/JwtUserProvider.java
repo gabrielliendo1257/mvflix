@@ -41,13 +41,19 @@ public class JwtUserProvider implements UserProvider {
         Object principal = authentication.getPrincipal();
 
         if (principal instanceof Jwt jwt) {
+            var roles = jwt.getClaimAsStringList("roles");
             return Mono.just(new AuthenticatedUser(
-                    jwt.getSubject(), jwt.getClaimAsString("email")));
+                    jwt.getSubject(),
+                    jwt.getClaimAsString("email"),
+                    roles == null ? java.util.Set.of() : java.util.Set.copyOf(roles)));
         }
 
         if (principal instanceof OidcUser oidcUser) {
+            var roles = oidcUser.getAuthorities().stream()
+                    .map(authority -> authority.getAuthority())
+                    .collect(java.util.stream.Collectors.toSet());
             return Mono.just(new AuthenticatedUser(
-                    oidcUser.getSubject(), oidcUser.getEmail()));
+                    oidcUser.getSubject(), oidcUser.getEmail(), roles));
         }
 
         return Mono.error(new AuthenticationCredentialsNotFoundException(
