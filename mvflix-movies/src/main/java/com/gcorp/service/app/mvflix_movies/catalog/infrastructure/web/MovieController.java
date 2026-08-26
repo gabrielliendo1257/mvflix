@@ -167,8 +167,10 @@ public class MovieController {
     }
 
     @GetMapping
-    public Flux<MovieResponse> list(@RequestParam(defaultValue = "20") int limit) {
-        return this.listMoviesUseCase.execute(limit).map(this.mapper::toResponse);
+    public Flux<MovieResponse> list(
+            @RequestParam(defaultValue = "visible") String scope,
+            @RequestParam(defaultValue = "20") int limit) {
+        return this.listMoviesUseCase.execute(scope, limit).map(this.mapper::toResponse);
     }
 
     @PostMapping(value = "/{id}/complete", consumes = MediaType.APPLICATION_JSON_VALUE)
