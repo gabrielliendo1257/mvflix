@@ -209,7 +209,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
     }
 
     @Test
-    void missingLocalAssetIsProjectedWithPresentFalseButStillLOCAL() {
+    void missingLocalAssetDerivesMissingAttentionStatus() {
         MediaAsset alien = this.mediaAssetRepository.findByCatalogItemId(
                 CatalogItemId.of(this.localId)).block();
         this.mediaAssetRepository.save(alien.markMissing()).block();
@@ -219,8 +219,12 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
         var item = view.items().get(0);
         assertThat(item.source()).isEqualTo(CatalogItemView.Source.LOCAL.name());
         assertThat(item.assetPresent()).isFalse();
-        // MISSING como displayStatus queda para la próxima iteración; lo que NO
-        // puede pasar es anunciar el archivo como presente.
-        assertThat(item.displayStatus()).isEqualTo("READY");
+        assertThat(item.displayStatus()).isEqualTo("MISSING");
+
+        // El resumen global deja de contarla como lista y la pasa a atención.
+        CatalogPageView whole = page(null, null);
+        assertThat(whole.summary().total()).isEqualTo(3);
+        assertThat(whole.summary().ready()).isEqualTo(1);
+        assertThat(whole.summary().needsAttention()).isEqualTo(2);
     }
 }

@@ -39,6 +39,8 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                    m.metadata->>'duration' AS duration,
                    CASE WHEN m.metadata->>'tmdbId' IS NOT NULL THEN 'LINKED' ELSE 'NONE' END AS provider_status,
                    CASE WHEN m.has_managed AND m.has_local THEN 'ATTENTION'
+                        WHEN NOT m.has_managed AND m.has_local AND NOT m.has_local_ready THEN 'MISSING'
+                        WHEN m.has_managed AND m.has_local_ready THEN 'READY'
                         WHEN m.status = 'DRAFT' THEN 'PROCESSING'
                         ELSE 'READY' END AS display_status,
                    CASE WHEN m.has_managed AND m.has_local THEN 'INVALID'
@@ -56,7 +58,10 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                 SELECT m0.*, 
                        EXISTS(SELECT 1 FROM media x WHERE x.movie_id = m0.id) AS has_managed,
                        EXISTS(SELECT 1 FROM media_assets x
-                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local
+                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local,
+                       EXISTS(SELECT 1 FROM media_assets x
+                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED'
+                                AND x.present) AS has_local_ready
                 FROM movies m0
                 WHERE m0.owner_username = :owner
             """;
@@ -64,12 +69,16 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
     private static final String STATS_HEAD = """
             SELECT COUNT(*) AS total,
                    COUNT(*) FILTER (WHERE m.status = 'READY'
-                                    AND NOT (m.has_managed AND m.has_local)) AS ready
+                                    AND NOT (m.has_managed AND m.has_local)
+                                    AND (m.has_managed OR m.has_local_ready)) AS ready
             FROM (
                 SELECT m0.status,
                        EXISTS(SELECT 1 FROM media x WHERE x.movie_id = m0.id) AS has_managed,
                        EXISTS(SELECT 1 FROM media_assets x
-                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local
+                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local,
+                       EXISTS(SELECT 1 FROM media_assets x
+                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED'
+                                AND x.present) AS has_local_ready
                 FROM movies m0
                 WHERE m0.owner_username = :owner
             """;
