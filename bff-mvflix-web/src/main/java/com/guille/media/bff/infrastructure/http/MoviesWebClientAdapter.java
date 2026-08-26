@@ -78,7 +78,7 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
       payload.put("visibility", visibility);
     }
     if (sharedWith != null && !sharedWith.isEmpty()) {
-      payload.put("shared_with", sharedWith);
+      payload.put("sharedWith", sharedWith);
     }
     return this.moviesWebClient
         .post()
@@ -221,8 +221,6 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   @Override
   public Mono<MovieDto> updateMovieAccess(
       Long movieId, String visibility, List<String> sharedWith) {
-    record AccessBody(String visibility, @com.fasterxml.jackson.annotation.JsonProperty("shared_with")
-        List<String> sharedWith) {}
     return this.moviesWebClient
         .put()
         .uri(API + "/" + movieId + "/access")
@@ -231,6 +229,9 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .retrieve()
         .bodyToMono(MovieDto.class);
   }
+
+  /** Contrato camelCase: movies espera {@code sharedWith}, no {@code shared_with}. */
+  record AccessBody(String visibility, List<String> sharedWith) {}
 
   @Override
   public Mono<MovieDto> updateShares(Long movieId, List<String> usernames) {
