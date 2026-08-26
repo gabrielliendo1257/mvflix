@@ -23,8 +23,14 @@ public class CatalogQueryUseCase {
 
   static final int DEFAULT_SIZE = 25;
   static final int MAX_SIZE = 50;
-  static final String STATUS_PROCESSING = "PROCESSING";
-  static final String STATUS_DRAFT = "DRAFT";
+
+  /**
+   * Vocabulario operacional aceptado por el filtro; coincide con
+   * display_status de la proyección. DRAFT se acepta como alias legacy de
+   * PROCESSING; cualquier otro valor se ignora (sin filtro) dejando warn.
+   */
+  private static final java.util.Set<String> FILTERABLE =
+      java.util.Set.of("READY", "PROCESSING", "MISSING", "ATTENTION", "INVALID", "DRAFT");
 
   private final CatalogViewRepository viewRepository;
   private final UserProvider userProvider;
@@ -37,7 +43,7 @@ public class CatalogQueryUseCase {
     int safePage = page == null || page < 0 ? 0 : page;
     String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
     CatalogReadQuery.SortField sortField = CatalogReadQuery.SortField.from(sort);
-    // Sin dir => DESC (recientes primero). Solo "asc" (case-insensitive) sube.
+    // Sin dir => DESC (recientemente agregado primero). Solo "asc" sube.
     boolean ascending = direction != null && direction.equalsIgnoreCase("asc");
 
     return this.userProvider
@@ -49,15 +55,14 @@ public class CatalogQueryUseCase {
             sortField, ascending)));
   }
 
-  /**
-   * El contrato habla en estados OPERACIONALES (displayStatus): la UI pide
-   * PROCESSING, el dominio guarda DRAFT. Se traduce aquí, una sola vez.
-   */
   static String normalizeStatus(String status) {
     if (status == null || status.isBlank()) {
       return null;
     }
     String upper = status.trim().toUpperCase();
-    return STATUS_PROCESSING.equals(upper) ? STATUS_DRAFT : upper;
+    if (!FILTERABLE.contains(upper)) {
+      return null;
+    }
+    return "DRAFT".equals(upper) ? "PROCESSING" : upper;
   }
 }

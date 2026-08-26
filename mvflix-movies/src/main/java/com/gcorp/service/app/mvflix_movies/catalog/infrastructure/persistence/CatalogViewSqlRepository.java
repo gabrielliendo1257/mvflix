@@ -15,34 +15,27 @@ import reactor.core.publisher.Mono;
 import java.util.List;
 
 /**
- * SQL read projection del catálogo owned. Combina de forma controlada:
- * movies (base), media (source MANAGED), media_assets identificadas (source
- * LOCAL), movie_shares (sharedWithCount) y campos de display del JSONB
- * metadata. Paginación honesta: LIMIT/OFFSET en filas y agregados globales
- * para total/summary.
+ * SQL read projection del catálogo owned. Tres niveles deliberados:
  *
- * <p>El ORDER BY usa whitelist de columnas; nunca se interpola crudo lo que
- * envía el cliente.
+ * <ol>
+ *   <li><b>flags</b>: movies con EXISTS de media/media_assets identificadas
+ *       (sin JOINs ⇒ una fila por película, paginación consistente).</li>
+ *   <li><b>display</b>: UNA sola definición de display_status que gobierna
+ *       filas, resumen y filtros (READY/PROCESSING/MISSING/ATTENTION).</li>
+ *   <li><b>proyección</b>: columnas de vista y filtros operacionales.</li>
+ * </ol>
+ * El ORDER BY usa whitelist y desempata por id; nunca se interpola crudo lo
+ * que envía el cliente.
  */
 @Repository
 public class CatalogViewSqlRepository implements CatalogViewRepository {
 
-    /**
-     * Fuente y estado operacional derivados en SQL: doble origen es un estado
-     * que el catálogo NO oculta (INVALID/ATTENTION, play=false aguas abajo),
-     * mismo criterio que playback trata como violación de contrato.
-     */
-    private static final String ROWS_HEAD = """
-            SELECT m.id, m.title, m.status, m.kind, m.visibility,
+    private static final String ROWS_SELECT = """
+            SELECT m.id, m.title, m.status, m.kind, m.visibility, m.display_status,
                    COALESCE(m.metadata->>'posterPath', '') AS poster_url,
                    m.metadata->>'year' AS year_text,
                    m.metadata->>'duration' AS duration,
                    CASE WHEN m.metadata->>'tmdbId' IS NOT NULL THEN 'LINKED' ELSE 'NONE' END AS provider_status,
-                   CASE WHEN m.has_managed AND m.has_local THEN 'ATTENTION'
-                        WHEN NOT m.has_managed AND m.has_local AND NOT m.has_local_ready THEN 'MISSING'
-                        WHEN m.has_managed AND m.has_local_ready THEN 'READY'
-                        WHEN m.status = 'DRAFT' THEN 'PROCESSING'
-                        ELSE 'READY' END AS display_status,
                    CASE WHEN m.has_managed AND m.has_local THEN 'INVALID'
                         WHEN m.has_managed THEN 'MANAGED'
                         WHEN m.has_local THEN 'LOCAL'
@@ -54,38 +47,34 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                     WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
                     ORDER BY ma.id LIMIT 1) AS asset_present,
                    (SELECT COUNT(*) FROM movie_shares ms WHERE ms.movie_id = m.id) AS shared_count
-            FROM (
-                SELECT m0.*, 
-                       EXISTS(SELECT 1 FROM media x WHERE x.movie_id = m0.id) AS has_managed,
-                       EXISTS(SELECT 1 FROM media_assets x
-                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local,
-                       EXISTS(SELECT 1 FROM media_assets x
-                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED'
-                                AND x.present) AS has_local_ready
-                FROM movies m0
-                WHERE m0.owner_username = :owner
             """;
 
-    private static final String STATS_HEAD = """
+    private static final String STATS_SELECT = """
             SELECT COUNT(*) AS total,
-                   COUNT(*) FILTER (WHERE m.status = 'READY'
-                                    AND NOT (m.has_managed AND m.has_local)
-                                    AND (m.has_managed OR m.has_local_ready)) AS ready
-            FROM (
-                SELECT m0.status,
-                       EXISTS(SELECT 1 FROM media x WHERE x.movie_id = m0.id) AS has_managed,
-                       EXISTS(SELECT 1 FROM media_assets x
-                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local,
-                       EXISTS(SELECT 1 FROM media_assets x
-                              WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED'
-                                AND x.present) AS has_local_ready
-                FROM movies m0
-                WHERE m0.owner_username = :owner
+                   COUNT(*) FILTER (WHERE m.display_status = 'READY') AS ready
             """;
 
-    // Sin JOINs en el head: los orígenes se resuelven con subconsultas, así una
-    // película con varias filas de media/assets aparece EXACTAMENTE una vez y
-    // la paginación (LIMIT/OFFSET vs COUNT) permanece consistente.
+    private static final String FLAGS_AND_DISPLAY = """
+            FROM (
+                SELECT f.*,
+                       CASE WHEN f.has_managed AND f.has_local THEN 'ATTENTION'
+                            WHEN NOT f.has_managed AND f.has_local AND NOT f.has_local_ready THEN 'MISSING'
+                            WHEN f.status = 'DRAFT' THEN 'PROCESSING'
+                            WHEN (f.has_managed OR f.has_local_ready) THEN 'READY'
+                            ELSE 'ATTENTION' END AS display_status
+                FROM (
+                    SELECT m0.*,
+                           EXISTS(SELECT 1 FROM media x WHERE x.movie_id = m0.id) AS has_managed,
+                           EXISTS(SELECT 1 FROM media_assets x
+                                  WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local,
+                           EXISTS(SELECT 1 FROM media_assets x
+                                  WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED'
+                                    AND x.present) AS has_local_ready
+                    FROM movies m0
+                    WHERE m0.owner_username = :owner
+                ) f
+            ) m
+            """;
 
     private final DatabaseClient databaseClient;
 
@@ -101,8 +90,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
     }
 
     private Flux<CatalogItemView> rows(CatalogReadQuery query) {
-        // ROWS_HEAD ya incluye FROM/WHERE owner; aquí solo filtros opcionales.
-        String sql = ROWS_HEAD + innerFilters(query) + "\n ) m"
+        String sql = ROWS_SELECT + FLAGS_AND_DISPLAY + " WHERE TRUE" + optionalFilters(query)
                 + orderClause(query)
                 + " LIMIT :size OFFSET :offset";
 
@@ -115,8 +103,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
     }
 
     private Mono<Stats> stats(CatalogReadQuery query) {
-        // STATS_HEAD ya incluye FROM/WHERE owner.
-        String sql = STATS_HEAD + innerFilters(query) + "\n ) m";
+        String sql = STATS_SELECT + FLAGS_AND_DISPLAY + " WHERE TRUE" + optionalFilters(query);
         GenericExecuteSpec spec = this.databaseClient.sql(sql)
                 .bind("owner", query.ownerUsername());
         spec = bindOptionals(spec, query);
@@ -128,24 +115,24 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                 .one();
     }
 
+    /** Filtros sobre la proyección: el estado usa el vocabulario operacional. */
+    private static String optionalFilters(CatalogReadQuery query) {
+        var filters = new StringBuilder();
+        if (query.search() != null) {
+            filters.append(" AND LOWER(m.title) LIKE :search");
+        }
+        if (query.status() != null) {
+            filters.append(" AND m.display_status = :status");
+        }
+        return filters.toString();
+    }
+
     private static GenericExecuteSpec bindOptionals(
             GenericExecuteSpec spec, CatalogReadQuery query) {
         var bound = query.search() != null
                 ? spec.bind("search", "%" + query.search().toLowerCase() + "%")
                 : spec;
         return query.status() != null ? bound.bind("status", query.status()) : bound;
-    }
-
-    /** Filtros opcionales sobre la tabla interna (m0), no sobre la proyección. */
-    private static String innerFilters(CatalogReadQuery query) {
-        var filters = new StringBuilder();
-        if (query.search() != null) {
-            filters.append(" AND LOWER(m0.title) LIKE :search");
-        }
-        if (query.status() != null) {
-            filters.append(" AND m0.status = :status");
-        }
-        return filters.toString();
     }
 
     static String orderClause(CatalogReadQuery query) {

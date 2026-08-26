@@ -123,13 +123,19 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
 
     @Test
     void statusFilterOnlyKeepsMatchingRows() {
-        CatalogPageView drafts = page(null, "DRAFT");
-        assertThat(drafts.total()).isEqualTo(1);
-        assertThat(drafts.summary().needsAttention()).isEqualTo(1);
-        assertThat(drafts.items()).extracting(CatalogItemView::title).containsExactly("Beta");
+        // Vocabulario operacional: PROCESSING (no DRAFT), MISSING, ATTENTION...
+        CatalogPageView processing = page(null, "PROCESSING");
+        assertThat(processing.total()).isEqualTo(1);
+        assertThat(processing.summary().needsAttention()).isEqualTo(1);
+        assertThat(processing.items()).extracting(CatalogItemView::title).containsExactly("Beta");
 
         CatalogPageView ready = page(null, "READY");
         assertThat(ready.total()).isEqualTo(2);
+
+        // Un valor fuera del vocabulario operacional no filtra nada:
+        // la normalización vive en el use case, el repositorio es literal.
+        CatalogPageView unknown = page(null, "NO_EXISTE");
+        assertThat(unknown.total()).isZero();
     }
 
     @Test

@@ -76,12 +76,26 @@ class CatalogQueryUseCaseTest {
     }
 
     @Test
-    void processingIsTranslatedToDomainDraft() {
-        this.useCase.execute(null, null, null, "processing", null, null).block();
-        assertThat(this.lastCaptured().status()).isEqualTo("DRAFT");
+    void statusFilterUsesOperationalVocabulary() {
+        // El filtro compara contra display_status: PROCESSING es el valor que
+        // la UI ve; DRAFT se acepta como alias legacy.
+        this.useCase.execute(null, null, null, "PROCESSING", null, null).block();
+        assertThat(this.lastCaptured().status()).isEqualTo("PROCESSING");
 
-        this.useCase.execute(null, null, null, "ready", null, null).block();
-        assertThat(this.lastCaptured().status()).isEqualTo("READY");
+        this.useCase.execute(null, null, null, "draft", null, null).block();
+        assertThat(this.lastCaptured().status()).isEqualTo("PROCESSING");
+
+        this.useCase.execute(null, null, null, "missing", null, null).block();
+        assertThat(this.lastCaptured().status()).isEqualTo("MISSING");
+
+        this.useCase.execute(null, null, null, "invalid", null, null).block();
+        assertThat(this.lastCaptured().status()).isEqualTo("INVALID");
+    }
+
+    @Test
+    void unknownStatusIsDroppedInsteadOfReturningZeroRows() {
+        this.useCase.execute(null, null, null, "no-existe", null, null).block();
+        assertThat(this.lastCaptured().status()).isNull();
     }
 
     @Test
