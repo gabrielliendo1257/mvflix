@@ -40,6 +40,7 @@ class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegratio
     @Autowired private DatabaseClient databaseClient;
 
     private long catalogMovieId;
+    private long preferredAssetId;
 
     @BeforeEach
     void seedMixedVersions() {
@@ -62,8 +63,9 @@ class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegratio
         this.mediaAssetRepository.save(oldIdentified.markMissing()).block();
         var remuxCreated = this.mediaAssetRepository.save(
                 MediaAsset.create(7L, new ScannedFile("stalker-remux.mp4", 9L, "video/mp4"), "admin")).block();
-        this.mediaAssetRepository.identifyIfUnidentified(
-                remuxCreated.getId(), CatalogItemId.of(this.catalogMovieId)).block();
+        this.preferredAssetId = this.mediaAssetRepository.identifyIfUnidentified(
+                remuxCreated.getId(), CatalogItemId.of(this.catalogMovieId)).block()
+                .getId().value();
     }
 
     @Test
@@ -78,6 +80,7 @@ class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegratio
                     assertThat(item.source()).isEqualTo("LOCAL");
                     assertThat(item.displayStatus()).isEqualTo("READY");
                     assertThat(item.assetPresent()).isTrue();
+                    assertThat(item.assetId()).isEqualTo(this.preferredAssetId);
                 })
                 .verifyComplete();
     }
@@ -87,6 +90,7 @@ class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegratio
         StepVerifier.create(this.mediaAssetQueries.findByCatalogItem(
                         CatalogItemId.of(this.catalogMovieId)))
                 .assertNext(asset -> {
+                    assertThat(asset.getId().value()).isEqualTo(this.preferredAssetId);
                     assertThat(asset.getPresent()).isTrue();
                     assertThat(asset.getRelativePath()).isEqualTo("stalker-remux.mp4");
                 })
