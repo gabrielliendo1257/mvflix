@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 /**
  * La normalización vive aquí y los integration tests construyen
@@ -33,9 +34,12 @@ class CatalogQueryUseCaseTest {
     @BeforeEach
     void setUp() {
         this.useCase = new CatalogQueryUseCase(this.viewRepository, this.userProvider);
-        when(this.userProvider.getAuthenticatedUser())
+        // Lenient: algunos tests fallan antes de consumir estos stubs.
+        org.mockito.Mockito.lenient()
+                .when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("pepe", "pepe@m")));
-        when(this.viewRepository.page(any())).thenReturn(Mono.empty());
+        org.mockito.Mockito.lenient()
+                .when(this.viewRepository.page(any())).thenReturn(Mono.empty());
     }
 
     private CatalogReadQuery captured() {
@@ -90,9 +94,13 @@ class CatalogQueryUseCaseTest {
     }
 
     @Test
-    void unknownStatusIsDroppedInsteadOfReturningZeroRows() {
-        this.useCase.execute(null, null, null, "no-existe", null, null).block();
-        assertThat(this.lastCaptured().status()).isNull();
+    void unknownStatusFailsFastInsteadOfSilentlyIgnoringTheFilter() {
+        StepVerifier.create(
+                        this.useCase.execute(null, null, null, "no-existe", null, null))
+                .expectError(com.gcorp.service.app.mvflix_movies.catalog.application.InvalidCatalogStatusException.class)
+                .verify();
+
+        org.mockito.Mockito.verifyNoInteractions(this.viewRepository);
     }
 
     @Test

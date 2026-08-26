@@ -52,6 +52,12 @@ public class CatalogQueryUseCase {
     // Sin dir => DESC (recientemente agregado primero). Solo "asc" sube.
     boolean ascending = direction != null && direction.equalsIgnoreCase("asc");
 
+    if (status != null && !status.isBlank() && normalizeStatus(status) == null) {
+        // API de administración: un filtro inesperado es un error del cliente,
+        // no una excusa para devolver el catálogo completo sin filtrar.
+        return Mono.error(new InvalidCatalogStatusException(status));
+    }
+
     return this.userProvider
         .getAuthenticatedUser()
         .flatMap(user -> this.viewRepository.page(new CatalogReadQuery(

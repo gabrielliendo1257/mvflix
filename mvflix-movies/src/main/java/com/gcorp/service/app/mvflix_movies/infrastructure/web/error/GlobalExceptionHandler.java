@@ -40,6 +40,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.FORBIDDEN, "MOVIE_ACCESS_DENIED", ex);
     }
 
+    @ExceptionHandler(com.gcorp.service.app.mvflix_movies.catalog.application.InvalidCatalogStatusException.class)
+    public ResponseEntity<ErrorResponse> invalidCatalogStatus(
+            com.gcorp.service.app.mvflix_movies.catalog.application.InvalidCatalogStatusException ex) {
+        return error(HttpStatus.BAD_REQUEST, "INVALID_CATALOG_STATUS", ex);
+    }
+
     @ExceptionHandler(MovieConflictException.class)
     public ResponseEntity<ErrorResponse> movieConflict(MovieConflictException ex) {
         return error(HttpStatus.CONFLICT, "MOVIE_CONFLICT", ex);
