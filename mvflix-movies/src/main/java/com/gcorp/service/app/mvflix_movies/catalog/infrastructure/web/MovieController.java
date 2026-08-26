@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.BulkVisibilityUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogQueryUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CompleteMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateMovieCommand;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedDraftCommand;
@@ -17,6 +18,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityResponse;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CatalogPageResponse;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CompleteMovieRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateIdentifiedDraftRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;
@@ -62,6 +64,7 @@ public class MovieController {
     private final CreateIdentifiedDraftUseCase createIdentifiedDraftUseCase;
     private final GetMovieUseCase getMovieUseCase;
     private final ListMoviesUseCase listMoviesUseCase;
+    private final CatalogQueryUseCase catalogQueryUseCase;
     private final UpdateVisibilityUseCase updateVisibilityUseCase;
     private final UpdateSharesUseCase updateSharesUseCase;
     private final BulkVisibilityUseCase bulkVisibilityUseCase;
@@ -76,6 +79,7 @@ public class MovieController {
             CreateIdentifiedDraftUseCase createIdentifiedDraftUseCase,
             GetMovieUseCase getMovieUseCase,
             ListMoviesUseCase listMoviesUseCase,
+            CatalogQueryUseCase catalogQueryUseCase,
             UpdateVisibilityUseCase updateVisibilityUseCase,
             UpdateSharesUseCase updateSharesUseCase,
             BulkVisibilityUseCase bulkVisibilityUseCase,
@@ -88,6 +92,7 @@ public class MovieController {
         this.createIdentifiedDraftUseCase = createIdentifiedDraftUseCase;
         this.getMovieUseCase = getMovieUseCase;
         this.listMoviesUseCase = listMoviesUseCase;
+        this.catalogQueryUseCase = catalogQueryUseCase;
         this.updateVisibilityUseCase = updateVisibilityUseCase;
         this.updateSharesUseCase = updateSharesUseCase;
         this.bulkVisibilityUseCase = bulkVisibilityUseCase;
@@ -171,6 +176,20 @@ public class MovieController {
             @RequestParam(defaultValue = "visible") String scope,
             @RequestParam(defaultValue = "20") int limit) {
         return this.listMoviesUseCase.execute(scope, limit).map(this.mapper::toResponse);
+    }
+
+    /** Proyección owned paginada para la grilla de administración del BFF. */
+    @org.springframework.web.bind.annotation.GetMapping("/catalog")
+    public Mono<CatalogPageResponse> catalogPage(
+            @RequestParam(name = "page", defaultValue = "0") Integer page,
+            @RequestParam(name = "size", defaultValue = "25") Integer size,
+            @RequestParam(name = "q", required = false) String search,
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "sort", required = false) String sort,
+            @RequestParam(name = "dir", required = false) String direction) {
+        return this.catalogQueryUseCase
+                .execute(page, size, search, status, sort, direction)
+                .map(CatalogPageResponse::from);
     }
 
     @PostMapping(value = "/{id}/complete", consumes = MediaType.APPLICATION_JSON_VALUE)

@@ -1,0 +1,53 @@
+package com.gcorp.service.app.mvflix_movies.catalog.application;
+
+import java.util.List;
+
+/**
+ * Fila de la proyección de administración del catálogo. Es un READ MODEL:
+ * combina movies + media + media_assets + movie_shares sin meter esa
+ * composición en el agregado {@code Movie}.
+ *
+ * <p>{@code displayStatus} es una proyección operacional derivada, NO un
+ * estado del dominio: READY→READY, DRAFT→PROCESSING. Condiciones de
+ * {@code MediaAsset} (UNIDENTIFIED/MISSING) no se cuelgan de aquí.
+ *
+ * <p>{@code source} habla de mecanismos de almacenamiento lógicos (MANAGED,
+ * LOCAL), nunca de infraestructura concreta (MinIO/S3/filesystem).
+ */
+public record CatalogItemView(
+    Key key,
+    Long mediaId,
+    Long assetId,
+    String title,
+    String posterUrl,
+    Integer year,
+    String duration,
+    String kind,
+    String status,
+    String displayStatus,
+    String source,
+    String visibility,
+    int sharedWithCount,
+    String providerStatus) {
+
+  public record Key(String type, Long id) {
+    public static Key media(long id) {
+      return new Key("MEDIA", id);
+    }
+  }
+
+  public enum Source {
+    MANAGED, LOCAL, NONE
+  }
+
+  public enum ProviderStatus {
+    LINKED, NONE;
+
+    public static ProviderStatus fromTmdbId(Long tmdbId) {
+      return tmdbId == null ? NONE : LINKED;
+    }
+
+    public static final List<String> NAMES =
+        List.of(LINKED.name(), NONE.name());
+  }
+}
