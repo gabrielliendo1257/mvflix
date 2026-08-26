@@ -195,9 +195,10 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
 
     static String orderClause(CatalogReadQuery query) {
         String direction = query.ascending() ? " ASC" : " DESC";
-        // Desempate por key_id: sin él, empates de updated_at/título/año pueden
-        // reordenarse entre requests y una página repetiría u omitiría filas.
+        // Desempate ÚNICO: (key_type, key_id). key_id solo no basta porque un
+        // MEDIA/10 y un ASSET/10 pueden empatar y desestabilizar la paginación.
         return " ORDER BY " + orderColumn(query.sort()) + direction
+                + ", u.key_type" + direction
                 + ", u.key_id" + direction;
     }
 
