@@ -57,6 +57,12 @@ public class LocalLibraryFileResolver implements LibraryContentResolver {
         });
     }
 
+    /**
+     * Mapa completo a propósito: aunque el scan solo ingesta mp4/webm
+     * (política en {@link FilesystemLibraryScanner}), los assets catalogados
+     * ANTES del estrechamiento siguen siendo servibles y necesitan su mime
+     * correcto. No eliminar entradas sin migrar el catálogo.
+     */
     private String mimeTypeOf(Path path) {
         String name = path.getFileName().toString();
         int dot = name.lastIndexOf('.');

@@ -40,6 +40,12 @@ public class DefaultUploadPolicy implements UploadPolicy {
     return MAX_UPLOAD_SIZE;
   }
 
+  /**
+   * Política de formatos de subida: solo contenedores reproducibles
+   * nativamente por todos los navegadores. El resto (MKV, AVI, MOV, ...)
+   * entrará por el futuro servicio de transcodificación; ampliar esta lista
+   * antes de que exista catálogo contenido no reproducible con DIRECT.
+   */
   @Override
   public boolean supports(MimeType mimeType) {
     return switch (mimeType.value()) {

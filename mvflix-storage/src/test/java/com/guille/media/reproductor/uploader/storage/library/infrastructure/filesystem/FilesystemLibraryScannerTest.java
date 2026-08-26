@@ -25,7 +25,7 @@ class FilesystemLibraryScannerTest {
     @Test
     void discoversSupportedFilesWithRelativePaths() throws IOException {
         Files.createDirectories(this.tempDir.resolve("Interstellar"));
-        Files.write(this.tempDir.resolve("Interstellar/Interstellar.mkv"), new byte[] {1, 2, 3});
+        Files.write(this.tempDir.resolve("Interstellar/Interstellar.webm"), new byte[] {1, 2, 3});
         Files.write(this.tempDir.resolve("Dune.mp4"), new byte[] {4, 5, 6, 7});
 
         var discovered =
@@ -33,15 +33,18 @@ class FilesystemLibraryScannerTest {
 
         assertThat(discovered)
                 .containsExactlyInAnyOrder(
-                        new DiscoveredFile("Interstellar/Interstellar.mkv", 3, "video/x-matroska"),
+                        new DiscoveredFile("Interstellar/Interstellar.webm", 3, "video/webm"),
                         new DiscoveredFile("Dune.mp4", 4, "video/mp4"));
     }
 
     @Test
     void skipsUnsupportedAndHiddenFiles() throws IOException {
         Files.write(this.tempDir.resolve("readme.txt"), new byte[] {1});
-        Files.write(this.tempDir.resolve(".hidden.mkv"), new byte[] {2});
-        Files.write(this.tempDir.resolve("matrix.webm"), new byte[] {3});
+        Files.write(this.tempDir.resolve(".hidden.mp4"), new byte[] {2});
+        Files.write(this.tempDir.resolve("matrix.mkv"), new byte[] {3});
+        Files.write(this.tempDir.resolve("legacy.avi"), new byte[] {4});
+        Files.write(this.tempDir.resolve("iphone.mov"), new byte[] {5});
+        Files.write(this.tempDir.resolve("matrix.webm"), new byte[] {6});
 
         StepVerifier.create(this.scanner.scan(this.tempDir.toString()))
                 .expectNextMatches(file -> file.relativePath().equals("matrix.webm"))
@@ -66,22 +69,22 @@ class FilesystemLibraryScannerTest {
 
     @Test
     void skipsPartialDownloadFiles() throws IOException {
-        Files.write(this.tempDir.resolve("pelicula.mkv"), new byte[] {1});
-        Files.write(this.tempDir.resolve("serie.mkv.part"), new byte[] {2});
+        Files.write(this.tempDir.resolve("pelicula.webm"), new byte[] {1});
+        Files.write(this.tempDir.resolve("serie.mp4.part"), new byte[] {2});
         Files.write(this.tempDir.resolve("video.mp4.crdownload"), new byte[] {3});
-        Files.write(this.tempDir.resolve("otro.mkv!qB"), new byte[] {4});
+        Files.write(this.tempDir.resolve("otro.webm!qB"), new byte[] {4});
 
         StepVerifier.create(this.scanner.scan(this.tempDir.toString()))
-                .expectNextMatches(file -> file.relativePath().equals("pelicula.mkv"))
+                .expectNextMatches(file -> file.relativePath().equals("pelicula.webm"))
                 .verifyComplete();
     }
 
     @Test
     void skipsSymlinkEscapingTheRoot() throws IOException {
-        Path outside = this.tempDir.getParent().resolve("outside.mkv");
+        Path outside = this.tempDir.getParent().resolve("outside.mp4");
         Files.write(outside, new byte[] {9});
         try {
-            Files.createSymbolicLink(this.tempDir.resolve("escape.mkv"), outside);
+            Files.createSymbolicLink(this.tempDir.resolve("escape.mp4"), outside);
 
             StepVerifier.create(this.scanner.scan(this.tempDir.toString()))
                     .verifyComplete();

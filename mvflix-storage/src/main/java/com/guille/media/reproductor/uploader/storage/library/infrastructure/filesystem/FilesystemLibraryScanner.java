@@ -45,18 +45,22 @@ public class FilesystemLibraryScanner implements LibraryScanner {
 
     private static final int CANCEL_CHECK_EVERY = 200;
 
+    /**
+     * Política de ingesta de bibliotecas: solo contenedores reproducibles
+     * nativamente por todos los navegadores (MP4/H.264+AAC, WebM). Los demás
+     * formatos llegarán vía el futuro servicio de transcodificación; mientras
+     * tanto se ignoran en el scan para no catalogar contenido que el player
+     * no puede servir con la estrategia DIRECT.
+     */
     private static final Set<String> SUPPORTED_EXTENSIONS =
-            Set.of("mkv", "mp4", "avi", "mov", "webm");
+            Set.of("mp4", "webm");
 
     private static final Set<String> PARTIAL_DOWNLOAD_SUFFIXES =
             Set.of(".part", ".crdownload", ".download", ".opdownload", ".tmp", ".~", "!qB");
 
     private static final Map<String, String> MIME_BY_EXTENSION =
             Map.of(
-                    "mkv", "video/x-matroska",
                     "mp4", "video/mp4",
-                    "avi", "video/x-msvideo",
-                    "mov", "video/quicktime",
                     "webm", "video/webm");
 
     private final ScanCancellationRegistry cancellationRegistry;
