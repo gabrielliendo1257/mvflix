@@ -168,4 +168,37 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
         CatalogPageView view = page(null, null);
         assertThat(view.items()).noneMatch(i -> "Ajena".equals(i.title()));
     }
+
+    @Test
+    void movieWithMultipleMediaRowsAppearsExactlyOnceAndPaginationStaysConsistent() {
+        // Segunda fila de media para la misma película (trailer futuro, etc.).
+        this.mediaRepository.save(Media.create(
+                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.managedId),
+                43L, "k2")).block();
+
+        CatalogPageView view = page("Coraline", null);
+
+        assertThat(view.total()).isEqualTo(1);
+        assertThat(view.items()).hasSize(1);
+        assertThat(view.totalPages()).isEqualTo(1);
+        assertThat(view.summary().total()).isEqualTo(1);
+        assertThat(view.items().get(0).source())
+                .isEqualTo(CatalogItemView.Source.MANAGED.name());
+    }
+
+    @Test
+    void missingLocalAssetIsProjectedWithPresentFalseButStillLOCAL() {
+        MediaAsset alien = this.mediaAssetRepository.findByCatalogItemId(
+                CatalogItemId.of(this.localId)).block();
+        this.mediaAssetRepository.save(alien.markMissing()).block();
+
+        CatalogPageView view = page("Alien", null);
+
+        var item = view.items().get(0);
+        assertThat(item.source()).isEqualTo(CatalogItemView.Source.LOCAL.name());
+        assertThat(item.assetPresent()).isFalse();
+        // MISSING como displayStatus queda para la próxima iteración; lo que NO
+        // puede pasar es anunciar el archivo como presente.
+        assertThat(item.displayStatus()).isEqualTo("READY");
+    }
 }

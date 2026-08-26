@@ -19,6 +19,7 @@ final class CatalogRowMappers {
                 CatalogItemView.Key.media(mediaId),
                 mediaId,
                 assetId,
+                row.get("asset_present", Boolean.class),
                 row.get("title", String.class),
                 row.get("poster_url", String.class),
                 year,

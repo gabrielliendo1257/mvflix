@@ -34,24 +34,31 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                    m.metadata->>'duration' AS duration,
                    CASE WHEN m.metadata->>'tmdbId' IS NOT NULL THEN 'LINKED' ELSE 'NONE' END AS provider_status,
                    CASE m.status WHEN 'DRAFT' THEN 'PROCESSING' ELSE 'READY' END AS display_status,
-                   CASE WHEN md.id IS NOT NULL THEN 'MANAGED'
-                        WHEN ma.id IS NOT NULL THEN 'LOCAL'
+                   CASE WHEN EXISTS(SELECT 1 FROM media md WHERE md.movie_id = m.id) THEN 'MANAGED'
+                        WHEN EXISTS(SELECT 1 FROM media_assets ma
+                                    WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED') THEN 'LOCAL'
                         ELSE 'NONE' END AS source,
-                   ma.id AS asset_id,
+                   (SELECT ma.id FROM media_assets ma
+                    WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
+                    ORDER BY ma.id LIMIT 1) AS asset_id,
+                   (SELECT ma.present FROM media_assets ma
+                    WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
+                    ORDER BY ma.id LIMIT 1) AS asset_present,
                    (SELECT COUNT(*) FROM movie_shares ms WHERE ms.movie_id = m.id) AS shared_count
+            FROM movies m
+            WHERE m.owner_username = :owner
             """;
 
     private static final String STATS_HEAD = """
             SELECT COUNT(DISTINCT m.id) AS total,
                    COUNT(DISTINCT m.id) FILTER (WHERE m.status = 'READY') AS ready
-            """;
-
-    private static final String FROM_AND_FILTER = """
             FROM movies m
-            LEFT JOIN media md ON md.movie_id = m.id
-            LEFT JOIN media_assets ma ON ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
             WHERE m.owner_username = :owner
             """;
+
+    // Sin JOINs en el head: los orígenes se resuelven con subconsultas, así una
+    // película con varias filas de media/assets aparece EXACTAMENTE una vez y
+    // la paginación (LIMIT/OFFSET vs COUNT) permanece consistente.
 
     private final DatabaseClient databaseClient;
 
@@ -67,7 +74,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
     }
 
     private Flux<CatalogItemView> rows(CatalogReadQuery query) {
-        String sql = ROWS_HEAD + FROM_AND_FILTER + optionalFilters(query)
+        String sql = ROWS_HEAD + optionalFilters(query)
                 + " ORDER BY " + orderColumn(query.sort())
                 + (query.ascending() ? " ASC" : " DESC")
                 + " LIMIT :size OFFSET :offset";
@@ -81,7 +88,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
     }
 
     private Mono<Stats> stats(CatalogReadQuery query) {
-        String sql = STATS_HEAD + FROM_AND_FILTER + optionalFilters(query);
+        String sql = STATS_HEAD + optionalFilters(query);
         GenericExecuteSpec spec = this.databaseClient.sql(sql)
                 .bind("owner", query.ownerUsername());
         spec = bindOptionals(spec, query);

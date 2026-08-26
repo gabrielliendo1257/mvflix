@@ -18,6 +18,8 @@ public record CatalogItemView(
     Key key,
     Long mediaId,
     Long assetId,
+    /** Presencia en disco del asset elegido para reproducción; null si no aplica. */
+    Boolean assetPresent,
     String title,
     String posterUrl,
     Integer year,
