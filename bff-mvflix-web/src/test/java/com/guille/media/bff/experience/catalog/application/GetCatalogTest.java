@@ -65,6 +65,40 @@ class GetCatalogTest {
           assertThat(caps.play()).isFalse();
           assertThat(caps.delete()).isFalse();
           assertThat(caps.editMetadata()).isTrue();
+          // MOVIE sin proveedor: se puede vincular, no desvincular.
+          assertThat(caps.linkProvider()).isTrue();
+          assertThat(caps.unlinkProvider()).isFalse();
+        })
+        .verifyComplete();
+  }
+
+  @Test
+  void providerCapabilitiesFollowKindAndLinkState() {
+    when(this.projection.page(0, 25, null, null, null, null))
+        .thenReturn(Mono.just(new CatalogPage(
+            new CatalogPage.Summary(2, 2, 0),
+            List.of(
+                // MOVIE + LINKED → solo unlink.
+                new CatalogPage.Item(
+                    new CatalogPage.Key("MEDIA", 1L), 1L, null, Boolean.TRUE,
+                    "Coraline", "/c.jpg", 2009, "1h 40m", "MOVIE",
+                    "READY", "READY", "LOCAL", "PRIVATE", 0, "LINKED"),
+                // OTHER → nunca se vincula a proveedores.
+                new CatalogPage.Item(
+                    new CatalogPage.Key("MEDIA", 2L), 2L, null, Boolean.TRUE,
+                    "Clip propio", null, null, "0h 30s", "OTHER",
+                    "READY", "READY", "LOCAL", "PRIVATE", 0, "NONE")),
+            0, 25, 2, 1)));
+
+    StepVerifier.create(this.getCatalog.execute(null, null, null, null, null, null))
+        .assertNext(page -> {
+          var linked = page.items().get(0).getCapabilities();
+          assertThat(linked.linkProvider()).isFalse();
+          assertThat(linked.unlinkProvider()).isTrue();
+
+          var other = page.items().get(1).getCapabilities();
+          assertThat(other.linkProvider()).isFalse();
+          assertThat(other.unlinkProvider()).isFalse();
         })
         .verifyComplete();
   }

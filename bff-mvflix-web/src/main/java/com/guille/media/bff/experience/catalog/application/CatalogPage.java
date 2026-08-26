@@ -60,6 +60,8 @@ public record CatalogPage(
      *   <li>play: READY + origen válido + archivo presente (LOCAL).</li>
      *   <li>viewDetail/editMetadata/changeVisibility/manageSharing: scope
      *       OWNED ⇒ el dueño gestiona su ficha.</li>
+     *   <li>linkProvider/unlinkProvider: solo MOVIE; exactamente una de las
+     *       dos según providerStatus. OTHER no se vincula a proveedores.</li>
      *   <li>delete: bloqueado para INVALID (conciliar orígenes) y MISSING
      *       (reconciliar el archivo); bulk requiere cleanup durable.</li>
      *   <li>identify: false hasta exponer assets UNIDENTIFIED en la página.</li>
@@ -68,12 +70,16 @@ public record CatalogPage(
     public Capabilities getCapabilities() {
       boolean invalid = "INVALID".equals(this.source);
       boolean missing = "MISSING".equals(this.displayStatus);
+      boolean movie = "MOVIE".equals(this.kind);
+      boolean linked = "LINKED".equals(this.providerStatus);
       return new Capabilities(
           playable(),
           true,
           true,
           true,
           true,
+          movie && !linked,
+          movie && linked,
           false,
           !invalid && !missing);
     }
@@ -84,6 +90,8 @@ public record CatalogPage(
         boolean editMetadata,
         boolean changeVisibility,
         boolean manageSharing,
+        boolean linkProvider,
+        boolean unlinkProvider,
         boolean identify,
         boolean delete) {}
   }

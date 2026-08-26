@@ -59,6 +59,7 @@ public record CatalogPageResponse(
           new CapabilitiesResponse(
               caps.play(), caps.viewDetail(), caps.editMetadata(),
               caps.changeVisibility(), caps.manageSharing(),
+              caps.linkProvider(), caps.unlinkProvider(),
               caps.identify(), caps.delete()));
     }
 
@@ -70,6 +71,8 @@ public record CatalogPageResponse(
         boolean editMetadata,
         boolean changeVisibility,
         boolean manageSharing,
+        boolean linkProvider,
+        boolean unlinkProvider,
         boolean identify,
         boolean delete) {}
   }
