@@ -23,8 +23,12 @@ public record ShellCapabilities(
     return new ShellCapabilities(false, false, false, false, false, false);
   }
 
+  /**
+   * Cuenta usable sin rol: puede añadir contenido por el camino MANAGED
+   * (uploads a MinIO); las bibliotecas locales son exclusivas del operador.
+   */
   public static ShellCapabilities accountOnly(boolean accountUsable) {
-    return new ShellCapabilities(accountUsable, accountUsable, false, false, false, false);
+    return new ShellCapabilities(accountUsable, false, false, false, false, false);
   }
 
   public static ShellCapabilities admin(boolean accountUsable) {

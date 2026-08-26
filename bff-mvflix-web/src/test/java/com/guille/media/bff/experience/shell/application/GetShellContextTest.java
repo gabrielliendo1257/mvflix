@@ -87,7 +87,8 @@ class GetShellContextTest {
           assertThat(context.user().displayName()).isEqualTo("Admin Dev");
           assertThat(context.user().avatarUrl()).isEqualTo("http://a/img.png");
           assertThat(context.capabilities().canAddMedia()).isTrue();
-          assertThat(context.capabilities().canManageLibraries()).isTrue();
+          // Las bibliotecas locales son del operador: solo el admin las gestiona.
+          assertThat(context.capabilities().canManageLibraries()).isFalse();
           assertThat(context.capabilities().canAccessAdmin()).isFalse();
           assertThat(context.capabilities().canModerateCatalog()).isFalse();
           assertThat(context.activity().running()).isEqualTo(1);
