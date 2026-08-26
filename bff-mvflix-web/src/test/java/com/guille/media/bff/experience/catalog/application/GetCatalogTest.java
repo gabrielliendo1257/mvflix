@@ -23,10 +23,26 @@ class GetCatalogTest {
     return new CatalogPage(
         new CatalogPage.Summary(1, 1, 0),
         List.of(new CatalogPage.Item(
-            new CatalogPage.Key("MEDIA", 42L), 42L, null, title, "/p.jpg", 2009,
+            new CatalogPage.Key("MEDIA", 42L), 42L, null, Boolean.TRUE, title, "/p.jpg", 2009,
             "1h 40m", "MOVIE", status, "READY".equals(status) ? "READY" : "PROCESSING",
             source, "PRIVATE", 2, "LINKED")),
         0, 25, 1, 1);
+  }
+
+  @Test
+  void missingLocalAssetIsNotPlayableEvenWhenMovieIsReady() {
+    when(this.movies.catalogPage(0, 25, null, null, null, null))
+        .thenReturn(Mono.just(new CatalogPage(
+            new CatalogPage.Summary(1, 1, 0),
+            List.of(new CatalogPage.Item(
+                new CatalogPage.Key("MEDIA", 9L), 9L, 3L, Boolean.FALSE, "Alien",
+                null, 1979, "1h 57m", "MOVIE", "READY", "READY",
+                "LOCAL", "PRIVATE", 0, "NONE")),
+            0, 25, 1, 1)));
+
+    StepVerifier.create(this.getCatalog.execute(null, null, null, null, null, null))
+        .assertNext(page -> assertThat(page.items().get(0).playable()).isFalse())
+        .verifyComplete();
   }
 
   @Test

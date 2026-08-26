@@ -39,7 +39,7 @@ class CatalogControllerTest {
         .thenReturn(Mono.just(new CatalogPage(
             new CatalogPage.Summary(128, 121, 7),
             List.of(new CatalogPage.Item(
-                new CatalogPage.Key("MEDIA", 42L), 42L, 17L,
+                new CatalogPage.Key("MEDIA", 42L), 42L, 17L, Boolean.TRUE,
                 "Coraline", "/poster.jpg", 2009, "1h 40m", "MOVIE",
                 "READY", "READY", "LOCAL", "PRIVATE", 0, "LINKED")),
             0, 25, 128, 6)));
@@ -49,6 +49,7 @@ class CatalogControllerTest {
         .exchange()
         .expectStatus().isOk()
         .expectBody()
+        .jsonPath("$.items[0].assetPresent").isEqualTo(true)
         .jsonPath("$.summary.total").isEqualTo(128)
         .jsonPath("$.summary.needsAttention").isEqualTo(7)
         .jsonPath("$.items[0].key.type").isEqualTo("MEDIA")

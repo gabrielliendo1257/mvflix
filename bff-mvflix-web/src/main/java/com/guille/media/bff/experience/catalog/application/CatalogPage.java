@@ -30,6 +30,7 @@ public record CatalogPage(
       Key key,
       Long mediaId,
       Long assetId,
+      Boolean assetPresent,
       String title,
       String posterUrl,
       Integer year,
@@ -42,9 +43,21 @@ public record CatalogPage(
       int sharedWithCount,
       String providerStatus) {
 
+    /**
+     * Capability honesta para la UI: un LOCAL cuyo archivo desapareció
+     * (assetPresent=false) NO es reproducible con DIRECT, aunque la película
+     * siga READY. MISSING como estado de pantalla queda para la próxima
+     * iteración; mientras tanto el botón Play no se ofrece.
+     */
     public boolean playable() {
-      return "READY".equals(this.status)
-          && ("MANAGED".equals(this.source) || "LOCAL".equals(this.source));
+      if (!"READY".equals(this.status)) {
+        return false;
+      }
+      return switch (this.source == null ? "" : this.source) {
+        case "MANAGED" -> true;
+        case "LOCAL" -> Boolean.TRUE.equals(this.assetPresent);
+        default -> false;
+      };
     }
   }
 
