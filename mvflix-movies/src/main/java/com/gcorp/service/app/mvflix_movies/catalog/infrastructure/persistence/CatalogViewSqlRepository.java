@@ -44,9 +44,10 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                     * Cardinalidad decidida: una película puede tener VARIOS
                     * assets locales identificados (versiones/calidades). El
                     * asset de reproducción preferido es: presente primero,
-                    * luego el más antiguo — mismo criterio en asset_id y
-                    * asset_present para que fila, capability y resumen
-                    * cuenten la misma historia.
+                    * luego el más antiguo — mismo criterio que
+                    * MediaAssetRepository.findByCatalogItemId (puerta de
+                    * playback); consistencia asegurada por
+                    * PlaybackAndCatalogAssetSelectionConsistencyTest.
                     */
                    (SELECT ma.id FROM media_assets ma
                     WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'

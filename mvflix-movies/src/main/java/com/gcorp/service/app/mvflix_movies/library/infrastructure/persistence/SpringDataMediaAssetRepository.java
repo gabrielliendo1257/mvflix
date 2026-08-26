@@ -125,6 +125,12 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                 .one();
     }
 
+    /**
+     * Asset PREFERIDO para reproducción de una película. Política única del
+     * servicio (compartida con la proyección owned del catálogo):
+     * presente primero, luego el más antiguo. Así playback y catálogo nunca
+     * anuncian versiones distintas para el mismo contenido.
+     */
     @Override
     public Mono<MediaAsset> findByCatalogItemId(CatalogItemId catalogItemId) {
         return this.databaseClient
@@ -135,7 +141,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                         + """
                         FROM media_assets
                         WHERE movie_id = :movie_id
-                        ORDER BY id
+                        ORDER BY present DESC, id
                         LIMIT 1
                         """)
                 .bind("movie_id", catalogItemId.value())
