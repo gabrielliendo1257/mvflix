@@ -31,24 +31,35 @@ public class CatalogProjectionAdapter implements CatalogProjection {
       int page, int size, String search, String status, String sort, String direction) {
     return this.moviesWebClient
         .get()
-        .uri(uriBuilder -> uriBuilder.path("/api/v1/movies/catalog")
-            .queryParam("page", page)
-            .queryParam("size", size)
-            .queryParamIfPresent("q",
-                search == null ? java.util.Optional.empty() : java.util.Optional.of(search))
-            .queryParamIfPresent("status",
-                status == null ? java.util.Optional.empty() : java.util.Optional.of(status))
-            .queryParamIfPresent("sort",
-                sort == null ? java.util.Optional.empty() : java.util.Optional.of(sort))
-            .queryParamIfPresent("dir",
-                direction == null ? java.util.Optional.empty() : java.util.Optional.of(direction))
-            .build())
+        .uri(uriBuilder -> catalogUri(uriBuilder,
+                page, size, search, status, sort, direction).build())
         .retrieve()
         .bodyToMono(DownstreamPage.class)
         .map(CatalogProjectionAdapter::toApplication);
   }
 
-  private static CatalogPage toApplication(DownstreamPage page) {
+  /** Package-private: testeable sin servidor HTTP. */
+  static <B extends org.springframework.web.util.UriBuilder> B catalogUri(
+      B builder, int page, int size, String search, String status, String sort, String direction) {
+    builder.path("/api/v1/movies/catalog")
+        .queryParam("page", page)
+        .queryParam("size", size);
+    if (search != null && !search.isBlank()) {
+      builder.queryParam("q", search);
+    }
+    if (status != null && !status.isBlank()) {
+      builder.queryParam("status", status);
+    }
+    if (sort != null && !sort.isBlank()) {
+      builder.queryParam("sort", sort);
+    }
+    if (direction != null && !direction.isBlank()) {
+      builder.queryParam("dir", direction);
+    }
+    return builder;
+  }
+
+  static CatalogPage toApplication(DownstreamPage page) {
     var summary = new CatalogPage.Summary(
         page.summary().total(), page.summary().ready(), page.summary().needsAttention());
     List<CatalogPage.Item> items = page.items() == null ? List.of() : page.items().stream()
