@@ -1,10 +1,10 @@
 package com.guille.media.bff.experience.catalog.web;
 
-import com.guille.media.bff.app.dto.BulkVisibilityRequest;
-import com.guille.media.bff.app.service.Job;
-import com.guille.media.bff.app.service.WebMoviesService;
+import com.guille.media.bff.experience.catalog.application.CatalogActionJobView;
 import com.guille.media.bff.experience.catalog.application.CatalogPage;
+import com.guille.media.bff.experience.catalog.application.ChangeCatalogVisibility;
 import com.guille.media.bff.experience.catalog.application.GetCatalog;
+import com.guille.media.bff.experience.catalog.application.port.CatalogActions.ActionRequest;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,8 +22,8 @@ import reactor.core.publisher.Mono;
 
 /**
  * Experiencia Catalog: administración del contenido propio. La autorización
- * real vive en movies (proyección owned bajo el JWT del usuario); aquí solo
- * se compone la vista y se enrutan las acciones tipadas.
+ * real vive en movies; el controller solo compone vistas y enruta acciones
+ * tipadas hacia application (nunca hacia servicios legacy directamente).
  */
 @Tag(name = "Catalog", description = "Grilla de administración del contenido propio")
 @RestController
@@ -31,11 +31,11 @@ import reactor.core.publisher.Mono;
 public class CatalogController {
 
   private final GetCatalog getCatalog;
-  private final WebMoviesService webMoviesService;
+  private final ChangeCatalogVisibility changeCatalogVisibility;
 
-  public CatalogController(GetCatalog getCatalog, WebMoviesService webMoviesService) {
+  public CatalogController(GetCatalog getCatalog, ChangeCatalogVisibility changeCatalogVisibility) {
     this.getCatalog = getCatalog;
-    this.webMoviesService = webMoviesService;
+    this.changeCatalogVisibility = changeCatalogVisibility;
   }
 
   @Operation(summary = "Mis películas paginadas (owned): summary + items + metadatos de página")
@@ -54,12 +54,12 @@ public class CatalogController {
   @Operation(summary = "Cambia visibilidad de la selección (202 con job; progreso por SSE)")
   @PostMapping(value = "/actions/change-visibility",
       consumes = MediaType.APPLICATION_JSON_VALUE)
-  public Mono<ResponseEntity<Job>> changeVisibility(
+  public Mono<ResponseEntity<CatalogActionJobView>> changeVisibility(
       @RequestBody ChangeVisibilityAction action) {
-    return this.webMoviesService
-        .bulkVisibility(new BulkVisibilityRequest(
+    return this.changeCatalogVisibility
+        .execute(new ActionRequest(
             action.movieIds(), action.libraryIds(),
             action.visibility(), action.sharedWith()))
-        .map(job -> ResponseEntity.accepted().body(job));
+        .map(job -> ResponseEntity.accepted().body(CatalogActionJobView.from(job)));
   }
 }

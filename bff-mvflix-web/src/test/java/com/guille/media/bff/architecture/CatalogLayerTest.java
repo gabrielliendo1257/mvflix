@@ -37,6 +37,18 @@ class CatalogLayerTest {
           .dependOnClassesThat()
           .resideInAPackage("io.swagger..");
 
+  /** Application y web no saltan a servicios legacy: solo el adapter de infra lo hace. */
+  @ArchTest
+  static final ArchRule catalog_does_not_touch_legacy_services =
+      noClasses()
+          .that()
+          .resideInAnyPackage("..experience.catalog.application..", "..experience.catalog.web..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage(
+              "com.guille.media.bff.app.service..",
+              "com.guille.media.bff.presenter..");
+
   @ArchTest
   static final ArchRule web_only_speaks_to_application =
       classes()
