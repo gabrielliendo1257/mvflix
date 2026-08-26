@@ -184,6 +184,25 @@ public class Movie {
                 this.kind);
     }
 
+    /**
+     * Transición de dominio: acceso completo (visibilidad + compartidos) en
+     * una sola decisión. Existe para que el cambio se persista como unidad y
+     * nunca quede una película SHARED sin sus shares, ni PRIVATE con residuos.
+     */
+    public Movie withAccess(MovieVisibility visibility, Set<String> sharedWith) {
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                this.title,
+                this.status,
+                this.enrichmentStatus,
+                this.objectId,
+                this.metadata,
+                visibility,
+                sharedWith,
+                this.kind);
+    }
+
     /** Transición de dominio: reemplaza la metadata (edición manual del dueño). */
     public Movie withMetadata(MovieMetadata metadata) {
         requireTitle(metadata);

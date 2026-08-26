@@ -300,6 +300,29 @@ public class SpringDataMovieRepository implements MovieRepository {
                 .map(this.rowMapper::toDomain);
     }
 
+    /**
+     * Acceso completo en UNA transacción: visibilidad y compartidos se
+     * escriben juntos o no se escriben. Espejo de {@code saveDraftWithAccess}
+     * para el camino de actualización.
+     */
+    @Override
+    @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
+    public Mono<Movie> updateAccess(Movie movie) {
+        return this.updateVisibility(movie)
+            .flatMap(updated -> this.replaceShares(
+                new Movie(
+                    updated.getId(),
+                    updated.getOwnerUsername(),
+                    updated.getTitle(),
+                    updated.getStatus(),
+                    updated.getEnrichmentStatus(),
+                    updated.getObjectId(),
+                    updated.getMetadata(),
+                    updated.getVisibility(),
+                    movie.getSharedWith(),
+                    updated.getKind())));
+    }
+
     @Override
     @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
     public Mono<Movie> replaceShares(Movie movie) {
@@ -345,16 +368,6 @@ public class SpringDataMovieRepository implements MovieRepository {
                         .map(this::toRow)
                         .one()
                         .map(this.rowMapper::toDomain));
-    }
-
-    @Override
-    @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
-    public Mono<Movie> updateAccess(Movie movie) {
-        Mono<Movie> visibilityUpdate = this.updateVisibility(movie);
-        if (movie.getVisibility() != MovieVisibility.SHARED) {
-            return visibilityUpdate;
-        }
-        return visibilityUpdate.then(this.replaceShares(movie));
     }
 
     @Override

@@ -58,7 +58,11 @@ public interface MovieRepository {
     /** Persiste la lista de compartidos ya decidida por el agregado. */
     Mono<Movie> replaceShares(Movie movie);
 
-    /** Para SHARED, persiste visibilidad y compartidos como una unidad transaccional. */
+    /**
+     * Persiste el ACCESO completo (visibilidad + compartidos) como UNA unidad
+     * transaccional: nunca queda una película SHARED sin sus shares, ni
+     * PRIVATE con residuos de compartidos anteriores.
+     */
     Mono<Movie> updateAccess(Movie movie);
 
     /** Catalogo pendiente de enriquecer (para el scheduler), limitado y estable. */

@@ -11,6 +11,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.CreateMovieUseCas
 import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.GetMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.ListMoviesUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieAccessUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
@@ -29,6 +30,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.MovieR
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateSharesUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateVisibilityUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateMovieRequest;
+import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateMovieAccessRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateSharesRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.UpdateVisibilityRequest;
 
@@ -67,6 +69,7 @@ public class MovieController {
     private final CatalogQueryUseCase catalogQueryUseCase;
     private final UpdateVisibilityUseCase updateVisibilityUseCase;
     private final UpdateSharesUseCase updateSharesUseCase;
+    private final com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieAccessUseCase updateMovieAccessUseCase;
     private final BulkVisibilityUseCase bulkVisibilityUseCase;
     private final UpdateMovieUseCase updateMovieUseCase;
     private final CompleteMovieUseCase completeMovieUseCase;
@@ -81,6 +84,7 @@ public class MovieController {
             ListMoviesUseCase listMoviesUseCase,
             CatalogQueryUseCase catalogQueryUseCase,
             UpdateVisibilityUseCase updateVisibilityUseCase,
+            UpdateMovieAccessUseCase updateMovieAccessUseCase,
             UpdateSharesUseCase updateSharesUseCase,
             BulkVisibilityUseCase bulkVisibilityUseCase,
             UpdateMovieUseCase updateMovieUseCase,
@@ -94,6 +98,7 @@ public class MovieController {
         this.listMoviesUseCase = listMoviesUseCase;
         this.catalogQueryUseCase = catalogQueryUseCase;
         this.updateVisibilityUseCase = updateVisibilityUseCase;
+        this.updateMovieAccessUseCase = updateMovieAccessUseCase;
         this.updateSharesUseCase = updateSharesUseCase;
         this.bulkVisibilityUseCase = bulkVisibilityUseCase;
         this.updateMovieUseCase = updateMovieUseCase;
@@ -169,6 +174,19 @@ public class MovieController {
                 .execute(movieIds, libraryIds, request.visibility(), request.usernames())
                 .map(result -> new BulkVisibilityResponse(
                         result.total(), result.updated(), result.failed()));
+    }
+
+    /** Acceso completo (visibilidad + compartidos) en una transacción. */
+    @org.springframework.web.bind.annotation.PutMapping(
+        value = "/{id}/access",
+        produces = org.springframework.http.MediaType.APPLICATION_JSON_VALUE,
+        consumes = org.springframework.http.MediaType.APPLICATION_JSON_VALUE)
+    public Mono<MovieResponse> updateAccess(
+            @PathVariable Long id,
+            @Valid @RequestBody UpdateMovieAccessRequest request) {
+        return this.updateMovieAccessUseCase
+                .execute(MovieId.of(id), request.visibility(), request.sharedWith())
+                .map(this.mapper::toResponse);
     }
 
     @GetMapping

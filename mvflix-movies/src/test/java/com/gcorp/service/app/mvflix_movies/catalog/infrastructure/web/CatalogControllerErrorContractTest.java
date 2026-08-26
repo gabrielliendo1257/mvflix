@@ -35,6 +35,7 @@ class CatalogControllerErrorContractTest {
                     mock(ListMoviesUseCase.class),
                     new CatalogQueryUseCase(this.viewRepository, this.userProvider),
                     mock(UpdateVisibilityUseCase.class),
+                    mock(com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieAccessUseCase.class),
                     mock(UpdateSharesUseCase.class),
                     mock(BulkVisibilityUseCase.class),
                     mock(UpdateMovieUseCase.class),
