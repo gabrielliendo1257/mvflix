@@ -1,5 +1,6 @@
 package com.guille.media.bff.experience.media.web;
 
+import com.guille.media.bff.experience.media.application.ChangeMediaAccess;
 import com.guille.media.bff.experience.media.application.EditMediaMetadata;
 import com.guille.media.bff.experience.media.application.GetMediaDetail;
 import com.guille.media.bff.experience.media.application.LinkMediaProvider;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,16 +39,19 @@ public class MediaController {
   private final LinkMediaProvider linkMediaProvider;
   private final UnlinkMediaProvider unlinkMediaProvider;
   private final EditMediaMetadata editMediaMetadata;
+  private final ChangeMediaAccess changeMediaAccess;
 
   public MediaController(
       GetMediaDetail getMediaDetail,
       LinkMediaProvider linkMediaProvider,
       UnlinkMediaProvider unlinkMediaProvider,
-      EditMediaMetadata editMediaMetadata) {
+      EditMediaMetadata editMediaMetadata,
+      ChangeMediaAccess changeMediaAccess) {
     this.getMediaDetail = getMediaDetail;
     this.linkMediaProvider = linkMediaProvider;
     this.unlinkMediaProvider = unlinkMediaProvider;
     this.editMediaMetadata = editMediaMetadata;
+    this.changeMediaAccess = changeMediaAccess;
   }
 
   @Operation(summary = "Detalle completo de una media propia/visible")
@@ -109,6 +114,21 @@ public class MediaController {
           country(), language(), awards(), popularity(), kind());
     }
   }
+
+  /**
+   * Un solo contrato para changeVisibility y manageSharing: ambos se aplican
+   * atómicamente en movies y la respuesta trae el detalle refrescado.
+   */
+  @Operation(summary = "Cambia el acceso completo (visibilidad + compartidos); detalle refrescado")
+  @PutMapping(value = "/{mediaId}/access", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<MediaDetailResponse> changeAccess(
+      @PathVariable long mediaId, @RequestBody ChangeAccessRequest request) {
+    return this.changeMediaAccess
+        .execute(mediaId, request.visibility(), request.sharedWith())
+        .map(MediaDetailResponse::from);
+  }
+
+  public record ChangeAccessRequest(String visibility, java.util.List<String> sharedWith) {}
 
   public record LinkProviderRequest(Long tmdbId) {}
 }

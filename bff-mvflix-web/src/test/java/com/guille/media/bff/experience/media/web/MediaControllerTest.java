@@ -4,6 +4,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.guille.media.bff.experience.media.application.MediaDetail;
+import com.guille.media.bff.experience.media.application.ChangeMediaAccess;
 import com.guille.media.bff.experience.media.application.GetMediaDetail;
 import com.guille.media.bff.experience.media.application.EditMediaMetadata;
 import com.guille.media.bff.experience.media.application.LinkMediaProvider;
@@ -11,6 +12,7 @@ import com.guille.media.bff.experience.media.application.MediaDetailNotFoundExce
 import com.guille.media.bff.experience.media.application.UnlinkMediaProvider;
 import com.guille.media.bff.experience.media.application.port.MediaDetailProjection;
 import com.guille.media.bff.experience.media.application.port.MetadataActions;
+import com.guille.media.bff.experience.media.application.port.AccessActions;
 import com.guille.media.bff.experience.media.application.port.ProviderActions;
 import com.guille.media.bff.presenter.api.ApiExceptionHandler;
 
@@ -27,6 +29,7 @@ class MediaControllerTest {
   private final GetMediaDetail getMediaDetail = mock(GetMediaDetail.class);
   private final ProviderActions actions = mock(ProviderActions.class);
   private final MetadataActions metadataActions = mock(MetadataActions.class);
+  private final AccessActions accessActions = mock(AccessActions.class);
   private final MediaDetailProjection projection = mock(MediaDetailProjection.class);
   private WebTestClient client;
 
@@ -38,7 +41,8 @@ class MediaControllerTest {
             this.getMediaDetail,
             new LinkMediaProvider(this.actions, this.projection),
             new UnlinkMediaProvider(this.actions, this.projection),
-            new EditMediaMetadata(this.metadataActions, this.projection)))
+            new EditMediaMetadata(this.metadataActions, this.projection),
+            new ChangeMediaAccess(this.accessActions, this.projection)))
         .controllerAdvice(new ApiExceptionHandler())
         .build();
   }
@@ -142,6 +146,52 @@ class MediaControllerTest {
     org.mockito.Mockito.verify(this.metadataActions).updateMetadata(
         org.mockito.ArgumentMatchers.eq(42L),
         org.mockito.ArgumentMatchers.any(com.guille.media.bff.experience.media.application.MetadataPatch.class));
+  }
+
+  @Test
+  void changeAccessMutatesAtomicallyThenReturnsRefreshedDetail() {
+    when(this.accessActions.updateAccess(42L, "SHARED", List.of("Maria")))
+        .thenReturn(Mono.empty());
+    when(this.projection.detail(42L)).thenReturn(Mono.just(MediaDetail.from(
+        new MediaDetail.Source(
+            42L, "Dune", null, 2021, "2h 35m", "/d.jpg", "texto",
+            List.of(), null, List.of(), "MOVIE", "SHARED", "READY",
+            77L, null, null, null))));
+
+    this.client.put()
+        .uri("/web/media/42/access")
+        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+        .bodyValue("""
+            {"visibility": "SHARED", "sharedWith": ["Maria"]}
+            """)
+        .exchange()
+        .expectStatus().isOk()
+        .expectBody()
+        .jsonPath("$.media.visibility").isEqualTo("SHARED")
+        .jsonPath("$.capabilities.manageSharing").isEqualTo(true)
+        .jsonPath("$.capabilities.changeVisibility").isEqualTo(true);
+
+    org.mockito.Mockito.verify(this.accessActions)
+        .updateAccess(42L, "SHARED", List.of("Maria"));
+  }
+
+  @Test
+  void unknownVisibilityFromMoviesSurfacesAs400() {
+    when(this.accessActions.updateAccess(
+            org.mockito.ArgumentMatchers.eq(42L),
+            org.mockito.ArgumentMatchers.anyString(),
+            org.mockito.ArgumentMatchers.anyList()))
+        .thenReturn(Mono.error(new org.springframework.web.server.ResponseStatusException(
+            org.springframework.http.HttpStatus.BAD_REQUEST, "INVALID_VISIBILITY")));
+
+    this.client.put()
+        .uri("/web/media/42/access")
+        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+        .bodyValue("""
+            {"visibility": "SECRETO", "sharedWith": ["Maria"]}
+            """)
+        .exchange()
+        .expectStatus().isBadRequest();
   }
 
   @Test

@@ -92,6 +92,11 @@ public class WebMoviesController {
     return this.webMoviesService.unlinkEnrichment(movieId).map(ResponseEntity::ok);
   }
 
+  /**
+   * @deprecated usar {@code PUT /web/media/{id}/access} (experiencia media,
+   *     atómico en movies). Se conserva hasta que migre el front.
+   */
+  @Deprecated
   @PostMapping(
       value = "/{movieId}/visibility",
       produces = MediaType.APPLICATION_JSON_VALUE,
