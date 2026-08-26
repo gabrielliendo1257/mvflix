@@ -66,6 +66,11 @@ public class WebMoviesController {
     return this.webMoviesService.preview(tmdbId).map(ResponseEntity::ok);
   }
 
+  /**
+   * @deprecated usar {@code POST /web/media/{id}/provider} (experiencia media).
+   *     Se conserva hasta que migre el front.
+   */
+  @Deprecated
   @PostMapping(
       value = "/{movieId}/enrichment",
       produces = MediaType.APPLICATION_JSON_VALUE,
@@ -75,6 +80,11 @@ public class WebMoviesController {
     return this.webMoviesService.enrich(movieId, request.tmdbId()).map(ResponseEntity::ok);
   }
 
+  /**
+   * @deprecated usar {@code DELETE /web/media/{id}/provider} (experiencia media).
+   *     Se conserva hasta que migre el front.
+   */
+  @Deprecated
   @DeleteMapping(
       value = "/{movieId}/enrichment",
       produces = MediaType.APPLICATION_JSON_VALUE)
