@@ -104,7 +104,7 @@ class GetCatalogTest {
   }
 
   @Test
-  void assetItemDerivesIdentifyViewTechnicalInfoAndDelete() {
+  void assetItemOnlyDerivesIdentify() {
     when(this.projection.page(0, 25, null, null, null, null))
         .thenReturn(Mono.just(new CatalogPage(
             new CatalogPage.Summary(1, 0, 1),
@@ -117,11 +117,11 @@ class GetCatalogTest {
     StepVerifier.create(this.getCatalog.execute(null, null, null, null, null, null))
         .assertNext(page -> {
           var caps = page.items().get(0).getCapabilities();
-          // Las tres acciones honestas de un asset sin identificar.
+          // La única acción con endpoint real para un asset sin identificar.
           assertThat(caps.identify()).isTrue();
-          assertThat(caps.viewDetail()).isTrue();
-          assertThat(caps.delete()).isTrue();
-          // Nada de reproducción, metadata, visibilidad ni proveedor.
+          // viewDetail/delete no existen: /web/media/{id} espera un movie ID.
+          assertThat(caps.viewDetail()).isFalse();
+          assertThat(caps.delete()).isFalse();
           assertThat(caps.play()).isFalse();
           assertThat(caps.editMetadata()).isFalse();
           assertThat(caps.changeVisibility()).isFalse();

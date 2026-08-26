@@ -57,9 +57,12 @@ public record CatalogPage(
      * Capabilities derivadas de datos reales, ramificadas por tipo de fila:
      *
      * <ul>
-     *   <li><b>ASSET</b> (sin identificar): identificar, ver información
-     *       técnica y borrar. Sin metadata, visibilidad, proveedor ni
-     *       reproducción.</li>
+     *   <li><b>ASSET</b> (sin identificar): SOLO identificar — es la única
+     *       acción con endpoint real ({@code POST /web/libraries/assets/{id}/identify}).
+     *       {@code viewDetail} y {@code delete} se ocultan: no existe vista ni
+     *       borrado de asset, y usar el asset ID como movie ID en
+     *       {@code /web/media/{id}} borraría un recurso ajeno con el mismo
+     *       número.</li>
      *   <li><b>MEDIA</b>:
      *       <ul>
      *         <li>play: READY + origen válido + archivo presente (LOCAL).</li>
@@ -88,14 +91,14 @@ public record CatalogPage(
     private Capabilities assetCapabilities() {
       return new Capabilities(
           false, // play
-          true,  // viewDetail: información técnica
+          false, // viewDetail: no hay GET de asset; /web/media/{id} es de movie
           false, // editMetadata
           false, // changeVisibility
           false, // manageSharing
           false, // linkProvider
           false, // unlinkProvider
-          true,  // identify
-          true); // delete (solo fila de catálogo; el archivo es del operador)
+          true,  // identify: POST /web/libraries/assets/{id}/identify
+          false); // delete: no existe; assetId≠movieId, borraría otro recurso
     }
 
     private Capabilities mediaCapabilities() {
