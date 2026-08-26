@@ -12,7 +12,8 @@ public record CatalogReadQuery(
     String search,
     String status,
     SortField sort,
-    boolean ascending) {
+    boolean ascending,
+    boolean isAdmin) {
 
   public enum SortField {
     TITLE("title"), YEAR("year"), UPDATED_AT("updated_at");

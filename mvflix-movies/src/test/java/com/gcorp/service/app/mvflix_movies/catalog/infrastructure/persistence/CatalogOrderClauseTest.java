@@ -7,8 +7,9 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogReadQuery;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * El desempate por id es lo que impide que páginas consecutivas repitan u
- * omitan filas cuando hay empates de updated_at/título/año.
+ * El desempate por key_id es lo que impide que páginas consecutivas repitan u
+ * omitan filas cuando hay empates de updated_at/título/año. El orden opera
+ * sobre la proyección UNION ALL (alias u).
  */
 class CatalogOrderClauseTest {
 
@@ -16,29 +17,29 @@ class CatalogOrderClauseTest {
     void defaultSortAppendsIdTiebreakerInSameDirection() {
         var query = new CatalogReadQuery(
                 "pepe", 0, 25, null, null,
-                CatalogReadQuery.SortField.UPDATED_AT, false);
+                CatalogReadQuery.SortField.UPDATED_AT, false, false);
 
         assertThat(CatalogViewSqlRepository.orderClause(query))
-                .isEqualTo(" ORDER BY m.updated_at DESC, m.id DESC");
+                .isEqualTo(" ORDER BY u.updated_at DESC, u.key_id DESC");
     }
 
     @Test
     void titleSortAscKeepsTiebreakerAscending() {
         var query = new CatalogReadQuery(
                 "pepe", 0, 25, null, null,
-                CatalogReadQuery.SortField.TITLE, true);
+                CatalogReadQuery.SortField.TITLE, true, false);
 
         assertThat(CatalogViewSqlRepository.orderClause(query))
-                .isEqualTo(" ORDER BY LOWER(m.title) ASC, m.id ASC");
+                .isEqualTo(" ORDER BY LOWER(u.title) ASC, u.key_id ASC");
     }
 
     @Test
     void yearSortUsesJsonbFallbackForNulls() {
         var query = new CatalogReadQuery(
                 "pepe", 0, 25, null, null,
-                CatalogReadQuery.SortField.YEAR, false);
+                CatalogReadQuery.SortField.YEAR, false, false);
 
         assertThat(CatalogViewSqlRepository.orderClause(query))
-                .isEqualTo(" ORDER BY COALESCE(m.metadata->>'year', '9999') DESC, m.id DESC");
+                .isEqualTo(" ORDER BY COALESCE(u.year_text, '9999') DESC, u.key_id DESC");
     }
 }

@@ -28,10 +28,11 @@ public class CatalogQueryUseCase {
    * Vocabulario operacional aceptado por el filtro; coincide con
    * display_status de la proyección. DRAFT se acepta como alias legacy de
    * PROCESSING. INVALID NO es filtro: pertenece a source (la fila con doble
-   * origen se filtra como ATTENTION).
+   * origen se filtra como ATTENTION). UNIDENTIFIED sí: los assets sin
+   * identificar ahora son filas de la proyección.
    */
   private static final java.util.Set<String> FILTERABLE =
-      java.util.Set.of("READY", "PROCESSING", "MISSING", "ATTENTION", "DRAFT");
+      java.util.Set.of("READY", "PROCESSING", "MISSING", "ATTENTION", "UNIDENTIFIED", "DRAFT");
 
   private final CatalogViewRepository viewRepository;
   private final UserProvider userProvider;
@@ -59,7 +60,7 @@ public class CatalogQueryUseCase {
             user.subject(), safePage, safeSize,
             normalizedSearch,
             normalizeStatus(status),
-            sortField, ascending)));
+            sortField, ascending, user.isAdmin())));
   }
 
   static String normalizeStatus(String status) {

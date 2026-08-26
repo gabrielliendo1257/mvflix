@@ -73,7 +73,7 @@ class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegratio
         StepVerifier.create(this.catalogViewRepository.page(new com.gcorp.service.app.mvflix_movies.catalog.application.CatalogReadQuery(
                         "pepe", 0, 25, "Stalker", null,
                         com.gcorp.service.app.mvflix_movies.catalog.application.CatalogReadQuery.SortField.UPDATED_AT,
-                        false)))
+                        false, false)))
                 .assertNext(page -> {
                     assertThat(page.items()).hasSize(1);
                     var item = page.items().get(0);

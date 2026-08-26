@@ -86,7 +86,13 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
     private CatalogPageView page(String search, String status) {
         return this.repository.page(new CatalogReadQuery(
                 "pepe", 0, 25, search, status,
-                CatalogReadQuery.SortField.UPDATED_AT, false)).block();
+                CatalogReadQuery.SortField.UPDATED_AT, false, false)).block();
+    }
+
+    private CatalogPageView pageAsAdmin(String search, String status) {
+        return this.repository.page(new CatalogReadQuery(
+                "pepe", 0, 25, search, status,
+                CatalogReadQuery.SortField.UPDATED_AT, false, true)).block();
     }
 
     @Test
@@ -141,7 +147,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
     @Test
     void titleSortAscUsesWhitelistedColumn() {
         CatalogPageView view = this.repository.page(new CatalogReadQuery(
-                "pepe", 0, 25, null, null, CatalogReadQuery.SortField.TITLE, true)).block();
+                "pepe", 0, 25, null, null, CatalogReadQuery.SortField.TITLE, true, false)).block();
 
         assertThat(view.items()).extracting(CatalogItemView::title)
                 .containsExactly("Alien", "Beta", "Coraline");
@@ -155,7 +161,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
                 .collectList().block();
 
         Mono<CatalogPageView> paged = this.repository.page(new CatalogReadQuery(
-                "pepe", 1, 25, null, null, CatalogReadQuery.SortField.UPDATED_AT, false));
+                "pepe", 1, 25, null, null, CatalogReadQuery.SortField.UPDATED_AT, false, false));
         CatalogPageView second = paged.block();
 
         assertThat(second.page()).isEqualTo(1);
@@ -283,5 +289,41 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
         assertThat(whole.summary().total()).isEqualTo(3);
         assertThat(whole.summary().ready()).isEqualTo(1);
         assertThat(whole.summary().needsAttention()).isEqualTo(2);
+    }
+
+    @Test
+    void unidentifiedAssetsAppearWithStableAssetKey() {
+        // Asset sin identificar del admin + otro del usuario pepe.
+        this.mediaAssetRepository.save(
+                MediaAsset.create(7L, new ScannedFile("Movies/video_123.mkv", 10L, "video/x-matroska"), "admin")).block();
+        this.mediaAssetRepository.save(
+                MediaAsset.create(7L, new ScannedFile("Movies/mi_clip.mp4", 10L, "video/mp4"), "pepe")).block();
+
+        // No-admin ve SOLO sus descubrimientos, nunca los del admin.
+        CatalogPageView own = page(null, null);
+        assertThat(own.items()).anyMatch(i ->
+                "ASSET".equals(i.key().type()) && "mi_clip.mp4".equals(i.title()));
+        assertThat(own.items()).noneMatch(i -> "video_123.mkv".equals(i.title()));
+
+        // Admin ve todos los assets sin identificar.
+        CatalogPageView admin = pageAsAdmin(null, null);
+        var asset = admin.items().stream()
+                .filter(i -> "video_123.mkv".equals(i.title())).findFirst().orElseThrow();
+        assertThat(asset.key().type()).isEqualTo("ASSET");
+        assertThat(asset.key().id()).isNotNull();
+        assertThat(asset.mediaId()).isNull();
+        assertThat(asset.assetId()).isEqualTo(asset.key().id());
+        assertThat(asset.displayStatus()).isEqualTo("UNIDENTIFIED");
+        assertThat(asset.source()).isEqualTo(CatalogItemView.Source.LOCAL.name());
+        assertThat(asset.assetPresent()).isTrue();
+        assertThat(asset.kind()).isNull();
+        assertThat(asset.status()).isNull();
+
+        // Filtrar por UNIDENTIFIED devuelve solo assets.
+        CatalogPageView unidentified = pageAsAdmin(null, "UNIDENTIFIED");
+        assertThat(unidentified.items()).isNotEmpty();
+        assertThat(unidentified.items())
+                .allMatch(i -> "UNIDENTIFIED".equals(i.displayStatus())
+                        && "ASSET".equals(i.key().type()));
     }
 }

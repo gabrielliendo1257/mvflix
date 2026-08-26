@@ -11,12 +11,17 @@ final class CatalogRowMappers {
     }
 
     static CatalogItemView toView(Row row) {
-        Long mediaId = row.get("id", Long.class);
+        String keyType = row.get("key_type", String.class);
+        Long keyId = row.get("key_id", Long.class);
+        Long mediaId = row.get("media_id", Long.class);
         Long assetId = row.get("asset_id", Long.class);
         String yearText = row.get("year_text", String.class);
         Integer year = yearText == null ? null : safeInt(yearText);
+        var key = "ASSET".equals(keyType)
+                ? CatalogItemView.Key.asset(keyId)
+                : CatalogItemView.Key.media(keyId);
         return new CatalogItemView(
-                CatalogItemView.Key.media(mediaId),
+                key,
                 mediaId,
                 assetId,
                 row.get("asset_present", Boolean.class),

@@ -7,9 +7,18 @@ import java.util.List;
  * combina movies + media + media_assets + movie_shares sin meter esa
  * composición en el agregado {@code Movie}.
  *
+ * <p>Dos claves estables según el tipo de fila:
+ * <ul>
+ *   <li>{@code MEDIA/id}: película (identificada o DRAFT).</li>
+ *   <li>{@code ASSET/id}: archivo de biblioteca aún SIN identificar.</li>
+ * </ul>
+ * Un asset no identificado no tiene movie, status de dominio ni metadata:
+ * {@code mediaId}, {@code status}, {@code kind} y {@code providerStatus} son
+ * nulos y {@code displayStatus} es {@code UNIDENTIFIED} con {@code source}
+ * {@code LOCAL}.
+ *
  * <p>{@code displayStatus} es una proyección operacional derivada, NO un
- * estado del dominio: READY→READY, DRAFT→PROCESSING. Condiciones de
- * {@code MediaAsset} (UNIDENTIFIED/MISSING) no se cuelgan de aquí.
+ * estado del dominio.
  *
  * <p>{@code source} habla de mecanismos de almacenamiento lógicos (MANAGED,
  * LOCAL), nunca de infraestructura concreta (MinIO/S3/filesystem).
@@ -35,6 +44,10 @@ public record CatalogItemView(
   public record Key(String type, Long id) {
     public static Key media(long id) {
       return new Key("MEDIA", id);
+    }
+
+    public static Key asset(long id) {
+      return new Key("ASSET", id);
     }
   }
 
