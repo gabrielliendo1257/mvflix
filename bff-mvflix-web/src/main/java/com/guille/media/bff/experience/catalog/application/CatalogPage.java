@@ -59,6 +59,19 @@ public record CatalogPage(
         default -> false;
       };
     }
+
+    /**
+     * Proyección de capacidades que SÍ llega al JSON (Jackson ignora métodos
+     * derivados sin anotación): Angular lee capabilities.play en vez de
+     * interpretar status+source+assetPresent por su cuenta.
+     */
+    @com.fasterxml.jackson.annotation.JsonProperty("capabilities")
+    public Capabilities getCapabilities() {
+      return new Capabilities(playable());
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public record Capabilities(boolean play) {}
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

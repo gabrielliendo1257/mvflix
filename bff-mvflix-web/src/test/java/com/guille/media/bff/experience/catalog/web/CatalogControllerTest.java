@@ -51,6 +51,7 @@ class CatalogControllerTest {
         .expectStatus().isOk()
         .expectBody()
         .jsonPath("$.items[0].assetPresent").isEqualTo(true)
+        .jsonPath("$.items[0].capabilities.play").isEqualTo(true)
         .jsonPath("$.summary.total").isEqualTo(128)
         .jsonPath("$.summary.needsAttention").isEqualTo(7)
         .jsonPath("$.items[0].key.type").isEqualTo("MEDIA")
@@ -76,6 +77,28 @@ class CatalogControllerTest {
 
     org.mockito.Mockito.verify(this.getCatalog)
         .execute(1, 10, "ali", "READY", "year", "desc");
+  }
+
+  @Test
+  void missingLocalAssetSurfacesCapabilitiesPlayFalseInTheJson() {
+    when(this.getCatalog.execute(null, null, null, null, null, null))
+        .thenReturn(Mono.just(new CatalogPage(
+            new CatalogPage.Summary(1, 1, 0),
+            List.of(new CatalogPage.Item(
+                new CatalogPage.Key("MEDIA", 9L), 9L, 3L, Boolean.FALSE,
+                "Alien", null, 1979, "1h 57m", "MOVIE",
+                "READY", "READY", "LOCAL", "PRIVATE", 0, "NONE")),
+            0, 25, 1, 1)));
+
+    this.client.get()
+        .uri("/web/catalog")
+        .exchange()
+        .expectStatus().isOk()
+        .expectBody()
+        .jsonPath("$.items[0].status").isEqualTo("READY")
+        .jsonPath("$.items[0].assetPresent").isEqualTo(false)
+        // La capability derivada es lo único que el front necesita leer.
+        .jsonPath("$.items[0].capabilities.play").isEqualTo(false);
   }
 
   @Test
