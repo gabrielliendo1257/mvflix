@@ -1,6 +1,5 @@
 package com.guille.media.bff.experience.catalog.web;
 
-import com.guille.media.bff.experience.catalog.application.CatalogPage;
 import com.guille.media.bff.experience.catalog.application.ChangeCatalogVisibility;
 import com.guille.media.bff.experience.catalog.application.GetCatalog;
 import com.guille.media.bff.experience.catalog.application.port.CatalogActions.ActionRequest;
@@ -39,14 +38,15 @@ public class CatalogController {
 
   @Operation(summary = "Mis películas paginadas (owned): summary + items + metadatos de página")
   @GetMapping
-  public Mono<CatalogPage> catalog(
+  public Mono<CatalogPageResponse> catalog(
       @RequestParam(required = false) Integer page,
       @RequestParam(required = false) Integer size,
       @RequestParam(required = false) String q,
       @RequestParam(required = false) String status,
       @RequestParam(required = false) String sort,
       @RequestParam(required = false) String dir) {
-    return this.getCatalog.execute(page, size, q, status, sort, dir);
+    return this.getCatalog.execute(page, size, q, status, sort, dir)
+        .map(CatalogPageResponse::from);
   }
 
   /** Acción tipada sobre la selección; el progreso llega por SSE de activity. */
