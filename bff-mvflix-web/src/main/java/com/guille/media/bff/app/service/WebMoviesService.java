@@ -280,14 +280,9 @@ public class WebMoviesService {
       return Mono.error(new ResponseStatusException(
           HttpStatus.BAD_REQUEST, "VISIBILITY_REQUIRED"));
     }
-    boolean shared = "SHARED".equals(visibility);
-    if (shared && (usernames == null || usernames.isEmpty())) {
-      return Mono.error(new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "SHARED_REQUIRES_USERNAMES"));
-    }
-    return this.moviesWebClient
-        .updateVisibility(movieId, visibility)
-        .flatMap(movie -> shared ? this.moviesWebClient.updateShares(movieId, usernames) : Mono.just(movie));
+    // Atómico en movies: visibilidad + compartidos se escriben juntos.
+    // La política de si SHARED exige usuarios vive en movies, no aquí.
+    return this.moviesWebClient.updateMovieAccess(movieId, visibility, usernames);
   }
 
   /** Reemplaza la lista de usuarios compartidos; solo el dueño. */

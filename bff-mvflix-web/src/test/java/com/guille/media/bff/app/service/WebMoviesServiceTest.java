@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -174,43 +175,44 @@ class WebMoviesServiceTest {
 
   @Test
   void visibilityPublicIgnoresUsernames() {
-    when(moviesWebClient.updateVisibility(1L, "PUBLIC"))
+    when(moviesWebClient.updateMovieAccess(1L, "PUBLIC", List.of("Maria")))
         .thenReturn(Mono.just(movie(1L, null)));
 
     StepVerifier.create(service.visibility(1L, "PUBLIC", List.of("Maria")))
         .expectNextCount(1)
         .verifyComplete();
 
-    verify(moviesWebClient).updateVisibility(1L, "PUBLIC");
+    verify(moviesWebClient).updateMovieAccess(1L, "PUBLIC", List.of("Maria"));
+    verify(moviesWebClient, never()).updateVisibility(anyLong(), anyString());
     verify(moviesWebClient, never()).updateShares(anyLong(), anyList());
   }
 
   @Test
-  void visibilitySharedOrchestratesShares() {
-    when(moviesWebClient.updateVisibility(1L, "SHARED"))
-        .thenReturn(Mono.just(movie(1L, null)));
-    when(moviesWebClient.updateShares(1L, List.of("Maria")))
+  void visibilitySharedUsesSingleAtomicCall() {
+    when(moviesWebClient.updateMovieAccess(1L, "SHARED", List.of("Maria")))
         .thenReturn(Mono.just(movie(1L, null)));
 
     StepVerifier.create(service.visibility(1L, "SHARED", List.of("Maria")))
         .expectNextCount(1)
         .verifyComplete();
 
-    verify(moviesWebClient).updateVisibility(1L, "SHARED");
-    verify(moviesWebClient).updateShares(1L, List.of("Maria"));
+    // Una sola llamada transaccional: nunca visibilidad sin shares.
+    verify(moviesWebClient).updateMovieAccess(1L, "SHARED", List.of("Maria"));
+    verify(moviesWebClient, never()).updateVisibility(anyLong(), anyString());
+    verify(moviesWebClient, never()).updateShares(anyLong(), anyList());
   }
 
   @Test
-  void visibilitySharedWithoutUsernamesFails() {
-    StepVerifier.create(service.visibility(1L, "SHARED", null))
-        .expectError(ResponseStatusException.class)
-        .verify();
+  void sharedWithoutUsernamesIsMoviesDecisionNotLocalValidation() {
+    // La regla de si SHARED exige usuarios vive en movies; el BFF no duplica.
+    when(moviesWebClient.updateMovieAccess(1L, "SHARED", List.of()))
+        .thenReturn(Mono.just(movie(1L, null)));
 
     StepVerifier.create(service.visibility(1L, "SHARED", List.of()))
-        .expectError(ResponseStatusException.class)
-        .verify();
+        .expectNextCount(1)
+        .verifyComplete();
 
-    verifyNoInteractions(moviesWebClient);
+    verify(moviesWebClient).updateMovieAccess(1L, "SHARED", List.of());
   }
 
   @Test

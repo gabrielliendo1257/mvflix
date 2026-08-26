@@ -219,6 +219,20 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
+  public Mono<MovieDto> updateMovieAccess(
+      Long movieId, String visibility, List<String> sharedWith) {
+    record AccessBody(String visibility, @com.fasterxml.jackson.annotation.JsonProperty("shared_with")
+        List<String> sharedWith) {}
+    return this.moviesWebClient
+        .put()
+        .uri(API + "/" + movieId + "/access")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(new AccessBody(visibility, sharedWith))
+        .retrieve()
+        .bodyToMono(MovieDto.class);
+  }
+
+  @Override
   public Mono<MovieDto> updateShares(Long movieId, List<String> usernames) {
     return this.moviesWebClient
         .post()

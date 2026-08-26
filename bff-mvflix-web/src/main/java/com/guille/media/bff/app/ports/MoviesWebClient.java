@@ -63,6 +63,9 @@ public interface MoviesWebClient {
   /** Cambia la visibilidad (PUBLIC/PRIVATE/SHARED); solo el dueño. */
   Mono<MovieDto> updateVisibility(Long movieId, String visibility);
 
+  /** Acceso completo (visibilidad + compartidos) en UNA llamada transaccional. */
+  Mono<MovieDto> updateMovieAccess(Long movieId, String visibility, java.util.List<String> sharedWith);
+
   /** Reemplaza la lista de usuarios compartidos; solo el dueño. */
   Mono<MovieDto> updateShares(Long movieId, List<String> usernames);
 
