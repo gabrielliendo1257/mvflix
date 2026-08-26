@@ -1,7 +1,7 @@
 package com.guille.media.bff.experience.media.application;
 
 import com.guille.media.bff.experience.media.application.port.MediaDetailProjection;
-import com.guille.media.bff.experience.media.application.port.ProviderActions;
+import com.guille.media.bff.experience.media.application.port.MetadataActions;
 
 import lombok.RequiredArgsConstructor;
 
@@ -10,18 +10,18 @@ import org.springframework.stereotype.Service;
 import reactor.core.publisher.Mono;
 
 /**
- * Desvincula la media del proveedor (vuelve a estado sin proveedor) y
- * devuelve el detalle ya actualizado.
+ * Edición manual de metadata del dueño: aplica el parche (merge en movies) y
+ * devuelve el detalle ya actualizado en una sola llamada.
  */
 @Service
 @RequiredArgsConstructor
-public class UnlinkMediaProvider {
+public class EditMediaMetadata {
 
-  private final ProviderActions actions;
+  private final MetadataActions actions;
   private final MediaDetailProjection projection;
 
-  public Mono<MediaDetail> execute(long mediaId) {
-    return this.actions.unlink(mediaId)
+  public Mono<MediaDetail> execute(long mediaId, MetadataPatch patch) {
+    return this.actions.updateMetadata(mediaId, patch)
         .then(Mono.defer(() -> this.projection.detail(mediaId)));
   }
 }

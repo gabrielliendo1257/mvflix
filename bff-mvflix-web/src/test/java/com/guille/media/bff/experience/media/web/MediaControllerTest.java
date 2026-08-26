@@ -5,10 +5,12 @@ import static org.mockito.Mockito.when;
 
 import com.guille.media.bff.experience.media.application.MediaDetail;
 import com.guille.media.bff.experience.media.application.GetMediaDetail;
+import com.guille.media.bff.experience.media.application.EditMediaMetadata;
 import com.guille.media.bff.experience.media.application.LinkMediaProvider;
 import com.guille.media.bff.experience.media.application.MediaDetailNotFoundException;
 import com.guille.media.bff.experience.media.application.UnlinkMediaProvider;
 import com.guille.media.bff.experience.media.application.port.MediaDetailProjection;
+import com.guille.media.bff.experience.media.application.port.MetadataActions;
 import com.guille.media.bff.experience.media.application.port.ProviderActions;
 import com.guille.media.bff.presenter.api.ApiExceptionHandler;
 
@@ -24,6 +26,7 @@ class MediaControllerTest {
 
   private final GetMediaDetail getMediaDetail = mock(GetMediaDetail.class);
   private final ProviderActions actions = mock(ProviderActions.class);
+  private final MetadataActions metadataActions = mock(MetadataActions.class);
   private final MediaDetailProjection projection = mock(MediaDetailProjection.class);
   private WebTestClient client;
 
@@ -34,7 +37,8 @@ class MediaControllerTest {
     this.client = WebTestClient.bindToController(new MediaController(
             this.getMediaDetail,
             new LinkMediaProvider(this.actions, this.projection),
-            new UnlinkMediaProvider(this.actions, this.projection)))
+            new UnlinkMediaProvider(this.actions, this.projection),
+            new EditMediaMetadata(this.metadataActions, this.projection)))
         .controllerAdvice(new ApiExceptionHandler())
         .build();
   }
@@ -111,6 +115,33 @@ class MediaControllerTest {
         42L, "Coraline", null, 2009, "1h 40m", "/c.jpg", "texto",
         List.of(), null, List.of(), "MOVIE", "PRIVATE", "READY",
         77L, null, null, 57892L));
+  }
+
+  @Test
+  void editMetadataAppliesPatchAndReturnsRefreshedDetail() {
+    var refreshed = sample();
+    when(this.metadataActions.updateMetadata(
+            org.mockito.ArgumentMatchers.eq(42L),
+            org.mockito.ArgumentMatchers.any(com.guille.media.bff.experience.media.application.MetadataPatch.class)))
+        .thenReturn(Mono.empty());
+    when(this.projection.detail(42L)).thenReturn(Mono.just(refreshed));
+
+    this.client.put()
+        .uri("/web/media/42/metadata")
+        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+        .bodyValue("""
+            {"title": "Título corregido", "year": 2010,
+             "genres": [], "overview": "Sinopsis nueva"}
+            """)
+        .exchange()
+        .expectStatus().isOk()
+        .expectBody()
+        .jsonPath("$.media.mediaId").isEqualTo(42)
+        .jsonPath("$.overview.title").isEqualTo("Coraline");
+
+    org.mockito.Mockito.verify(this.metadataActions).updateMetadata(
+        org.mockito.ArgumentMatchers.eq(42L),
+        org.mockito.ArgumentMatchers.any(com.guille.media.bff.experience.media.application.MetadataPatch.class));
   }
 
   @Test

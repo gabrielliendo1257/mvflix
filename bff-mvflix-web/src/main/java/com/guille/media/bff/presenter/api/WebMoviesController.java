@@ -166,7 +166,13 @@ public class WebMoviesController {
         });
   }
 
-  /** Edición manual de la metadata (merge: null conserva el valor actual); solo el dueño. */
+  /**
+   * Edición manual de la metadata (merge: null conserva el valor actual); solo el dueño.
+   *
+   * @deprecated usar {@code PUT /web/media/{id}/metadata} (experiencia media).
+   *     Se conserva hasta que migre el front.
+   */
+  @Deprecated
   @PutMapping(
       value = "/{movieId}",
       produces = MediaType.APPLICATION_JSON_VALUE,

@@ -23,6 +23,6 @@ public class LinkMediaProvider {
 
   public Mono<MediaDetail> execute(long mediaId, long tmdbId) {
     return this.actions.link(mediaId, tmdbId)
-        .then(this.projection.detail(mediaId));
+        .then(Mono.defer(() -> this.projection.detail(mediaId)));
   }
 }

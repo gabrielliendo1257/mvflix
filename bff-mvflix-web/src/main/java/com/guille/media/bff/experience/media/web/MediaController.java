@@ -1,7 +1,9 @@
 package com.guille.media.bff.experience.media.web;
 
+import com.guille.media.bff.experience.media.application.EditMediaMetadata;
 import com.guille.media.bff.experience.media.application.GetMediaDetail;
 import com.guille.media.bff.experience.media.application.LinkMediaProvider;
+import com.guille.media.bff.experience.media.application.MetadataPatch;
 import com.guille.media.bff.experience.media.application.UnlinkMediaProvider;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,9 +14,12 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 import reactor.core.publisher.Mono;
 
@@ -31,14 +36,17 @@ public class MediaController {
   private final GetMediaDetail getMediaDetail;
   private final LinkMediaProvider linkMediaProvider;
   private final UnlinkMediaProvider unlinkMediaProvider;
+  private final EditMediaMetadata editMediaMetadata;
 
   public MediaController(
       GetMediaDetail getMediaDetail,
       LinkMediaProvider linkMediaProvider,
-      UnlinkMediaProvider unlinkMediaProvider) {
+      UnlinkMediaProvider unlinkMediaProvider,
+      EditMediaMetadata editMediaMetadata) {
     this.getMediaDetail = getMediaDetail;
     this.linkMediaProvider = linkMediaProvider;
     this.unlinkMediaProvider = unlinkMediaProvider;
+    this.editMediaMetadata = editMediaMetadata;
   }
 
   @Operation(summary = "Detalle completo de una media propia/visible")
@@ -64,6 +72,42 @@ public class MediaController {
     return this.unlinkMediaProvider
         .execute(mediaId)
         .map(MediaDetailResponse::from);
+  }
+
+  /** Edita metadata (merge: null conserva); responde con el detalle actualizado. */
+  @Operation(summary = "Edita la metadata de la media; devuelve el detalle refrescado")
+  @PutMapping(value = "/{mediaId}/metadata", consumes = MediaType.APPLICATION_JSON_VALUE)
+  public Mono<MediaDetailResponse> editMetadata(
+      @PathVariable long mediaId, @RequestBody MetadataRequest request) {
+    return this.editMediaMetadata
+        .execute(mediaId, request.toPatch())
+        .map(MediaDetailResponse::from);
+  }
+
+  /** Contrato camelCase limpio para el front; el merge lo aplica movies. */
+  public record MetadataRequest(
+      String title,
+      String originalTitle,
+      Integer year,
+      List<String> genres,
+      String duration,
+      String director,
+      List<String> cast,
+      String overview,
+      String posterUrl,
+      String releaseDate,
+      String country,
+      String language,
+      List<String> awards,
+      Double popularity,
+      String kind) {
+
+    MetadataPatch toPatch() {
+      return new MetadataPatch(
+          title(), originalTitle(), year(), genres(), duration(),
+          director(), cast(), overview(), posterUrl(), releaseDate(),
+          country(), language(), awards(), popularity(), kind());
+    }
   }
 
   public record LinkProviderRequest(Long tmdbId) {}
