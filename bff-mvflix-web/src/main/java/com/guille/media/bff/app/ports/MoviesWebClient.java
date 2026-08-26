@@ -19,9 +19,6 @@ public interface MoviesWebClient {
 
   Flux<MovieDto> listMovies(int limit);
 
-  /** Contenido PROPIO del sujeto (lectura de administración, scope=owned). */
-  Flux<MovieDto> listOwnedMovies(int limit);
-
   /**
    * Proyección owned paginada para la grilla de administración
    * (movies:/api/v1/catalog). Parámetros ya normalizados por el caller.

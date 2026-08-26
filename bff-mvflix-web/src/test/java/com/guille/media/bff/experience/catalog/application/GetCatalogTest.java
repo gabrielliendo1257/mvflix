@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.guille.media.bff.app.ports.MoviesWebClient;
+import com.guille.media.bff.experience.catalog.application.port.CatalogProjection;
 
 import org.junit.jupiter.api.Test;
 
@@ -16,39 +16,23 @@ import java.util.List;
 
 class GetCatalogTest {
 
-  private final MoviesWebClient movies = mock(MoviesWebClient.class);
-  private final GetCatalog getCatalog = new GetCatalog(this.movies);
+  private final CatalogProjection projection = mock(CatalogProjection.class);
+  private final GetCatalog getCatalog = new GetCatalog(this.projection);
 
-  private CatalogPage pageWith(String title, String source, String status) {
+  private CatalogPage pageWith(String title, String source, Boolean assetPresent) {
     return new CatalogPage(
         new CatalogPage.Summary(1, 1, 0),
         List.of(new CatalogPage.Item(
-            new CatalogPage.Key("MEDIA", 42L), 42L, null, Boolean.TRUE, title, "/p.jpg", 2009,
-            "1h 40m", "MOVIE", status, "READY".equals(status) ? "READY" : "PROCESSING",
+            new CatalogPage.Key("MEDIA", 42L), 42L, null, assetPresent, title,
+            "/p.jpg", 2009, "1h 40m", "MOVIE", "READY", "READY",
             source, "PRIVATE", 2, "LINKED")),
         0, 25, 1, 1);
   }
 
   @Test
-  void missingLocalAssetIsNotPlayableEvenWhenMovieIsReady() {
-    when(this.movies.catalogPage(0, 25, null, null, null, null))
-        .thenReturn(Mono.just(new CatalogPage(
-            new CatalogPage.Summary(1, 1, 0),
-            List.of(new CatalogPage.Item(
-                new CatalogPage.Key("MEDIA", 9L), 9L, 3L, Boolean.FALSE, "Alien",
-                null, 1979, "1h 57m", "MOVIE", "READY", "READY",
-                "LOCAL", "PRIVATE", 0, "NONE")),
-            0, 25, 1, 1)));
-
-    StepVerifier.create(this.getCatalog.execute(null, null, null, null, null, null))
-        .assertNext(page -> assertThat(page.items().get(0).playable()).isFalse())
-        .verifyComplete();
-  }
-
-  @Test
-  void returnsProjectionFromMovies() {
-    when(this.movies.catalogPage(0, 25, null, null, null, null))
-        .thenReturn(Mono.just(pageWith("Coraline", "MANAGED", "READY")));
+  void returnsProjectionFromThePort() {
+    when(this.projection.page(0, 25, null, null, null, null))
+        .thenReturn(Mono.just(pageWith("Coraline", "MANAGED", null)));
 
     StepVerifier.create(this.getCatalog.execute(null, null, null, null, null, null))
         .assertNext(page -> {
@@ -56,31 +40,52 @@ class GetCatalogTest {
           assertThat(page.summary().ready()).isEqualTo(1);
           var item = page.items().get(0);
           assertThat(item.title()).isEqualTo("Coraline");
-          assertThat(item.source()).isEqualTo("MANAGED");
-          assertThat(item.key().type()).isEqualTo("MEDIA");
           assertThat(item.playable()).isTrue();
+          assertThat(item.getCapabilities().play()).isTrue();
+          // Scope OWNED: el dueño gestiona su ficha.
+          assertThat(item.getCapabilities().delete()).isTrue();
         })
         .verifyComplete();
   }
 
   @Test
-  void forwardsNormalizedFilters() {
-    when(this.movies.catalogPage(2, 10, "cora", "DRAFT", "title", "ASC"))
+  void missingLocalFileKillsPlayAndDeleteCapabilities() {
+    when(this.projection.page(0, 25, null, null, null, null))
+        .thenReturn(Mono.just(new CatalogPage(
+            new CatalogPage.Summary(1, 0, 1),
+            List.of(new CatalogPage.Item(
+                new CatalogPage.Key("MEDIA", 9L), 9L, 3L, Boolean.FALSE, "Alien",
+                null, 1979, "1h 57m", "MOVIE", "READY", "MISSING",
+                "LOCAL", "PRIVATE", 0, "NONE")),
+            0, 25, 1, 1)));
+
+    StepVerifier.create(this.getCatalog.execute(null, null, null, null, null, null))
+        .assertNext(page -> {
+          var caps = page.items().get(0).getCapabilities();
+          assertThat(caps.play()).isFalse();
+          assertThat(caps.delete()).isFalse();
+          assertThat(caps.editMetadata()).isTrue();
+        })
+        .verifyComplete();
+  }
+
+  @Test
+  void forwardsNormalizedFiltersToThePort() {
+    when(this.projection.page(2, 10, "cora", "DRAFT", "title", "ASC"))
         .thenReturn(Mono.just(CatalogPage.empty()));
 
     this.getCatalog.execute(2, 10, "  cora ", " DRAFT ", " title ", "ASC").block();
 
-    verify(this.movies).catalogPage(2, 10, "cora", "DRAFT", "title", "ASC");
+    verify(this.projection).page(2, 10, "cora", "DRAFT", "title", "ASC");
   }
 
   @Test
   void blankParametersAreSentAsNullAndSizeCappedAtMax() {
-    when(this.movies.catalogPage(0, CatalogQuery.MAX_LIMIT, null, null, null, null))
+    when(this.projection.page(0, GetCatalog.MAX_SIZE, null, null, null, null))
         .thenReturn(Mono.just(CatalogPage.empty()));
 
     this.getCatalog.execute(-1, 500, "   ", "", null, null).block();
 
-    verify(this.movies)
-        .catalogPage(0, CatalogQuery.MAX_LIMIT, null, null, null, null);
+    verify(this.projection).page(0, GetCatalog.MAX_SIZE, null, null, null, null);
   }
 }

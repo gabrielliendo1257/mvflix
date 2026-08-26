@@ -37,6 +37,26 @@ class CatalogLayerTest {
           .dependOnClassesThat()
           .resideInAPackage("io.swagger..");
 
+  /** Application habla con puertos propios, no con los globales legacy. */
+  @ArchTest
+  static final ArchRule application_does_not_use_legacy_global_ports =
+      noClasses()
+          .that()
+          .resideInAPackage("..catalog.application..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAPackage("com.guille.media.bff.app.ports..");
+
+  /** El wire (Jackson) es infraestructura: application queda puro. */
+  @ArchTest
+  static final ArchRule application_is_jackson_free =
+      noClasses()
+          .that()
+          .resideInAPackage("..catalog.application..")
+          .should()
+          .dependOnClassesThat()
+          .resideInAnyPackage("com.fasterxml.jackson..");
+
   /** Application y web no saltan a servicios legacy: solo el adapter de infra lo hace. */
   @ArchTest
   static final ArchRule catalog_does_not_touch_legacy_services =

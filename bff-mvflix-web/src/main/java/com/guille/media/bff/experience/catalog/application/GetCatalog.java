@@ -1,6 +1,6 @@
 package com.guille.media.bff.experience.catalog.application;
 
-import com.guille.media.bff.app.ports.MoviesWebClient;
+import com.guille.media.bff.experience.catalog.application.port.CatalogProjection;
 
 import lombok.RequiredArgsConstructor;
 
@@ -10,28 +10,30 @@ import reactor.core.publisher.Mono;
 
 /**
  * "Administrar mi contenido": grilla del dueño sobre la proyección owned de
- * movies (paginación real, búsqueda, filtros y orden resueltos en SQL por el
- * dueño del catálogo). Nunca mezcla contenido ajeno con acciones de
- * administración; Home/Search global siguen en la lectura VISIBLE.
+ * movies (paginación, búsqueda, filtros y orden resueltos en SQL por el dueño
+ * del catálogo). Nunca mezcla contenido ajeno con acciones de administración;
+ * Home/Search global siguen en la lectura VISIBLE.
  */
 @Service
 @RequiredArgsConstructor
 public class GetCatalog {
 
-  private final MoviesWebClient movies;
+  static final int DEFAULT_SIZE = 25;
+  static final int MAX_SIZE = 50;
+
+  private final CatalogProjection projection;
 
   public Mono<CatalogPage> execute(
       Integer page, Integer size, String search, String status, String sort, String direction) {
-    return this.movies.catalogPage(
-        normalizedPage(page), CatalogQuery.withLimit(size).limit(),
+    int safeSize = size == null || size < 1 ? DEFAULT_SIZE : Math.min(size, MAX_SIZE);
+    int safePage = page == null || page < 0 ? 0 : page;
+    return this.projection.page(
+        safePage,
+        safeSize,
         blankToNull(search),
         blankToNull(status),
         blankToNull(sort),
         blankToNull(direction));
-  }
-
-  private static int normalizedPage(Integer page) {
-    return page == null || page < 0 ? 0 : page;
   }
 
   private static String blankToNull(String value) {

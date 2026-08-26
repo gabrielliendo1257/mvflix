@@ -1,15 +1,12 @@
 package com.guille.media.bff.experience.catalog.application;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.util.List;
 
 /**
- * Contrato de la proyección owned de mvflix-movies (GET /api/v1/catalog).
- * Estructura espejo del downstream; el BFF la compone en su respuesta sin
- * filtrar detalles de storage (source ya es MANAGED|LOCAL, no MinIO/S3).
+ * Modelo de aplicación de la grilla de administración: espejo del downstream
+ * SIN anotaciones de wire (esas viven en el adapter) y con las capabilities
+ * derivadas aquí, una sola vez, para que el front no reinterpretar estados.
  */
-@JsonIgnoreProperties(ignoreUnknown = true)
 public record CatalogPage(
     Summary summary,
     List<Item> items,
@@ -22,10 +19,8 @@ public record CatalogPage(
     return new CatalogPage(new Summary(0, 0, 0), List.of(), 0, 0, 0L, 0);
   }
 
-  @JsonIgnoreProperties(ignoreUnknown = true)
   public record Summary(long total, long ready, long needsAttention) {}
 
-  @JsonIgnoreProperties(ignoreUnknown = true)
   public record Item(
       Key key,
       Long mediaId,
@@ -44,10 +39,8 @@ public record CatalogPage(
       String providerStatus) {
 
     /**
-     * Capability honesta para la UI: un LOCAL cuyo archivo desapareció
-     * (assetPresent=false) NO es reproducible con DIRECT, aunque la película
-     * siga READY. MISSING como estado de pantalla queda para la próxima
-     * iteración; mientras tanto el botón Play no se ofrece.
+     * Capability honesta: un LOCAL cuyo archivo desapareció NO es reproducible
+     * con DIRECT aunque la película siga READY en el dominio.
      */
     public boolean playable() {
       if (!"READY".equals(this.status)) {
@@ -61,21 +54,17 @@ public record CatalogPage(
     }
 
     /**
-     * Capabilities derivadas de datos reales del ítem; Angular las lee sin
-     * reinterpretar estados. Cada campo documenta su derivación:
+     * Capabilities derivadas de datos reales; cada campo documenta su origen:
      *
      * <ul>
      *   <li>play: READY + origen válido + archivo presente (LOCAL).</li>
-     *   <li>viewDetail/editMetadata/changeVisibility/manageSharing: el scope
-     *       es OWNED, así que el dueño siempre puede gestionar su ficha.</li>
-     *   <li>delete: bloqueado para INVALID (conciliar orígenes primero) y
-     *       MISSING (reconciliar el archivo antes de borrar la ficha); la
-     *       coordinación durable con storage es prerrequisito del bulk.</li>
-     *   <li>identify: false hasta que la página incluya assets
-     *       UNIDENTIFIED.</li>
+     *   <li>viewDetail/editMetadata/changeVisibility/manageSharing: scope
+     *       OWNED ⇒ el dueño gestiona su ficha.</li>
+     *   <li>delete: bloqueado para INVALID (conciliar orígenes) y MISSING
+     *       (reconciliar el archivo); bulk requiere cleanup durable.</li>
+     *   <li>identify: false hasta exponer assets UNIDENTIFIED en la página.</li>
      * </ul>
      */
-    @com.fasterxml.jackson.annotation.JsonProperty("capabilities")
     public Capabilities getCapabilities() {
       boolean invalid = "INVALID".equals(this.source);
       boolean missing = "MISSING".equals(this.displayStatus);
@@ -89,7 +78,6 @@ public record CatalogPage(
           !invalid && !missing);
     }
 
-    @JsonIgnoreProperties(ignoreUnknown = true)
     public record Capabilities(
         boolean play,
         boolean viewDetail,
@@ -100,6 +88,5 @@ public record CatalogPage(
         boolean delete) {}
   }
 
-  @JsonIgnoreProperties(ignoreUnknown = true)
   public record Key(String type, Long id) {}
 }

@@ -48,18 +48,6 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
-  public Flux<MovieDto> listOwnedMovies(int limit) {
-    return this.moviesWebClient
-        .get()
-        .uri(uriBuilder -> uriBuilder.path(API)
-            .queryParam("scope", "owned")
-            .queryParam("limit", limit)
-            .build())
-        .retrieve()
-        .bodyToFlux(MovieDto.class);
-  }
-
-  @Override
   public Mono<com.guille.media.bff.experience.catalog.application.CatalogPage> catalogPage(
       int page, int size, String search, String status, String sort, String direction) {
     return this.moviesWebClient
