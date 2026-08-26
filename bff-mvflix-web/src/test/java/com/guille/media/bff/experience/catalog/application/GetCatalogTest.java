@@ -104,6 +104,35 @@ class GetCatalogTest {
   }
 
   @Test
+  void assetItemDerivesIdentifyViewTechnicalInfoAndDelete() {
+    when(this.projection.page(0, 25, null, null, null, null))
+        .thenReturn(Mono.just(new CatalogPage(
+            new CatalogPage.Summary(1, 0, 1),
+            List.of(new CatalogPage.Item(
+                new CatalogPage.Key("ASSET", 91L), null, 91L, Boolean.TRUE,
+                "video_123.mkv", null, null, null, null,
+                null, "UNIDENTIFIED", "LOCAL", null, 0, null)),
+            0, 25, 1, 1)));
+
+    StepVerifier.create(this.getCatalog.execute(null, null, null, null, null, null))
+        .assertNext(page -> {
+          var caps = page.items().get(0).getCapabilities();
+          // Las tres acciones honestas de un asset sin identificar.
+          assertThat(caps.identify()).isTrue();
+          assertThat(caps.viewDetail()).isTrue();
+          assertThat(caps.delete()).isTrue();
+          // Nada de reproducción, metadata, visibilidad ni proveedor.
+          assertThat(caps.play()).isFalse();
+          assertThat(caps.editMetadata()).isFalse();
+          assertThat(caps.changeVisibility()).isFalse();
+          assertThat(caps.manageSharing()).isFalse();
+          assertThat(caps.linkProvider()).isFalse();
+          assertThat(caps.unlinkProvider()).isFalse();
+        })
+        .verifyComplete();
+  }
+
+  @Test
   void forwardsNormalizedFiltersToThePort() {
     when(this.projection.page(2, 10, "cora", "DRAFT", "title", "ASC"))
         .thenReturn(Mono.just(CatalogPage.empty()));

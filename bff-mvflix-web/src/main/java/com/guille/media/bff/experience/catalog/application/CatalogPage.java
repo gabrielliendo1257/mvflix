@@ -54,20 +54,51 @@ public record CatalogPage(
     }
 
     /**
-     * Capabilities derivadas de datos reales; cada campo documenta su origen:
+     * Capabilities derivadas de datos reales, ramificadas por tipo de fila:
      *
      * <ul>
-     *   <li>play: READY + origen válido + archivo presente (LOCAL).</li>
-     *   <li>viewDetail/editMetadata/changeVisibility/manageSharing: scope
-     *       OWNED ⇒ el dueño gestiona su ficha.</li>
-     *   <li>linkProvider/unlinkProvider: solo MOVIE; exactamente una de las
-     *       dos según providerStatus. OTHER no se vincula a proveedores.</li>
-     *   <li>delete: bloqueado para INVALID (conciliar orígenes) y MISSING
-     *       (reconciliar el archivo); bulk requiere cleanup durable.</li>
-     *   <li>identify: false hasta exponer assets UNIDENTIFIED en la página.</li>
+     *   <li><b>ASSET</b> (sin identificar): identificar, ver información
+     *       técnica y borrar. Sin metadata, visibilidad, proveedor ni
+     *       reproducción.</li>
+     *   <li><b>MEDIA</b>:
+     *       <ul>
+     *         <li>play: READY + origen válido + archivo presente (LOCAL).</li>
+     *         <li>viewDetail/editMetadata/changeVisibility/manageSharing:
+     *             scope OWNED ⇒ el dueño gestiona su ficha.</li>
+     *         <li>linkProvider/unlinkProvider: solo MOVIE; exactamente una
+     *             según providerStatus. OTHER no se vincula.</li>
+     *         <li>delete: bloqueado para INVALID (conciliar orígenes) y
+     *             MISSING (reconciliar el archivo).</li>
+     *         <li>identify: no aplica (ya es una media identificada).</li>
+     *       </ul>
+     *   </li>
      * </ul>
+     *
+     * <p>FAILED/retry NO se modela aquí: un fallo de subida compensado
+     * pertenece a Add Media/Activity, no al catálogo, y aún no existe estado
+     * durable ni dueño del mismo.
      */
     public Capabilities getCapabilities() {
+      if ("ASSET".equals(this.key.type())) {
+        return assetCapabilities();
+      }
+      return mediaCapabilities();
+    }
+
+    private Capabilities assetCapabilities() {
+      return new Capabilities(
+          false, // play
+          true,  // viewDetail: información técnica
+          false, // editMetadata
+          false, // changeVisibility
+          false, // manageSharing
+          false, // linkProvider
+          false, // unlinkProvider
+          true,  // identify
+          true); // delete (solo fila de catálogo; el archivo es del operador)
+    }
+
+    private Capabilities mediaCapabilities() {
       boolean invalid = "INVALID".equals(this.source);
       boolean missing = "MISSING".equals(this.displayStatus);
       boolean movie = "MOVIE".equals(this.kind);
