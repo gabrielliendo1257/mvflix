@@ -101,7 +101,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                    NULL::text AS duration,
                    NULL::text AS kind,
                    NULL::text AS status,
-                   'UNIDENTIFIED' AS display_status,
+                   CASE WHEN a.present THEN 'UNIDENTIFIED' ELSE 'MISSING' END AS display_status,
                    'LOCAL' AS source,
                    NULL::text AS visibility,
                    0::bigint AS shared_count,

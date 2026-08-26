@@ -133,6 +133,29 @@ class GetCatalogTest {
   }
 
   @Test
+  void missingAssetItemDerivesNoActions() {
+    when(this.projection.page(0, 25, null, null, null, null))
+        .thenReturn(Mono.just(new CatalogPage(
+            new CatalogPage.Summary(1, 0, 1),
+            List.of(new CatalogPage.Item(
+                new CatalogPage.Key("ASSET", 92L), null, 92L, Boolean.FALSE,
+                "gone.mkv", null, null, null, null,
+                null, "MISSING", "LOCAL", null, 0, null)),
+            0, 25, 1, 1)));
+
+    StepVerifier.create(this.getCatalog.execute(null, null, null, null, null, null))
+        .assertNext(page -> {
+          var caps = page.items().get(0).getCapabilities();
+          // Archivo desaparecido: nada que identificar.
+          assertThat(caps.identify()).isFalse();
+          assertThat(caps.play()).isFalse();
+          assertThat(caps.delete()).isFalse();
+          assertThat(caps.viewDetail()).isFalse();
+        })
+        .verifyComplete();
+  }
+
+  @Test
   void forwardsNormalizedFiltersToThePort() {
     when(this.projection.page(2, 10, "cora", "DRAFT", "title", "ASC"))
         .thenReturn(Mono.just(CatalogPage.empty()));

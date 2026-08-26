@@ -57,12 +57,16 @@ public record CatalogPage(
      * Capabilities derivadas de datos reales, ramificadas por tipo de fila:
      *
      * <ul>
-     *   <li><b>ASSET</b> (sin identificar): SOLO identificar — es la única
-     *       acción con endpoint real ({@code POST /web/libraries/assets/{id}/identify}).
-     *       {@code viewDetail} y {@code delete} se ocultan: no existe vista ni
-     *       borrado de asset, y usar el asset ID como movie ID en
-     *       {@code /web/media/{id}} borraría un recurso ajeno con el mismo
-     *       número.</li>
+     *   <li><b>ASSET</b>:
+     *       <ul>
+     *         <li>UNIDENTIFIED (present): identificar — el único con endpoint
+     *             real ({@code POST /web/libraries/assets/{id}/identify}).</li>
+     *         <li>MISSING (archivo desaparecido): ninguna acción.</li>
+     *         <li>{@code viewDetail} y {@code delete} se ocultan siempre: no
+     *             existe vista ni borrado de asset, y usar el asset ID como
+     *             movie ID borraría un recurso ajeno con el mismo número.</li>
+     *       </ul>
+     *   </li>
      *   <li><b>MEDIA</b>:
      *       <ul>
      *         <li>play: READY + origen válido + archivo presente (LOCAL).</li>
@@ -89,6 +93,9 @@ public record CatalogPage(
     }
 
     private Capabilities assetCapabilities() {
+      // Solo un asset PRESENTE (UNIDENTIFIED) puede identificarse; un MISSING
+      // no tiene archivo en disco, así que identify queda false.
+      boolean identifiable = Boolean.TRUE.equals(this.assetPresent);
       return new Capabilities(
           false, // play
           false, // viewDetail: no hay GET de asset; /web/media/{id} es de movie
@@ -97,7 +104,7 @@ public record CatalogPage(
           false, // manageSharing
           false, // linkProvider
           false, // unlinkProvider
-          true,  // identify: POST /web/libraries/assets/{id}/identify
+          identifiable, // identify
           false); // delete: no existe; assetId≠movieId, borraría otro recurso
     }
 

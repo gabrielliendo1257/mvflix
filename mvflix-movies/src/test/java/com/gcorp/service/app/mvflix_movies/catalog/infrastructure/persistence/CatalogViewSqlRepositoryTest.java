@@ -326,4 +326,26 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
                 .allMatch(i -> "UNIDENTIFIED".equals(i.displayStatus())
                         && "ASSET".equals(i.key().type()));
     }
+
+    @Test
+    void missingUnidentifiedAssetSurfacesAsMissingNotIdentifiable() {
+        // Asset sin identificar que el scan ya no encuentra: present=false.
+        MediaAsset created = this.mediaAssetRepository.save(
+                MediaAsset.create(7L, new ScannedFile("Movies/gone.mkv", 10L, "video/x-matroska"), "admin")).block();
+        this.mediaAssetRepository.save(created.markMissing()).block();
+
+        CatalogPageView view = pageAsAdmin("gone", null);
+
+        var item = view.items().get(0);
+        assertThat(item.key().type()).isEqualTo("ASSET");
+        assertThat(item.assetPresent()).isFalse();
+        assertThat(item.displayStatus()).isEqualTo("MISSING");
+        assertThat(item.source()).isEqualTo(CatalogItemView.Source.LOCAL.name());
+
+        // MISSING es parte del vocabulario operacional del filtro.
+        CatalogPageView missing = pageAsAdmin(null, "MISSING");
+        assertThat(missing.items()).isNotEmpty();
+        assertThat(missing.items())
+                .allMatch(i -> "MISSING".equals(i.displayStatus()));
+    }
 }
