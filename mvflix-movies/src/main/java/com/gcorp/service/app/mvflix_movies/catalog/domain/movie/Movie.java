@@ -186,10 +186,23 @@ public class Movie {
 
     /**
      * Transición de dominio: acceso completo (visibilidad + compartidos) en
-     * una sola decisión. Existe para que el cambio se persista como unidad y
-     * nunca quede una película SHARED sin sus shares, ni PRIVATE con residuos.
+     * una sola decisión. La invariante de acceso vive AQUÍ:
+     *
+     * <ul>
+     *   <li>SHARED exige al menos un usuario compartido.</li>
+     *   <li>PRIVATE y PUBLIC ignoran y limpian los compartidos.</li>
+     * </ul>
+     *
+     * Existe para que el cambio se persista como unidad y nunca quede una
+     * película SHARED sin sus shares, ni PRIVATE/PUBLIC con residuos.
      */
     public Movie withAccess(MovieVisibility visibility, Set<String> sharedWith) {
+        Set<String> shares = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
+        if (visibility == MovieVisibility.SHARED && shares.isEmpty()) {
+            throw new InvalidMovieAccessException("SHARED requires at least one user");
+        }
+        // Solo SHARED retiene los compartidos; el resto los limpia.
+        Set<String> effective = visibility == MovieVisibility.SHARED ? shares : Set.of();
         return new Movie(
                 this.id,
                 this.ownerUsername,
@@ -199,7 +212,7 @@ public class Movie {
                 this.objectId,
                 this.metadata,
                 visibility,
-                sharedWith,
+                effective,
                 this.kind);
     }
 

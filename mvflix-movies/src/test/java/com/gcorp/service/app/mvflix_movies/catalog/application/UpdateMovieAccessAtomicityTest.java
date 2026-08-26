@@ -93,4 +93,29 @@ class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
         assertThat(persisted.getVisibility()).isEqualTo(MovieVisibility.SHARED);
         assertThat(sharesCount()).isEqualTo(1);
     }
+
+    @Test
+    void failedShareInsertRollsBackVisibilityToo() {
+        // Punto de partida PRIVATE sin shares.
+        this.useCase.execute(
+                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId),
+                        MovieVisibility.PRIVATE, java.util.List.of())
+                .block();
+        assertThat(sharesCount()).isZero();
+
+        // username > 255 rompe el INSERT de movie_shares DESPUÉS de haber
+        // cambiado la visibilidad a SHARED: la transacción debe revertir AMBOS.
+        String tooLong = "x".repeat(300);
+        StepVerifier.create(this.useCase.execute(
+                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId),
+                        MovieVisibility.SHARED, java.util.List.of(tooLong)))
+                .expectError()
+                .verify();
+
+        // Visibilidad revertida a PRIVATE y shares sin cambios: atomicidad.
+        var persisted = this.movieRepository.findById(
+                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId)).block();
+        assertThat(persisted.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
+        assertThat(sharesCount()).isZero();
+    }
 }

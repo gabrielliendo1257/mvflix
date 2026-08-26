@@ -101,4 +101,40 @@ class UpdateMovieAccessUseCaseTest {
 
         verify(this.movieRepository, org.mockito.Mockito.never()).updateAccess(any());
     }
+
+    @Test
+    void sharedWithoutUsersIsRejectedByDomain() {
+        StepVerifier.create(this.useCase.execute(
+                        MovieId.of(1L), MovieVisibility.SHARED, List.of()))
+                .expectError(com.gcorp.service.app.mvflix_movies.catalog.domain.movie.InvalidMovieAccessException.class)
+                .verify();
+
+        verify(this.movieRepository, org.mockito.Mockito.never()).updateAccess(any());
+    }
+
+    @Test
+    void privateCleansSharesAtTheDomain() {
+        StepVerifier.create(this.useCase.execute(
+                        MovieId.of(1L), MovieVisibility.PRIVATE, List.of("Maria")))
+                .assertNext(updated -> {
+                    assertThat(updated.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
+                    assertThat(updated.getSharedWith()).isEmpty();
+                })
+                .verifyComplete();
+
+        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        verify(this.movieRepository).updateAccess(captor.capture());
+        assertThat(captor.getValue().getSharedWith()).isEmpty();
+    }
+
+    @Test
+    void publicCleansSharesAtTheDomain() {
+        StepVerifier.create(this.useCase.execute(
+                        MovieId.of(1L), MovieVisibility.PUBLIC, List.of("Maria")))
+                .assertNext(updated -> {
+                    assertThat(updated.getVisibility()).isEqualTo(MovieVisibility.PUBLIC);
+                    assertThat(updated.getSharedWith()).isEmpty();
+                })
+                .verifyComplete();
+    }
 }

@@ -52,6 +52,12 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "MOVIE_CONFLICT", ex);
     }
 
+    @ExceptionHandler(com.gcorp.service.app.mvflix_movies.catalog.domain.movie.InvalidMovieAccessException.class)
+    public ResponseEntity<ErrorResponse> invalidMovieAccess(
+            com.gcorp.service.app.mvflix_movies.catalog.domain.movie.InvalidMovieAccessException ex) {
+        return error(HttpStatus.BAD_REQUEST, "INVALID_MOVIE_ACCESS", ex);
+    }
+
     @ExceptionHandler(MediaAssetAlreadyIdentifiedException.class)
     public ResponseEntity<ErrorResponse> mediaAssetConflict(
             MediaAssetAlreadyIdentifiedException ex) {
