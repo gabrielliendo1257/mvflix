@@ -48,6 +48,18 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   }
 
   @Override
+  public Flux<MovieDto> listOwnedMovies(int limit) {
+    return this.moviesWebClient
+        .get()
+        .uri(uriBuilder -> uriBuilder.path(API)
+            .queryParam("scope", "owned")
+            .queryParam("limit", limit)
+            .build())
+        .retrieve()
+        .bodyToFlux(MovieDto.class);
+  }
+
+  @Override
   public Mono<MovieDto> movieById(Long movieId) {
     return this.moviesWebClient
         .get()
