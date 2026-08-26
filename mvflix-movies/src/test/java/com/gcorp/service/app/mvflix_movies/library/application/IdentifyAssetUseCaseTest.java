@@ -51,7 +51,8 @@ class IdentifyAssetUseCaseTest {
                         null,
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        "Javier");
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
@@ -72,6 +73,35 @@ class IdentifyAssetUseCaseTest {
     }
 
     @Test
+    void nonOwnerCannotIdentifySomeoneElsesAsset() {
+        MediaAsset foreign =
+                new MediaAsset(
+                        MediaAssetId.of(1L),
+                        7L,
+                        "Dune.mp4",
+                        1024,
+                        "video/mp4",
+                        MediaAssetStatus.UNIDENTIFIED,
+                        null,
+                        true,
+                        Instant.now(),
+                        Instant.now(),
+                        "admin");
+
+        when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(foreign));
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
+
+        // Sin revelar existencia: mismo error que un id inexistente.
+        StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null, null))
+                .expectError(MediaAssetNotFoundException.class)
+                .verify();
+
+        verify(this.identifyAssetTransaction, never())
+                .execute(any(MediaAsset.class), any(String.class), any(String.class), any());
+    }
+
+    @Test
     void alreadyIdentifiedAssetIsIdempotent() {
         MediaAsset identified =
                 new MediaAsset(
@@ -84,9 +114,12 @@ class IdentifyAssetUseCaseTest {
                         CatalogItemId.of(50L),
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        "Javier");
 
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(identified));
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
 
         StepVerifier.create(this.useCase.execute(MediaAssetId.of(1L), "Dune", null, null))
                 .expectNextMatches(asset -> asset.getCatalogItemId().equals(CatalogItemId.of(50L)))
@@ -123,7 +156,8 @@ class IdentifyAssetUseCaseTest {
                         null,
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        "Javier");
         MediaAsset winner = asset.identify(CatalogItemId.of(50L));
 
         when(this.assetRepository.findById(MediaAssetId.of(1L)))
@@ -153,7 +187,8 @@ class IdentifyAssetUseCaseTest {
                         null,
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        "Javier");
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
@@ -189,7 +224,8 @@ class IdentifyAssetUseCaseTest {
                         null,
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        "Javier");
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
@@ -221,7 +257,8 @@ class IdentifyAssetUseCaseTest {
                         null,
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        "Javier");
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));

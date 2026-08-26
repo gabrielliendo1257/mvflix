@@ -11,6 +11,8 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
 import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
+import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,11 +34,18 @@ class ScanLibraryUseCaseTest {
     private static final long LIBRARY_ID = 7L;
 
     @Mock private MediaAssetRepository assetRepository;
+    @Mock private UserProvider userProvider;
 
     @InjectMocks private ScanLibraryUseCase useCase;
 
+    private void requesterIs(String subject) {
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser(subject, subject + "@m.com")));
+    }
+
     @Test
     void upsertsNewFilesAsUnidentified() {
+        this.requesterIs("pepe");
         ScannedFile dune = new ScannedFile("Dune.mp4", 1024, "video/mp4");
         when(this.assetRepository.findByLibraryAndPath(LIBRARY_ID, "Dune.mp4"))
                 .thenReturn(Mono.empty());
@@ -49,12 +58,14 @@ class ScanLibraryUseCaseTest {
                         asset.getLibraryId() == LIBRARY_ID
                                 && asset.getRelativePath().equals("Dune.mp4")
                                 && asset.getStatus() == MediaAssetStatus.UNIDENTIFIED
+                                && "pepe".equals(asset.getDiscoveredBy())
                                 && !asset.isIdentified())
                 .verifyComplete();
     }
 
     @Test
     void marksVanishedAssetsAsMissing() {
+        this.requesterIs("pepe");
         ScannedFile present = new ScannedFile("present.mkv", 100, "video/x-matroska");
         MediaAsset vanished =
                 new MediaAsset(
@@ -67,7 +78,8 @@ class ScanLibraryUseCaseTest {
                         CatalogItemId.of(9L),
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        null);
         when(this.assetRepository.findByLibraryAndPath(LIBRARY_ID, "present.mkv"))
                 .thenReturn(Mono.empty());
         when(this.assetRepository.save(any(MediaAsset.class)))
@@ -85,6 +97,7 @@ class ScanLibraryUseCaseTest {
 
     @Test
     void refreshesStaleSizeAndMime() {
+        this.requesterIs("pepe");
         MediaAsset stale =
                 new MediaAsset(
                         MediaAssetId.of(1L),
@@ -96,7 +109,8 @@ class ScanLibraryUseCaseTest {
                         null,
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        null);
         ScannedFile fresh = new ScannedFile("Dune.mp4", 2048, "video/mp4");
         when(this.assetRepository.findByLibraryAndPath(LIBRARY_ID, "Dune.mp4"))
                 .thenReturn(Mono.just(stale));
@@ -116,6 +130,7 @@ class ScanLibraryUseCaseTest {
 
     @Test
     void marksRecoveredAssetsAsPresentAgain() {
+        this.requesterIs("pepe");
         MediaAsset missing =
                 new MediaAsset(
                         MediaAssetId.of(1L),
@@ -127,7 +142,8 @@ class ScanLibraryUseCaseTest {
                         CatalogItemId.of(3L),
                         false,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        null);
         ScannedFile recovered = new ScannedFile("Dune.mp4", 100, "video/mp4");
         when(this.assetRepository.findByLibraryAndPath(LIBRARY_ID, "Dune.mp4"))
                 .thenReturn(Mono.just(missing));
@@ -144,6 +160,7 @@ class ScanLibraryUseCaseTest {
 
     @Test
     void emptyScanMarksEverythingMissingButDoesNotWriteNewRows() {
+        this.requesterIs("pepe");
         MediaAsset orphan =
                 new MediaAsset(
                         MediaAssetId.of(1L),
@@ -155,7 +172,8 @@ class ScanLibraryUseCaseTest {
                         null,
                         true,
                         Instant.now(),
-                        Instant.now());
+                        Instant.now(),
+                        null);
         when(this.assetRepository.findAllByLibraryId(LIBRARY_ID)).thenReturn(Flux.just(orphan));
         when(this.assetRepository.save(any(MediaAsset.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));

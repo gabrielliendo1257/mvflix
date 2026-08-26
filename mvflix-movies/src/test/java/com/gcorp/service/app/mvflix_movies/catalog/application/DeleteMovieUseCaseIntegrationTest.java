@@ -47,7 +47,7 @@ class DeleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
         this.mediaAssetRepository
             .save(
                 MediaAsset.create(
-                    7L, new ScannedFile("Dune.mkv", 1024L, "video/x-matroska")))
+ 7L, new ScannedFile("Dune.mkv", 1024L, "video/x-matroska"), null))
             .block();
     MediaAsset asset =
         this.mediaAssetRepository

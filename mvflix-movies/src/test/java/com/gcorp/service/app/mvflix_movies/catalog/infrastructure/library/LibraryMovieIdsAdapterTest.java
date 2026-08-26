@@ -49,6 +49,6 @@ class LibraryMovieIdsAdapterTest {
                 MediaAssetId.of(id), libraryId, "movie-" + id + ".mkv", 100L,
                 "video/x-matroska",
                 catalogItemId == null ? MediaAssetStatus.UNIDENTIFIED : MediaAssetStatus.IDENTIFIED,
-                catalogItemId, true, now, now);
+                catalogItemId, true, now, now, null);
     }
 }

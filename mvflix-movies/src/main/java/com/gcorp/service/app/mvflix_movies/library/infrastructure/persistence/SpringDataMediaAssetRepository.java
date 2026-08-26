@@ -20,7 +20,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
     private static final String ASSET_COLUMNS =
             """
             id, library_id, relative_path, size, mime_type, status, present,
-            movie_id, created_at, updated_at
+            movie_id, created_at, updated_at, discovered_by
             """;
 
     private final DatabaseClient databaseClient;
@@ -32,21 +32,23 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
     @Override
     public Mono<MediaAsset> save(MediaAsset asset) {
         if (asset.getId() == null) {
-            return this.databaseClient
-                    .sql(
-                            """
-                            INSERT INTO media_assets
-                                (library_id, relative_path, size, mime_type, status, present, movie_id)
-                            VALUES (:library_id, :relative_path, :size, :mime_type, :status, :present, :movie_id)
-                            RETURNING
-                            """ + ASSET_COLUMNS)
-                    .bind("library_id", asset.getLibraryId())
-                    .bind("relative_path", asset.getRelativePath())
-                    .bind("size", asset.getSize())
-                    .bind("mime_type", asset.getMimeType())
-                    .bind("status", asset.getStatus().name())
-                    .bind("present", asset.getPresent())
-                    .bindNull("movie_id", Long.class)
+            var insertSpec =
+                    this.databaseClient
+                            .sql(
+                                    """
+                                    INSERT INTO media_assets
+                                        (library_id, relative_path, size, mime_type, status, present, movie_id, discovered_by)
+                                    VALUES (:library_id, :relative_path, :size, :mime_type, :status, :present, :movie_id, :discovered_by)
+                                    RETURNING
+                                    """ + ASSET_COLUMNS)
+                            .bind("library_id", asset.getLibraryId())
+                            .bind("relative_path", asset.getRelativePath())
+                            .bind("size", asset.getSize())
+                            .bind("mime_type", asset.getMimeType())
+                            .bind("status", asset.getStatus().name())
+                            .bind("present", asset.getPresent())
+                            .bindNull("movie_id", Long.class);
+            return this.bindDiscoveredBy(insertSpec, asset.getDiscoveredBy())
                     .map((row, metadata) -> this.toDomain(row))
                     .one();
         }
@@ -77,6 +79,15 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
             return spec.bindNull("movie_id", Long.class);
         }
         return spec.bind("movie_id", catalogItemId.value());
+    }
+
+    private static org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec bindDiscoveredBy(
+            org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec spec,
+            String discoveredBy) {
+        if (discoveredBy == null) {
+            return spec.bindNull("discovered_by", String.class);
+        }
+        return spec.bind("discovered_by", discoveredBy);
     }
 
     @Override
@@ -212,6 +223,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                 movieId == null ? null : CatalogItemId.of(movieId),
                 present == null || present,
                 row.get("created_at", Instant.class),
-                row.get("updated_at", Instant.class));
+                row.get("updated_at", Instant.class),
+                row.get("discovered_by", String.class));
     }
 }

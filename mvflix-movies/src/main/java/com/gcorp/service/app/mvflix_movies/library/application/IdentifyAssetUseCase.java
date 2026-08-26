@@ -42,13 +42,22 @@ public class IdentifyAssetUseCase {
                 .switchIfEmpty(Mono.defer(() -> Mono.error(
                         new MediaAssetNotFoundException("Media asset not found: "
                                 + assetId.value()))))
-                .flatMap(asset -> {
-                    if (asset.isIdentified()) {
-                        log.info("Asset {} ya identificado: no-op", assetId.value());
-                        return Mono.just(asset);
-                    }
-                    return this.linkToMovie(asset, title, tmdbId, kind);
-                });
+                .flatMap(asset -> this.userProvider
+                        .getAuthenticatedUser()
+                        .flatMap(user -> {
+                            // Gestionar el activo de otro (o huérfano) no revela
+                            // existencia: mismo error que un id inexistente.
+                            if (!user.isAdmin()
+                                    && !user.subject().equals(asset.getDiscoveredBy())) {
+                                return Mono.error(new MediaAssetNotFoundException(
+                                        "Media asset not found: " + assetId.value()));
+                            }
+                            if (asset.isIdentified()) {
+                                log.info("Asset {} ya identificado: no-op", assetId.value());
+                                return Mono.just(asset);
+                            }
+                            return this.linkToMovie(asset, title, tmdbId, kind);
+                        }));
     }
 
     private Mono<MediaAsset> linkToMovie(

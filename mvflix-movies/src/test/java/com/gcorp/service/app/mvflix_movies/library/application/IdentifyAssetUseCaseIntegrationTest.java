@@ -35,7 +35,7 @@ class IdentifyAssetUseCaseIntegrationTest extends PostgresIntegrationTest {
         this.assetRepository
             .save(
                 MediaAsset.create(
-                    7L, new ScannedFile("Dune.mkv", 1024L, "video/x-matroska")))
+ 7L, new ScannedFile("Dune.mkv", 1024L, "video/x-matroska"), "pepe"))
             .block();
 
     Mono<MediaAsset> first =

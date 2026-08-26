@@ -26,8 +26,12 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.time.Instant;
+import java.util.Set;
+
 @ExtendWith(MockitoExtension.class)
 class MediaAssetQueriesTest {
+
+    private static final long LIBRARY_ID = 7L;
 
     @Mock private MediaAssetRepository assetRepository;
     @Mock private CatalogItemAccess catalogItemAccess;
@@ -35,36 +39,74 @@ class MediaAssetQueriesTest {
 
     @InjectMocks private MediaAssetQueries queries;
 
+    private void requester(String subject, boolean admin) {
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser(
+                        subject, subject + "@m.com",
+                        admin ? Set.of(AuthenticatedUser.ADMIN_ROLE) : Set.of())));
+    }
+
     @Test
     void listsAllAssetsWhenStatusIsAbsent() {
-        MediaAsset asset = asset(1L, MediaAssetStatus.UNIDENTIFIED, null);
-        when(this.assetRepository.findAllByLibraryId(7L)).thenReturn(Flux.just(asset));
+        this.requester("pepe", false);
+        MediaAsset asset = asset(1L, MediaAssetStatus.UNIDENTIFIED, null, "pepe");
+        when(this.assetRepository.findAllByLibraryId(LIBRARY_ID)).thenReturn(Flux.just(asset));
 
-        StepVerifier.create(this.queries.findByLibrary(7L, null))
+        StepVerifier.create(this.queries.findByLibrary(LIBRARY_ID, null))
                 .expectNext(asset)
                 .verifyComplete();
 
         verify(this.assetRepository, never())
-                .findAllByLibraryIdAndStatus(7L, MediaAssetStatus.UNIDENTIFIED);
+                .findAllByLibraryIdAndStatus(LIBRARY_ID, MediaAssetStatus.UNIDENTIFIED);
     }
 
     @Test
     void filtersAssetsByStatus() {
-        MediaAsset asset = asset(1L, MediaAssetStatus.UNIDENTIFIED, null);
+        this.requester("pepe", false);
+        MediaAsset asset = asset(1L, MediaAssetStatus.UNIDENTIFIED, null, "pepe");
         when(this.assetRepository.findAllByLibraryIdAndStatus(
-                        7L, MediaAssetStatus.UNIDENTIFIED))
+                        LIBRARY_ID, MediaAssetStatus.UNIDENTIFIED))
                 .thenReturn(Flux.just(asset));
 
         StepVerifier.create(
-                        this.queries.findByLibrary(7L, MediaAssetStatus.UNIDENTIFIED))
+                        this.queries.findByLibrary(LIBRARY_ID, MediaAssetStatus.UNIDENTIFIED))
                 .expectNext(asset)
                 .verifyComplete();
 
-        verify(this.assetRepository, never()).findAllByLibraryId(7L);
+        verify(this.assetRepository, never()).findAllByLibraryId(LIBRARY_ID);
+    }
+
+    @Test
+    void nonAdminOnlySeesOwnDiscoveriesInTheLibrary() {
+        this.requester("pepe", false);
+        MediaAsset mine = asset(1L, MediaAssetStatus.UNIDENTIFIED, null, "pepe");
+        MediaAsset theirs = asset(2L, MediaAssetStatus.IDENTIFIED,
+                CatalogItemId.of(10L), "admin");
+        MediaAsset orphan = asset(3L, MediaAssetStatus.UNIDENTIFIED, null, null);
+        when(this.assetRepository.findAllByLibraryId(LIBRARY_ID))
+                .thenReturn(Flux.just(mine, theirs, orphan));
+
+        StepVerifier.create(this.queries.findByLibrary(LIBRARY_ID, null))
+                .expectNext(mine)
+                .verifyComplete();
+    }
+
+    @Test
+    void adminSeesEveryDiscoveryIncludingOrphans() {
+        this.requester("admin", true);
+        MediaAsset mine = asset(1L, MediaAssetStatus.UNIDENTIFIED, null, "pepe");
+        MediaAsset orphan = asset(3L, MediaAssetStatus.UNIDENTIFIED, null, null);
+        when(this.assetRepository.findAllByLibraryId(LIBRARY_ID))
+                .thenReturn(Flux.just(mine, orphan));
+
+        StepVerifier.create(this.queries.findByLibrary(LIBRARY_ID, null))
+                .expectNext(mine, orphan)
+                .verifyComplete();
     }
 
     @Test
     void reportsMissingAssetById() {
+        this.requester("pepe", false);
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.empty());
 
         StepVerifier.create(this.queries.findById(MediaAssetId.of(1L)))
@@ -73,13 +115,56 @@ class MediaAssetQueriesTest {
     }
 
     @Test
-    void visibleMovieReturnsItsAsset() {
-        MediaAsset asset = asset(1L, MediaAssetStatus.IDENTIFIED, CatalogItemId.of(10L));
-        when(this.userProvider.getAuthenticatedUser())
-                .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
+    void identifiedAssetIsVisibleThroughItsMovie() {
+        this.requester("Maria", false);
+        MediaAsset asset = asset(1L, MediaAssetStatus.IDENTIFIED,
+                CatalogItemId.of(10L), "admin");
+        when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .thenReturn(Mono.empty());
-        when(this.assetRepository.findByCatalogItemId(CatalogItemId.of(10L))).thenReturn(Mono.just(asset));
+
+        StepVerifier.create(this.queries.findById(MediaAssetId.of(1L)))
+                .expectNext(asset)
+                .verifyComplete();
+    }
+
+    @Test
+    void unidentifiedAssetIsManagementOnlyForNonAdmins() {
+        this.requester("pepe", false);
+        MediaAsset asset = asset(1L, MediaAssetStatus.UNIDENTIFIED, null, "admin");
+        when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
+
+        StepVerifier.create(this.queries.findById(MediaAssetId.of(1L)))
+                .expectError(MediaAssetNotFoundException.class)
+                .verify();
+    }
+
+    @Test
+    void invisibleMovieDoesNotExposeAssetByIdEither() {
+        this.requester("Maria", false);
+        MediaAsset asset = asset(1L, MediaAssetStatus.IDENTIFIED,
+                CatalogItemId.of(10L), "admin");
+        when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
+        when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
+                .thenReturn(Mono.error(new MovieAccessDeniedException(
+                        "Movie not accessible: 10")));
+
+        // Sin revelar existencia: el mismo error que un id inexistente.
+        StepVerifier.create(this.queries.findById(MediaAssetId.of(1L)))
+                .expectError(MediaAssetNotFoundException.class)
+                .verify();
+
+        verify(this.assetRepository, never()).findByCatalogItemId(CatalogItemId.of(10L));
+    }
+
+    @Test
+    void visibleMovieReturnsItsAsset() {
+        this.requester("Maria", false);
+        MediaAsset asset = asset(1L, MediaAssetStatus.IDENTIFIED, CatalogItemId.of(10L), "admin");
+        when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
+                .thenReturn(Mono.empty());
+        when(this.assetRepository.findByCatalogItemId(CatalogItemId.of(10L)))
+                .thenReturn(Mono.just(asset));
 
         StepVerifier.create(this.queries.findByCatalogItem(CatalogItemId.of(10L)))
                 .expectNext(asset)
@@ -88,8 +173,7 @@ class MediaAssetQueriesTest {
 
     @Test
     void invisibleMovieDoesNotExposeItsAsset() {
-        when(this.userProvider.getAuthenticatedUser())
-                .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
+        this.requester("Maria", false);
         when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .thenReturn(Mono.error(new MovieAccessDeniedException(
                         "Movie not accessible: 10")));
@@ -103,8 +187,7 @@ class MediaAssetQueriesTest {
 
     @Test
     void reportsWhenVisibleMovieHasNoAsset() {
-        when(this.userProvider.getAuthenticatedUser())
-                .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
+        this.requester("Maria", false);
         when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
                 .thenReturn(Mono.empty());
         when(this.assetRepository.findByCatalogItemId(CatalogItemId.of(10L))).thenReturn(Mono.empty());
@@ -115,11 +198,11 @@ class MediaAssetQueriesTest {
     }
 
     private static MediaAsset asset(
-            long id, MediaAssetStatus status, CatalogItemId catalogItemId) {
+            long id, MediaAssetStatus status, CatalogItemId catalogItemId, String discoveredBy) {
         Instant now = Instant.now();
         return new MediaAsset(
                 MediaAssetId.of(id),
-                7L,
+                LIBRARY_ID,
                 "Dune.mp4",
                 1024L,
                 "video/mp4",
@@ -127,7 +210,7 @@ class MediaAssetQueriesTest {
                 catalogItemId,
                 true,
                 now,
-                now);
+                now,
+                discoveredBy);
     }
-
 }

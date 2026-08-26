@@ -11,6 +11,10 @@ import java.time.Instant;
  * <p>Dos dimensiones ortogonales: la identificación ({@link MediaAssetStatus}
  * UNIDENTIFIED -> IDENTIFIED) y la presencia en disco ({@code present}); un
  * archivo desaparecido conserva su vínculo a la película.
+ *
+ * <p>{@code discoveredBy} sella quién pidió el scan que trajo el archivo:
+ * base de la autorización de gestión (cada quien lista sus descubrimientos;
+ * admin ve todo). Null en assets previos al sello = solo admin.
  */
 public class MediaAsset {
 
@@ -24,6 +28,7 @@ public class MediaAsset {
     private final boolean present;
     private final Instant createdAt;
     private final Instant updatedAt;
+    private final String discoveredBy;
 
     public MediaAsset(
             MediaAssetId id,
@@ -35,7 +40,8 @@ public class MediaAsset {
             CatalogItemId catalogItemId,
             boolean present,
             Instant createdAt,
-            Instant updatedAt) {
+            Instant updatedAt,
+            String discoveredBy) {
         this.id = id;
         this.libraryId = libraryId;
         this.relativePath = relativePath;
@@ -46,9 +52,10 @@ public class MediaAsset {
         this.present = present;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.discoveredBy = discoveredBy;
     }
 
-    public static MediaAsset create(Long libraryId, ScannedFile file) {
+    public static MediaAsset create(Long libraryId, ScannedFile file, String discoveredBy) {
         return new MediaAsset(
                 null,
                 libraryId,
@@ -59,7 +66,8 @@ public class MediaAsset {
                 null,
                 true,
                 Instant.now(),
-                Instant.now());
+                Instant.now(),
+                discoveredBy);
     }
 
     public boolean isIdentified() {
@@ -89,7 +97,8 @@ public class MediaAsset {
                 catalogItemId,
                 this.present,
                 this.createdAt,
-                Instant.now());
+                Instant.now(),
+                this.discoveredBy);
     }
 
     /** Desvincula el activo cuando su película se elimina; el archivo sigue catalogado. */
@@ -107,7 +116,8 @@ public class MediaAsset {
                 null,
                 this.present,
                 this.createdAt,
-                Instant.now());
+                Instant.now(),
+                this.discoveredBy);
     }
 
     /** El scan ya no encontro el archivo: marca ausencia sin tocar el vinculo. */
@@ -125,7 +135,8 @@ public class MediaAsset {
                 this.catalogItemId,
                 false,
                 this.createdAt,
-                Instant.now());
+                Instant.now(),
+                this.discoveredBy);
     }
 
     /** El scan volvio a encontrar el archivo: marca presencia sin tocar el vinculo. */
@@ -143,7 +154,8 @@ public class MediaAsset {
                 this.catalogItemId,
                 true,
                 this.createdAt,
-                Instant.now());
+                Instant.now(),
+                this.discoveredBy);
     }
 
     /** Refresca lo que el filesystem dice (size/mime pueden cambiar en disco). */
@@ -161,7 +173,8 @@ public class MediaAsset {
                 this.catalogItemId,
                 this.present,
                 this.createdAt,
-                Instant.now());
+                Instant.now(),
+                this.discoveredBy);
     }
 
     public MediaAssetId getId() {
@@ -202,5 +215,10 @@ public class MediaAsset {
 
     public Instant getUpdatedAt() {
         return this.updatedAt;
+    }
+
+    /** Quién pidió el scan que lo trajo; null = previo al sello (solo admin). */
+    public String getDiscoveredBy() {
+        return this.discoveredBy;
     }
 }
