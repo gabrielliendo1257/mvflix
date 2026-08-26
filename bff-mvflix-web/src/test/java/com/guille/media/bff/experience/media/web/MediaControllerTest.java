@@ -46,7 +46,7 @@ class MediaControllerTest {
             new UnlinkMediaProvider(this.actions, this.projection),
             new EditMediaMetadata(this.metadataActions, this.projection),
             new ChangeMediaAccess(this.accessActions, this.projection),
-            new DeleteMedia(this.deletion)))
+            new DeleteMedia(this.deletion, this.projection)))
         .controllerAdvice(new ApiExceptionHandler())
         .build();
   }
@@ -200,6 +200,7 @@ class MediaControllerTest {
 
   @Test
   void deleteReturns204WhenMediaDeleted() {
+    when(this.projection.detail(42L)).thenReturn(Mono.just(localDetail()));
     when(this.deletion.deleteCatalog(42L)).thenReturn(Mono.just(true));
 
     this.client.delete()
@@ -210,12 +211,37 @@ class MediaControllerTest {
 
   @Test
   void deleteIsIdempotentWhenAlreadyAbsent() {
-    when(this.deletion.deleteCatalog(42L)).thenReturn(Mono.just(false));
+    when(this.projection.detail(42L))
+        .thenReturn(Mono.error(new MediaDetailNotFoundException(42L)));
 
     this.client.delete()
         .uri("/web/media/42")
         .exchange()
         .expectStatus().isNoContent();
+  }
+
+  @Test
+  void deleteManagedMediaIsBlockedWith409() {
+    when(this.projection.detail(42L)).thenReturn(Mono.just(managedDetail()));
+
+    this.client.delete()
+        .uri("/web/media/42")
+        .exchange()
+        .expectStatus().isEqualTo(org.springframework.http.HttpStatus.CONFLICT)
+        .expectBody()
+        .jsonPath("$.error").isEqualTo("MANAGED_DELETE_BLOCKED");
+  }
+
+  private MediaDetail localDetail() {
+    return MediaDetail.from(new MediaDetail.Source(
+        42L, "Alien", null, 1979, "1h 57m", null, null, java.util.List.of(),
+        null, java.util.List.of(), "MOVIE", "PRIVATE", "READY", null, 17L, true, null));
+  }
+
+  private MediaDetail managedDetail() {
+    return MediaDetail.from(new MediaDetail.Source(
+        42L, "Coraline", null, 2009, "1h 40m", "/c.jpg", null, java.util.List.of(),
+        null, java.util.List.of(), "MOVIE", "PRIVATE", "READY", 77L, null, null, null));
   }
 
   @Test

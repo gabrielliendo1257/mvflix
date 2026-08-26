@@ -68,6 +68,18 @@ public class ApiExceptionHandler {
                 HttpStatus.NOT_FOUND.value(), "MEDIA_NOT_FOUND", ex.getMessage())));
   }
 
+  /** Delete de media MANAGED bloqueado (sin compensación durable de storage). */
+  @ExceptionHandler(com.guille.media.bff.experience.media.application.ManagedDeleteBlockedException.class)
+  public Mono<ResponseEntity<OrchestrationError>> managedDeleteBlocked(
+      com.guille.media.bff.experience.media.application.ManagedDeleteBlockedException ex) {
+    log.warn("Delete bloqueado: {}", ex.getMessage());
+    return Mono.just(
+        ResponseEntity.status(HttpStatus.CONFLICT)
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(new OrchestrationError(
+                HttpStatus.CONFLICT.value(), "MANAGED_DELETE_BLOCKED", ex.getMessage())));
+  }
+
   /** Playback: el usuario autenticado no puede reproducir la media. */
   @ExceptionHandler(PlaybackForbiddenException.class)
   public Mono<ResponseEntity<OrchestrationError>> playbackForbidden(
