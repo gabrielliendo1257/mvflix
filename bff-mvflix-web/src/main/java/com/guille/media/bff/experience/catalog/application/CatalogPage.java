@@ -61,17 +61,43 @@ public record CatalogPage(
     }
 
     /**
-     * Proyección de capacidades que SÍ llega al JSON (Jackson ignora métodos
-     * derivados sin anotación): Angular lee capabilities.play en vez de
-     * interpretar status+source+assetPresent por su cuenta.
+     * Capabilities derivadas de datos reales del ítem; Angular las lee sin
+     * reinterpretar estados. Cada campo documenta su derivación:
+     *
+     * <ul>
+     *   <li>play: READY + origen válido + archivo presente (LOCAL).</li>
+     *   <li>viewDetail/editMetadata/changeVisibility/manageSharing: el scope
+     *       es OWNED, así que el dueño siempre puede gestionar su ficha.</li>
+     *   <li>delete: bloqueado para INVALID (conciliar orígenes primero) y
+     *       MISSING (reconciliar el archivo antes de borrar la ficha); la
+     *       coordinación durable con storage es prerrequisito del bulk.</li>
+     *   <li>identify: false hasta que la página incluya assets
+     *       UNIDENTIFIED.</li>
+     * </ul>
      */
     @com.fasterxml.jackson.annotation.JsonProperty("capabilities")
     public Capabilities getCapabilities() {
-      return new Capabilities(playable());
+      boolean invalid = "INVALID".equals(this.source);
+      boolean missing = "MISSING".equals(this.displayStatus);
+      return new Capabilities(
+          playable(),
+          true,
+          true,
+          true,
+          true,
+          false,
+          !invalid && !missing);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Capabilities(boolean play) {}
+    public record Capabilities(
+        boolean play,
+        boolean viewDetail,
+        boolean editMetadata,
+        boolean changeVisibility,
+        boolean manageSharing,
+        boolean identify,
+        boolean delete) {}
   }
 
   @JsonIgnoreProperties(ignoreUnknown = true)

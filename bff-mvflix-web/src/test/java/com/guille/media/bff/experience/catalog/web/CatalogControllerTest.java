@@ -51,6 +51,10 @@ class CatalogControllerTest {
         .expectBody()
         .jsonPath("$.items[0].assetPresent").isEqualTo(true)
         .jsonPath("$.items[0].capabilities.play").isEqualTo(true)
+        .jsonPath("$.items[0].capabilities.viewDetail").isEqualTo(true)
+        .jsonPath("$.items[0].capabilities.editMetadata").isEqualTo(true)
+        .jsonPath("$.items[0].capabilities.delete").isEqualTo(true)
+        .jsonPath("$.items[0].capabilities.identify").isEqualTo(false)
         .jsonPath("$.summary.total").isEqualTo(128)
         .jsonPath("$.summary.needsAttention").isEqualTo(7)
         .jsonPath("$.items[0].key.type").isEqualTo("MEDIA")
@@ -86,7 +90,7 @@ class CatalogControllerTest {
             List.of(new CatalogPage.Item(
                 new CatalogPage.Key("MEDIA", 9L), 9L, 3L, Boolean.FALSE,
                 "Alien", null, 1979, "1h 57m", "MOVIE",
-                "READY", "READY", "LOCAL", "PRIVATE", 0, "NONE")),
+                "READY", "MISSING", "LOCAL", "PRIVATE", 0, "NONE")),
             0, 25, 1, 1)));
 
     this.client.get()
@@ -95,9 +99,10 @@ class CatalogControllerTest {
         .expectStatus().isOk()
         .expectBody()
         .jsonPath("$.items[0].status").isEqualTo("READY")
+        .jsonPath("$.items[0].displayStatus").isEqualTo("MISSING")
         .jsonPath("$.items[0].assetPresent").isEqualTo(false)
-        // La capability derivada es lo único que el front necesita leer.
-        .jsonPath("$.items[0].capabilities.play").isEqualTo(false);
+        .jsonPath("$.items[0].capabilities.play").isEqualTo(false)
+        .jsonPath("$.items[0].capabilities.delete").isEqualTo(false);
   }
 
   @Test
