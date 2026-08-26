@@ -74,9 +74,9 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
     }
 
     private Flux<CatalogItemView> rows(CatalogReadQuery query) {
+        // ROWS_HEAD ya incluye FROM/WHERE owner; aquí solo filtros opcionales.
         String sql = ROWS_HEAD + optionalFilters(query)
-                + " ORDER BY " + orderColumn(query.sort())
-                + (query.ascending() ? " ASC" : " DESC")
+                + orderClause(query)
                 + " LIMIT :size OFFSET :offset";
 
         GenericExecuteSpec spec = this.databaseClient.sql(sql)
@@ -88,6 +88,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
     }
 
     private Mono<Stats> stats(CatalogReadQuery query) {
+        // STATS_HEAD ya incluye FROM/WHERE owner.
         String sql = STATS_HEAD + optionalFilters(query);
         GenericExecuteSpec spec = this.databaseClient.sql(sql)
                 .bind("owner", query.ownerUsername());
@@ -117,6 +118,14 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
             filters.append(" AND m.status = :status");
         }
         return filters.toString();
+    }
+
+    static String orderClause(CatalogReadQuery query) {
+        String direction = query.ascending() ? " ASC" : " DESC";
+        // Desempate por id: sin él, empates de updated_at/título/año pueden
+        // reordenarse entre requests y una página repetiría u omitiría filas.
+        return " ORDER BY " + orderColumn(query.sort()) + direction
+                + ", m.id" + direction;
     }
 
     private static String orderColumn(CatalogReadQuery.SortField sort) {
