@@ -1,17 +1,17 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.application;
 
 import com.guille.media.reproductor.uploader.storage.shared.security.UserProvider;
+import com.guille.media.reproductor.uploader.storage.managedstorage.application.command.request.DeleteStoredObjectCommand;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.UserStorageNotFoundException;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.BucketName;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageLocation;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.UserStorageRepository;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.BucketName;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageLocation;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,6 +31,7 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
   private final UserStorageRepository userStorageRepository;
   private final TerminalUploadTransition terminalTransition;
   private final OrphanCleanupQueue orphanCleanupQueue;
+  private final DeleteStoredObject deleteStoredObject;
 
   public ObjectCleanupServiceImpl(
       UserProvider userProvider,
@@ -38,17 +39,22 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
       StorageRepository storageRepository,
       UserStorageRepository userStorageRepository,
       TerminalUploadTransition terminalTransition,
-      OrphanCleanupQueue orphanCleanupQueue) {
+      OrphanCleanupQueue orphanCleanupQueue,
+      DeleteStoredObject deleteStoredObject) {
     this.userProvider = userProvider;
     this.objectStoragePort = objectStorageService;
     this.storageRepository = storageRepository;
     this.userStorageRepository = userStorageRepository;
     this.terminalTransition = terminalTransition;
     this.orphanCleanupQueue = orphanCleanupQueue;
+    this.deleteStoredObject = deleteStoredObject;
   }
 
   @Override
   public Mono<Void> deleteObject(Long storageId) {
+    // El endpoint valida ownership; la transición física de Storage (S3 DELETE
+    // → CAS COMPLETED→DELETED → cuota) vive en DeleteStoredObject, que es
+    // idempotente, retry-safe y no conoce Movies ni ownership.
     return this.userProvider
         .getAuthenticatedUser()
         .flatMap(
@@ -62,65 +68,9 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
                     .flatMap(
                         object -> {
                           object.ensureOwnedBy(user.subject());
-                          return this.deleteOwnedObject(object);
+                          return this.deleteStoredObject.execute(
+                              new DeleteStoredObjectCommand(storageId));
                         }));
-  }
-
-  /**
-   * Borrado retry-safe. Orden deliberado:
-   *
-   * <ol>
-   *   <li>DELETE en MinIO: idempotente y fail-fast. Si el object store está
-   *       caído la operación falla sin tocar PostgreSQL; reintentar es seguro
-   *       porque repetir el DELETE no tiene efecto.</li>
-   *   <li>Transacción local: CAS COMPLETED→DELETED + liberación de cuota,
-   *       atómicos. Un fallo de DB deja la fila COMPLETED con su cuota; el
-   *       reintento repite el DELETE (no-op) y vuelve a intentar la tx.</li>
-   * </ol>
-   *
-   * <p>El caso perdido del CAS es una eliminación ya completada por otro
-   * hilo: el segundo DELETE es inofensivo y nadie libera cuota dos veces.
-   */
-  private Mono<Void> deleteOwnedObject(StoreObject object) {
-    return this.userStorageRepository
-        .findByOwnerUsername(object.getOwnerUsername())
-        .switchIfEmpty(
-            Mono.error(
-                new UserStorageNotFoundException(
-                    "No storage registered for user: " + object.getOwnerUsername())))
-        .flatMap(
-            userStorage -> {
-              if (!object.markDeleted()) {
-                return Mono.empty();
-              }
-              return Mono.<Void>fromRunnable(
-                      () ->
-                          this.objectStoragePort.delete(
-                              new StorageLocation(
-                                  userStorage.getBucketName(), object.getStorageKey())))
-                  .then(
-                      this.terminalTransition.transitionAndRelease(
-                          object, StorageSessionStatus.COMPLETED))
-                  // IDEMPOTENCIA: dos DELETE concurrentes borran el blob dos
-                  // veces (inofensivo) pero solo UNO gana el CAS y libera
-                  // cuota. El perdedor confirma que la fila quedó DELETED y
-                  // responde éxito en lugar de un 409 confuso.
-                  .onErrorResume(IllegalStateTransitionException.class,
-                      race -> this.storageRepository
-                          .findById(object.getStorageId())
-                          .flatMap(current -> {
-                            if (current.getStorageObjectStatus()
-                                == StorageSessionStatus.DELETED) {
-                              log.info("delete: objeto {} ya estaba DELETED "
-                                  + "(carrera entre deletes), tratando como éxito",
-                                  object.getStorageId());
-                              return Mono.just(current);
-                            }
-                            return Mono.error(race);
-                          })
-                          .then(Mono.empty()))
-                  .then();
-            });
   }
 
   @Override
@@ -161,10 +111,6 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
                         }));
   }
 
-  /**
-   * Borra el objeto del bucket sin romper el flujo si el storage está caído o el objeto no
-   * existe (el DELETE de S3 es idempotente).
-   */
   /**
    * DELETE best-effort: si falla, la tarea queda DURABLE en la cola de
    * huérfanos y el scheduler la reintenta. Nunca se pierde un blob.

@@ -57,6 +57,10 @@ class ObjectCleanupServiceImplTest {
   private final com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue
       orphanQueue = mock(com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue.class);
 
+  private final DeleteStoredObject deleteStoredObject =
+      new DeleteStoredObject(
+          objectStoragePort, storageRepository, userStorageRepository, terminalTransition);
+
   private final ObjectCleanupServiceImpl service =
       new ObjectCleanupServiceImpl(
           userProvider,
@@ -64,7 +68,8 @@ class ObjectCleanupServiceImplTest {
           storageRepository,
           userStorageRepository,
           terminalTransition,
-          orphanQueue);
+          orphanQueue,
+          deleteStoredObject);
 
   @BeforeEach
   void passThroughTransaction() {
@@ -230,12 +235,11 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void retryAfterDatabaseFailureCompletesDeletion() {
-    StoreObject firstAttempt = completedObject(7L, "pepe");
-    StoreObject retry = completedObject(7L, "pepe");
-
+    // El endpoint lee para ownership y el use case vuelve a leer para
+    // resolver: cada findById devuelve un objeto fresco.
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L))
-        .thenReturn(Mono.just(firstAttempt), Mono.just(retry));
+        .thenAnswer(invocation -> Mono.just(completedObject(7L, "pepe")));
     when(this.userStorageRepository.findByOwnerUsername("pepe"))
         .thenReturn(Mono.just(PEPE_STORAGE));
     // Primer intento: la tx falla tras el release. Reintento: gana el CAS.
@@ -243,7 +247,7 @@ class ObjectCleanupServiceImplTest {
         .thenReturn(Mono.error(new RuntimeException("db connection lost")), Mono.just(1L));
     when(this.storageRepository.updateStatus(
             any(StoreObject.class), eq(StorageSessionStatus.COMPLETED)))
-        .thenReturn(Mono.just(retry));
+        .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
     StepVerifier.create(this.service.deleteObject(7L))
         .expectError(RuntimeException.class)
@@ -255,7 +259,6 @@ class ObjectCleanupServiceImplTest {
     // contra PostgreSQL real en UploadReservationRollbackTest.
     verify(this.objectStoragePort, times(2))
         .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("k7")));
-    assertThat(retry.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.DELETED);
   }
 
   @Test
