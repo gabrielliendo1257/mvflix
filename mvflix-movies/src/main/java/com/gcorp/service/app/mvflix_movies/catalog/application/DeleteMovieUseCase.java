@@ -1,57 +1,76 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryAssetLinks;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectDeletionUnavailableException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import reactor.core.publisher.Mono;
 
+/**
+ * Entrada única al borrado del catálogo. No es transaccional porque el camino
+ * MANAGED contiene una llamada HTTP; las escrituras locales viven en
+ * {@link MovieDeletionTransaction}.
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeleteMovieUseCase {
 
     private final MovieRepository movieRepository;
-    private final LibraryAssetLinks libraryAssetLinks;
+    private final MediaRepository mediaRepository;
     private final UserProvider userProvider;
+    private final MovieDeletionTransaction deletionTransaction;
+    private final ManagedMediaDeletionCoordinator deletionCoordinator;
 
-    @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<Void> execute(MovieId id) {
-        return this.userProvider
-                .getAuthenticatedUser()
-                .flatMap(user -> this.movieRepository
-                        .findById(id)
-                        .switchIfEmpty(Mono.error(new MovieNotFoundException(
-                                "Movie not found: " + id)))
+    public Mono<DeletionOutcome> execute(MovieId id) {
+        return this.userProvider.getAuthenticatedUser()
+                .flatMap(user -> this.movieRepository.findById(id)
+                        // Missing and foreign are deliberately indistinguishable.
                         .filter(movie -> movie.isOwnedBy(user.subject()) || user.isAdmin())
-                        .switchIfEmpty(Mono.error(new MovieNotFoundException(
-                                "Movie not found: " + id)))
-                        .flatMap(movie -> this.libraryAssetLinks
-                                .unlinkByMovieId(id)
-                                .then(this.movieRepository.deleteById(id))
-                                .flatMap(deleted -> {
-                                    if (!deleted) {
-                                        return Mono.error(
-                                                new MovieNotFoundException(
-                                                        "Movie not found: " + id));
-                                    }
-                                    if (!movie.isOwnedBy(user.subject())) {
-                                        log.info("Pelicula eliminada por moderacion: id={} owner={} admin={}",
-                                                id.value(), movie.getOwnerUsername(), user.subject());
-                                    } else {
-                                        log.info("Pelicula eliminada (rollback): id={} owner={}",
-                                                id.value(), user.subject());
-                                    }
-                                    return Mono.empty();
-                                })));
+                        .flatMap(movie -> this.deleteOwnedMovie(id, movie))
+                        .defaultIfEmpty(new DeletionOutcome.Completed()));
+    }
+
+    private Mono<DeletionOutcome> deleteOwnedMovie(MovieId id, Movie movie) {
+        if (movie.getStatus() == MovieStatus.DELETING) {
+            return this.coordinate(id);
+        }
+
+        return this.mediaRepository.findByMovieId(id)
+                .flatMap(media -> this.beginManagedDeletion(id))
+                // No media row means DRAFT/NONE or LOCAL. LibraryAssetLinks only
+                // unlinks the catalog association and never deletes the file.
+                .switchIfEmpty(Mono.defer(() -> this.deleteImmediately(id)));
+    }
+
+    private Mono<DeletionOutcome> beginManagedDeletion(MovieId id) {
+        return this.deletionTransaction.requestDeletion(id)
+                // Empty CAS means another instance won, or the movie was
+                // already removed; process() is safe in either case.
+                .then(this.coordinate(id));
+    }
+
+    private Mono<DeletionOutcome> coordinate(MovieId id) {
+        return this.deletionCoordinator.process(id)
+                .<DeletionOutcome>thenReturn(new DeletionOutcome.Completed())
+                .onErrorResume(ManagedObjectDeletionUnavailableException.class,
+                        error -> {
+                            log.info("Borrado pendiente por Storage no disponible: id={}", id.value());
+                            return Mono.just(new DeletionOutcome.Pending());
+                        });
+    }
+
+    private Mono<DeletionOutcome> deleteImmediately(MovieId id) {
+        return this.deletionTransaction.deleteImmediately(id)
+                .<DeletionOutcome>thenReturn(new DeletionOutcome.Completed());
     }
 }

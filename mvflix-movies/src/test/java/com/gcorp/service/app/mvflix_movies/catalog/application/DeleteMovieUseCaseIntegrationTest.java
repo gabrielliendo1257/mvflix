@@ -54,7 +54,9 @@ class DeleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
             .save(discovered.identify(CatalogItemId.of(movie.getId().value())))
             .block();
 
-    StepVerifier.create(this.useCase.execute(movie.getId())).verifyComplete();
+     StepVerifier.create(this.useCase.execute(movie.getId()))
+         .expectNext(new DeletionOutcome.Completed())
+         .verifyComplete();
 
     StepVerifier.create(this.movieRepository.findById(movie.getId())).verifyComplete();
     StepVerifier.create(this.mediaAssetRepository.findById(asset.getId()))

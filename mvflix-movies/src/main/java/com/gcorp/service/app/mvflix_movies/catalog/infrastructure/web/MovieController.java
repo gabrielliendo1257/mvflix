@@ -9,6 +9,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedD
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.DeletionOutcome;
 import com.gcorp.service.app.mvflix_movies.catalog.application.GetMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.ListMoviesUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieAccessUseCase;
@@ -229,7 +230,10 @@ public class MovieController {
 
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> delete(@PathVariable Long id) {
-        return this.deleteMovieUseCase.execute(MovieId.of(id)).thenReturn(ResponseEntity.noContent().build());
+        return this.deleteMovieUseCase.execute(MovieId.of(id))
+                .map(outcome -> outcome instanceof DeletionOutcome.Pending
+                        ? ResponseEntity.accepted().build()
+                        : ResponseEntity.noContent().build());
     }
 
     @PostMapping(value = "/{id}/enrich", consumes = MediaType.APPLICATION_JSON_VALUE)

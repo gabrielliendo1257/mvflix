@@ -43,4 +43,12 @@ public class MovieDeletionTransaction {
                 .then(this.movieRepository.deleteIfDeleting(id))
                 .then();
     }
+
+    /** Borrado atómico de DRAFT/NONE/LOCAL; no elimina archivos de Library. */
+    @Transactional(transactionManager = "connectionFactoryTransactionManager")
+    public Mono<Void> deleteImmediately(MovieId id) {
+        return this.libraryAssetLinks.unlinkByMovieId(id)
+                .then(this.movieRepository.deleteById(id))
+                .then();
+    }
 }

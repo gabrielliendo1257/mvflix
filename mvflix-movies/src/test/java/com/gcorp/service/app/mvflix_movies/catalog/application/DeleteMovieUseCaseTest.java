@@ -7,7 +7,10 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryAssetLinks;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectDeletionUnavailableException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
@@ -27,12 +30,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import java.time.Instant;
+
 @ExtendWith(MockitoExtension.class)
 class DeleteMovieUseCaseTest {
 
     @Mock private MovieRepository movieRepository;
-    @Mock private LibraryAssetLinks libraryAssetLinks;
+    @Mock private MediaRepository mediaRepository;
     @Mock private UserProvider userProvider;
+    @Mock private MovieDeletionTransaction deletionTransaction;
+    @Mock private ManagedMediaDeletionCoordinator deletionCoordinator;
 
     @InjectMocks private DeleteMovieUseCase useCase;
 
@@ -47,12 +54,14 @@ class DeleteMovieUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie(1L, "Javier")));
-        when(this.libraryAssetLinks.unlinkByMovieId(any())).thenReturn(Mono.empty());
-        when(this.movieRepository.deleteById(MovieId.of(1L))).thenReturn(Mono.just(true));
+        when(this.mediaRepository.findByMovieId(MovieId.of(1L))).thenReturn(Mono.empty());
+        when(this.deletionTransaction.deleteImmediately(MovieId.of(1L))).thenReturn(Mono.empty());
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L))).verifyComplete();
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
+                .expectNext(new DeletionOutcome.Completed())
+                .verifyComplete();
 
-        verify(this.movieRepository).deleteById(MovieId.of(1L));
+        verify(this.deletionTransaction).deleteImmediately(MovieId.of(1L));
     }
 
     @Test
@@ -61,10 +70,12 @@ class DeleteMovieUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Admin", "a@m.com",
                         java.util.Set.of(AuthenticatedUser.ADMIN_ROLE))));
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie(1L, "Javier")));
-        when(this.libraryAssetLinks.unlinkByMovieId(any())).thenReturn(Mono.empty());
-        when(this.movieRepository.deleteById(MovieId.of(1L))).thenReturn(Mono.just(true));
+        when(this.mediaRepository.findByMovieId(MovieId.of(1L))).thenReturn(Mono.empty());
+        when(this.deletionTransaction.deleteImmediately(MovieId.of(1L))).thenReturn(Mono.empty());
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L))).verifyComplete();
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
+                .expectNext(new DeletionOutcome.Completed())
+                .verifyComplete();
     }
 
     @Test
@@ -74,10 +85,46 @@ class DeleteMovieUseCaseTest {
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie(1L, "Javier")));
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
-                .expectError(MovieNotFoundException.class)
-                .verify();
+                .expectNext(new DeletionOutcome.Completed())
+                .verifyComplete();
 
-        verify(this.movieRepository, never()).deleteById(any());
-        verify(this.libraryAssetLinks, never()).unlinkByMovieId(any());
+        verify(this.deletionTransaction, never()).deleteImmediately(any());
+        verify(this.deletionCoordinator, never()).process(any());
+    }
+
+    @Test
+    void managedMovieIsMarkedDeletingAndCoordinated() {
+        Movie movie = movie(1L, "Javier");
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.mediaRepository.findByMovieId(MovieId.of(1L)))
+                .thenReturn(Mono.just(new Media(MediaId.of(9L), MovieId.of(1L), 77L, "k", Instant.now())));
+        when(this.deletionTransaction.requestDeletion(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.deletionCoordinator.process(MovieId.of(1L))).thenReturn(Mono.empty());
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
+                .expectNext(new DeletionOutcome.Completed())
+                .verifyComplete();
+
+        verify(this.deletionTransaction).requestDeletion(MovieId.of(1L));
+        verify(this.deletionCoordinator).process(MovieId.of(1L));
+    }
+
+    @Test
+    void managedStorageFailureReturnsPending() {
+        Movie movie = movie(1L, "Javier");
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.mediaRepository.findByMovieId(MovieId.of(1L)))
+                .thenReturn(Mono.just(new Media(MediaId.of(9L), MovieId.of(1L), 77L, "k", Instant.now())));
+        when(this.deletionTransaction.requestDeletion(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.deletionCoordinator.process(MovieId.of(1L))).thenReturn(Mono.error(
+                new ManagedObjectDeletionUnavailableException("unavailable", null)));
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
+                .expectNext(new DeletionOutcome.Pending())
+                .verifyComplete();
     }
 }
