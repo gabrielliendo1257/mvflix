@@ -3,7 +3,7 @@
 # Orden: auth primero (el BFF hace issuer discovery al arrancar), luego el resto en
 # paralelo, y el BFF al final.
 #
-#   ./scripts/stack-dev.sh start | stop | status
+#   ./scripts/stack-dev.sh start | stop | status | check
 #
 # Requiere: PostgreSQL y MinIO accesibles (locales o configurados en envs/.env)
 # y, opcionalmente, TMDB_API_TOKEN para que el enriquecimiento funcione.
@@ -12,6 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 ENV_FILE="${PROJECT_ROOT}/envs/.env"
+DOCKER_ENV_FILE="${PROJECT_ROOT}/infra/docker/.env"
 
 # Credenciales privadas de dev (TMDB, etc.) desde envs/.env (gitignored).
 # Quedan en el entorno para que las apps las lean via ${VAR:default}.
@@ -22,6 +23,15 @@ if [ -f "${ENV_FILE}" ]; then
   set +a
 else
   echo "[WARN] ${ENV_FILE} no existe; se usaran los defaults de dev"
+fi
+
+# Variables del compose de infraestructura (MinIO/Postgres). Se carga después
+# para que su configuración acompañe al mismo proceso de arranque.
+if [ -f "${DOCKER_ENV_FILE}" ]; then
+  set -a
+  # shellcheck disable=SC1090
+  source "${DOCKER_ENV_FILE}"
+  set +a
 fi
 
 cd "${PROJECT_ROOT}"
@@ -43,6 +53,8 @@ BFF_PORT=9091
 DB_TARGET_HOST="${DB_HOST:-127.0.0.1}"
 DB_TARGET_PORT="${DB_PORT:-5432}"
 MINIO_TARGET_URL="${MINIO_URL:-http://127.0.0.1:9000}"
+MINIO_DATA_SOURCE="${MINIO_DATA_SOURCE:-minio_data}"
+MINIO_MIN_FREE_GB="${MINIO_MIN_FREE_GB:-10}"
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/mvflix-dev"
 LOG_DIR="${STATE_DIR}/logs"
 PID_DIR="${STATE_DIR}/pids"
@@ -165,6 +177,7 @@ stop_one() {
 }
 
 start() {
+  check
   if ! tcp_open "${DB_TARGET_HOST}" "${DB_TARGET_PORT}"; then
     echo "postgres no responde en ${DB_TARGET_HOST}:${DB_TARGET_PORT} -> revisa envs/.env"
   fi
@@ -240,9 +253,89 @@ status() {
   done
 }
 
+check_minio_data_source() {
+  case "${MINIO_DATA_SOURCE}" in
+    /*) ;;
+    *)
+      echo "  [OK] MinIO usa el volumen Docker '${MINIO_DATA_SOURCE}'"
+      return 0
+      ;;
+  esac
+
+  local path="${MINIO_DATA_SOURCE}"
+  local available_kb
+  local required_kb
+  local marker
+
+  if [ ! -d "${path}" ]; then
+    echo "  [FAIL] MINIO_DATA_SOURCE no existe: ${path}" >&2
+    return 1
+  fi
+  if [ ! -w "${path}" ]; then
+    echo "  [FAIL] MINIO_DATA_SOURCE no es escribible: ${path}" >&2
+    return 1
+  fi
+  if ! mountpoint -q "${path}"; then
+    echo "  [FAIL] MINIO_DATA_SOURCE no es un punto de montaje: ${path}" >&2
+    return 1
+  fi
+
+  if ! [[ "${MINIO_MIN_FREE_GB}" =~ ^[0-9]+$ ]]; then
+    echo "  [FAIL] MINIO_MIN_FREE_GB debe ser un entero: ${MINIO_MIN_FREE_GB}" >&2
+    return 1
+  fi
+  required_kb=$((MINIO_MIN_FREE_GB * 1024 * 1024))
+  available_kb="$(df --output=avail -k -- "${path}" | {
+    read -r _
+    read -r available
+    printf '%s' "${available}"
+  })"
+  if ! [[ "${available_kb}" =~ ^[0-9]+$ ]] || [ "${available_kb}" -lt "${required_kb}" ]; then
+    echo "  [FAIL] espacio libre insuficiente en ${path}: ${available_kb:-desconocido} KiB (mínimo ${MINIO_MIN_FREE_GB} GiB)" >&2
+    return 1
+  fi
+
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "  [FAIL] Docker no está disponible para validar el bind mount" >&2
+    return 1
+  fi
+  marker=".mvflix-minio-mount-check.$$"
+  if ! docker run --rm --user "$(id -u):$(id -g)" \
+      --volume "${path}:/data:rw" \
+      --entrypoint /bin/sh quay.io/minio/minio \
+      -c 'test -d /data && test -w /data && touch "/data/$1"' sh "${marker}" >/dev/null; then
+    echo "  [FAIL] Docker no puede acceder/escribir en ${path}" >&2
+    rm -f -- "${path}/${marker}"
+    return 1
+  fi
+  rm -f -- "${path}/${marker}"
+
+  echo "  [OK] MinIO external mount: ${path} (${MINIO_MIN_FREE_GB} GiB mínimos)"
+}
+
+check() {
+  echo "== Validando infraestructura dev =="
+  check_minio_data_source
+
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "Docker no está disponible para validar Compose" >&2
+    return 1
+  fi
+  local compose_env=()
+  if [ -f "${DOCKER_ENV_FILE}" ]; then
+    compose_env=(--env-file "${DOCKER_ENV_FILE}")
+  else
+    compose_env=(--env-file "${PROJECT_ROOT}/infra/docker/.env.example")
+  fi
+  docker compose "${compose_env[@]}" \
+    -f "${PROJECT_ROOT}/infra/docker/docker-compose-dev.yml" config >/dev/null
+  echo "  [OK] docker compose config"
+}
+
 case "${1:-status}" in
   start) start ;;
   stop) stop ;;
   status) status ;;
-  *) echo "uso: $0 [start|stop|status]" && exit 1 ;;
+  check) check ;;
+  *) echo "uso: $0 [start|stop|status|check]" && exit 1 ;;
 esac
