@@ -30,6 +30,10 @@ movies:
     cleanup-check-ms: 3600000
   enrich:
     check-ms: 3600000
+  deletion:
+    retry-delay: PT1M
+    batch-size: 25
+    concurrency: 4
 
 tmdb:
   api-token: ${TMDB_API_TOKEN:}
