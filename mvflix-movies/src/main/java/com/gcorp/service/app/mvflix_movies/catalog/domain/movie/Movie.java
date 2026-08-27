@@ -156,6 +156,7 @@ public class Movie {
 
     /** Transición de dominio: cambia la visibilidad del catálogo (solo el dueño). */
     public Movie withVisibility(MovieVisibility visibility) {
+        requireNotDeleting("change visibility");
         return new Movie(
                 this.id,
                 this.ownerUsername,
@@ -171,6 +172,7 @@ public class Movie {
 
     /** Transición de dominio: reemplaza la lista de compartidos (solo el dueño). */
     public Movie withSharedWith(Set<String> sharedWith) {
+        requireNotDeleting("change shares");
         return new Movie(
                 this.id,
                 this.ownerUsername,
@@ -197,6 +199,7 @@ public class Movie {
      * película SHARED sin sus shares, ni PRIVATE/PUBLIC con residuos.
      */
     public Movie withAccess(MovieVisibility visibility, Set<String> sharedWith) {
+        requireNotDeleting("change access");
         Set<String> shares = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
         if (visibility == MovieVisibility.SHARED && shares.isEmpty()) {
             throw new InvalidMovieAccessException("SHARED requires at least one user");
@@ -218,6 +221,7 @@ public class Movie {
 
     /** Transición de dominio: reemplaza la metadata (edición manual del dueño). */
     public Movie withMetadata(MovieMetadata metadata) {
+        requireNotDeleting("edit");
         requireTitle(metadata);
         return new Movie(
                 this.id,
@@ -238,6 +242,7 @@ public class Movie {
      * película.
      */
     public Movie reclassifyAsOther(MovieMetadata manualMetadata) {
+        requireNotDeleting("reclassify");
         requireTitle(manualMetadata);
         MovieMetadata unlinkedMetadata = manualMetadata.withoutProvider();
         return new Movie(
@@ -259,6 +264,7 @@ public class Movie {
      * {@link #linkProviderMetadata(MovieMetadata)}.
      */
     public Movie reclassifyAsMovie() {
+        requireNotDeleting("reclassify");
         requireTitle(this.metadata);
         MovieMetadata unlinkedMetadata = this.metadata.withoutProvider();
         return new Movie(
@@ -277,6 +283,42 @@ public class Movie {
     public boolean isDraft() {
         return this.status == MovieStatus.DRAFT;
     }
+
+    /** {@code true} si la media está en borrado durable (no reproducible ni editable). */
+    public boolean isDeleting() {
+        return this.status == MovieStatus.DELETING;
+    }
+
+    /**
+     * Transición de dominio: inicia el borrado durable de la media. Idempotente:
+     * si ya estaba DELETING devuelve {@code this}; en cualquier otro estado pasa
+     * a DELETING. A partir de aquí ninguna mutación es válida.
+     */
+    public Movie requestDeletion() {
+        if (this.status == MovieStatus.DELETING) {
+            return this;
+        }
+        return new Movie(
+                this.id,
+                this.ownerUsername,
+                this.title,
+                MovieStatus.DELETING,
+                this.enrichmentStatus,
+                this.objectId,
+                this.metadata,
+                this.visibility,
+                this.sharedWith,
+                this.kind);
+    }
+
+    /** Una media DELETING es un estado terminal operativo: rechaza toda mutación. */
+    private void requireNotDeleting(String transition) {
+        if (this.status == MovieStatus.DELETING) {
+            throw new MovieConflictException(
+                    "Cannot " + transition + " a movie in DELETING state");
+        }
+    }
+
 
     /**
      * READY respaldado por un archivo de biblioteca (sin objeto subido): el
@@ -301,6 +343,7 @@ public class Movie {
      * el identificador estable del proveedor.
      */
     public Movie linkProviderMetadata(MovieMetadata providerMetadata) {
+        requireNotDeleting("link provider");
         if (!isMovie()) {
             throw new MovieConflictException("Only movie items can link provider metadata");
         }
@@ -323,6 +366,7 @@ public class Movie {
 
     /** Desvincula el proveedor y devuelve el item a RAW conservando metadata manual. */
     public Movie unlinkProvider() {
+        requireNotDeleting("unlink provider");
         MovieMetadata unlinkedMetadata = this.metadata.withoutProvider();
         return new Movie(
                 this.id,
@@ -343,6 +387,7 @@ public class Movie {
      * es un secreto interno que queda en {@code Media}, nunca en Movie.
      */
     public Movie complete(Long objectId) {
+        requireNotDeleting("complete");
         return new Movie(
                 this.id,
                 this.ownerUsername,
