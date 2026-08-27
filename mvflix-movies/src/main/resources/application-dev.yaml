@@ -21,6 +21,8 @@ spring:
 services:
   authorization:
     url: ${AUTHORIZATION_URL:http://127.0.0.1:9090}
+  storage:
+    url: ${SERVICES_STORAGE_URL:http://127.0.0.1:6060}
 
 movies:
   draft:
