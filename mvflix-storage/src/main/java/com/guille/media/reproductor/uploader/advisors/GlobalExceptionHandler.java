@@ -69,6 +69,13 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "STORAGE_OBJECT_NOT_AVAILABLE", ex);
     }
 
+    @ExceptionHandler(
+        com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectMismatchException.class)
+    public ResponseEntity<?> storageObjectMismatch(
+        com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectMismatchException ex) {
+        return error(HttpStatus.CONFLICT, "OBJECT_MISMATCH", ex);
+    }
+
     @ExceptionHandler(EntityNotFound.class)
     public ResponseEntity<?> entityNotFound(EntityNotFound ex) {
         return error(HttpStatus.NOT_FOUND, "NOT_FOUND", ex);

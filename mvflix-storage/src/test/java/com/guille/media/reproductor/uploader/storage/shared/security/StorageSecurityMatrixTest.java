@@ -171,4 +171,33 @@ class StorageSecurityMatrixTest {
         .expectStatus()
         .isNotFound();
   }
+
+  @Test
+  void managedObjectDeletionRequiresStorageObjectsDeleteScope() {
+    this.client
+        .post()
+        .uri(BASE + "/objects/7/deletion")
+        .exchange()
+        .expectStatus()
+        .isUnauthorized();
+
+    // Token de usuario sin el scope M2M: 403.
+    this.client
+        .mutateWith(mockJwt())
+        .post()
+        .uri(BASE + "/objects/7/deletion")
+        .exchange()
+        .expectStatus()
+        .isForbidden();
+
+    // Scope correcto pasa la seguridad (404: el slice no carga controladores).
+    this.client
+        .mutateWith(
+            mockJwt().authorities(new SimpleGrantedAuthority("SCOPE_storage.objects.delete")))
+        .post()
+        .uri(BASE + "/objects/7/deletion")
+        .exchange()
+        .expectStatus()
+        .isNotFound();
+  }
 }

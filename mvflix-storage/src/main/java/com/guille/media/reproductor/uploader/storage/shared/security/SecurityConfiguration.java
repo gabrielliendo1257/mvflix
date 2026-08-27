@@ -85,6 +85,10 @@ public class SecurityConfiguration {
                     // y pide bytes con scope dedicado (ver ADR 0002).
                     .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/catalog/streaming")
                     .hasAuthority("SCOPE_storage.stream")
+                    // M2M borrado de objetos MANAGED: movies valida la asociación
+                    // (owner + objectKey) y storage la verifica antes de borrar.
+                    .pathMatchers(HttpMethod.POST, this.apiPathBase + "/storage/objects/*/deletion")
+                    .hasAuthority("SCOPE_storage.objects.delete")
                     .pathMatchers(
                         HttpMethod.GET,
                         this.apiPathBase + "/storage/uploads",
