@@ -43,8 +43,25 @@ public interface MovieRepository {
      */
     Mono<Movie> completeIfDraft(MovieId id);
 
+    /**
+     * CAS READY → DELETING: inicia el borrado durable. Vacío si no estaba READY
+     * (no existe, ya DELETING o en otro estado). No aplica a DRAFT (borrado
+     * directo sin storage).
+     */
+    Mono<Movie> markDeleting(MovieId id);
+
     /** {@code true} si borró la fila. */
     Mono<Boolean> deleteById(MovieId id);
+
+    /**
+     * Elimina SOLO si la película está DELETING; {@code true} si borró. Es el
+     * guard del {@code finalizeDeletion}: una READY/DRAFT nunca se elimina por
+     * este camino.
+     */
+    Mono<Boolean> deleteIfDeleting(MovieId id);
+
+    /** Películas en borrado durable (para el scheduler de finalización), limitado. */
+    Flux<Movie> findDeleting(int limit);
 
     /** Persiste la transición de proveedor ya decidida por el agregado. */
     Mono<Movie> updateEnrichment(Movie movie);

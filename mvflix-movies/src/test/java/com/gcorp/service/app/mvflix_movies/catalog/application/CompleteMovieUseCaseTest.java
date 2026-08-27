@@ -348,6 +348,21 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
+    public Mono<Movie> markDeleting(MovieId id) {
+      return unexpectedMono("markDeleting");
+    }
+
+    @Override
+    public Mono<Boolean> deleteIfDeleting(MovieId id) {
+      return unexpectedMono("deleteIfDeleting");
+    }
+
+    @Override
+    public Flux<Movie> findDeleting(int limit) {
+      return unexpectedFlux("findDeleting");
+    }
+
+    @Override
     public Mono<Movie> updateEnrichment(Movie movie) {
       return unexpectedMono("updateEnrichment");
     }

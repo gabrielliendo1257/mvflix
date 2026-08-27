@@ -1,0 +1,189 @@
+package com.gcorp.service.app.mvflix_movies.catalog.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieConflictException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.r2dbc.core.DatabaseClient;
+import org.springframework.test.context.ActiveProfiles;
+
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+@ActiveProfiles("sandbox")
+@SpringBootTest
+class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
+
+    @Autowired private MovieDeletionTransaction transaction;
+    @Autowired private MovieRepository movieRepository;
+    @Autowired private CompleteMovieUseCase completeMovieUseCase;
+    @Autowired private DatabaseClient databaseClient;
+
+    @BeforeEach
+    void cleanDatabase() {
+        this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM media").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM media_assets").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+    }
+
+    private Long insertMovie(String status) {
+        return this.databaseClient
+                .sql(
+                        """
+                        INSERT INTO movies (
+                            owner_username, title, status, enrichment_status, metadata, visibility, kind)
+                        VALUES ('pepe', 'Dune', :status, 'RAW', '{"title":"Dune"}'::jsonb,
+                                'PRIVATE', 'MOVIE')
+                        RETURNING id
+                        """)
+                .bind("status", status)
+                .map((row, metadata) -> row.get("id", Long.class))
+                .one()
+                .block();
+    }
+
+    private void insertMedia(Long movieId, Long objectId, String objectKey) {
+        this.databaseClient
+                .sql("INSERT INTO media (movie_id, object_id, object_key) VALUES (:m, :o, :k)")
+                .bind("m", movieId).bind("o", objectId).bind("k", objectKey)
+                .fetch().rowsUpdated().block();
+    }
+
+    private void insertAsset(Long movieId, String path) {
+        this.databaseClient
+                .sql(
+                        """
+                        INSERT INTO media_assets (
+                            library_id, relative_path, size, mime_type, status, movie_id,
+                            discovered_by, present)
+                        VALUES (7, :path, 1024, 'video/mp4', 'IDENTIFIED', :movie, 'admin', true)
+                        """)
+                .bind("path", path).bind("movie", movieId)
+                .fetch().rowsUpdated().block();
+    }
+
+    private void insertShare(Long movieId, String user) {
+        this.databaseClient
+                .sql("INSERT INTO movie_shares (movie_id, shared_with) VALUES (:m, :u)")
+                .bind("m", movieId).bind("u", user)
+                .fetch().rowsUpdated().block();
+    }
+
+    private Mono<String> status(Long movieId) {
+        return this.databaseClient
+                .sql("SELECT status FROM movies WHERE id = :id")
+                .bind("id", movieId)
+                .map((row, metadata) -> row.get("status", String.class))
+                .one();
+    }
+
+    private Mono<Long> count(String table, Long movieId) {
+        return this.databaseClient
+                .sql("SELECT COUNT(*) AS n FROM " + table + " WHERE movie_id = :m")
+                .bind("m", movieId)
+                .map((row, metadata) -> row.get("n", Long.class))
+                .one();
+    }
+
+    @Test
+    void markDeletingCasReadyToDeleting() {
+        Long movie = this.insertMovie("READY");
+
+        StepVerifier.create(this.transaction.requestDeletion(MovieId.of(movie)))
+                .assertNext(deleting ->
+                        assertThat(deleting.getStatus()).isEqualTo(MovieStatus.DELETING))
+                .verifyComplete();
+
+        StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
+    }
+
+    @Test
+    void secondRequestDoesNotDuplicateChanges() {
+        Long movie = this.insertMovie("READY");
+
+        this.transaction.requestDeletion(MovieId.of(movie)).block();
+        StepVerifier.create(this.transaction.requestDeletion(MovieId.of(movie)))
+                .verifyComplete();
+
+        StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
+    }
+
+    @Test
+    void deleteIfDeletingDoesNotDeleteReadyMovie() {
+        Long movie = this.insertMovie("READY");
+
+        StepVerifier.create(this.movieRepository.deleteIfDeleting(MovieId.of(movie)))
+                .expectNext(false)
+                .verifyComplete();
+
+        StepVerifier.create(this.status(movie)).expectNext("READY").verifyComplete();
+    }
+
+    @Test
+    void finalizeDeletionRemovesAssociations() {
+        Long movie = this.insertMovie("READY");
+        this.insertMedia(movie, 1L, "pepe/videos/dune.mp4");
+        this.insertAsset(movie, "Movies/dune.mkv");
+        this.insertShare(movie, "maria");
+        this.transaction.requestDeletion(MovieId.of(movie)).block();
+
+        StepVerifier.create(this.transaction.finalizeDeletion(MovieId.of(movie)))
+                .verifyComplete();
+
+        StepVerifier.create(this.movieRepository.findById(MovieId.of(movie)))
+                .verifyComplete();
+        StepVerifier.create(this.count("media", movie)).expectNext(0L).verifyComplete();
+        StepVerifier.create(this.count("movie_shares", movie)).expectNext(0L).verifyComplete();
+        StepVerifier.create(this.databaseClient
+                        .sql("SELECT status, movie_id, present FROM media_assets WHERE relative_path = :p")
+                        .bind("p", "Movies/dune.mkv")
+                        .map((row, meta) -> java.util.Map.of(
+                                "status", String.valueOf(row.get("status", String.class)),
+                                "movie", String.valueOf(row.get("movie_id", Long.class)),
+                                "present", String.valueOf(row.get("present", Boolean.class))))
+                        .one())
+                .assertNext(asset -> {
+                    assertThat(asset.get("status")).isEqualTo("UNIDENTIFIED");
+                    assertThat(asset.get("movie")).isEqualTo("null");
+                    assertThat(asset.get("present")).isEqualTo("true");
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void completeMovieCannotReviveDeletingMovie() {
+        Long movie = this.insertMovie("READY");
+        this.transaction.requestDeletion(MovieId.of(movie)).block();
+
+        StepVerifier.create(
+                        this.completeMovieUseCase.execute(MovieId.of(movie), 700L, "pepe/videos/dune.mp4"))
+                .expectError(MovieConflictException.class)
+                .verify();
+
+        StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
+    }
+
+    @Test
+    void findDeletingReturnsOnlyDeletingMovies() {
+        Long deleting = this.insertMovie("READY");
+        this.insertMovie("READY");
+        this.insertMovie("DRAFT");
+        this.transaction.requestDeletion(MovieId.of(deleting)).block();
+
+        StepVerifier.create(this.movieRepository.findDeleting(10))
+                .assertNext(movie -> {
+                    assertThat(movie.getId()).isEqualTo(MovieId.of(deleting));
+                    assertThat(movie.getStatus()).isEqualTo(MovieStatus.DELETING);
+                })
+                .verifyComplete();
+    }
+}

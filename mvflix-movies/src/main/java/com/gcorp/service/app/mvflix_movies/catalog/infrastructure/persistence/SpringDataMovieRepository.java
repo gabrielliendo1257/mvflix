@@ -191,6 +191,58 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
+    public Mono<Movie> markDeleting(MovieId id) {
+        return this.databaseClient
+                .sql(
+                        """
+                        UPDATE movies
+                        SET status = 'DELETING', updated_at = NOW()
+                        WHERE id = :id AND status = 'READY'
+                        RETURNING id, owner_username, title, status, enrichment_status,
+                                  metadata::text, visibility, kind,
+                                  (SELECT mm.object_id FROM media mm
+                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
+                                  (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
+                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
+                        """)
+                .bind("id", id.value())
+                .map(this::toRow)
+                .one()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    public Mono<Boolean> deleteIfDeleting(MovieId id) {
+        return this.databaseClient
+                .sql(
+                        """
+                        DELETE FROM movies
+                        WHERE id = :id AND status = 'DELETING'
+                        """)
+                .bind("id", id.value())
+                .fetch()
+                .rowsUpdated()
+                .map(rows -> rows > 0);
+    }
+
+    @Override
+    public Flux<Movie> findDeleting(int limit) {
+        return this.databaseClient
+                .sql(
+                        SELECT_MOVIE_COLUMNS
+                        + """
+                        FROM movies m
+                        WHERE m.status = 'DELETING'
+                        ORDER BY m.id
+                        LIMIT :limit
+                        """)
+                .bind("limit", limit)
+                .map(this::toRow)
+                .all()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
     public Mono<Long> deleteDraftsCreatedBefore(Instant cutoff) {
         return this.databaseClient
                 .sql(
