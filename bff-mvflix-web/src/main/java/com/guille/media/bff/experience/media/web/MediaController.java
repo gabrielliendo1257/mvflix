@@ -2,6 +2,7 @@ package com.guille.media.bff.experience.media.web;
 
 import com.guille.media.bff.experience.media.application.ChangeMediaAccess;
 import com.guille.media.bff.experience.media.application.DeleteMedia;
+import com.guille.media.bff.experience.media.application.DeletionOutcome;
 import com.guille.media.bff.experience.media.application.EditMediaMetadata;
 import com.guille.media.bff.experience.media.application.GetMediaDetail;
 import com.guille.media.bff.experience.media.application.LinkMediaProvider;
@@ -137,7 +138,9 @@ public class MediaController {
   @DeleteMapping("/{mediaId}")
   public Mono<ResponseEntity<Void>> delete(@PathVariable long mediaId) {
     return this.deleteMedia.execute(mediaId)
-        .thenReturn(ResponseEntity.noContent().build());
+        .map(outcome -> outcome instanceof DeletionOutcome.Pending
+            ? ResponseEntity.accepted().build()
+            : ResponseEntity.noContent().build());
   }
 
   public record ChangeAccessRequest(String visibility, java.util.List<String> sharedWith) {}

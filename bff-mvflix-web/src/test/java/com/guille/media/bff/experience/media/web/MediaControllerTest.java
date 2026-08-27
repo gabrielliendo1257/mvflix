@@ -46,7 +46,7 @@ class MediaControllerTest {
             new UnlinkMediaProvider(this.actions, this.projection),
             new EditMediaMetadata(this.metadataActions, this.projection),
             new ChangeMediaAccess(this.accessActions, this.projection),
-            new DeleteMedia(this.deletion, this.projection)))
+            new DeleteMedia(this.deletion)))
         .controllerAdvice(new ApiExceptionHandler())
         .build();
   }
@@ -200,8 +200,8 @@ class MediaControllerTest {
 
   @Test
   void deleteReturns204WhenMediaDeleted() {
-    when(this.projection.detail(42L)).thenReturn(Mono.just(localDetail()));
-    when(this.deletion.deleteCatalog(42L)).thenReturn(Mono.just(true));
+    when(this.deletion.requestDeletion(42L))
+        .thenReturn(Mono.just(new com.guille.media.bff.experience.media.application.DeletionOutcome.Completed()));
 
     this.client.delete()
         .uri("/web/media/42")
@@ -211,8 +211,8 @@ class MediaControllerTest {
 
   @Test
   void deleteIsIdempotentWhenAlreadyAbsent() {
-    when(this.projection.detail(42L))
-        .thenReturn(Mono.error(new MediaDetailNotFoundException(42L)));
+    when(this.deletion.requestDeletion(42L))
+        .thenReturn(Mono.just(new com.guille.media.bff.experience.media.application.DeletionOutcome.Completed()));
 
     this.client.delete()
         .uri("/web/media/42")
@@ -221,15 +221,13 @@ class MediaControllerTest {
   }
 
   @Test
-  void deleteManagedMediaIsBlockedWith409() {
-    when(this.projection.detail(42L)).thenReturn(Mono.just(managedDetail()));
-
+  void deleteReturns202WhenMoviesLeavesDeletionPending() {
+    when(this.deletion.requestDeletion(42L))
+        .thenReturn(Mono.just(new com.guille.media.bff.experience.media.application.DeletionOutcome.Pending()));
     this.client.delete()
         .uri("/web/media/42")
         .exchange()
-        .expectStatus().isEqualTo(org.springframework.http.HttpStatus.CONFLICT)
-        .expectBody()
-        .jsonPath("$.error").isEqualTo("MANAGED_DELETE_BLOCKED");
+        .expectStatus().isAccepted();
   }
 
   private MediaDetail localDetail() {

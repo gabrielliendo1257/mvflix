@@ -15,10 +15,12 @@ import com.guille.media.bff.app.dto.MovieUpdateRequest;
 import com.guille.media.bff.app.dto.MovieVisibilityRequest;
 import com.guille.media.bff.app.dto.MoviesCompletePayload;
 import com.guille.media.bff.app.ports.MoviesWebClient;
+import com.guille.media.bff.experience.media.application.DeletionOutcome;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import reactor.core.publisher.Flux;
@@ -108,6 +110,22 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .retrieve()
         .toBodilessEntity()
         .then();
+  }
+
+  @Override
+  public Mono<DeletionOutcome> requestDeletion(Long movieId) {
+    return this.moviesWebClient
+        .delete()
+        .uri(API + "/" + movieId)
+        .exchangeToMono(response -> {
+          if (response.statusCode().equals(HttpStatus.ACCEPTED)) {
+            return Mono.just(new DeletionOutcome.Pending());
+          }
+          if (response.statusCode().is2xxSuccessful()) {
+            return Mono.just(new DeletionOutcome.Completed());
+          }
+          return response.createException().flatMap(Mono::error);
+        });
   }
 
   @Override

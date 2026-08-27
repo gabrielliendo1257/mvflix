@@ -72,4 +72,11 @@ class MediaDetailTest {
     assertThat(detail.media().displayStatus()).isEqualTo("PROCESSING");
     assertThat(detail.capabilities().play()).isFalse();
   }
+
+  @Test
+  void deletingMovieCannotBeDeletedAgain() {
+    var detail = MediaDetail.from(source("DELETING", 77L, null, null, "MOVIE", null));
+
+    assertThat(detail.capabilities().delete()).isFalse();
+  }
 }

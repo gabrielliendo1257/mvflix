@@ -61,6 +61,7 @@ public record MediaDetail(
 
     boolean invalid = "INVALID".equals(source);
     boolean missing = "MISSING".equals(displayStatus);
+    boolean deleting = "DELETING".equals(s.domainStatus());
     boolean movie = "MOVIE".equals(s.kind());
     boolean linked = s.tmdbId() != null;
 
@@ -79,7 +80,7 @@ public record MediaDetail(
             movie && !linked,
             movie && linked,
             false,
-            !invalid && !missing));
+            !deleting && !invalid && !missing));
   }
 
   public record Overview(

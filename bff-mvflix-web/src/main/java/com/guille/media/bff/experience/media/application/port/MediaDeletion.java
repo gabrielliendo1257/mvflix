@@ -1,22 +1,16 @@
 package com.guille.media.bff.experience.media.application.port;
 
+import com.guille.media.bff.experience.media.application.DeletionOutcome;
+
 import reactor.core.publisher.Mono;
 
 /**
- * Borrado de la entrada de catálogo, IDEMPOTENTE.
- *
- * <p>Sin transacción distribuida ACID: el catálogo (movies) es la única
- * fuente de verdad de existencia y se borra en una sola mutación local. El
- * objeto MANAGED en storage NO se toca aquí; queda huérfano. Storage ya tiene
- * una cola durable de huérfanos ({@code OrphanCleanupQueue}/{@code OrphanCleanupJob})
- * pero el encolado al borrar catálogo es un TODO explícito — esta operación
- * no lo resuelve, solo lo deja señalizado.
+ * Solicitud de borrado del item. Movies decide el lifecycle y sus efectos.
  */
 public interface MediaDeletion {
 
   /**
-   * @return {@code true} si se borró ahora, {@code false} si ya no existía.
-   *     Nunca lanza 404 por ausencia (eso es la semántica idempotente).
+   * @return {@link DeletionOutcome.Completed} o {@link DeletionOutcome.Pending}.
    */
-  Mono<Boolean> deleteCatalog(long mediaId);
+  Mono<DeletionOutcome> requestDeletion(long mediaId);
 }

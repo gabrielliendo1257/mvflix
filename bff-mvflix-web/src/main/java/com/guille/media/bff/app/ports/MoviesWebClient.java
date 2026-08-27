@@ -8,6 +8,7 @@ import com.guille.media.bff.app.dto.MovieDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 import com.guille.media.bff.app.dto.MovieUpdateRequest;
+import com.guille.media.bff.experience.media.application.DeletionOutcome;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -32,6 +33,9 @@ public interface MoviesWebClient {
 
   /** Rollback: elimina la película del dueño. */
   Mono<Void> deleteMovie(Long movieId);
+
+  /** Solicita el borrado durable; Movies devuelve 204 o 202 según el outcome. */
+  Mono<DeletionOutcome> requestDeletion(Long movieId);
 
   /** Candidatos de la fuente externa para el autocompletado interactivo. */
   Flux<MovieEnrichmentSearchDto> searchCandidates(String query, Integer year);
