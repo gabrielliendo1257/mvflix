@@ -130,7 +130,27 @@ public class OAuth2AuthorizationConfig {
 			repository.save(playbackServiceRegisteredClient);
 		}
 
+		// Machine-client de limpieza MANAGED: Movies lo usa para borrar el
+		// objeto (y su cuota) en Storage al eliminar una media. Scope dedicado
+		// storage.objects.delete: NO reutiliza storage.stream (eliminar ≠
+		// reproducir). Secret propio vía variable de entorno.
+		if (repository.findByClientId("movies-catalog") == null) {
+			repository.save(moviesCatalogClient(
+					passwordEncoder,
+					this.oauth2PropertiesConfig.getMoviesCatalogSecret()));
+			log.info("Movies catalog machine client registered: movies-catalog");
+		}
+
 		return repository;
+	}
+
+	static RegisteredClient moviesCatalogClient(PasswordEncoder encoder, String secret) {
+		return RegisteredClient.withId("movies-catalog-app")
+				.clientId("movies-catalog")
+				.clientSecret(encoder.encode(secret))
+				.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+				.scope("storage.objects.delete")
+				.build();
 	}
 
 	@Bean

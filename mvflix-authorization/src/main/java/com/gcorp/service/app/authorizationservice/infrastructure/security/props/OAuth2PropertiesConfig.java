@@ -22,4 +22,12 @@ public class OAuth2PropertiesConfig {
 
     @Value("${authorization.env.oauth2.registration-id}")
     private String registrationId;
+
+    /**
+     * Secret del machine-client {@code movies-catalog} (Movies → Storage para
+     * limpieza de objetos MANAGED). Dedicado: NO reutiliza el del usuario ni
+     * el de playback; llega por variable de entorno {@code MOVIES_CATALOG_SECRET}.
+     */
+    @Value("${authorization.env.oauth2.movies-catalog-password}")
+    private String moviesCatalogSecret;
 }
