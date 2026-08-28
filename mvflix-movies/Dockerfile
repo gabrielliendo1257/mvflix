@@ -9,9 +9,9 @@ COPY mvflix-authorization/pom.xml mvflix-authorization/pom.xml
 COPY mvflix-storage/pom.xml mvflix-storage/pom.xml
 COPY mvflix-users/pom.xml mvflix-users/pom.xml
 COPY bff-mvflix-web/pom.xml bff-mvflix-web/pom.xml
-RUN ./mvnw -pl mvflix-storage -am dependency:go-offline -DskipTests
+RUN ./mvnw -pl mvflix-movies -am dependency:go-offline -DskipTests
 COPY . .
-RUN ./mvnw -pl mvflix-storage -am package -DskipTests
+RUN ./mvnw -pl mvflix-movies -am package -DskipTests
 
 FROM eclipse-temurin:21-jre-jammy
 
@@ -21,11 +21,11 @@ RUN apt-get update \
     && useradd --system --create-home --uid 10001 app
 
 WORKDIR /app
-COPY --from=build /workspace/mvflix-storage/target/*.jar app.jar
+COPY --from=build /workspace/mvflix-movies/target/*.jar app.jar
 RUN chown app:app app.jar
 USER app
 
-EXPOSE 6060
+EXPOSE 8080
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=6 \
-    CMD curl --fail --silent http://127.0.0.1:10060/actuator/health/readiness || exit 1
+    CMD curl --fail --silent http://127.0.0.1:8080/actuator/health/readiness || exit 1
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
