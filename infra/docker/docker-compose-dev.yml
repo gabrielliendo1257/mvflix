@@ -117,6 +117,22 @@ services:
       retries: 12
       start_period: 30s
 
+  kafka-init:
+    image: bitnami/kafka:3.9.0
+    container_name: kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: >
+      /bin/bash -ec "
+      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+      --topic mvflix.managed-media-deletion-requested.v1
+      --partitions ${KAFKA_NUM_PARTITIONS:-1} --replication-factor 1
+      --config retention.ms=${KAFKA_LOG_RETENTION_MS:-604800000}
+      --config retention.bytes=${KAFKA_LOG_RETENTION_BYTES:-1073741824};
+      exit 0;
+      "
+
 volumes:
   minio_data:
     driver: local

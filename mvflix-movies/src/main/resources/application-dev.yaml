@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: mvflix-movies
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9094}
 
   codec:
     max-in-memory-size: 32MB
@@ -34,6 +36,13 @@ movies:
     retry-delay: PT1M
     batch-size: 25
     concurrency: 4
+  outbox:
+    poll-interval: PT5S
+    batch-size: 25
+    concurrency: 4
+    max-attempts: 10
+    retry-delay: PT1M
+    lease: PT2M
 
 tmdb:
   api-token: ${TMDB_API_TOKEN:}
