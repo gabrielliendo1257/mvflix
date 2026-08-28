@@ -6,7 +6,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -14,7 +17,10 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.server.SecurityWebFilterChain;
+import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -27,6 +33,20 @@ public class SecurityConfig {
 
   @Value("${security.oauth2.jwk-set-uri:}")
   private String jwkSetUriOverride;
+
+  @Bean
+  @Order(0)
+  SecurityWebFilterChain actuatorSecurityWebFilterChain(
+      ServerHttpSecurity http,
+      @Value("${ACTUATOR_METRICS_USER:metrics}") String username,
+      @Value("${ACTUATOR_METRICS_PASSWORD:change-me}") String password) {
+    return http.securityMatcher(ServerWebExchangeMatchers.pathMatchers("/actuator/**"))
+        .csrf(ServerHttpSecurity.CsrfSpec::disable)
+        .authenticationManager(metricsAuthenticationManager(username, password))
+        .httpBasic(org.springframework.security.config.Customizer.withDefaults())
+        .authorizeExchange(exchanges -> exchanges.anyExchange().hasRole("METRICS"))
+        .build();
+  }
 
   @Bean
   SecurityWebFilterChain securityWebFilterChain(
@@ -83,5 +103,14 @@ public class SecurityConfig {
       return this.jwkSetUriOverride;
     }
     return this.authorizationUrl + "/oauth2/jwks";
+  }
+
+  private ReactiveAuthenticationManager metricsAuthenticationManager(String username, String password) {
+    var user = User.withUsername(username)
+        .password("{noop}" + password)
+        .roles("METRICS")
+        .build();
+    return new UserDetailsRepositoryReactiveAuthenticationManager(
+        new MapReactiveUserDetailsService(user));
   }
 }

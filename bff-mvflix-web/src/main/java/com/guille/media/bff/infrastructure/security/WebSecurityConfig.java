@@ -15,11 +15,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.oauth2.client.registration.ReactiveClientRegistrationRepository;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -58,6 +62,21 @@ public class WebSecurityConfig {
 
   @Value("${bff.cors.allowed-origins:}")
   private String extraAllowedOrigins;
+
+  @Bean
+  @Order(0)
+  SecurityWebFilterChain actuatorSecurityWebFilterChain(
+      ServerHttpSecurity http,
+      @Value("${ACTUATOR_METRICS_USER:metrics}") String username,
+      @Value("${ACTUATOR_METRICS_PASSWORD:change-me}") String password) {
+    return http.securityMatcher(org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers
+            .pathMatchers("/actuator/**"))
+        .csrf(ServerHttpSecurity.CsrfSpec::disable)
+        .authenticationManager(metricsAuthenticationManager(username, password))
+        .httpBasic(Customizer.withDefaults())
+        .authorizeExchange(exchanges -> exchanges.anyExchange().hasRole("METRICS"))
+        .build();
+  }
 
   /**
    * Dev-token (Bearer) para Postman/curl en dev. En WebFlux no se pueden combinar
@@ -201,6 +220,15 @@ public class WebSecurityConfig {
       return this.jwkSetUriOverride;
     }
     return this.authorizationUrl + "/oauth2/jwks";
+  }
+
+  private ReactiveAuthenticationManager metricsAuthenticationManager(String username, String password) {
+    var user = User.withUsername(username)
+        .password("{noop}" + password)
+        .roles("METRICS")
+        .build();
+    return new UserDetailsRepositoryReactiveAuthenticationManager(
+        new MapReactiveUserDetailsService(user));
   }
 
   @Bean

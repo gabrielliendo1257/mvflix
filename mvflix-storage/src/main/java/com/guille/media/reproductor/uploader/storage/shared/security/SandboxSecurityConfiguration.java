@@ -3,8 +3,12 @@ package com.guille.media.reproductor.uploader.storage.shared.security;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 
 /**
@@ -17,9 +21,17 @@ import org.springframework.security.web.server.SecurityWebFilterChain;
 public class SandboxSecurityConfiguration {
 
   @Bean
-  SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
+  SecurityWebFilterChain securityWebFilterChain(
+      ServerHttpSecurity http,
+      @Value("${ACTUATOR_METRICS_USER:metrics}") String username,
+      @Value("${ACTUATOR_METRICS_PASSWORD:change-me}") String password) {
     http.csrf(ServerHttpSecurity.CsrfSpec::disable)
-        .authorizeExchange(exchanges -> exchanges.anyExchange().permitAll());
+        .authenticationManager(new UserDetailsRepositoryReactiveAuthenticationManager(
+            new MapReactiveUserDetailsService(User.withUsername(username)
+                .password("{noop}" + password).roles("METRICS").build())))
+        .httpBasic(org.springframework.security.config.Customizer.withDefaults())
+        .authorizeExchange(exchanges -> exchanges.pathMatchers("/actuator/**").hasRole("METRICS")
+            .anyExchange().permitAll());
 
     return http.build();
   }

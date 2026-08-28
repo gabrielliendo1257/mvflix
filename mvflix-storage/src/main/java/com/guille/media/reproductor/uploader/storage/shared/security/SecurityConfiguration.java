@@ -10,9 +10,13 @@ import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
@@ -41,6 +45,20 @@ public class SecurityConfiguration {
 
   @Value("${security.oauth2.jwk-set-uri:}")
   private String jwkSetUriOverride;
+
+  @Bean
+  @Order(1)
+  SecurityWebFilterChain actuatorSecurityWebFilterChain(
+      ServerHttpSecurity http,
+      @Value("${ACTUATOR_METRICS_USER:metrics}") String username,
+      @Value("${ACTUATOR_METRICS_PASSWORD:change-me}") String password) {
+    return http.securityMatcher(ServerWebExchangeMatchers.pathMatchers("/actuator/**"))
+        .csrf(ServerHttpSecurity.CsrfSpec::disable)
+        .authenticationManager(metricsAuthenticationManager(username, password))
+        .httpBasic(org.springframework.security.config.Customizer.withDefaults())
+        .authorizeExchange(exchanges -> exchanges.anyExchange().hasRole("METRICS"))
+        .build();
+  }
 
   /**
    * Cadena para el webhook de MinIO: no firma JWT (envía el token como {@code Authorization: Bearer
@@ -166,5 +184,14 @@ public class SecurityConfiguration {
       return this.jwkSetUriOverride;
     }
     return this.authorizationUrl + "/oauth2/jwks";
+  }
+
+  private ReactiveAuthenticationManager metricsAuthenticationManager(String username, String password) {
+    var user = User.withUsername(username)
+        .password("{noop}" + password)
+        .roles("METRICS")
+        .build();
+    return new UserDetailsRepositoryReactiveAuthenticationManager(
+        new MapReactiveUserDetailsService(user));
   }
 }
