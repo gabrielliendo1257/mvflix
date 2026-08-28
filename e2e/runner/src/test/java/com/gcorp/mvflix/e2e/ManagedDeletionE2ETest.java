@@ -17,7 +17,6 @@ import java.security.spec.PKCS8EncodedKeySpec;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.time.Duration;
-import java.util.Map;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,8 +27,10 @@ import org.jose4j.jws.JsonWebSignature;
 import org.jose4j.jwk.JsonWebKey;
 import org.jose4j.jwk.RsaJsonWebKey;
 import org.jose4j.jwt.JwtClaims;
-import org.jose4j.lang.JoseException;
 import org.junit.jupiter.api.Test;
+import io.minio.MinioClient;
+import io.minio.StatObjectArgs;
+import io.minio.errors.ErrorResponseException;
 
 class ManagedDeletionE2ETest {
   private static final String MOVIES = env("MOVIES_URL", "http://localhost:14040");
@@ -49,21 +50,20 @@ class ManagedDeletionE2ETest {
     String uploadUrl = upload.get("uploadUrl").asText().replace("http://minio:9000", "http://localhost:19000");
     put(uploadUrl, new byte[] {1, 2, 3, 4});
     long uploadId = upload.get("uploadId").asLong();
+    String storageKey = upload.get("storageKey").asText();
     post(STORAGE + "/api/v1/movie/storage/upload/" + uploadId + "/complete", token, null, 200, 202);
 
     long movieId = JSON.readTree(post(MOVIES + "/api/v1/movies", token,
         "{\"title\":\"E2E managed deletion\",\"kind\":\"MOVIE\"}", 200)).get("id").asLong();
     post(MOVIES + "/api/v1/movies/" + movieId + "/complete", token,
-        "{\"object_id\":" + uploadId + ",\"object_key\":\"" + upload.get("storageKey").asText() + "\"}", 200);
+        "{\"object_id\":" + uploadId + ",\"object_key\":\"" + storageKey + "\"}", 200);
 
     assertEquals(204, delete(MOVIES + "/api/v1/movies/" + movieId, token));
     assertEquals(204, delete(MOVIES + "/api/v1/movies/" + movieId, token));
     await().atMost(Duration.ofSeconds(90)).pollInterval(Duration.ofSeconds(2)).until(() -> {
       HttpResponse<String> response = get(MOVIES + "/api/v1/movies/" + movieId, token);
-      return response.statusCode() == 404 && countStorageRows("managed_media_deletion_inbox") == 1
-          && countStorageRows("store_objects") == 0;
+      return response.statusCode() == 404 && deletionCompleted(movieId, uploadId, USER, storageKey);
     });
-    assertTrue(true);
   }
 
   private static String token(String subject, String scope) throws Exception {
@@ -94,6 +94,59 @@ class ManagedDeletionE2ETest {
   private static int delete(String url, String token) throws Exception { HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(url)).header("Authorization", "Bearer " + token).DELETE().build(), HttpResponse.BodyHandlers.ofString()); expect(r, 204); return r.statusCode(); }
   private static HttpResponse<String> get(String url, String token) throws Exception { return HTTP.send(HttpRequest.newBuilder(URI.create(url)).header("Authorization", "Bearer " + token).GET().build(), HttpResponse.BodyHandlers.ofString()); }
   private static void expect(HttpResponse<?> r, int... expected) { for (int code : expected) if (r.statusCode() == code) return; throw new AssertionError("Expected " + java.util.Arrays.toString(expected) + ", got " + r.statusCode() + ": " + r.body()); }
-  private static long countStorageRows(String table) { try (Connection c = DriverManager.getConnection("jdbc:postgresql://localhost:15432/mvflix_uploads_db", "db_ro", "12345678"); var s = c.createStatement(); var rs = s.executeQuery("select count(*) from " + table)) { rs.next(); return rs.getLong(1); } catch (Exception e) { return -1; } }
+  private static boolean deletionCompleted(long movieId, long uploadId, String owner, String storageKey) throws Exception {
+    UUID eventId;
+    try (Connection movies = db("mvflix_movies_db"); var statement = movies.prepareStatement(
+        "select (payload->>'eventId')::uuid from outbox_events where event_type = 'ManagedMediaDeletionRequested' and payload->'payload'->>'storageId' = ? and payload->'payload'->>'movieId' = ?")) {
+      statement.setString(1, String.valueOf(uploadId));
+      statement.setString(2, String.valueOf(movieId));
+      try (var rows = statement.executeQuery()) {
+        if (!rows.next()) return false;
+        eventId = rows.getObject(1, UUID.class);
+      }
+    }
+
+    String bucket;
+    String objectStatus;
+    String inboxStatus;
+    long usage;
+    try (Connection storage = db("mvflix_uploads_db"); var statement = storage.prepareStatement(
+        "select so.status, us.storage_usage, us.bucket_name, inbox.status "
+            + "from store_objects so join user_storage us on us.owner_username = ? "
+            + "left join managed_media_deletion_inbox inbox on inbox.event_id = ? "
+            + "where so.storage_id = ? and so.owner_username = ? and so.object_key = ?")) {
+      statement.setString(1, owner);
+      statement.setObject(2, eventId);
+      statement.setLong(3, uploadId);
+      statement.setString(4, owner);
+      statement.setString(5, storageKey);
+      try (var rows = statement.executeQuery()) {
+        if (!rows.next()) return false;
+        objectStatus = rows.getString(1);
+        usage = rows.getLong(2);
+        bucket = rows.getString(3);
+        inboxStatus = rows.getString(4);
+      }
+    }
+    if (!"DELETED".equals(objectStatus) || !"COMPLETED".equals(inboxStatus) || usage != 0) return false;
+    return !minioObjectExists(bucket, storageKey);
+  }
+
+  private static Connection db(String database) throws Exception {
+    return DriverManager.getConnection("jdbc:postgresql://localhost:15432/" + database, "db_ro", "12345678");
+  }
+
+  private static boolean minioObjectExists(String bucket, String objectKey) throws Exception {
+    MinioClient minio = MinioClient.builder().endpoint("http://localhost:19000")
+        .credentials("admin", "admin123").build();
+    try {
+      minio.statObject(StatObjectArgs.builder().bucket(bucket).object(objectKey).build());
+      return true;
+    } catch (ErrorResponseException error) {
+      if ("NoSuchKey".equals(error.errorResponse().code())
+          || "NoSuchObject".equals(error.errorResponse().code())) return false;
+      throw error;
+    }
+  }
   private static String env(String name, String fallback) { return System.getenv().getOrDefault(name, fallback); }
 }
