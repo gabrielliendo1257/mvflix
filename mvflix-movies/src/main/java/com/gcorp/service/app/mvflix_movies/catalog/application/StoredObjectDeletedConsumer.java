@@ -57,6 +57,7 @@ public class StoredObjectDeletedConsumer {
             if (!deletionStatus.equals("DELETED") && !deletionStatus.equals("ALREADY_ABSENT")) {
                 throw new IllegalArgumentException("Unknown deletion status");
             }
+            nonNegativeLong(payload, "releasedBytes");
             return Mono.just(new StoredObjectDeleted(
                     storageId,
                     movieId,
@@ -91,6 +92,14 @@ public class StoredObjectDeletedConsumer {
         JsonNode value = parent.path(field);
         if (!value.isIntegralNumber() || !value.canConvertToLong() || value.asLong() <= 0) {
             throw new IllegalArgumentException("Invalid positive ID: " + field);
+        }
+        return value.asLong();
+    }
+
+    private static long nonNegativeLong(JsonNode parent, String field) {
+        JsonNode value = parent.path(field);
+        if (!value.isIntegralNumber() || !value.canConvertToLong() || value.asLong() < 0) {
+            throw new IllegalArgumentException("Invalid non-negative value: " + field);
         }
         return value.asLong();
     }

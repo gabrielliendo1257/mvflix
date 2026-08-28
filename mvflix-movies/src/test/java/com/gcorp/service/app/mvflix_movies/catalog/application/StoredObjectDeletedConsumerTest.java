@@ -55,6 +55,8 @@ class StoredObjectDeletedConsumerTest {
                 valid.replace("\"producer\":\"mvflix-storage\"", "\"producer\":\"other\""),
                 valid.replace("\"id\":\"7\"", "\"id\":\"99\""),
                 valid.replace("\"deletionStatus\":\"DELETED\"", "\"deletionStatus\":\"UNKNOWN\""),
+                valid.replace("\"releasedBytes\":1024", "\"releasedBytes\":-1"),
+                valid.replace(",\"releasedBytes\":1024", ""),
                 valid.replace("2026-08-27T20:00:00Z", "not-a-timestamp")
         };
 
