@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Slf4j
@@ -33,23 +34,64 @@ public class StoredObjectDeletedConsumer {
     private Mono<StoredObjectDeleted> parse(String rawEvent) {
         try {
             JsonNode root = this.objectMapper.readTree(rawEvent);
-            if (!"StoredObjectDeleted".equals(root.path("eventType").asText())
-                    || root.path("eventVersion").asInt() != 1) {
+            if (root == null || !root.isObject()
+                    || !text(root, "eventType").equals("StoredObjectDeleted")
+                    || !root.path("eventVersion").canConvertToInt()
+                    || root.path("eventVersion").asInt() != 1
+                    || !text(root, "producer").equals("mvflix-storage")) {
                 throw new IllegalArgumentException("Unsupported StoredObjectDeleted event version");
             }
             UUID.fromString(root.path("eventId").asText());
-            JsonNode aggregate = root.path("aggregate");
-            if (!"ManagedObject".equals(aggregate.path("type").asText())) {
+            Instant.parse(text(root, "occurredAt"));
+            JsonNode aggregate = object(root, "aggregate");
+            if (!text(aggregate, "type").equals("ManagedObject")) {
                 throw new IllegalArgumentException("StoredObjectDeleted aggregate is not managed");
             }
-            JsonNode payload = root.path("payload");
+            JsonNode payload = object(root, "payload");
+            long storageId = positiveLong(payload, "storageId");
+            long movieId = positiveLong(payload, "movieId");
+            if (!text(aggregate, "id").equals(Long.toString(storageId))) {
+                throw new IllegalArgumentException("StoredObjectDeleted aggregate does not match storage");
+            }
+            String deletionStatus = text(payload, "deletionStatus");
+            if (!deletionStatus.equals("DELETED") && !deletionStatus.equals("ALREADY_ABSENT")) {
+                throw new IllegalArgumentException("Unknown deletion status");
+            }
             return Mono.just(new StoredObjectDeleted(
-                    payload.path("storageId").asLong(),
-                    payload.path("movieId").asLong(0),
-                    payload.path("objectKey").asText(null),
-                    payload.path("ownerUsername").asText(null)));
+                    storageId,
+                    movieId,
+                    nonBlank(payload, "objectKey"),
+                    nonBlank(payload, "ownerUsername")));
         } catch (Exception error) {
             return Mono.error(new IllegalArgumentException("Invalid StoredObjectDeleted event", error));
         }
+    }
+
+    private static JsonNode object(JsonNode parent, String field) {
+        JsonNode value = parent.path(field);
+        if (!value.isObject()) {
+            throw new IllegalArgumentException("Missing object field: " + field);
+        }
+        return value;
+    }
+
+    private static String text(JsonNode parent, String field) {
+        JsonNode value = parent.path(field);
+        if (!value.isTextual() || value.textValue().isBlank()) {
+            throw new IllegalArgumentException("Missing text field: " + field);
+        }
+        return value.textValue();
+    }
+
+    private static String nonBlank(JsonNode parent, String field) {
+        return text(parent, field);
+    }
+
+    private static long positiveLong(JsonNode parent, String field) {
+        JsonNode value = parent.path(field);
+        if (!value.isIntegralNumber() || !value.canConvertToLong() || value.asLong() <= 0) {
+            throw new IllegalArgumentException("Invalid positive ID: " + field);
+        }
+        return value.asLong();
     }
 }

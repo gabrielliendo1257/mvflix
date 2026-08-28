@@ -3,6 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
@@ -41,6 +42,30 @@ class StoredObjectDeletedConsumerTest {
         StepVerifier.create(this.consumer.consume(event))
                 .expectError(IllegalArgumentException.class)
                 .verify();
+    }
+
+    @Test
+    void rejectsInvalidContractFields() {
+        String valid = event(UUID.randomUUID());
+        String[] invalidEvents = {
+                valid.replace("\"movieId\":42", "\"movieId\":0"),
+                valid.replace("\"storageId\":7", "\"storageId\":-1"),
+                valid.replace("\"objectKey\":\"objects/7\"", "\"objectKey\":\"\""),
+                valid.replace("\"ownerUsername\":\"pepe\"", "\"ownerUsername\":\" \""),
+                valid.replace("\"producer\":\"mvflix-storage\"", "\"producer\":\"other\""),
+                valid.replace("\"id\":\"7\"", "\"id\":\"99\""),
+                valid.replace("\"deletionStatus\":\"DELETED\"", "\"deletionStatus\":\"UNKNOWN\""),
+                valid.replace("2026-08-27T20:00:00Z", "not-a-timestamp")
+        };
+
+        for (String invalidEvent : invalidEvents) {
+            StepVerifier.create(this.consumer.consume(invalidEvent))
+                    .expectError(IllegalArgumentException.class)
+                    .verify();
+        }
+
+        verify(this.deletionTransaction, never()).finalizeManagedDeletion(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyLong());
     }
 
     private static String event(UUID eventId) {
