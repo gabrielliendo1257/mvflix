@@ -4,7 +4,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.MovieDeletionTransaction;
-import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedDeletionOutbox;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
@@ -26,7 +25,6 @@ class DeletionRecoveryJobTest {
 
     private final MovieRepository movieRepository = org.mockito.Mockito.mock(MovieRepository.class);
     private final MovieDeletionTransaction transaction = org.mockito.Mockito.mock(MovieDeletionTransaction.class);
-    private final ManagedDeletionOutbox outbox = org.mockito.Mockito.mock(ManagedDeletionOutbox.class);
 
     @Test
     void ensuresDeletingMoviesAndReactivatesExhaustedOutbox() {
@@ -36,12 +34,10 @@ class DeletionRecoveryJobTest {
         when(movieRepository.findDeletingForRecovery(25, Duration.ofMinutes(1))).thenReturn(Flux.just(movie));
         when(movieRepository.markRecoveryAttempt(movie.getId())).thenReturn(Mono.empty());
         when(transaction.ensureDeletionRequested(movie.getId())).thenReturn(Mono.empty());
-        when(outbox.reactivateExhausted("7", 10)).thenReturn(Mono.empty());
 
-        new DeletionRecoveryJob(movieRepository, transaction, outbox, 25, 10, Duration.ofMinutes(1))
+        new DeletionRecoveryJob(movieRepository, transaction, 25, Duration.ofMinutes(1))
                 .recoverBatch().block();
 
         verify(transaction).ensureDeletionRequested(movie.getId());
-        verify(outbox).reactivateExhausted("7", 10);
     }
 }

@@ -1,7 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.scheduler;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.MovieDeletionTransaction;
-import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedDeletionOutbox;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 
 import lombok.extern.slf4j.Slf4j;
@@ -23,23 +22,17 @@ public class DeletionRecoveryJob {
 
     private final MovieRepository movieRepository;
     private final MovieDeletionTransaction deletionTransaction;
-    private final ManagedDeletionOutbox outbox;
     private final int batchSize;
-    private final int maxAttempts;
     private final Duration retryCooldown;
 
     public DeletionRecoveryJob(
             MovieRepository movieRepository,
             MovieDeletionTransaction deletionTransaction,
-            ManagedDeletionOutbox outbox,
             @Value("${movies.deletion.recovery-batch-size:25}") int batchSize,
-            @Value("${movies.outbox.max-attempts:10}") int maxAttempts,
             @Value("${movies.deletion.recovery-cooldown:PT1M}") Duration retryCooldown) {
         this.movieRepository = movieRepository;
         this.deletionTransaction = deletionTransaction;
-        this.outbox = outbox;
         this.batchSize = batchSize;
-        this.maxAttempts = maxAttempts;
         this.retryCooldown = retryCooldown;
     }
 
@@ -54,8 +47,6 @@ public class DeletionRecoveryJob {
         return this.movieRepository.findDeletingForRecovery(this.batchSize, this.retryCooldown)
                 .flatMap(movie -> this.movieRepository.markRecoveryAttempt(movie.getId())
                         .then(this.deletionTransaction.ensureDeletionRequested(movie.getId()))
-                        .then(this.outbox.reactivateExhausted(
-                                Long.toString(movie.getId().value()), this.maxAttempts))
                         .doOnError(error -> log.warn(
                                 "Recuperación de borrado fallida para movie={}: {}",
                                 movie.getId().value(), error.getMessage()))
