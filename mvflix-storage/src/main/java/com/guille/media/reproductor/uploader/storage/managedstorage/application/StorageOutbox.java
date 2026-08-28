@@ -4,10 +4,13 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.UUID;
 
-public interface StoredObjectDeletedOutbox {
-  Mono<Void> append(ManagedMediaDeletionRequested event, DeleteStoredObject.DeletionResult result);
+public interface StorageOutbox {
+  Mono<Void> append(StorageIntegrationEvent event);
+
+  Mono<Long> purgePublishedBefore(Instant cutoff);
 
   Flux<StorageOutboxMessage> claim(int batchSize, int maxAttempts, Duration lease);
 

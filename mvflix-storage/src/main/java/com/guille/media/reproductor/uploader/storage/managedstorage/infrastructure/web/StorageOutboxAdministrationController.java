@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.web;
 
-import com.guille.media.reproductor.uploader.storage.managedstorage.application.StoredObjectDeletedOutbox;
+import com.guille.media.reproductor.uploader.storage.managedstorage.application.StorageOutbox;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,11 +17,11 @@ import reactor.core.publisher.Mono;
 @ConditionalOnProperty(name = "mvflix.messaging.kafka.enabled", havingValue = "true")
 public class StorageOutboxAdministrationController {
 
-    private final StoredObjectDeletedOutbox outbox;
+    private final StorageOutbox outbox;
     private final int maxAttempts;
 
     public StorageOutboxAdministrationController(
-            StoredObjectDeletedOutbox outbox,
+            StorageOutbox outbox,
             @Value("${storage.outbox.max-attempts:10}") int maxAttempts) {
         this.outbox = outbox;
         this.maxAttempts = maxAttempts;

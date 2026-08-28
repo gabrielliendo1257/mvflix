@@ -2,10 +2,9 @@ package com.guille.media.reproductor.uploader.storage.managedstorage.infrastruct
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.guille.media.reproductor.uploader.storage.managedstorage.application.DeleteStoredObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.application.ManagedMediaDeletionRequested;
+import com.guille.media.reproductor.uploader.storage.managedstorage.application.StorageIntegrationEvent;
+import com.guille.media.reproductor.uploader.storage.managedstorage.application.StorageOutbox;
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.StorageOutboxMessage;
-import com.guille.media.reproductor.uploader.storage.managedstorage.application.StoredObjectDeletedOutbox;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -20,35 +19,28 @@ import java.util.Map;
 import java.util.UUID;
 
 @Repository
-public class SpringDataStoredObjectDeletedOutbox implements StoredObjectDeletedOutbox {
+public class SpringDataStorageOutbox implements StorageOutbox {
 
   private final DatabaseClient databaseClient;
   private final ObjectMapper objectMapper;
 
-  public SpringDataStoredObjectDeletedOutbox(DatabaseClient databaseClient, ObjectMapper objectMapper) {
+  public SpringDataStorageOutbox(DatabaseClient databaseClient, ObjectMapper objectMapper) {
     this.databaseClient = databaseClient;
     this.objectMapper = objectMapper;
   }
 
   @Override
-  public Mono<Void> append(ManagedMediaDeletionRequested event, DeleteStoredObject.DeletionResult result) {
-    UUID outputEventId = UUID.nameUUIDFromBytes(event.eventId().toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+  public Mono<Void> append(StorageIntegrationEvent event) {
     String payload;
     try {
       payload = this.objectMapper.writeValueAsString(Map.of(
-          "eventId", outputEventId,
-          "eventType", "StoredObjectDeleted",
-          "eventVersion", 1,
-          "occurredAt", Instant.now(),
+          "eventId", event.eventId(),
+          "eventType", event.eventType(),
+          "eventVersion", event.eventVersion(),
+          "occurredAt", event.occurredAt(),
           "producer", "mvflix-storage",
-          "aggregate", Map.of("type", "ManagedObject", "id", String.valueOf(event.storageId())),
-          "payload", Map.of(
-              "movieId", event.movieId(),
-              "storageId", event.storageId(),
-              "objectKey", event.objectKey(),
-              "ownerUsername", event.ownerUsername(),
-              "releasedBytes", result.releasedBytes(),
-              "deletionStatus", result.deletionStatus())));
+          "aggregate", Map.of("type", "ManagedObject", "id", event.aggregateId()),
+          "payload", event.payload()));
     } catch (JsonProcessingException error) {
       return Mono.error(new IllegalArgumentException("Cannot encode deletion confirmation", error));
     }
@@ -58,11 +50,19 @@ public class SpringDataStoredObjectDeletedOutbox implements StoredObjectDeletedO
         VALUES (:eventId, 'StoredObjectDeleted', 1, :aggregateId, :occurredAt, CAST(:payload AS jsonb))
         ON CONFLICT (event_id) DO NOTHING
         """)
-        .bind("eventId", outputEventId)
-        .bind("aggregateId", String.valueOf(event.storageId()))
-        .bind("occurredAt", Instant.now())
+        .bind("eventId", event.eventId())
+        .bind("aggregateId", event.aggregateId())
+        .bind("occurredAt", event.occurredAt())
         .bind("payload", payload)
         .fetch().rowsUpdated().then();
+  }
+
+  @Override
+  public Mono<Long> purgePublishedBefore(Instant cutoff) {
+    return this.databaseClient
+        .sql("DELETE FROM storage_outbox_events WHERE published_at IS NOT NULL AND published_at < :cutoff")
+        .bind("cutoff", cutoff)
+        .fetch().rowsUpdated();
   }
 
   @Override

@@ -10,7 +10,6 @@ import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvi
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
-import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectDeletionUnavailableException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
@@ -26,7 +25,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -40,7 +38,6 @@ class DeleteMovieUseCaseTest {
     @Mock private MediaRepository mediaRepository;
     @Mock private UserProvider userProvider;
     @Mock private MovieDeletionTransaction deletionTransaction;
-    @Mock private ManagedMediaDeletionCoordinator deletionCoordinator;
 
     @InjectMocks private DeleteMovieUseCase useCase;
 
@@ -90,51 +87,46 @@ class DeleteMovieUseCaseTest {
                 .verifyComplete();
 
         verify(this.deletionTransaction, never()).deleteImmediately(any());
-        verify(this.deletionCoordinator, never()).process(any());
     }
 
     @Test
-    void managedMovieIsMarkedDeletingAndCoordinated() {
+    void managedMovieIsMarkedDeletingAndRequestedDurably() {
         Movie movie = movie(1L, "Javier");
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
         when(this.mediaRepository.findByMovieId(MovieId.of(1L)))
                 .thenReturn(Mono.just(new Media(MediaId.of(9L), MovieId.of(1L), 77L, "k", Instant.now())));
-        when(this.deletionTransaction.requestDeletionWithoutOutbox(MovieId.of(1L)))
+        when(this.deletionTransaction.requestDeletion(MovieId.of(1L)))
                 .thenReturn(Mono.just(movie));
-        when(this.deletionCoordinator.process(MovieId.of(1L))).thenReturn(Mono.empty());
-
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
-                .expectNext(new DeletionOutcome.Completed())
-                .verifyComplete();
-
-        verify(this.deletionTransaction).requestDeletionWithoutOutbox(MovieId.of(1L));
-        verify(this.deletionCoordinator).process(MovieId.of(1L));
-    }
-
-    @Test
-    void managedStorageFailureReturnsPending() {
-        Movie movie = movie(1L, "Javier");
-        when(this.userProvider.getAuthenticatedUser())
-                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.mediaRepository.findByMovieId(MovieId.of(1L)))
-                .thenReturn(Mono.just(new Media(MediaId.of(9L), MovieId.of(1L), 77L, "k", Instant.now())));
-        when(this.deletionTransaction.requestDeletionWithoutOutbox(MovieId.of(1L)))
-                .thenReturn(Mono.just(movie));
-        when(this.deletionCoordinator.process(MovieId.of(1L))).thenReturn(Mono.error(
-                new ManagedObjectDeletionUnavailableException("unavailable", null)));
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
                 .expectNext(new DeletionOutcome.Pending())
                 .verifyComplete();
+
+        verify(this.deletionTransaction).requestDeletion(MovieId.of(1L));
     }
 
     @Test
-    void kafkaEnabledUsesOutboxWithoutCallingHttpCoordinator() {
+    void durableDeletionRequestFailureIsPropagated() {
         Movie movie = movie(1L, "Javier");
-        ReflectionTestUtils.setField(this.useCase, "kafkaEnabled", true);
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.mediaRepository.findByMovieId(MovieId.of(1L)))
+                .thenReturn(Mono.just(new Media(MediaId.of(9L), MovieId.of(1L), 77L, "k", Instant.now())));
+        RuntimeException failure = new RuntimeException("outbox unavailable");
+        when(this.deletionTransaction.requestDeletion(MovieId.of(1L)))
+                .thenReturn(Mono.error(failure));
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
+                .expectError(RuntimeException.class)
+                .verify();
+    }
+
+    @Test
+    void managedDeletionAlwaysUsesOutbox() {
+        Movie movie = movie(1L, "Javier");
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
@@ -147,15 +139,13 @@ class DeleteMovieUseCaseTest {
                 .verifyComplete();
 
         verify(this.deletionTransaction).requestDeletion(MovieId.of(1L));
-        verify(this.deletionCoordinator, never()).process(any());
     }
 
     @Test
-    void kafkaEnabledEnsuresOutboxForMovieAlreadyDeleting() {
+    void alreadyDeletingMovieEnsuresDurableRequest() {
         Movie movie = new Movie(
                 MovieId.of(1L), "Javier", "Dune", MovieStatus.DELETING, EnrichmentStatus.ENRICHED,
                 77L, null, MovieVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
-        ReflectionTestUtils.setField(this.useCase, "kafkaEnabled", true);
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
@@ -167,6 +157,5 @@ class DeleteMovieUseCaseTest {
                 .verifyComplete();
 
         verify(this.deletionTransaction).ensureDeletionRequested(MovieId.of(1L));
-        verify(this.deletionCoordinator, never()).process(any());
     }
 }

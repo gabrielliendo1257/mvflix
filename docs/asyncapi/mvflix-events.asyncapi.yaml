@@ -243,4 +243,7 @@ components:
       required:
         - movieId
         - storageId
+        - objectKey
+        - ownerUsername
+        - releasedBytes
         - deletionStatus

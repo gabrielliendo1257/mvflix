@@ -3,6 +3,10 @@ package com.guille.media.reproductor.uploader.storage.managedstorage.application
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.port.DeletionInboxRepository;
 
 import org.springframework.stereotype.Component;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
+import java.util.Map;
+import java.util.UUID;
 
 import reactor.core.publisher.Mono;
 
@@ -10,11 +14,11 @@ import reactor.core.publisher.Mono;
 @Component
 public class ManagedDeletionTransaction {
 
-    private final StoredObjectDeletedOutbox outbox;
+    private final StorageOutbox outbox;
     private final DeletionInboxRepository inboxRepository;
 
     public ManagedDeletionTransaction(
-            StoredObjectDeletedOutbox outbox,
+            StorageOutbox outbox,
             DeletionInboxRepository inboxRepository) {
         this.outbox = outbox;
         this.inboxRepository = inboxRepository;
@@ -23,7 +27,20 @@ public class ManagedDeletionTransaction {
     public Mono<Void> complete(
             DeleteStoredObject.DeletionResult result,
             ManagedMediaDeletionRequested event) {
-        return this.outbox.append(event, result)
+        StorageIntegrationEvent confirmation = new StorageIntegrationEvent(
+                UUID.nameUUIDFromBytes(event.eventId().toString().getBytes(StandardCharsets.UTF_8)),
+                "StoredObjectDeleted",
+                1,
+                Instant.now(),
+                String.valueOf(event.storageId()),
+                Map.of(
+                        "movieId", event.movieId(),
+                        "storageId", event.storageId(),
+                        "objectKey", event.objectKey(),
+                        "ownerUsername", event.ownerUsername(),
+                        "releasedBytes", result.releasedBytes(),
+                        "deletionStatus", result.deletionStatus()));
+        return this.outbox.append(confirmation)
                 .then(this.inboxRepository.markCompleted(event.eventId()));
     }
 }

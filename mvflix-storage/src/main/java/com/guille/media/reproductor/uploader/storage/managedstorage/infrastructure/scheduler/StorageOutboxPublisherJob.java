@@ -1,7 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.scheduler;
 
-import com.guille.media.reproductor.uploader.storage.managedstorage.application.StoredObjectDeletedOutbox;
-import com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.events.KafkaStorageOutboxPublisher;
+import com.guille.media.reproductor.uploader.storage.managedstorage.application.StorageOutbox;
+import com.guille.media.reproductor.uploader.storage.managedstorage.application.OutboxMessagePublisher;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -24,8 +24,8 @@ import java.util.concurrent.atomic.AtomicLong;
 @ConditionalOnProperty(name = "mvflix.messaging.kafka.enabled", havingValue = "true")
 public class StorageOutboxPublisherJob {
 
-  private final StoredObjectDeletedOutbox outbox;
-  private final KafkaStorageOutboxPublisher publisher;
+  private final StorageOutbox outbox;
+  private final OutboxMessagePublisher publisher;
   private final int batchSize;
   private final int maxAttempts;
   private final int concurrency;
@@ -38,8 +38,8 @@ public class StorageOutboxPublisherJob {
   private final Counter failed;
 
   public StorageOutboxPublisherJob(
-      StoredObjectDeletedOutbox outbox,
-      KafkaStorageOutboxPublisher publisher,
+      StorageOutbox outbox,
+      OutboxMessagePublisher publisher,
       MeterRegistry meterRegistry,
       @Value("${storage.outbox.batch-size:25}") int batchSize,
       @Value("${storage.outbox.max-attempts:10}") int maxAttempts,

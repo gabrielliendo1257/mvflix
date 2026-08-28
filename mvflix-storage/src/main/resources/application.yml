@@ -29,3 +29,9 @@ mvflix:
       enabled: false
     listener:
       observation-enabled: true
+
+storage:
+  retention:
+    outbox-published: ${STORAGE_OUTBOX_PUBLISHED_RETENTION:P14D}
+    inbox-completed: ${STORAGE_INBOX_COMPLETED_RETENTION:P30D}
+    poll-interval: ${STORAGE_RETENTION_POLL_INTERVAL:PT1H}

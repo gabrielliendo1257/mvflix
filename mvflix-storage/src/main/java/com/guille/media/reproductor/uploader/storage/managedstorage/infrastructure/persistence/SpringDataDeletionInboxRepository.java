@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Mono;
 
 import java.util.UUID;
+import java.time.Instant;
 
 @Repository
 @RequiredArgsConstructor
@@ -68,5 +69,13 @@ public class SpringDataDeletionInboxRepository implements DeletionInboxRepositor
         .fetch()
         .rowsUpdated()
         .then();
+  }
+
+  @Override
+  public Mono<Long> purgeCompletedBefore(Instant cutoff) {
+    return this.databaseClient
+        .sql("DELETE FROM managed_media_deletion_inbox WHERE status = 'COMPLETED' AND completed_at < :cutoff")
+        .bind("cutoff", cutoff)
+        .fetch().rowsUpdated();
   }
 }

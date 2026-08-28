@@ -1,7 +1,6 @@
 package com.gcorp.mvflix.e2e;
 
 import static org.awaitility.Awaitility.await;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -62,7 +61,7 @@ class ManagedDeletionE2ETest {
     assertTrue(delete(MOVIES + "/api/v1/movies/" + movieId, token) == 202);
     await().atMost(Duration.ofSeconds(90)).pollInterval(Duration.ofSeconds(2)).until(() -> {
       HttpResponse<String> response = get(MOVIES + "/api/v1/movies/" + movieId, token);
-      return (response.statusCode() == 403 || response.statusCode() == 404)
+      return response.statusCode() == 403
           && deletionCompleted(movieId, uploadId, USER, storageKey);
     });
   }

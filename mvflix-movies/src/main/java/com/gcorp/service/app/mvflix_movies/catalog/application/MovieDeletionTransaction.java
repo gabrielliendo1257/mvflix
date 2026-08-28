@@ -41,27 +41,19 @@ public class MovieDeletionTransaction {
     /** CAS READY → DELETING; vacío si la media no estaba READY. */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
     public Mono<Movie> requestDeletion(MovieId id) {
-        return this.requestDeletion(id, true);
+        return this.requestDeletionDurably(id);
     }
 
-    /** CAS READY → DELETING para el coordinador HTTP, sin crear trabajo Kafka. */
-    @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<Movie> requestDeletionWithoutOutbox(MovieId id) {
-        return this.requestDeletion(id, false);
-    }
-
-    private Mono<Movie> requestDeletion(MovieId id, boolean publishToKafka) {
+    private Mono<Movie> requestDeletionDurably(MovieId id) {
         return this.movieRepository.markDeleting(id)
                 .flatMap(movie -> this.mediaRepository.findByMovieId(id)
                         .switchIfEmpty(Mono.error(new IllegalStateException(
                                 "Managed deletion requires media for movie=" + id.value())))
-                        .flatMap(media -> publishToKafka
-                                ? this.managedDeletionOutbox
-                                        .append(ManagedMediaDeletionRequested.create(
-                                                id.value(), media.getObjectId(), movie.getOwnerUsername(),
-                                                media.getObjectKey()))
-                                        .thenReturn(movie)
-                                : Mono.just(movie)));
+                        .flatMap(media -> this.managedDeletionOutbox
+                                .append(ManagedMediaDeletionRequested.create(
+                                        id.value(), media.getObjectId(), movie.getOwnerUsername(),
+                                        media.getObjectKey()))
+                                .thenReturn(movie)));
     }
 
     /** Desvincula assets LOCALES y borra la media DELETING (cascada media/shares). */
