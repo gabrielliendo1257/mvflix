@@ -48,9 +48,9 @@ class StorageFlowSmokeTest {
 
   @Container
   static final MinIOContainer MINIO =
-      new MinIOContainer("minio/minio:latest")
-          .withUserName("minioadmin")
-          .withPassword("minioadmin");
+      new MinIOContainer("minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1")
+          .withUserName("admin")
+          .withPassword("admin123");
 
   @DynamicPropertySource
   static void properties(DynamicPropertyRegistry registry) {

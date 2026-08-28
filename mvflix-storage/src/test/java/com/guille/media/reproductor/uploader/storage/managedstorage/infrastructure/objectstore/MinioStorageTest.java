@@ -32,9 +32,9 @@ class MinioStorageTest {
 
   @Container
   static final MinIOContainer MINIO_CONTAINER =
-      new MinIOContainer("minio/minio:latest")
-          .withUserName("minioadmin")
-          .withPassword("minioadmin");
+       new MinIOContainer("minio/minio:RELEASE.2025-09-07T16-13-09Z-cpuv1")
+          .withUserName("admin")
+          .withPassword("admin123");
 
   private static MinioAsyncClient asyncClient;
   private static MinioClient syncClient;
