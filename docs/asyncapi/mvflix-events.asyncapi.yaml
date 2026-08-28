@@ -1,0 +1,265 @@
+asyncapi: 2.6.0
+info:
+  title: Mvflix Integration Events
+  version: 1.0.0
+  description: |
+    Contratos internos versionados para la integración asíncrona de Mvflix.
+    Kafka entrega estos mensajes at-least-once: los consumidores deben
+    deduplicar por eventId y aplicar efectos idempotentes.
+  contact:
+    name: Mvflix Architecture
+
+defaultContentType: application/json
+
+servers:
+  development:
+    url: localhost:9094
+    protocol: kafka
+    description: Kafka KRaft single-node de desarrollo, publicado solo en loopback.
+
+channels:
+  mvflix.managed-media-deletion-requested.v1:
+    description: Movies solicita a Storage el borrado durable de un objeto MANAGED.
+    publish:
+      operationId: requestManagedMediaDeletion
+      summary: Solicitud de borrado de un objeto MANAGED
+      description: |
+        Movies publica este mensaje después de persistir el estado DELETING.
+        Storage es el propietario del objeto y de la cuota; el mensaje no
+        autoriza a ningún consumidor a modificar el catálogo de Movies.
+      x-owner: mvflix-movies
+      x-consumer: mvflix-storage
+      x-delivery: at-least-once
+      x-partition-key: payload.storageId
+      message:
+        $ref: '#/components/messages/ManagedMediaDeletionRequested'
+
+  mvflix.stored-object-deleted.v1:
+    description: Storage confirma que el objeto MANAGED ya no existe y su cuota fue liberada.
+    publish:
+      operationId: publishStoredObjectDeleted
+      summary: Objeto MANAGED eliminado
+      description: |
+        Storage publica este hecho después de completar de forma idempotente
+        la eliminación física y la liberación de cuota. Movies puede usarlo
+        para finalizar DELETING; un duplicado no debe volver a liberar cuota.
+      x-owner: mvflix-storage
+      x-consumer: mvflix-movies
+      x-delivery: at-least-once
+      x-partition-key: payload.storageId
+      message:
+        $ref: '#/components/messages/StoredObjectDeleted'
+
+components:
+  messages:
+    ManagedMediaDeletionRequested:
+      name: ManagedMediaDeletionRequested
+      title: Managed media deletion requested
+      summary: Movies solicita borrar un objeto propiedad de Storage.
+      contentType: application/json
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/ManagedMediaDeletionRequestedEnvelope'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: storageId serializado como string.
+
+    StoredObjectDeleted:
+      name: StoredObjectDeleted
+      title: Stored object deleted
+      summary: Storage confirma la eliminación física y liberación de cuota.
+      contentType: application/json
+      headers:
+        $ref: '#/components/schemas/EventHeaders'
+      payload:
+        $ref: '#/components/schemas/StoredObjectDeletedEnvelope'
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: storageId serializado como string.
+
+  schemas:
+    EventHeaders:
+      type: object
+      additionalProperties: false
+      properties:
+        event_id:
+          type: string
+          format: uuid
+        event_type:
+          type: string
+          example: ManagedMediaDeletionRequested
+        event_version:
+          type: string
+          enum: ['1']
+        correlation_id:
+          type: string
+          format: uuid
+      required:
+        - event_id
+        - event_type
+        - event_version
+
+    EventEnvelope:
+      type: object
+      additionalProperties: false
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: Identificador único e inmutable para deduplicación.
+        eventType:
+          type: string
+          description: Nombre estable del evento.
+        eventVersion:
+          type: integer
+          minimum: 1
+          description: Versión del schema del payload, independiente del topic.
+        occurredAt:
+          type: string
+          format: date-time
+        producer:
+          type: string
+          description: Servicio que posee y publicó el hecho.
+        aggregate:
+          $ref: '#/components/schemas/AggregateReference'
+        correlationId:
+          type: string
+          format: uuid
+          nullable: true
+        causationId:
+          type: string
+          format: uuid
+          nullable: true
+        payload:
+          type: object
+      required:
+        - eventId
+        - eventType
+        - eventVersion
+        - occurredAt
+        - producer
+        - aggregate
+        - payload
+
+    AggregateReference:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+          example: ManagedObject
+        id:
+          type: string
+          description: Identificador del agregado en el servicio propietario.
+      required:
+        - type
+        - id
+
+    ManagedMediaDeletionRequestedEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          properties:
+            eventType:
+              type: string
+              enum: [ManagedMediaDeletionRequested]
+            eventVersion:
+              type: integer
+              enum: [1]
+            producer:
+              type: string
+              enum: [mvflix-movies]
+            aggregate:
+              $ref: '#/components/schemas/MovieAggregateReference'
+            payload:
+              $ref: '#/components/schemas/ManagedMediaDeletionRequestedPayload'
+
+    StoredObjectDeletedEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          properties:
+            eventType:
+              type: string
+              enum: [StoredObjectDeleted]
+            eventVersion:
+              type: integer
+              enum: [1]
+            producer:
+              type: string
+              enum: [mvflix-storage]
+            aggregate:
+              $ref: '#/components/schemas/ManagedObjectAggregateReference'
+            payload:
+              $ref: '#/components/schemas/StoredObjectDeletedPayload'
+
+    MovieAggregateReference:
+      allOf:
+        - $ref: '#/components/schemas/AggregateReference'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [Movie]
+
+    ManagedObjectAggregateReference:
+      allOf:
+        - $ref: '#/components/schemas/AggregateReference'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum: [ManagedObject]
+
+    ManagedMediaDeletionRequestedPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        movieId:
+          type: integer
+          format: int64
+          description: Identificador del catálogo en Movies.
+        storageId:
+          type: integer
+          format: int64
+          description: Identificador público del objeto en Storage.
+        ownerUsername:
+          type: string
+          description: Owner esperado; Storage lo valida antes de borrar.
+        objectKey:
+          type: string
+          description: Referencia interna esperada; nunca se expone al BFF.
+      required:
+        - movieId
+        - storageId
+        - ownerUsername
+        - objectKey
+
+    StoredObjectDeletedPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        storageId:
+          type: integer
+          format: int64
+        objectKey:
+          type: string
+          description: Referencia interna del objeto eliminado.
+        ownerUsername:
+          type: string
+        releasedBytes:
+          type: integer
+          format: int64
+          minimum: 0
+          description: Cuota liberada por Storage; no debe aplicarse dos veces.
+        deletionStatus:
+          type: string
+          enum: [DELETED, ALREADY_ABSENT]
+      required:
+        - storageId
+        - deletionStatus
