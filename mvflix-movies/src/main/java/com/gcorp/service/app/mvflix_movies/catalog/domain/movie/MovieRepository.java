@@ -68,13 +68,9 @@ public interface MovieRepository {
     Flux<Movie> findDeleting(int limit);
 
     /** Selecciona borrados cuya ventana de recuperación ya expiró. */
-    default Flux<Movie> findDeletingForRecovery(int limit, Duration retryCooldown) {
-        return Flux.empty();
-    }
+    Flux<Movie> findDeletingForRecovery(int limit, Duration retryCooldown);
 
-    default Mono<Void> markRecoveryAttempt(MovieId id) {
-        return Mono.empty();
-    }
+    Mono<Void> markRecoveryAttempt(MovieId id);
 
     /** Persiste la transición de proveedor ya decidida por el agregado. */
     Mono<Movie> updateEnrichment(Movie movie);

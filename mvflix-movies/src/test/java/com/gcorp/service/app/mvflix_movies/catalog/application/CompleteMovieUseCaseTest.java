@@ -16,6 +16,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundExc
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -365,6 +366,16 @@ class CompleteMovieUseCaseTest {
     @Override
     public Flux<Movie> findDeleting(int limit) {
       return unexpectedFlux("findDeleting");
+    }
+
+    @Override
+    public Flux<Movie> findDeletingForRecovery(int limit, Duration retryCooldown) {
+      return unexpectedFlux("findDeletingForRecovery");
+    }
+
+    @Override
+    public Mono<Void> markRecoveryAttempt(MovieId id) {
+      return unexpectedMono("markRecoveryAttempt");
     }
 
     @Override
