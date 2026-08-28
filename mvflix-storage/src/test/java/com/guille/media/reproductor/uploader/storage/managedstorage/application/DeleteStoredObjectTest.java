@@ -43,9 +43,11 @@ class DeleteStoredObjectTest {
   private final StorageRepository storageRepository = mock(StorageRepository.class);
   private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
   private final TerminalUploadTransition terminalTransition = mock(TerminalUploadTransition.class);
+  private final ManagedDeletionTransaction managedDeletionTransaction = mock(ManagedDeletionTransaction.class);
 
   private final DeleteStoredObject useCase = new DeleteStoredObject(
-      objectStoragePort, storageRepository, userStorageRepository, terminalTransition);
+      objectStoragePort, storageRepository, userStorageRepository, terminalTransition,
+      managedDeletionTransaction);
 
   private static final UserStorage PEPE_STORAGE =
       new UserStorage(
@@ -98,27 +100,21 @@ class DeleteStoredObjectTest {
   }
 
   @Test
-  void alreadyDeletedStillRunsCompletionCallback() {
+  void alreadyDeletedIsIdempotent() {
     StoreObject object = completed(7L);
     object.markDeleted();
-    java.util.concurrent.atomic.AtomicReference<DeleteStoredObject.DeletionResult> result =
-        new java.util.concurrent.atomic.AtomicReference<>();
 
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
 
-    StepVerifier.create(this.useCase.execute(
-            new DeleteStoredObjectCommand(7L), "pepe", "k7", deletion -> {
-              result.set(deletion);
-              return Mono.empty();
-            }))
+    StepVerifier.create(this.useCase.execute(new DeleteStoredObjectCommand(7L), "pepe", "k7"))
         .expectNextMatches(deletion -> deletion.releasedBytes() == 0
             && "ALREADY_ABSENT".equals(deletion.deletionStatus()))
         .verifyComplete();
 
-    assertThat(result.get().deletionStatus()).isEqualTo("ALREADY_ABSENT");
     verifyNoInteractions(this.objectStoragePort);
     verifyNoInteractions(this.terminalTransition);
+    verifyNoInteractions(this.managedDeletionTransaction);
   }
 
   @Test

@@ -49,7 +49,7 @@ public class TerminalUploadTransition {
     return this.transitionAndRelease(object, expectedStatus, ignored -> Mono.empty());
   }
 
-  public Mono<StoreObject> transitionAndRelease(
+  Mono<StoreObject> transitionAndRelease(
       StoreObject object,
       StorageSessionStatus expectedStatus,
       Function<StoreObject, Mono<Void>> afterRelease) {
