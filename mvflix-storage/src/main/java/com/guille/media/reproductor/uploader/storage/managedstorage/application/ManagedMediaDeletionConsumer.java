@@ -2,8 +2,6 @@ package com.guille.media.reproductor.uploader.storage.managedstorage.application
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.guille.media.reproductor.uploader.storage.managedstorage.application.command.request.DeleteStoredObjectCommand;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.DeletionInboxRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,8 +19,7 @@ import java.util.UUID;
 public class ManagedMediaDeletionConsumer {
 
   private final ObjectMapper objectMapper;
-  private final DeletionInboxRepository inboxRepository;
-  private final DeleteStoredObject deleteStoredObject;
+  private final ProcessManagedMediaDeletion processDeletion;
 
   public Mono<Void> consume(String rawEvent) {
     return Mono.defer(() -> this.parse(rawEvent))
@@ -92,16 +89,7 @@ public class ManagedMediaDeletionConsumer {
   }
 
   private Mono<Void> consumeEvent(ManagedMediaDeletionRequested event) {
-    return this.inboxRepository.recordReceived(event.eventId())
-        .then(this.inboxRepository.isCompleted(event.eventId()))
-        .flatMap(completed -> completed ? Mono.empty() : this.delete(event));
-  }
-
-  private Mono<Void> delete(ManagedMediaDeletionRequested event) {
-    return this.deleteStoredObject
-        .execute(new DeleteStoredObjectCommand(event.storageId()), event.ownerUsername(), event.objectKey(), event)
-        .then()
-        .onErrorResume(error -> this.inboxRepository.markFailed(event.eventId(), error.toString()).then(Mono.error(error)));
+    return this.processDeletion.execute(event);
   }
 
 }

@@ -1,14 +1,11 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.application;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.guille.media.reproductor.uploader.storage.managedstorage.application.command.request.DeleteStoredObjectCommand;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.DeletionInboxRepository;
 
 import org.junit.jupiter.api.Test;
 
@@ -20,36 +17,30 @@ import java.util.UUID;
 class ManagedMediaDeletionConsumerTest {
 
   private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
-  private final DeletionInboxRepository inbox = org.mockito.Mockito.mock(DeletionInboxRepository.class);
-  private final DeleteStoredObject delete = org.mockito.Mockito.mock(DeleteStoredObject.class);
+  private final ProcessManagedMediaDeletion process = org.mockito.Mockito.mock(ProcessManagedMediaDeletion.class);
   private final ManagedMediaDeletionConsumer consumer =
-      new ManagedMediaDeletionConsumer(objectMapper, inbox, delete);
+      new ManagedMediaDeletionConsumer(objectMapper, process);
 
   @Test
   void duplicateCompletedEventDoesNotDeleteOrPublishAgain() {
     UUID eventId = UUID.randomUUID();
-    when(inbox.recordReceived(eventId)).thenReturn(Mono.empty());
-    when(inbox.isCompleted(eventId)).thenReturn(Mono.just(true));
+    when(process.execute(any())).thenReturn(Mono.empty());
 
     StepVerifier.create(consumer.consume(event(eventId)))
         .verifyComplete();
 
-    verify(delete, never()).execute(any(), any(), any(), any());
+    verify(process).execute(any());
   }
 
   @Test
   void alreadyAbsentStillPublishesConfirmationAndCompletesInbox() {
     UUID eventId = UUID.randomUUID();
-    when(inbox.recordReceived(eventId)).thenReturn(Mono.empty());
-    when(inbox.isCompleted(eventId)).thenReturn(Mono.just(false));
-    when(delete.execute(any(DeleteStoredObjectCommand.class), eq("pepe"), eq("objects/7"), any()))
-        .thenReturn(Mono.just(new DeleteStoredObject.DeletionResult(0, "ALREADY_ABSENT")));
+    when(process.execute(any())).thenReturn(Mono.empty());
 
     StepVerifier.create(consumer.consume(event(eventId)))
         .verifyComplete();
 
-    verify(delete).execute(any(DeleteStoredObjectCommand.class), eq("pepe"), eq("objects/7"), any());
-    verify(inbox, never()).markFailed(any(), any());
+    verify(process).execute(any());
   }
 
   @Test
@@ -71,7 +62,7 @@ class ManagedMediaDeletionConsumerTest {
           .verify();
     }
 
-    verify(delete, never()).execute(any(), any(), any());
+    verify(process, never()).execute(any());
   }
 
   private static String event(UUID eventId) {

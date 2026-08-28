@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.persistence;
 
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.DeletionInboxRepository;
+import com.guille.media.reproductor.uploader.storage.managedstorage.application.port.DeletionInboxRepository;
 
 import lombok.RequiredArgsConstructor;
 

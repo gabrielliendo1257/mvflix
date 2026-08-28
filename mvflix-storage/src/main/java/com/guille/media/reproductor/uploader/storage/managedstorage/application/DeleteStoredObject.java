@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Mono;
 
+import java.util.function.Function;
 
 /**
  * Caso de uso: elimina un objeto almacenado. Es el dueño de la transición de
@@ -45,19 +46,16 @@ public class DeleteStoredObject {
     private final StorageRepository storageRepository;
     private final UserStorageRepository userStorageRepository;
     private final TerminalUploadTransition terminalTransition;
-    private final ManagedDeletionTransaction managedDeletionTransaction;
 
     public DeleteStoredObject(
             ObjectStorageService objectStoragePort,
             StorageRepository storageRepository,
             UserStorageRepository userStorageRepository,
-            TerminalUploadTransition terminalTransition,
-            ManagedDeletionTransaction managedDeletionTransaction) {
+            TerminalUploadTransition terminalTransition) {
         this.objectStoragePort = objectStoragePort;
         this.storageRepository = storageRepository;
         this.userStorageRepository = userStorageRepository;
         this.terminalTransition = terminalTransition;
-        this.managedDeletionTransaction = managedDeletionTransaction;
     }
 
     public Mono<Void> execute(DeleteStoredObjectCommand command) {
@@ -68,8 +66,8 @@ public class DeleteStoredObject {
             DeleteStoredObjectCommand command,
             String expectedOwner,
             String expectedObjectKey,
-            ManagedMediaDeletionRequested event) {
-        return this.executeAndReturnResult(command, expectedOwner, expectedObjectKey, event);
+            Function<DeletionResult, Mono<Void>> afterDeletion) {
+        return this.executeAndReturnResult(command, expectedOwner, expectedObjectKey, afterDeletion);
     }
 
     public Mono<DeletionResult> execute(
@@ -81,12 +79,12 @@ public class DeleteStoredObject {
             DeleteStoredObjectCommand command,
             String expectedOwner,
             String expectedObjectKey,
-            ManagedMediaDeletionRequested event) {
+            Function<DeletionResult, Mono<Void>> afterDeletion) {
         return this.storageRepository
                 .findById(command.storageId())
                 .switchIfEmpty(Mono.error(new StorageObjectNotAvailable(
                         "Storage object not available: " + command.storageId())))
-                .flatMap(object -> this.deleteObject(object, expectedOwner, expectedObjectKey, event))
+                .flatMap(object -> this.deleteObject(object, expectedOwner, expectedObjectKey, afterDeletion))
                 .doOnSuccess(unused -> log.info("Objeto eliminado: storageId={}", command.storageId()));
     }
 
@@ -94,7 +92,7 @@ public class DeleteStoredObject {
             StoreObject object,
             String expectedOwner,
             String expectedObjectKey,
-            ManagedMediaDeletionRequested event) {
+            Function<DeletionResult, Mono<Void>> afterDeletion) {
         if (expectedOwner != null && !expectedOwner.equals(object.getOwnerUsername())) {
             return Mono.error(new StorageObjectMismatchException("ownerUsername", object.getStorageId()));
         }
@@ -105,25 +103,25 @@ public class DeleteStoredObject {
                 .findByOwnerUsername(object.getOwnerUsername())
                 .switchIfEmpty(Mono.error(new UserStorageNotFoundException(
                         "No storage registered for user: " + object.getOwnerUsername())))
-                .flatMap(userStorage -> this.deleteOwnedObject(object, userStorage, event));
+                .flatMap(userStorage -> this.deleteOwnedObject(object, userStorage, afterDeletion));
     }
 
     private Mono<DeletionResult> deleteOwnedObject(
             StoreObject object,
             UserStorage userStorage,
-            ManagedMediaDeletionRequested event) {
+            Function<DeletionResult, Mono<Void>> afterDeletion) {
         if (!object.markDeleted()) {
             log.info("delete: objeto {} ya estaba DELETED (idempotente)", object.getStorageId());
             DeletionResult result = new DeletionResult(0, "ALREADY_ABSENT");
-            return event == null
+            return afterDeletion == null
                     ? Mono.just(result)
-                    : this.managedDeletionTransaction.complete(object, result, event).thenReturn(result);
+                    : afterDeletion.apply(result).thenReturn(result);
         }
         // defer: la transición solo se construye si el DELETE del blob tuvo
         // éxito; si MinIO está caído no se toca la DB ni la cuota.
         return this.deleteBlob(object, userStorage.getBucketName())
                 .then(Mono.defer(() -> this.transitionToDeleted(
-                         object, new DeletionResult(object.sizeInBytes(), "DELETED"), event)))
+                         object, new DeletionResult(object.sizeInBytes(), "DELETED"), afterDeletion)))
                 .thenReturn(new DeletionResult(object.sizeInBytes(), "DELETED"));
     }
 
@@ -135,10 +133,11 @@ public class DeleteStoredObject {
     private Mono<Void> transitionToDeleted(
             StoreObject object,
             DeletionResult result,
-            ManagedMediaDeletionRequested event) {
-        Mono<StoreObject> transition = event == null
+            Function<DeletionResult, Mono<Void>> afterDeletion) {
+        Mono<StoreObject> transition = afterDeletion == null
                 ? this.terminalTransition.transitionAndRelease(object, StorageSessionStatus.COMPLETED)
-                : this.managedDeletionTransaction.complete(object, result, event).thenReturn(object);
+                : this.terminalTransition.transitionAndRelease(object, StorageSessionStatus.COMPLETED,
+                        ignored -> afterDeletion.apply(result));
         return transition
                 .then()
                 .onErrorResume(IllegalStateTransitionException.class,

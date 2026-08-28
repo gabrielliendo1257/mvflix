@@ -54,14 +54,12 @@ class ObjectCleanupServiceImplTest {
       mock(TransactionalOperator.class);
   private final TerminalUploadTransition terminalTransition =
       new TerminalUploadTransition(storageRepository, userStorageRepository, transactionalOperator);
-  private final ManagedDeletionTransaction managedDeletionTransaction = mock(ManagedDeletionTransaction.class);
   private final com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue
       orphanQueue = mock(com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue.class);
 
   private final DeleteStoredObject deleteStoredObject =
       new DeleteStoredObject(
-           objectStoragePort, storageRepository, userStorageRepository, terminalTransition,
-           managedDeletionTransaction);
+           objectStoragePort, storageRepository, userStorageRepository, terminalTransition);
 
   private final ObjectCleanupServiceImpl service =
       new ObjectCleanupServiceImpl(

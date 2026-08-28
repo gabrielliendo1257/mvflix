@@ -43,11 +43,9 @@ class DeleteStoredObjectTest {
   private final StorageRepository storageRepository = mock(StorageRepository.class);
   private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
   private final TerminalUploadTransition terminalTransition = mock(TerminalUploadTransition.class);
-  private final ManagedDeletionTransaction managedDeletionTransaction = mock(ManagedDeletionTransaction.class);
 
   private final DeleteStoredObject useCase = new DeleteStoredObject(
-      objectStoragePort, storageRepository, userStorageRepository, terminalTransition,
-      managedDeletionTransaction);
+      objectStoragePort, storageRepository, userStorageRepository, terminalTransition);
 
   private static final UserStorage PEPE_STORAGE =
       new UserStorage(
@@ -114,7 +112,6 @@ class DeleteStoredObjectTest {
 
     verifyNoInteractions(this.objectStoragePort);
     verifyNoInteractions(this.terminalTransition);
-    verifyNoInteractions(this.managedDeletionTransaction);
   }
 
   @Test
