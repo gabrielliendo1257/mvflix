@@ -9,10 +9,13 @@ start Spring application contexts in its JVM.
 From the repository root:
 
 ```bash
-docker compose -f e2e/docker-compose-e2e.yml up -d --build
-mvn -f e2e/runner/pom.xml test
-docker compose -f e2e/docker-compose-e2e.yml down -v
+./scripts/e2e.sh
 ```
+
+The script starts the stack with `docker compose up --wait --build`, runs the
+runner with the repository Maven wrapper, and always removes the stack with a
+cleanup trap. To run against an already-started stack, invoke
+`./mvnw -f e2e/runner/pom.xml test` directly.
 
 The test creates a user and upload through the public APIs, uploads four real
 bytes to MinIO using the presigned URL, completes the upload, creates and
