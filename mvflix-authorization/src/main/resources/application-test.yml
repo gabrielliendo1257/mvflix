@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: authorization-service
+  flyway:
+    enabled: true
+    user: test
+    password: test
+  jpa:
+    hibernate:
+      ddl-auto: none
+  security:
+    oauth2:
+      authorizationserver:
+        issuer: http://127.0.0.1:9090
+
+authorization:
+  env:
+    oauth2:
+      registration-id: movie-app
+      client-id: movie-bff
+      client-password: test-secret
+      movies-catalog-password: test-secret
+      redirect: http://127.0.0.1:9091/login/oauth2/code/movie-app
+      logout-redirect: http://127.0.0.1:9090/
+  dev-token:
+    enabled: false
