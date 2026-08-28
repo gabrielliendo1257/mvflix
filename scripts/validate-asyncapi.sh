@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SPEC="$ROOT_DIR/docs/asyncapi/mvflix-events.asyncapi.yaml"
+TMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TMP_DIR"' EXIT
+
+command -v yq >/dev/null || { printf '%s\n' "yq is required" >&2; exit 1; }
+command -v jq >/dev/null || { printf '%s\n' "jq is required" >&2; exit 1; }
+command -v npx >/dev/null || { printf '%s\n' "npx is required" >&2; exit 1; }
+
+npx --yes @asyncapi/cli@6.0.2 validate "$SPEC"
+
+yq -o=json '.components.schemas' "$SPEC" > "$TMP_DIR/schemas.json"
+yq -o=json '.components.messages.StoredObjectDeleted.examples[0].payload' "$SPEC" \
+  > "$TMP_DIR/example.json"
+jq '{"$schema":"http://json-schema.org/draft-07/schema#", "$ref":"#/components/schemas/StoredObjectDeletedEnvelope", "components":{"schemas":.}}' \
+  "$TMP_DIR/schemas.json" > "$TMP_DIR/schema.json"
+
+npx --yes ajv-cli@5.0.0 validate \
+  --spec=draft7 \
+  --strict=false \
+  -s "$TMP_DIR/schema.json" \
+  -d "$TMP_DIR/example.json"
+
+printf '%s\n' "AsyncAPI contract and StoredObjectDeleted example are valid."

@@ -73,6 +73,25 @@ components:
       contentType: application/json
       payload:
         $ref: '#/components/schemas/StoredObjectDeletedEnvelope'
+      examples:
+        - name: stored-object-deleted-v1
+          summary: Objeto eliminado y cuota liberada
+          payload:
+            eventId: 7d9f3c1e-6c2d-4d79-9c3a-7fbcd5c6a2a1
+            eventType: StoredObjectDeleted
+            eventVersion: 1
+            occurredAt: '2026-08-28T12:00:00Z'
+            producer: mvflix-storage
+            aggregate:
+              type: ManagedObject
+              id: '42'
+            payload:
+              movieId: 101
+              storageId: 42
+              objectKey: Javier/videos/dune.mp4
+              ownerUsername: Javier
+              releasedBytes: 734003200
+              deletionStatus: DELETED
       bindings:
         kafka:
           key:
