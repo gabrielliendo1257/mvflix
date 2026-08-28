@@ -1,5 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.events;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.ManagedMediaDeletionConsumer;
 
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.RetryableTopic;
 import org.springframework.kafka.retrytopic.TopicSuffixingStrategy;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -21,14 +24,16 @@ import org.springframework.stereotype.Component;
 public class KafkaManagedMediaDeletionListener {
 
   private final ManagedMediaDeletionConsumer consumer;
+  private final ObjectMapper objectMapper;
   private final MeterRegistry meterRegistry;
   private final Counter failures;
   private final Counter dlqMessages;
   private final Timer duration;
 
   public KafkaManagedMediaDeletionListener(
-      ManagedMediaDeletionConsumer consumer, MeterRegistry meterRegistry) {
+      ManagedMediaDeletionConsumer consumer, ObjectMapper objectMapper, MeterRegistry meterRegistry) {
     this.consumer = consumer;
+    this.objectMapper = objectMapper;
     this.meterRegistry = meterRegistry;
     this.failures = meterRegistry.counter("mvflix_kafka_consumer_failures_total", "service", "storage");
     this.dlqMessages = meterRegistry.counter("mvflix_kafka_dlq_messages_total", "service", "storage");
@@ -57,8 +62,19 @@ public class KafkaManagedMediaDeletionListener {
   }
 
   @DltHandler
-  public void onDlt(String payload) {
+  public void onDlt(ConsumerRecord<?, ?> record, Exception cause) {
     this.dlqMessages.increment();
-    log.error("Managed media deletion event moved to DLT: payload={}", payload);
+    log.error("Managed media deletion event moved to DLT: topic={}, key={}, eventId={}, offset={}, cause={}",
+        record.topic(), record.key(), eventId(record.value()), record.offset(), cause.getClass().getSimpleName());
+  }
+
+  private String eventId(Object value) {
+    try {
+      JsonNode root = this.objectMapper.readTree(String.valueOf(value));
+      JsonNode eventId = root.path("eventId");
+      return eventId.isTextual() && !eventId.textValue().isBlank() ? eventId.textValue() : "<unknown>";
+    } catch (Exception ignored) {
+      return "<invalid>";
+    }
   }
 }
