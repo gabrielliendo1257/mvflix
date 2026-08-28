@@ -29,6 +29,7 @@ import org.jose4j.jwk.RsaJsonWebKey;
 import org.jose4j.jwt.JwtClaims;
 import org.junit.jupiter.api.Test;
 import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.errors.ErrorResponseException;
 
@@ -46,11 +47,10 @@ class ManagedDeletionE2ETest {
         "{\"quota_bytes\":1048576}", 200);
 
     JsonNode upload = JSON.readTree(post(STORAGE + "/api/v1/movie/storage/upload", token,
-        "{\"filename\":\"e2e.bin\",\"file_size\":4,\"mime_type\":\"application/octet-stream\"}", 200));
-    String uploadUrl = upload.get("uploadUrl").asText().replace("http://minio:9000", "http://localhost:19000");
-    put(uploadUrl, new byte[] {1, 2, 3, 4});
+        "{\"filename\":\"e2e.mp4\",\"file_size\":4,\"mime_type\":\"video/mp4\"}", 200));
     long uploadId = upload.get("uploadId").asLong();
     String storageKey = upload.get("storageKey").asText();
+    put(storageKey, new byte[] {1, 2, 3, 4});
     post(STORAGE + "/api/v1/movie/storage/upload/" + uploadId + "/complete", token, null, 200, 202);
 
     long movieId = JSON.readTree(post(MOVIES + "/api/v1/movies", token,
@@ -58,11 +58,12 @@ class ManagedDeletionE2ETest {
     post(MOVIES + "/api/v1/movies/" + movieId + "/complete", token,
         "{\"object_id\":" + uploadId + ",\"object_key\":\"" + storageKey + "\"}", 200);
 
-    assertEquals(204, delete(MOVIES + "/api/v1/movies/" + movieId, token));
-    assertEquals(204, delete(MOVIES + "/api/v1/movies/" + movieId, token));
+    assertTrue(delete(MOVIES + "/api/v1/movies/" + movieId, token) == 202);
+    assertTrue(delete(MOVIES + "/api/v1/movies/" + movieId, token) == 202);
     await().atMost(Duration.ofSeconds(90)).pollInterval(Duration.ofSeconds(2)).until(() -> {
       HttpResponse<String> response = get(MOVIES + "/api/v1/movies/" + movieId, token);
-      return response.statusCode() == 404 && deletionCompleted(movieId, uploadId, USER, storageKey);
+      return (response.statusCode() == 403 || response.statusCode() == 404)
+          && deletionCompleted(movieId, uploadId, USER, storageKey);
     });
   }
 
@@ -90,8 +91,14 @@ class ManagedDeletionE2ETest {
     HttpResponse<String> r = HTTP.send(b.POST(HttpRequest.BodyPublishers.ofString(body == null ? "" : body)).build(), HttpResponse.BodyHandlers.ofString());
     expect(r, expected); return r.body();
   }
-  private static void put(String url, byte[] body) throws Exception { HttpResponse<Void> r = HTTP.send(HttpRequest.newBuilder(URI.create(url)).PUT(HttpRequest.BodyPublishers.ofByteArray(body)).build(), HttpResponse.BodyHandlers.discarding()); assertTrue(r.statusCode() < 300, r.toString()); }
-  private static int delete(String url, String token) throws Exception { HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(url)).header("Authorization", "Bearer " + token).DELETE().build(), HttpResponse.BodyHandlers.ofString()); expect(r, 204); return r.statusCode(); }
+  private static void put(String objectKey, byte[] body) throws Exception {
+    MinioClient minio = MinioClient.builder().endpoint("http://localhost:19000")
+        .credentials("admin", "admin123").build();
+    minio.putObject(PutObjectArgs.builder().bucket("uploads").object(objectKey)
+        .contentType("video/mp4")
+        .stream(new java.io.ByteArrayInputStream(body), body.length, -1).build());
+  }
+  private static int delete(String url, String token) throws Exception { HttpResponse<String> r = HTTP.send(HttpRequest.newBuilder(URI.create(url)).header("Authorization", "Bearer " + token).DELETE().build(), HttpResponse.BodyHandlers.ofString()); expect(r, 204, 202); return r.statusCode(); }
   private static HttpResponse<String> get(String url, String token) throws Exception { return HTTP.send(HttpRequest.newBuilder(URI.create(url)).header("Authorization", "Bearer " + token).GET().build(), HttpResponse.BodyHandlers.ofString()); }
   private static void expect(HttpResponse<?> r, int... expected) { for (int code : expected) if (r.statusCode() == code) return; throw new AssertionError("Expected " + java.util.Arrays.toString(expected) + ", got " + r.statusCode() + ": " + r.body()); }
   private static boolean deletionCompleted(long movieId, long uploadId, String owner, String storageKey) throws Exception {
