@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
     ports:
-      - "15432:5432"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:15432:5432"
     volumes:
       - ../infra/postgres/00-roles.sql:/docker-entrypoint-initdb.d/00-roles.sql:ro
       - ../infra/postgres/01-databases.sql:/docker-entrypoint-initdb.d/01-databases.sql:ro
@@ -69,8 +69,8 @@ services:
       MINIO_ROOT_PASSWORD: admin123
     command: server /data --console-address :9001
     ports:
-      - "19000:9000"
-      - "19001:9001"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:19000:9000"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:19001:9001"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 3s
@@ -90,7 +90,7 @@ services:
   jwks-stub:
     image: wiremock/wiremock:3.9.1
     ports:
-      - "18080:8080"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:18080:8080"
     volumes:
       - ./oidc-stub/mappings:/home/wiremock/mappings:ro
       - ./oidc-stub/jwks:/home/wiremock/__files:ro
@@ -117,8 +117,8 @@ services:
       STORAGE_KAFKA_GROUP: storage-e2e
       MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
     ports:
-      - "16060:6060"
-      - "11060:10060"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:16060:6060"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:11060:10060"
     depends_on:
       postgres:
         condition: service_healthy
@@ -149,8 +149,8 @@ services:
       MOVIES_KAFKA_GROUP: movies-e2e
       MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
     ports:
-      - "14040:4040"
-      - "11040:10040"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:14040:4040"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:11040:10040"
     depends_on:
       postgres:
         condition: service_healthy
