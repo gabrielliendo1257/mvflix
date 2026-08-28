@@ -111,4 +111,27 @@ public class SpringDataStoredObjectDeletedOutbox implements StoredObjectDeletedO
     return this.databaseClient.sql("SELECT COUNT(*) AS n FROM storage_outbox_events WHERE published_at IS NULL AND attempts < :maxAttempts")
         .bind("maxAttempts", maxAttempts).map((row, metadata) -> row.get("n", Long.class)).one();
   }
+
+  @Override
+  public Mono<Long> exhaustedCount(int maxAttempts) {
+    return this.databaseClient.sql("SELECT COUNT(*) AS n FROM storage_outbox_events "
+            + "WHERE published_at IS NULL AND attempts >= :maxAttempts")
+        .bind("maxAttempts", maxAttempts)
+        .map((row, metadata) -> row.get("n", Long.class)).one();
+  }
+
+  @Override
+  public Mono<Long> oldestPendingAgeSeconds() {
+    return this.databaseClient.sql("SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::bigint AS age "
+            + "FROM storage_outbox_events WHERE published_at IS NULL")
+        .map((row, metadata) -> row.get("age", Long.class)).one();
+  }
+
+  @Override
+  public Mono<Void> reactivateExhausted(int maxAttempts) {
+    return this.databaseClient.sql("UPDATE storage_outbox_events "
+            + "SET attempts = 0, next_attempt_at = NOW(), locked_until = NULL, last_error = NULL "
+            + "WHERE published_at IS NULL AND attempts >= :maxAttempts")
+        .bind("maxAttempts", maxAttempts).fetch().rowsUpdated().then();
+  }
 }

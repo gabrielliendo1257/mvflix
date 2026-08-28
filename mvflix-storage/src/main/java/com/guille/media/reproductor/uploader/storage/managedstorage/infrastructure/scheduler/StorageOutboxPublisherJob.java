@@ -32,6 +32,8 @@ public class StorageOutboxPublisherJob {
   private final Duration retryDelay;
   private final Duration lease;
   private final AtomicLong backlog = new AtomicLong();
+  private final AtomicLong exhausted = new AtomicLong();
+  private final AtomicLong oldestAgeSeconds = new AtomicLong();
   private final Counter published;
   private final Counter failed;
 
@@ -52,6 +54,8 @@ public class StorageOutboxPublisherJob {
     this.retryDelay = retryDelay;
     this.lease = lease;
     meterRegistry.gauge("mvflix_outbox_pending", Tags.of("service", "storage"), this.backlog);
+    meterRegistry.gauge("mvflix_outbox_exhausted", Tags.of("service", "storage"), this.exhausted);
+    meterRegistry.gauge("mvflix_outbox_oldest_age_seconds", Tags.of("service", "storage"), this.oldestAgeSeconds);
     this.published = meterRegistry.counter("mvflix_outbox_published_total", "service", "storage");
     this.failed = meterRegistry.counter("mvflix_outbox_publish_failures_total", "service", "storage");
   }
@@ -75,6 +79,12 @@ public class StorageOutboxPublisherJob {
                     return Mono.empty();
                   });
             }), this.concurrency)
-        .then(this.outbox.pendingCount(this.maxAttempts).doOnNext(this.backlog::set).then());
+        .then(Mono.zip(this.outbox.pendingCount(this.maxAttempts),
+            this.outbox.exhaustedCount(this.maxAttempts), this.outbox.oldestPendingAgeSeconds())
+            .doOnNext(counts -> {
+              this.backlog.set(counts.getT1());
+              this.exhausted.set(counts.getT2());
+              this.oldestAgeSeconds.set(counts.getT3());
+            }).then());
   }
 }

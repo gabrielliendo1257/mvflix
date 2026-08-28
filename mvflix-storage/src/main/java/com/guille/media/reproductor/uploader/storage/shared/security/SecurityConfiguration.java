@@ -139,6 +139,8 @@ public class SecurityConfiguration {
                     .authenticated()
                     .pathMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
+                    .pathMatchers("/admin/outbox/**")
+                    .hasRole("ADMIN")
                     .anyExchange()
                     .denyAll())
         .oauth2ResourceServer(

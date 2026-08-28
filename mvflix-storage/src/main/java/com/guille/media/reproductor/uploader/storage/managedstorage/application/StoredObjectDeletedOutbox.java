@@ -16,4 +16,10 @@ public interface StoredObjectDeletedOutbox {
   Mono<Void> markFailed(UUID eventId, String error, Duration retryDelay);
 
   Mono<Long> pendingCount(int maxAttempts);
+
+  Mono<Long> exhaustedCount(int maxAttempts);
+
+  Mono<Long> oldestPendingAgeSeconds();
+
+  Mono<Void> reactivateExhausted(int maxAttempts);
 }
