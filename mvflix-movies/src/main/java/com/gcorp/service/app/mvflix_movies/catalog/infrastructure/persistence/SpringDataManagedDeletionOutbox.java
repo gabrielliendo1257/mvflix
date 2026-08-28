@@ -67,4 +67,22 @@ public class SpringDataManagedDeletionOutbox implements ManagedDeletionOutbox {
                 .rowsUpdated()
                 .then();
     }
+
+    @Override
+    public Mono<Void> reactivateExhausted(String movieId, int maxAttempts) {
+        return this.databaseClient
+                .sql("""
+                        UPDATE outbox_events
+                        SET attempts = 0, next_attempt_at = NOW(), locked_until = NULL, last_error = NULL
+                        WHERE event_type = 'ManagedMediaDeletionRequested'
+                          AND aggregate_id = :aggregate_id
+                          AND published_at IS NULL
+                          AND attempts >= :max_attempts
+                        """)
+                .bind("aggregate_id", movieId)
+                .bind("max_attempts", maxAttempts)
+                .fetch()
+                .rowsUpdated()
+                .then();
+    }
 }

@@ -6,4 +6,6 @@ import reactor.core.publisher.Mono;
 public interface ManagedDeletionOutbox {
 
     Mono<Void> append(ManagedMediaDeletionRequested event);
+
+    Mono<Void> reactivateExhausted(String movieId, int maxAttempts);
 }
