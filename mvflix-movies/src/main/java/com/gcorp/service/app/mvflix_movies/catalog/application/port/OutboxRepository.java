@@ -16,4 +16,8 @@ public interface OutboxRepository {
     Mono<Void> markFailed(UUID eventId, String error, Duration retryDelay);
 
     Mono<Long> pendingCount(int maxAttempts);
+
+    Mono<Long> exhaustedCount(int maxAttempts);
+
+    Mono<Long> oldestPendingAgeSeconds();
 }

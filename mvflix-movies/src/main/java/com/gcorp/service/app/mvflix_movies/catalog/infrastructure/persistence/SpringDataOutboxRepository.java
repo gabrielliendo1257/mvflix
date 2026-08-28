@@ -102,4 +102,23 @@ public class SpringDataOutboxRepository implements OutboxRepository {
                 .map((row, metadata) -> row.get("n", Long.class))
                 .one();
     }
+
+    @Override
+    public Mono<Long> exhaustedCount(int maxAttempts) {
+        return this.databaseClient
+                .sql("SELECT COUNT(*) AS n FROM outbox_events "
+                        + "WHERE published_at IS NULL AND attempts >= :max_attempts")
+                .bind("max_attempts", maxAttempts)
+                .map((row, metadata) -> row.get("n", Long.class))
+                .one();
+    }
+
+    @Override
+    public Mono<Long> oldestPendingAgeSeconds() {
+        return this.databaseClient
+                .sql("SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at))), 0)::bigint AS age "
+                        + "FROM outbox_events WHERE published_at IS NULL")
+                .map((row, metadata) -> row.get("age", Long.class))
+                .one();
+    }
 }

@@ -37,6 +37,8 @@ class OutboxPublisherJobTest {
         when(this.publisher.publish(message)).thenReturn(Mono.empty());
         when(this.outboxRepository.markPublished(message.eventId())).thenReturn(Mono.empty());
         when(this.outboxRepository.pendingCount(10)).thenReturn(Mono.just(3L));
+        when(this.outboxRepository.exhaustedCount(10)).thenReturn(Mono.just(2L));
+        when(this.outboxRepository.oldestPendingAgeSeconds()).thenReturn(Mono.just(17L));
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
 
         new OutboxPublisherJob(this.outboxRepository, this.publisher, registry,
@@ -46,6 +48,9 @@ class OutboxPublisherJobTest {
         verify(this.publisher).publish(message);
         verify(this.outboxRepository).markPublished(message.eventId());
         assertThat(registry.get("movies.outbox.backlog").gauge().value()).isEqualTo(3.0);
+        assertThat(registry.get("mvflix_outbox_pending").gauge().value()).isEqualTo(3.0);
+        assertThat(registry.get("mvflix_outbox_exhausted").gauge().value()).isEqualTo(2.0);
+        assertThat(registry.get("mvflix_outbox_oldest_age_seconds").gauge().value()).isEqualTo(17.0);
         assertThat(registry.get("movies.outbox.published").counter().count()).isEqualTo(1.0);
     }
 
@@ -59,6 +64,8 @@ class OutboxPublisherJobTest {
         when(this.outboxRepository.markFailed(message.eventId(), "Kafka down", Duration.ofMinutes(1)))
                 .thenReturn(Mono.empty());
         when(this.outboxRepository.pendingCount(10)).thenReturn(Mono.just(1L));
+        when(this.outboxRepository.exhaustedCount(10)).thenReturn(Mono.just(0L));
+        when(this.outboxRepository.oldestPendingAgeSeconds()).thenReturn(Mono.just(5L));
         SimpleMeterRegistry registry = new SimpleMeterRegistry();
 
         new OutboxPublisherJob(this.outboxRepository, this.publisher, registry,

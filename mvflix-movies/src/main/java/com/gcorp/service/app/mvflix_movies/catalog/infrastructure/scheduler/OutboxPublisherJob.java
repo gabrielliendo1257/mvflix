@@ -33,6 +33,8 @@ public class OutboxPublisherJob {
     private final Duration retryDelay;
     private final Duration lease;
     private final AtomicLong backlog = new AtomicLong();
+    private final AtomicLong exhausted = new AtomicLong();
+    private final AtomicLong oldestAgeSeconds = new AtomicLong();
     private final Counter published;
     private final Counter failed;
 
@@ -53,6 +55,9 @@ public class OutboxPublisherJob {
         this.retryDelay = retryDelay;
         this.lease = lease;
         meterRegistry.gauge("movies.outbox.backlog", this.backlog);
+        meterRegistry.gauge("mvflix_outbox_pending", this.backlog);
+        meterRegistry.gauge("mvflix_outbox_exhausted", this.exhausted);
+        meterRegistry.gauge("mvflix_outbox_oldest_age_seconds", this.oldestAgeSeconds);
         this.published = meterRegistry.counter("movies.outbox.published");
         this.failed = meterRegistry.counter("movies.outbox.failed");
     }
@@ -86,8 +91,15 @@ public class OutboxPublisherJob {
     }
 
     private Mono<Void> refreshBacklog() {
-        return this.outboxRepository.pendingCount(this.maxAttempts)
-                .doOnNext(this.backlog::set)
+        return Mono.zip(
+                        this.outboxRepository.pendingCount(this.maxAttempts),
+                        this.outboxRepository.exhaustedCount(this.maxAttempts),
+                        this.outboxRepository.oldestPendingAgeSeconds())
+                .doOnNext(counts -> {
+                    this.backlog.set(counts.getT1());
+                    this.exhausted.set(counts.getT2());
+                    this.oldestAgeSeconds.set(counts.getT3());
+                })
                 .then();
     }
 }
