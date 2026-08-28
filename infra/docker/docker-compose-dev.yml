@@ -80,10 +80,10 @@ services:
     container_name: kafka
     restart: unless-stopped
 
-    # Solo el listener para clientes del host se publica en loopback. El
-    # listener interno y el de controller no se exponen a la LAN.
+    # El listener externo debe ser accesible desde Termux u otros clientes de
+    # la LAN. El listener interno y el de controller no se exponen a la LAN.
     ports:
-      - "127.0.0.1:${KAFKA_EXTERNAL_PORT:-9094}:9094"
+      - "0.0.0.0:${KAFKA_EXTERNAL_PORT:-9094}:9094"
 
     environment:
       KAFKA_KRAFT_CLUSTER_ID: ${KAFKA_KRAFT_CLUSTER_ID:-abcdefghijklmnopqrstuv}
@@ -92,7 +92,7 @@ services:
       KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
       KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
       KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
-      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://127.0.0.1:9094
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://${KAFKA_ADVERTISED_HOST:-127.0.0.1}:${KAFKA_EXTERNAL_PORT:-9094}
       KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
       KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
@@ -125,13 +125,89 @@ services:
         condition: service_healthy
     entrypoint: >
       /bin/bash -ec "
-      kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
-      --topic mvflix.managed-media-deletion-requested.v1
-      --partitions ${KAFKA_NUM_PARTITIONS:-1} --replication-factor 1
-      --config retention.ms=${KAFKA_LOG_RETENTION_MS:-604800000}
-      --config retention.bytes=${KAFKA_LOG_RETENTION_BYTES:-1073741824};
-      exit 0;
-      "
+       for topic in \
+         mvflix.managed-media-deletion-requested.v1 \
+         mvflix.managed-media-deletion-requested.v1.retry-0 \
+         mvflix.managed-media-deletion-requested.v1.retry-1 \
+         mvflix.managed-media-deletion-requested.v1.retry-2 \
+         mvflix.managed-media-deletion-requested.v1.DLT \
+         mvflix.stored-object-deleted.v1 \
+         mvflix.stored-object-deleted.v1.retry-0 \
+         mvflix.stored-object-deleted.v1.retry-1 \
+         mvflix.stored-object-deleted.v1.retry-2 \
+         mvflix.stored-object-deleted.v1.DLT; do
+         kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+         --topic $$topic --partitions ${KAFKA_NUM_PARTITIONS:-1} --replication-factor 1
+         --config retention.ms=${KAFKA_LOG_RETENTION_MS:-604800000}
+         --config retention.bytes=${KAFKA_LOG_RETENTION_BYTES:-1073741824};
+       done;
+       exit 0;
+       "
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --config.expand-env=true
+      - --storage.tsdb.path=/prometheus
+    environment:
+      ACTUATOR_METRICS_USER: ${ACTUATOR_METRICS_USER:-metrics}
+      ACTUATOR_METRICS_PASSWORD: ${ACTUATOR_METRICS_PASSWORD:-change-me}
+    ports:
+      - "${PROMETHEUS_BIND_ADDRESS:-127.0.0.1}:${PROMETHEUS_PORT:-9095}:9090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    depends_on:
+      otel-collector:
+        condition: service_started
+
+  tempo:
+    image: grafana/tempo:2.8.2
+    container_name: tempo
+    restart: unless-stopped
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    ports:
+      - "127.0.0.1:3200:3200"
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo_data:/var/tempo
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.133.0
+    container_name: otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yml"]
+    ports:
+      - "${OTEL_BIND_ADDRESS:-0.0.0.0}:${OTEL_HTTP_PORT:-4318}:4318"
+    volumes:
+      - ./observability/otel-collector.yml:/etc/otelcol-contrib/config.yml:ro
+    depends_on:
+      tempo:
+        condition: service_started
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "${GRAFANA_BIND_ADDRESS:-0.0.0.0}:${GRAFANA_PORT:-3000}:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      prometheus:
+        condition: service_started
+      tempo:
+        condition: service_started
 
 volumes:
   minio_data:
@@ -139,4 +215,10 @@ volumes:
   pg_volume:
     driver: local
   kafka_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  tempo_data:
     driver: local

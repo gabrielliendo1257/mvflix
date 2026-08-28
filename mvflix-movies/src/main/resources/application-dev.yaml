@@ -1,11 +1,26 @@
 server:
   port: 4040
 
+management:
+  server:
+    address: ${MANAGEMENT_SERVER_ADDRESS:0.0.0.0}
+    port: ${MANAGEMENT_SERVER_PORT:10040}
+
 spring:
   application:
     name: mvflix-movies
+  security:
+    user:
+      name: ${ACTUATOR_METRICS_USER:metrics}
+      password: ${ACTUATOR_METRICS_PASSWORD:change-me}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9094}
+    consumer:
+      group-id: ${MOVIES_KAFKA_GROUP:mvflix-movies}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
   codec:
     max-in-memory-size: 32MB
@@ -25,6 +40,11 @@ services:
     url: ${AUTHORIZATION_URL:http://127.0.0.1:9090}
   storage:
     url: ${SERVICES_STORAGE_URL:http://127.0.0.1:6060}
+
+mvflix:
+  messaging:
+    kafka:
+      enabled: true
 
 movies:
   draft:

@@ -3,6 +3,9 @@ spring:
     name: authorization-service
 
   security:
+    user:
+      name: ${ACTUATOR_METRICS_USER:metrics}
+      password: ${ACTUATOR_METRICS_PASSWORD:change-me}
     oauth2:
       authorizationserver:
         # Issuer fijo del auth: los JWT (login real y dev-token) llevan este iss y los
@@ -54,3 +57,8 @@ authorization:
 server:
   address: 0.0.0.0
   port: 9090
+
+management:
+  server:
+    address: ${MANAGEMENT_SERVER_ADDRESS:0.0.0.0}
+    port: ${MANAGEMENT_SERVER_PORT:10090}

@@ -5,6 +5,9 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.event
 
 import lombok.extern.slf4j.Slf4j;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
@@ -20,8 +23,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class UploadEventSubscribers {
 
+  private final Counter completed;
+  private final Counter failed;
+  private final Counter bytes;
+
+  public UploadEventSubscribers(MeterRegistry meterRegistry) {
+    this.completed = meterRegistry.counter("mvflix_upload_completed_total", "service", "storage");
+    this.failed = meterRegistry.counter("mvflix_upload_failed_total", "service", "storage");
+    this.bytes = meterRegistry.counter("mvflix_upload_bytes_total", "service", "storage");
+  }
+
   @EventListener
   void onUploadCompleted(UploadCompletedEvent event) {
+    this.completed.increment();
+    this.bytes.increment(event.contentLength());
     log.info(
         "Upload completed: subject={}, objectKey={}, size={}",
         event.ownerUsername(),
@@ -31,6 +46,7 @@ public class UploadEventSubscribers {
 
   @EventListener
   void onUploadFailed(UploadFailedEvent event) {
+    this.failed.increment();
     log.warn(
         "Upload failed, user notified via status: subject={}, objectKey={}, reason={}",
         event.ownerUsername(),

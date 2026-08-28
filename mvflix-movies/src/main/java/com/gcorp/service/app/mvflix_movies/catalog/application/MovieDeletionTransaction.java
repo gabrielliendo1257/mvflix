@@ -15,6 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import reactor.core.publisher.Mono;
 
+import java.util.Objects;
+
 /**
  * Colaborador transaccional del borrado durable de media MANAGED.
  *
@@ -39,15 +41,27 @@ public class MovieDeletionTransaction {
     /** CAS READY → DELETING; vacío si la media no estaba READY. */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
     public Mono<Movie> requestDeletion(MovieId id) {
+        return this.requestDeletion(id, true);
+    }
+
+    /** CAS READY → DELETING para el coordinador HTTP, sin crear trabajo Kafka. */
+    @Transactional(transactionManager = "connectionFactoryTransactionManager")
+    public Mono<Movie> requestDeletionWithoutOutbox(MovieId id) {
+        return this.requestDeletion(id, false);
+    }
+
+    private Mono<Movie> requestDeletion(MovieId id, boolean publishToKafka) {
         return this.movieRepository.markDeleting(id)
                 .flatMap(movie -> this.mediaRepository.findByMovieId(id)
                         .switchIfEmpty(Mono.error(new IllegalStateException(
                                 "Managed deletion requires media for movie=" + id.value())))
-                        .flatMap(media -> this.managedDeletionOutbox
-                                .append(ManagedMediaDeletionRequested.create(
-                                        id.value(), media.getObjectId(), movie.getOwnerUsername(),
-                                        media.getObjectKey()))
-                                .thenReturn(movie)));
+                        .flatMap(media -> publishToKafka
+                                ? this.managedDeletionOutbox
+                                        .append(ManagedMediaDeletionRequested.create(
+                                                id.value(), media.getObjectId(), movie.getOwnerUsername(),
+                                                media.getObjectKey()))
+                                        .thenReturn(movie)
+                                : Mono.just(movie)));
     }
 
     /** Desvincula assets LOCALES y borra la media DELETING (cascada media/shares). */
@@ -55,6 +69,31 @@ public class MovieDeletionTransaction {
     public Mono<Void> finalizeDeletion(MovieId id) {
         return this.libraryAssetLinks.unlinkByMovieId(id)
                 .then(this.movieRepository.deleteIfDeleting(id))
+                .then();
+    }
+
+    /** Finaliza una solicitud de Storage; repetirla es un no-op si la fila ya no existe. */
+    @Transactional(transactionManager = "connectionFactoryTransactionManager")
+    public Mono<Void> finalizeManagedDeletion(MovieId movieId, long storageId) {
+        return this.movieRepository.findById(movieId)
+                .flatMap(movie -> {
+                    if (!movie.isDeleting()) {
+                        return Mono.error(new IllegalStateException(
+                                "Cannot finalize movie=" + movieId.value()
+                                        + ": status=" + movie.getStatus()));
+                    }
+                    if (!Objects.equals(movie.getObjectId(), storageId)) {
+                        return Mono.error(new IllegalStateException(
+                                "Cannot finalize movie=" + movieId.value()
+                                        + ": storageId mismatch"));
+                    }
+                    return this.libraryAssetLinks.unlinkByMovieId(movieId)
+                            .then(this.movieRepository.deleteIfDeletingAndStorageId(movieId, storageId))
+                            .flatMap(deleted -> deleted
+                                    ? Mono.empty()
+                                    : Mono.error(new IllegalStateException(
+                                            "Movie changed while finalizing movie=" + movieId.value())));
+                })
                 .then();
     }
 

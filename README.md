@@ -47,7 +47,9 @@ make up-dev
 
 Levanta postgres (crea `mvflix_users_db`, `mvflix_uploads_db`, `mvflix_authorized_db`, ...)
 y MinIO con el bucket raiz y el webhook hacia el storage en `:6060`.
-Requiere `infra/docker/.env` (gitignored; hay una copia con valores dev).
+Requiere `infra/docker/.env` (gitignored; hay una copia con valores dev). Para
+clientes Java ejecutándose fuera de Docker, como Termux, configura
+`KAFKA_ADVERTISED_HOST` y `KAFKA_BOOTSTRAP_SERVERS` con la IP LAN del host.
 
 ### 2. Aplicaciones (una terminal por servicio, en este orden)
 

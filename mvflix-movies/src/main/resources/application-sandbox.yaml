@@ -8,6 +8,11 @@ spring:
   application:
     name: mvflix-movies
 
+mvflix:
+  messaging:
+    kafka:
+      enabled: false
+
   codec:
     max-in-memory-size: 32MB
 

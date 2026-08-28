@@ -226,6 +226,24 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
+    public Mono<Boolean> deleteIfDeletingAndStorageId(MovieId id, long storageId) {
+        return this.databaseClient
+                .sql("""
+                        DELETE FROM movies m
+                        WHERE m.id = :id
+                          AND m.status = 'DELETING'
+                          AND EXISTS (
+                              SELECT 1 FROM media
+                              WHERE media.movie_id = m.id AND media.object_id = :storageId)
+                        """)
+                .bind("id", id.value())
+                .bind("storageId", storageId)
+                .fetch()
+                .rowsUpdated()
+                .map(rows -> rows > 0);
+    }
+
+    @Override
     public Flux<Movie> findDeleting(int limit) {
         return this.databaseClient
                 .sql(

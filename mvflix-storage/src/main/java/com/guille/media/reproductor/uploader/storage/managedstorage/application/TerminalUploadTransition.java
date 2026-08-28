@@ -11,6 +11,8 @@ import org.springframework.transaction.reactive.TransactionalOperator;
 
 import reactor.core.publisher.Mono;
 
+import java.util.function.Function;
+
 /**
  * Colaboración terminal del ciclo de vida: transición CAS de estado +
  * liberación de cuota reservada, atómicas en una única transacción local.
@@ -44,6 +46,13 @@ public class TerminalUploadTransition {
    */
   public Mono<StoreObject> transitionAndRelease(
       StoreObject object, StorageSessionStatus expectedStatus) {
+    return this.transitionAndRelease(object, expectedStatus, ignored -> Mono.empty());
+  }
+
+  public Mono<StoreObject> transitionAndRelease(
+      StoreObject object,
+      StorageSessionStatus expectedStatus,
+      Function<StoreObject, Mono<Void>> afterRelease) {
     return this.transactionalOperator.transactional(
         this.storageRepository
             .updateStatus(object, expectedStatus)
@@ -60,6 +69,7 @@ public class TerminalUploadTransition {
                                 + updated.getOwnerUsername()
                                 + " (account row missing): uploadId="
                                 + updated.getStorageId())))
-                        .thenReturn(updated)));
+                         .then(afterRelease.apply(updated))
+                         .thenReturn(updated)));
   }
 }

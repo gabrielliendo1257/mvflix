@@ -60,6 +60,9 @@ public interface MovieRepository {
      */
     Mono<Boolean> deleteIfDeleting(MovieId id);
 
+    /** Elimina una película DELETING solo si el evento referencia su objeto MANAGED. */
+    Mono<Boolean> deleteIfDeletingAndStorageId(MovieId id, long storageId);
+
     /** Películas en borrado durable (para el scheduler de finalización), limitado. */
     Flux<Movie> findDeleting(int limit);
 

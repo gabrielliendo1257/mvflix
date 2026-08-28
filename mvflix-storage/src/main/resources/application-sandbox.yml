@@ -9,6 +9,17 @@ spring:
     url: jdbc:postgresql://localhost:5432/mvflix_uploads_db
     username: db_migrator
     password: 12345678
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: ${STORAGE_KAFKA_GROUP:mvflix-storage}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 minio:
   url: ${MINIO_URL:http://localhost:9000}

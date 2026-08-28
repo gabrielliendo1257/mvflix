@@ -358,6 +358,11 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
+    public Mono<Boolean> deleteIfDeletingAndStorageId(MovieId id, long storageId) {
+      return unexpectedMono("deleteIfDeletingAndStorageId");
+    }
+
+    @Override
     public Flux<Movie> findDeleting(int limit) {
       return unexpectedFlux("findDeleting");
     }

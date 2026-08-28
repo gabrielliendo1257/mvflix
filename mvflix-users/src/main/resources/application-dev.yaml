@@ -16,6 +16,9 @@ spring:
     enabled: true
 
   security:
+    user:
+      name: ${ACTUATOR_METRICS_USER:metrics}
+      password: ${ACTUATOR_METRICS_PASSWORD:change-me}
     oauth2:
       resourceserver:
         jwt:
@@ -28,3 +31,8 @@ services:
 
 server:
   port: 8080
+
+management:
+  server:
+    address: ${MANAGEMENT_SERVER_ADDRESS:0.0.0.0}
+    port: ${MANAGEMENT_SERVER_PORT:10080}

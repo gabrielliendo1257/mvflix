@@ -11,6 +11,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
@@ -30,6 +31,8 @@ public class DeleteMovieUseCase {
     private final UserProvider userProvider;
     private final MovieDeletionTransaction deletionTransaction;
     private final ManagedMediaDeletionCoordinator deletionCoordinator;
+    @Value("${mvflix.messaging.kafka.enabled:false}")
+    private boolean kafkaEnabled;
 
     public Mono<DeletionOutcome> execute(MovieId id) {
         return this.userProvider.getAuthenticatedUser()
@@ -42,7 +45,9 @@ public class DeleteMovieUseCase {
 
     private Mono<DeletionOutcome> deleteOwnedMovie(MovieId id, Movie movie) {
         if (movie.getStatus() == MovieStatus.DELETING) {
-            return this.coordinate(id);
+            return this.kafkaEnabled
+                    ? Mono.just(new DeletionOutcome.Pending())
+                    : this.coordinate(id);
         }
 
         return this.mediaRepository.findByMovieId(id)
@@ -53,10 +58,14 @@ public class DeleteMovieUseCase {
     }
 
     private Mono<DeletionOutcome> beginManagedDeletion(MovieId id) {
-        return this.deletionTransaction.requestDeletion(id)
+        return (this.kafkaEnabled
+                        ? this.deletionTransaction.requestDeletion(id)
+                        : this.deletionTransaction.requestDeletionWithoutOutbox(id))
                 // Empty CAS means another instance won, or the movie was
                 // already removed; process() is safe in either case.
-                .then(this.coordinate(id));
+                .then(this.kafkaEnabled
+                        ? Mono.just(new DeletionOutcome.Pending())
+                        : this.coordinate(id));
     }
 
     private Mono<DeletionOutcome> coordinate(MovieId id) {

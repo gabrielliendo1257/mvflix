@@ -26,6 +26,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -100,14 +101,15 @@ class DeleteMovieUseCaseTest {
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
         when(this.mediaRepository.findByMovieId(MovieId.of(1L)))
                 .thenReturn(Mono.just(new Media(MediaId.of(9L), MovieId.of(1L), 77L, "k", Instant.now())));
-        when(this.deletionTransaction.requestDeletion(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.deletionTransaction.requestDeletionWithoutOutbox(MovieId.of(1L)))
+                .thenReturn(Mono.just(movie));
         when(this.deletionCoordinator.process(MovieId.of(1L))).thenReturn(Mono.empty());
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
                 .expectNext(new DeletionOutcome.Completed())
                 .verifyComplete();
 
-        verify(this.deletionTransaction).requestDeletion(MovieId.of(1L));
+        verify(this.deletionTransaction).requestDeletionWithoutOutbox(MovieId.of(1L));
         verify(this.deletionCoordinator).process(MovieId.of(1L));
     }
 
@@ -119,12 +121,32 @@ class DeleteMovieUseCaseTest {
         when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
         when(this.mediaRepository.findByMovieId(MovieId.of(1L)))
                 .thenReturn(Mono.just(new Media(MediaId.of(9L), MovieId.of(1L), 77L, "k", Instant.now())));
-        when(this.deletionTransaction.requestDeletion(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.deletionTransaction.requestDeletionWithoutOutbox(MovieId.of(1L)))
+                .thenReturn(Mono.just(movie));
         when(this.deletionCoordinator.process(MovieId.of(1L))).thenReturn(Mono.error(
                 new ManagedObjectDeletionUnavailableException("unavailable", null)));
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
                 .expectNext(new DeletionOutcome.Pending())
                 .verifyComplete();
+    }
+
+    @Test
+    void kafkaEnabledUsesOutboxWithoutCallingHttpCoordinator() {
+        Movie movie = movie(1L, "Javier");
+        ReflectionTestUtils.setField(this.useCase, "kafkaEnabled", true);
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.mediaRepository.findByMovieId(MovieId.of(1L)))
+                .thenReturn(Mono.just(new Media(MediaId.of(9L), MovieId.of(1L), 77L, "k", Instant.now())));
+        when(this.deletionTransaction.requestDeletion(MovieId.of(1L))).thenReturn(Mono.just(movie));
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
+                .expectNext(new DeletionOutcome.Pending())
+                .verifyComplete();
+
+        verify(this.deletionTransaction).requestDeletion(MovieId.of(1L));
+        verify(this.deletionCoordinator, never()).process(any());
     }
 }

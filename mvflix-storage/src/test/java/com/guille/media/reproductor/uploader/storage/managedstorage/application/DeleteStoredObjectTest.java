@@ -98,6 +98,30 @@ class DeleteStoredObjectTest {
   }
 
   @Test
+  void alreadyDeletedStillRunsCompletionCallback() {
+    StoreObject object = completed(7L);
+    object.markDeleted();
+    java.util.concurrent.atomic.AtomicReference<DeleteStoredObject.DeletionResult> result =
+        new java.util.concurrent.atomic.AtomicReference<>();
+
+    when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
+    when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
+
+    StepVerifier.create(this.useCase.execute(
+            new DeleteStoredObjectCommand(7L), "pepe", "k7", deletion -> {
+              result.set(deletion);
+              return Mono.empty();
+            }))
+        .expectNextMatches(deletion -> deletion.releasedBytes() == 0
+            && "ALREADY_ABSENT".equals(deletion.deletionStatus()))
+        .verifyComplete();
+
+    assertThat(result.get().deletionStatus()).isEqualTo("ALREADY_ABSENT");
+    verifyNoInteractions(this.objectStoragePort);
+    verifyNoInteractions(this.terminalTransition);
+  }
+
+  @Test
   void s3DownFailsFastWithoutTouchingDb() {
     StoreObject object = completed(7L);
 

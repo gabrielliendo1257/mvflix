@@ -187,6 +187,40 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void managedDeletionDoesNotUnlinkAssetsWhenStorageIdDoesNotMatch() {
+        Long movie = this.insertMovie("DELETING");
+        this.insertMedia(movie, 1L, "pepe/videos/dune.mp4");
+        this.insertAsset(movie, "Movies/dune.mkv");
+
+        StepVerifier.create(this.transaction.finalizeManagedDeletion(MovieId.of(movie), 999L))
+                .expectError(IllegalStateException.class)
+                .verify();
+
+        StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
+        StepVerifier.create(this.count("media_assets", movie)).expectNext(1L).verifyComplete();
+    }
+
+    @Test
+    void managedDeletionDoesNotUnlinkAssetsWhenMovieIsNotDeleting() {
+        Long movie = this.insertMovie("READY");
+        this.insertMedia(movie, 1L, "pepe/videos/dune.mp4");
+        this.insertAsset(movie, "Movies/dune.mkv");
+
+        StepVerifier.create(this.transaction.finalizeManagedDeletion(MovieId.of(movie), 1L))
+                .expectError(IllegalStateException.class)
+                .verify();
+
+        StepVerifier.create(this.status(movie)).expectNext("READY").verifyComplete();
+        StepVerifier.create(this.count("media_assets", movie)).expectNext(1L).verifyComplete();
+    }
+
+    @Test
+    void managedDeletionOfAbsentMovieIsIdempotent() {
+        StepVerifier.create(this.transaction.finalizeManagedDeletion(MovieId.of(999999L), 1L))
+                .verifyComplete();
+    }
+
+    @Test
     void completeMovieCannotReviveDeletingMovie() {
         Long movie = this.insertMovie("READY");
         this.insertMedia(movie, 3L, "pepe/videos/complete.mp4");

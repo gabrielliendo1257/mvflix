@@ -73,6 +73,10 @@ La outbox debe contener como mínimo:
 - `occurred_at` y, si aplica, `causation_id`/`correlation_id`;
 - payload versionado.
 
+En Kafka, estos campos se transportan dentro del envelope JSON como
+`eventId`, `eventType`, `eventVersion`, `aggregate` y los demás campos del
+contrato AsyncAPI. No se exige duplicarlos como headers Kafka.
+
 El estado durable `DELETING` y su scheduler siguen siendo una estrategia válida
 para el borrado de media. Una futura publicación de eventos puede complementar
 o reemplazar el disparo, pero no elimina la obligación de que el proceso sea

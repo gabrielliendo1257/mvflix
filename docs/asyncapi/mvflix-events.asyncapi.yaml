@@ -5,7 +5,8 @@ info:
   description: |
     Contratos internos versionados para la integración asíncrona de Mvflix.
     Kafka entrega estos mensajes at-least-once: los consumidores deben
-    deduplicar por eventId y aplicar efectos idempotentes.
+    deduplicar por eventId y aplicar efectos idempotentes. La metadata del evento
+    forma parte del envelope JSON; no se duplica en headers Kafka.
   contact:
     name: Mvflix Architecture
 
@@ -15,7 +16,7 @@ servers:
   development:
     url: localhost:9094
     protocol: kafka
-    description: Kafka KRaft single-node de desarrollo, publicado solo en loopback.
+    description: Kafka KRaft single-node de desarrollo, publicado en el host LAN configurado.
 
 channels:
   mvflix.managed-media-deletion-requested.v1:
@@ -57,8 +58,6 @@ components:
       title: Managed media deletion requested
       summary: Movies solicita borrar un objeto propiedad de Storage.
       contentType: application/json
-      headers:
-        $ref: '#/components/schemas/EventHeaders'
       payload:
         $ref: '#/components/schemas/ManagedMediaDeletionRequestedEnvelope'
       bindings:
@@ -72,8 +71,6 @@ components:
       title: Stored object deleted
       summary: Storage confirma la eliminación física y liberación de cuota.
       contentType: application/json
-      headers:
-        $ref: '#/components/schemas/EventHeaders'
       payload:
         $ref: '#/components/schemas/StoredObjectDeletedEnvelope'
       bindings:
@@ -83,27 +80,6 @@ components:
             description: storageId serializado como string.
 
   schemas:
-    EventHeaders:
-      type: object
-      additionalProperties: false
-      properties:
-        event_id:
-          type: string
-          format: uuid
-        event_type:
-          type: string
-          example: ManagedMediaDeletionRequested
-        event_version:
-          type: string
-          enum: ['1']
-        correlation_id:
-          type: string
-          format: uuid
-      required:
-        - event_id
-        - event_type
-        - event_version
-
     EventEnvelope:
       type: object
       additionalProperties: false
@@ -244,6 +220,10 @@ components:
       type: object
       additionalProperties: false
       properties:
+        movieId:
+          type: integer
+          format: int64
+          description: Identificador del catálogo en Movies.
         storageId:
           type: integer
           format: int64
@@ -261,5 +241,6 @@ components:
           type: string
           enum: [DELETED, ALREADY_ABSENT]
       required:
+        - movieId
         - storageId
         - deletionStatus

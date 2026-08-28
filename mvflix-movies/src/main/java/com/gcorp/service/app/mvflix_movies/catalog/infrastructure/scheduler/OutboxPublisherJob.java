@@ -5,11 +5,12 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.port.OutboxReposi
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 /** Poller de infraestructura: reclama, publica y confirma mensajes de outbox. */
 @Slf4j
 @Component
-@Profile("!sandbox")
+@ConditionalOnProperty(name = "mvflix.messaging.kafka.enabled", havingValue = "true")
 public class OutboxPublisherJob {
 
     private final OutboxRepository outboxRepository;

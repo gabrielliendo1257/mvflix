@@ -1,6 +1,11 @@
 server:
   port: 6060
 
+management:
+  server:
+    address: ${MANAGEMENT_SERVER_ADDRESS:0.0.0.0}
+    port: ${MANAGEMENT_SERVER_PORT:10060}
+
 api:
   path:
     base: /api/v1/movie
@@ -8,6 +13,10 @@ api:
 spring:
   application:
     name: powercine
+  security:
+    user:
+      name: ${ACTUATOR_METRICS_USER:metrics}
+      password: ${ACTUATOR_METRICS_PASSWORD:change-me}
 
   autoconfigure:
     exclude:
@@ -23,6 +32,23 @@ spring:
     url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5432}/mvflix_uploads_db
     username: ${DB_MIGRATOR_USER:db_migrator}
     password: ${DB_MIGRATOR_PASSWORD:12345678}
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9094}
+    consumer:
+      group-id: ${STORAGE_KAFKA_GROUP:mvflix-storage}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+mvflix:
+  messaging:
+    kafka:
+      enabled: true
 
 services:
   authorization:
