@@ -36,5 +36,8 @@ public abstract class AbstractR2dbcIntegrationTest {
         registry.add("spring.r2dbc.url", () -> POSTGRES.getJdbcUrl().replace("jdbc:", "r2dbc:"));
         registry.add("spring.r2dbc.username", POSTGRES::getUsername);
         registry.add("spring.r2dbc.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
     }
 }
