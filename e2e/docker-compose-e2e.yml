@@ -1,0 +1,163 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "15432:5432"
+    volumes:
+      - ../infra/postgres/00-roles.sql:/docker-entrypoint-initdb.d/00-roles.sql:ro
+      - ../infra/postgres/01-databases.sql:/docker-entrypoint-initdb.d/01-databases.sql:ro
+      - ../infra/postgres/02-permissions.sql:/docker-entrypoint-initdb.d/02-permissions.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: bitnami/kafka:3.9.0
+    environment:
+      KAFKA_KRAFT_CLUSTER_ID: abcdefghijklmnopqrstuv
+      KAFKA_CFG_NODE_ID: 1
+      KAFKA_CFG_PROCESS_ROLES: controller,broker
+      KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_CFG_NUM_PARTITIONS: 1
+      KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      ALLOW_PLAINTEXT_LISTENER: yes
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+
+  kafka-init:
+    image: bitnami/kafka:3.9.0
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "-ec"]
+    command: |
+      for topic in \
+        mvflix.managed-media-deletion-requested.v1 \
+        mvflix.managed-media-deletion-requested.v1.retry-0 \
+        mvflix.managed-media-deletion-requested.v1.retry-1 \
+        mvflix.managed-media-deletion-requested.v1.retry-2 \
+        mvflix.managed-media-deletion-requested.v1.DLT \
+        mvflix.stored-object-deleted.v1 \
+        mvflix.stored-object-deleted.v1.retry-0 \
+        mvflix.stored-object-deleted.v1.retry-1 \
+        mvflix.stored-object-deleted.v1.retry-2 \
+        mvflix.stored-object-deleted.v1.DLT; do
+        kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$${topic}" --partitions 1 --replication-factor 1
+      done
+
+  minio:
+    image: minio/minio:latest
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin123
+    command: server /data --console-address :9001
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-ec"]
+    command: |
+      mc alias set e2e http://minio:9000 admin admin123
+      mc mb --ignore-existing e2e/uploads
+
+  jwks-stub:
+    image: wiremock/wiremock:3.9.1
+    ports:
+      - "18080:8080"
+    volumes:
+      - ./oidc-stub/mappings:/home/wiremock/mappings:ro
+      - ./oidc-stub/jwks:/home/wiremock/__files:ro
+
+  storage:
+    build:
+      context: ..
+      dockerfile: mvflix-storage/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SECURITY_OAUTH2_JWK_SET_URI: http://jwks-stub:8080/oauth2/jwks
+      AUTHORIZATION_URL: http://jwks-stub:8080
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: admin
+      MINIO_SECRET_KEY: admin123
+      STORAGE_KAFKA_GROUP: storage-e2e
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+    ports:
+      - "16060:6060"
+      - "11060:10060"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      jwks-stub:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:10060/actuator/health/readiness"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  movies:
+    build:
+      context: ..
+      dockerfile: mvflix-movies/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SECURITY_OAUTH2_JWK_SET_URI: http://jwks-stub:8080/oauth2/jwks
+      AUTHORIZATION_URL: http://jwks-stub:8080
+      SERVICES_STORAGE_URL: http://storage:6060
+      MOVIES_KAFKA_GROUP: movies-e2e
+      MANAGEMENT_SERVER_ADDRESS: 0.0.0.0
+    ports:
+      - "14040:4040"
+      - "11040:10040"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      storage:
+        condition: service_healthy
+      jwks-stub:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent http://localhost:10040/actuator/health/readiness"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
