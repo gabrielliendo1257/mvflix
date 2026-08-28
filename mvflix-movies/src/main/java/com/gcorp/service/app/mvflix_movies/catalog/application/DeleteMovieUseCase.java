@@ -46,7 +46,8 @@ public class DeleteMovieUseCase {
     private Mono<DeletionOutcome> deleteOwnedMovie(MovieId id, Movie movie) {
         if (movie.getStatus() == MovieStatus.DELETING) {
             return this.kafkaEnabled
-                    ? Mono.just(new DeletionOutcome.Pending())
+                    ? this.deletionTransaction.ensureDeletionRequested(id)
+                            .thenReturn(new DeletionOutcome.Pending())
                     : this.coordinate(id);
         }
 

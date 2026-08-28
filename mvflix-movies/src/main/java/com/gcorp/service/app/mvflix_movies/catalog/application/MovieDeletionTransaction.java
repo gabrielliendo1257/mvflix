@@ -104,4 +104,27 @@ public class MovieDeletionTransaction {
                 .then(this.movieRepository.deleteById(id))
                 .then();
     }
+
+    /**
+     * Garantiza que una película DELETING tenga una solicitud Kafka persistida.
+     * Es el puente de migración para películas iniciadas antes de habilitar Kafka.
+     */
+    @Transactional(transactionManager = "connectionFactoryTransactionManager")
+    public Mono<Void> ensureDeletionRequested(MovieId id) {
+        return this.movieRepository.findById(id)
+                .flatMap(movie -> {
+                    if (!movie.isDeleting()) {
+                        return Mono.error(new IllegalStateException(
+                                "Managed deletion requires DELETING movie=" + id.value()));
+                    }
+                    return this.mediaRepository.findByMovieId(id)
+                            .switchIfEmpty(Mono.error(new IllegalStateException(
+                                    "Managed deletion requires media for movie=" + id.value())))
+                            .flatMap(media -> this.managedDeletionOutbox.append(
+                                    ManagedMediaDeletionRequested.create(
+                                            id.value(), media.getObjectId(), movie.getOwnerUsername(),
+                                            media.getObjectKey())));
+                })
+                .then();
+    }
 }

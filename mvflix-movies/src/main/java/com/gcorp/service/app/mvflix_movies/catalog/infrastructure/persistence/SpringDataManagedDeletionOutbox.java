@@ -53,6 +53,8 @@ public class SpringDataManagedDeletionOutbox implements ManagedDeletionOutbox {
                             aggregate_id, occurred_at, payload)
                         VALUES (:event_id, :event_type, :event_version, :aggregate_type,
                                 :aggregate_id, :occurred_at, CAST(:payload AS jsonb))
+                        ON CONFLICT (event_type, aggregate_id)
+                        WHERE event_type = 'ManagedMediaDeletionRequested' DO NOTHING
                         """)
                 .bind("event_id", event.eventId())
                 .bind("event_type", "ManagedMediaDeletionRequested")

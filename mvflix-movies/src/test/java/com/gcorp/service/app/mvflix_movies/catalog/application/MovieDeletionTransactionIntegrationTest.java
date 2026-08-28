@@ -145,6 +145,19 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void ensureDeletionRequestedBackfillsLegacyDeletingMovieWithoutDuplicates() {
+        Long movie = this.insertMovie("DELETING");
+        this.insertMedia(movie, 2L, "pepe/videos/legacy.mp4");
+
+        StepVerifier.create(this.transaction.ensureDeletionRequested(MovieId.of(movie)))
+                .verifyComplete();
+        StepVerifier.create(this.transaction.ensureDeletionRequested(MovieId.of(movie)))
+                .verifyComplete();
+
+        StepVerifier.create(this.outboxCount(movie)).expectNext(1L).verifyComplete();
+    }
+
+    @Test
     void deleteIfDeletingDoesNotDeleteReadyMovie() {
         Long movie = this.insertMovie("READY");
 

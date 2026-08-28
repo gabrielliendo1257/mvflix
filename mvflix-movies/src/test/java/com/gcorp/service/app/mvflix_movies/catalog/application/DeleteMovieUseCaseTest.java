@@ -149,4 +149,24 @@ class DeleteMovieUseCaseTest {
         verify(this.deletionTransaction).requestDeletion(MovieId.of(1L));
         verify(this.deletionCoordinator, never()).process(any());
     }
+
+    @Test
+    void kafkaEnabledEnsuresOutboxForMovieAlreadyDeleting() {
+        Movie movie = new Movie(
+                MovieId.of(1L), "Javier", "Dune", MovieStatus.DELETING, EnrichmentStatus.ENRICHED,
+                77L, null, MovieVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
+        ReflectionTestUtils.setField(this.useCase, "kafkaEnabled", true);
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.deletionTransaction.ensureDeletionRequested(MovieId.of(1L)))
+                .thenReturn(Mono.empty());
+
+        StepVerifier.create(this.useCase.execute(MovieId.of(1L)))
+                .expectNext(new DeletionOutcome.Pending())
+                .verifyComplete();
+
+        verify(this.deletionTransaction).ensureDeletionRequested(MovieId.of(1L));
+        verify(this.deletionCoordinator, never()).process(any());
+    }
 }
