@@ -9,7 +9,6 @@ COPY mvflix-authorization/pom.xml mvflix-authorization/pom.xml
 COPY mvflix-storage/pom.xml mvflix-storage/pom.xml
 COPY mvflix-users/pom.xml mvflix-users/pom.xml
 COPY bff-mvflix-web/pom.xml bff-mvflix-web/pom.xml
-RUN ./mvnw -pl mvflix-storage -am dependency:go-offline -DskipTests
 COPY . .
 RUN ./mvnw -pl mvflix-storage -am package -DskipTests
 

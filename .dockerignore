@@ -34,3 +34,5 @@
 !bff-mvflix-web/pom.xml
 !bff-mvflix-web/src/
 !bff-mvflix-web/src/**
+
+**/target/
