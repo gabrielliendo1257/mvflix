@@ -29,6 +29,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        this.databaseClient.sql("DELETE FROM outbox_events").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM media").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM media_assets").fetch().rowsUpdated().block();
@@ -94,9 +95,18 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
                 .one();
     }
 
+    private Mono<Long> outboxCount(Long movieId) {
+        return this.databaseClient
+                .sql("SELECT COUNT(*) AS n FROM outbox_events WHERE aggregate_id = :id")
+                .bind("id", String.valueOf(movieId))
+                .map((row, metadata) -> row.get("n", Long.class))
+                .one();
+    }
+
     @Test
     void markDeletingCasReadyToDeleting() {
         Long movie = this.insertMovie("READY");
+        this.insertMedia(movie, 1L, "pepe/videos/mark.mp4");
 
         StepVerifier.create(this.transaction.requestDeletion(MovieId.of(movie)))
                 .assertNext(deleting ->
@@ -104,17 +114,34 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
                 .verifyComplete();
 
         StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
+        StepVerifier.create(this.outboxCount(movie)).expectNext(1L).verifyComplete();
+
+        StepVerifier.create(this.databaseClient
+                        .sql("SELECT event_type, event_version, payload->'payload'->>'storageId' AS storage_id "
+                                + "FROM outbox_events WHERE aggregate_id = :id")
+                        .bind("id", String.valueOf(movie))
+                        .map((row, metadata) -> java.util.List.of(
+                                row.get("event_type", String.class),
+                                String.valueOf(row.get("event_version", Integer.class)),
+                                row.get("storage_id", String.class)))
+                        .one())
+                .assertNext(event -> {
+                    assertThat(event).containsExactly("ManagedMediaDeletionRequested", "1", "1");
+                })
+                .verifyComplete();
     }
 
     @Test
     void secondRequestDoesNotDuplicateChanges() {
         Long movie = this.insertMovie("READY");
+        this.insertMedia(movie, 2L, "pepe/videos/second.mp4");
 
         this.transaction.requestDeletion(MovieId.of(movie)).block();
         StepVerifier.create(this.transaction.requestDeletion(MovieId.of(movie)))
                 .verifyComplete();
 
         StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
+        StepVerifier.create(this.outboxCount(movie)).expectNext(1L).verifyComplete();
     }
 
     @Test
@@ -162,6 +189,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
     @Test
     void completeMovieCannotReviveDeletingMovie() {
         Long movie = this.insertMovie("READY");
+        this.insertMedia(movie, 3L, "pepe/videos/complete.mp4");
         this.transaction.requestDeletion(MovieId.of(movie)).block();
 
         StepVerifier.create(
@@ -175,6 +203,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
     @Test
     void findDeletingReturnsOnlyDeletingMovies() {
         Long deleting = this.insertMovie("READY");
+        this.insertMedia(deleting, 4L, "pepe/videos/find.mp4");
         this.insertMovie("READY");
         this.insertMovie("DRAFT");
         this.transaction.requestDeletion(MovieId.of(deleting)).block();
