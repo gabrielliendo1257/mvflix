@@ -2,6 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import java.time.Duration;
 
 import java.time.Instant;
 import java.util.List;
@@ -65,6 +66,15 @@ public interface MovieRepository {
 
     /** Películas en borrado durable (para el scheduler de finalización), limitado. */
     Flux<Movie> findDeleting(int limit);
+
+    /** Selecciona borrados cuya ventana de recuperación ya expiró. */
+    default Flux<Movie> findDeletingForRecovery(int limit, Duration retryCooldown) {
+        return Flux.empty();
+    }
+
+    default Mono<Void> markRecoveryAttempt(MovieId id) {
+        return Mono.empty();
+    }
 
     /** Persiste la transición de proveedor ya decidida por el agregado. */
     Mono<Movie> updateEnrichment(Movie movie);

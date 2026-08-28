@@ -20,6 +20,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.util.Set;
+import java.time.Duration;
 
 class DeletionRecoveryJobTest {
 
@@ -32,11 +33,13 @@ class DeletionRecoveryJobTest {
         Movie movie = new Movie(MovieId.of(7L), "pepe", "Dune", MovieStatus.DELETING,
                 EnrichmentStatus.ENRICHED, null, (MovieMetadata) null, MovieVisibility.PRIVATE,
                 Set.of(), MediaKind.MOVIE);
-        when(movieRepository.findDeleting(25)).thenReturn(Flux.just(movie));
+        when(movieRepository.findDeletingForRecovery(25, Duration.ofMinutes(1))).thenReturn(Flux.just(movie));
+        when(movieRepository.markRecoveryAttempt(movie.getId())).thenReturn(Mono.empty());
         when(transaction.ensureDeletionRequested(movie.getId())).thenReturn(Mono.empty());
         when(outbox.reactivateExhausted("7", 10)).thenReturn(Mono.empty());
 
-        new DeletionRecoveryJob(movieRepository, transaction, outbox, 25, 10).recoverBatch().block();
+        new DeletionRecoveryJob(movieRepository, transaction, outbox, 25, 10, Duration.ofMinutes(1))
+                .recoverBatch().block();
 
         verify(transaction).ensureDeletionRequested(movie.getId());
         verify(outbox).reactivateExhausted("7", 10);

@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
+
 /** Recovers managed deletions that predate Kafka or exhausted delivery retries. */
 @Slf4j
 @Component
@@ -24,18 +26,21 @@ public class DeletionRecoveryJob {
     private final ManagedDeletionOutbox outbox;
     private final int batchSize;
     private final int maxAttempts;
+    private final Duration retryCooldown;
 
     public DeletionRecoveryJob(
             MovieRepository movieRepository,
             MovieDeletionTransaction deletionTransaction,
             ManagedDeletionOutbox outbox,
             @Value("${movies.deletion.recovery-batch-size:25}") int batchSize,
-            @Value("${movies.outbox.max-attempts:10}") int maxAttempts) {
+            @Value("${movies.outbox.max-attempts:10}") int maxAttempts,
+            @Value("${movies.deletion.recovery-cooldown:PT1M}") Duration retryCooldown) {
         this.movieRepository = movieRepository;
         this.deletionTransaction = deletionTransaction;
         this.outbox = outbox;
         this.batchSize = batchSize;
         this.maxAttempts = maxAttempts;
+        this.retryCooldown = retryCooldown;
     }
 
     @Scheduled(fixedDelayString = "${movies.deletion.recovery-interval:PT1M}")
@@ -46,8 +51,9 @@ public class DeletionRecoveryJob {
     }
 
     public Mono<Void> recoverBatch() {
-        return this.movieRepository.findDeleting(this.batchSize)
-                .flatMap(movie -> this.deletionTransaction.ensureDeletionRequested(movie.getId())
+        return this.movieRepository.findDeletingForRecovery(this.batchSize, this.retryCooldown)
+                .flatMap(movie -> this.movieRepository.markRecoveryAttempt(movie.getId())
+                        .then(this.deletionTransaction.ensureDeletionRequested(movie.getId()))
                         .then(this.outbox.reactivateExhausted(
                                 Long.toString(movie.getId().value()), this.maxAttempts))
                         .doOnError(error -> log.warn(

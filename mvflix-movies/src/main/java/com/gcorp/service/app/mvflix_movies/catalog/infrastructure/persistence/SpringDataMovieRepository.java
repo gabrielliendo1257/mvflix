@@ -13,6 +13,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.time.Instant;
+import java.time.Duration;
 import java.util.List;
 
 @Repository
@@ -258,6 +259,36 @@ public class SpringDataMovieRepository implements MovieRepository {
                 .map(this::toRow)
                 .all()
                 .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    public Flux<Movie> findDeletingForRecovery(int limit, Duration retryCooldown) {
+        return this.databaseClient
+                .sql(SELECT_MOVIE_COLUMNS
+                        + """
+                        FROM movies m
+                        WHERE m.status = 'DELETING'
+                          AND (m.last_recovery_attempt_at IS NULL
+                               OR m.last_recovery_attempt_at <= NOW() - make_interval(secs => :cooldown_seconds))
+                        ORDER BY m.last_recovery_attempt_at NULLS FIRST, m.id
+                        LIMIT :limit
+                        """)
+                .bind("cooldown_seconds", Math.max(1L, retryCooldown.toSeconds()))
+                .bind("limit", limit)
+                .map(this::toRow)
+                .all()
+                .map(this.rowMapper::toDomain);
+    }
+
+    @Override
+    public Mono<Void> markRecoveryAttempt(MovieId id) {
+        return this.databaseClient
+                .sql("UPDATE movies SET last_recovery_attempt_at = NOW() "
+                        + "WHERE id = :id AND status = 'DELETING'")
+                .bind("id", id.value())
+                .fetch()
+                .rowsUpdated()
+                .then();
     }
 
     @Override
