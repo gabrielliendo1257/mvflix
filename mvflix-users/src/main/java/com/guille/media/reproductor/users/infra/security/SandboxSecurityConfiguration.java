@@ -30,7 +30,9 @@ public class SandboxSecurityConfiguration {
                         new MapReactiveUserDetailsService(User.withUsername(username)
                                 .password("{noop}" + password).roles("METRICS").build())))
                 .httpBasic(org.springframework.security.config.Customizer.withDefaults())
-                .authorizeExchange(exchanges -> exchanges.pathMatchers("/actuator/**").hasRole("METRICS")
+                .authorizeExchange(exchanges -> exchanges
+                        .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                        .pathMatchers("/actuator/**").hasRole("METRICS")
                         .anyExchange().permitAll())
                 .build();
     }

@@ -36,7 +36,9 @@ public class ActuatorSecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authenticationManager(new ProviderManager(provider))
             .httpBasic(Customizer.withDefaults())
-            .authorizeHttpRequests(authorize -> authorize.anyRequest().hasRole("METRICS"));
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
+                .anyRequest().hasRole("METRICS"));
         return http.build();
     }
 }

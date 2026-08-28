@@ -42,11 +42,22 @@ class ActuatorSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void readinessIsPublicForContainerProbes() throws Exception {
+        this.mockMvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isOk());
+    }
+
     @RestController
     public static class Endpoint {
         @GetMapping("/actuator/prometheus")
         String prometheus() {
             return "# HELP test_metric 1\n";
+        }
+
+        @GetMapping("/actuator/health/readiness")
+        String readiness() {
+            return "{\"status\":\"UP\"}";
         }
     }
 }

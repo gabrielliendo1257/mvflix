@@ -56,7 +56,9 @@ public class SecurityConfiguration {
         .csrf(ServerHttpSecurity.CsrfSpec::disable)
         .authenticationManager(metricsAuthenticationManager(username, password))
         .httpBasic(org.springframework.security.config.Customizer.withDefaults())
-        .authorizeExchange(exchanges -> exchanges.anyExchange().hasRole("METRICS"))
+        .authorizeExchange(exchanges -> exchanges
+            .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
+            .anyExchange().hasRole("METRICS"))
         .build();
   }
 

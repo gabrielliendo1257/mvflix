@@ -35,7 +35,9 @@ public class SandboxSecurityConfiguration {
                 User.withUsername(username).password("{noop}" + password).roles("METRICS").build(),
                 User.withUsername(adminUsername).password("{noop}" + adminPassword).roles("ADMIN").build()))))
         .httpBasic(org.springframework.security.config.Customizer.withDefaults())
-        .authorizeExchange(exchanges -> exchanges.pathMatchers("/actuator/**").hasRole("METRICS")
+        .authorizeExchange(exchanges -> exchanges
+            .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
+            .pathMatchers("/actuator/**").hasRole("METRICS")
             .pathMatchers("/admin/outbox/**").hasRole("ADMIN")
             .anyExchange().permitAll());
 

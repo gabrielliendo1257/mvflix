@@ -33,11 +33,22 @@ class ActuatorSecurityTest {
                 .exchange().expectStatus().isOk();
     }
 
+    @Test
+    void readinessIsPublicForContainerProbes() {
+        this.webTestClient.get().uri("/actuator/health/readiness").exchange()
+                .expectStatus().isOk();
+    }
+
     @RestController
     public static class Endpoint {
         @GetMapping("/actuator/prometheus")
         String prometheus() {
             return "# HELP test_metric 1\n";
+        }
+
+        @GetMapping("/actuator/health/readiness")
+        String readiness() {
+            return "{\"status\":\"UP\"}";
         }
     }
 }

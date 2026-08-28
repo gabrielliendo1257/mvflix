@@ -74,7 +74,9 @@ public class WebSecurityConfig {
         .csrf(ServerHttpSecurity.CsrfSpec::disable)
         .authenticationManager(metricsAuthenticationManager(username, password))
         .httpBasic(Customizer.withDefaults())
-        .authorizeExchange(exchanges -> exchanges.anyExchange().hasRole("METRICS"))
+        .authorizeExchange(exchanges -> exchanges
+            .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
+            .anyExchange().hasRole("METRICS"))
         .build();
   }
 
