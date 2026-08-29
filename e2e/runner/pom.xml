@@ -27,6 +27,7 @@
     <dependency><groupId>org.bitbucket.b_c</groupId><artifactId>jose4j</artifactId><version>0.9.6</version><scope>test</scope></dependency>
     <dependency><groupId>org.postgresql</groupId><artifactId>postgresql</artifactId><version>42.7.5</version><scope>test</scope></dependency>
     <dependency><groupId>io.minio</groupId><artifactId>minio</artifactId><version>8.5.7</version><scope>test</scope></dependency>
+    <dependency><groupId>org.apache.kafka</groupId><artifactId>kafka-clients</artifactId><version>4.0.0</version><scope>test</scope></dependency>
     <dependency><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId><scope>test</scope></dependency>
   </dependencies>
   <build>

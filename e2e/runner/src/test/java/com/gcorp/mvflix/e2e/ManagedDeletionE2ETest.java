@@ -17,6 +17,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.Properties;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +32,10 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.StatObjectArgs;
 import io.minio.errors.ErrorResponseException;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.common.serialization.StringDeserializer;
 
 class ManagedDeletionE2ETest {
   private static final String MOVIES = env("MOVIES_URL", "http://localhost:14040");
@@ -51,8 +56,7 @@ class ManagedDeletionE2ETest {
     String storageKey = upload.get("storageKey").asText();
     put(storageKey, new byte[] {1, 2, 3, 4});
     post(STORAGE + "/api/v1/movie/storage/upload/" + uploadId + "/complete", token, null, 200, 202);
-    await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofSeconds(1))
-        .until(() -> uploadCompletedPublished(uploadId));
+     awaitUploadCompleted(uploadId);
 
     long movieId = JSON.readTree(post(MOVIES + "/api/v1/movies", token,
         "{\"title\":\"E2E managed deletion\",\"kind\":\"MOVIE\"}", 200)).get("id").asLong();
@@ -140,17 +144,51 @@ class ManagedDeletionE2ETest {
     return !minioObjectExists(bucket, storageKey);
   }
 
-  private static boolean uploadCompletedPublished(long uploadId) throws Exception {
-    try (Connection storage = db("mvflix_uploads_db"); var statement = storage.prepareStatement(
-        "select 1 from storage_outbox_events "
-            + "where event_type = 'UploadCompleted' and aggregate_id = ? "
-            + "and published_at is not null")) {
-      statement.setString(1, String.valueOf(uploadId));
-      try (var rows = statement.executeQuery()) {
-        return rows.next();
-      }
-    }
-  }
+   private static void awaitUploadCompleted(long uploadId) throws Exception {
+     Properties properties = new Properties();
+     properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, env("KAFKA_E2E_BOOTSTRAP", "localhost:19092"));
+     properties.put(ConsumerConfig.GROUP_ID_CONFIG, "e2e-upload-completed-" + UUID.randomUUID());
+     properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+     properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+     properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+     try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties)) {
+       consumer.subscribe(java.util.List.of("mvflix.upload-completed.v1"));
+       long deadline = System.nanoTime() + Duration.ofSeconds(30).toNanos();
+       while (System.nanoTime() < deadline) {
+         for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofSeconds(1))) {
+           UploadCompletedEnvelope event = JSON.readValue(record.value(), UploadCompletedEnvelope.class);
+           if ("UploadCompleted".equals(event.eventType())
+               && event.eventVersion() == 1
+               && "mvflix-storage".equals(event.producer())
+               && String.valueOf(uploadId).equals(event.aggregate().id())
+               && "ManagedObject".equals(event.aggregate().type())
+               && uploadId == event.payload().storageId()) {
+             return;
+           }
+         }
+       }
+     }
+     throw new AssertionError("UploadCompleted was not consumed from Kafka for storageId=" + uploadId);
+   }
+
+   private record UploadCompletedEnvelope(
+       String eventId,
+       String eventType,
+       int eventVersion,
+       String occurredAt,
+       String producer,
+       AggregateReference aggregate,
+       UploadCompletedPayload payload) {}
+
+   private record AggregateReference(String type, String id) {}
+
+   private record UploadCompletedPayload(
+       long storageId,
+       String ownerUsername,
+       String objectKey,
+       String contentType,
+       long contentLength) {}
 
   private static Connection db(String database) throws Exception {
     return DriverManager.getConnection("jdbc:postgresql://localhost:15432/" + database, "db_ro", "12345678");

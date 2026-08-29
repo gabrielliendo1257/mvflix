@@ -12,4 +12,5 @@ cleanup() {
 trap cleanup EXIT
 
 "${MAKE[@]}" up-e2e-d
-"${PROJECT_ROOT}/mvnw" -f "${PROJECT_ROOT}/e2e/runner/pom.xml" test
+KAFKA_E2E_BOOTSTRAP="${KAFKA_E2E_BOOTSTRAP:-localhost:${KAFKA_E2E_PORT:-19092}}" \
+  "${PROJECT_ROOT}/mvnw" -f "${PROJECT_ROOT}/e2e/runner/pom.xml" test
