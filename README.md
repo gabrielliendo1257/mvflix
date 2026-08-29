@@ -1,6 +1,6 @@
 # mvflix
 
-Plataforma de streaming/video por microservicios (Java 17, WebFlux). Modelo hexagonal en cada servicio, comunicacion reactiva y seguridad por JWT (OAuth2 Authorization Server).
+Plataforma de streaming/video por microservicios (Java 21, WebFlux). Modelo hexagonal en cada servicio, comunicacion reactiva y seguridad por JWT (OAuth2 Authorization Server).
 
 ## Modulos
 
@@ -30,7 +30,7 @@ auth (9090) --JWT--> users (8080) <--quota contract--> storage (6060/8080 API de
 ## Requisitos
 
 - Docker (Postgres + MinIO)
-- Java 17+, Maven (wrapper incluido)
+- Java 21+, Maven (wrapper incluido)
 
 ## Puesta en marcha (entorno dev)
 
