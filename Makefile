@@ -1,8 +1,32 @@
+COMPOSE_VERSIONS = --env-file ./infra/docker/container-versions.env
+COMPOSE_DEV = docker compose $(COMPOSE_VERSIONS) --env-file ./infra/docker/.env -f ./infra/docker/docker-compose-dev.yml -p mvflix-app
+COMPOSE_E2E = docker compose $(COMPOSE_VERSIONS) -f ./e2e/docker-compose-e2e.yml -p mvflix-e2e
+
+.PHONY: up-dev up-dev-d down-dev down-dev-v up-e2e up-e2e-d down-e2e down-e2e-v ps sandbox-run sandbox-test
+
 up-dev:
-	docker compose -f ./infra/docker/docker-compose-dev.yml -p mvflix-app up -d
+	$(COMPOSE_DEV) up --remove-orphans
+
+up-dev-d:
+	$(COMPOSE_DEV) up --remove-orphans -d
 
 down-dev:
-	docker compose -f ./infra/docker/docker-compose-dev.yml -p mvflix-app down -v
+	$(COMPOSE_DEV) down --remove-orphans
+
+down-dev-v:
+	$(COMPOSE_DEV) down --remove-orphans -v
+
+up-e2e:
+	$(COMPOSE_E2E) up --build --remove-orphans
+
+up-e2e-d:
+	$(COMPOSE_E2E) up --build --remove-orphans --wait -d
+
+down-e2e:
+	$(COMPOSE_E2E) down --remove-orphans
+
+down-e2e-v:
+	$(COMPOSE_E2E) down --remove-orphans -v
 
 ps:
 	docker compose ls
