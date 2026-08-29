@@ -10,7 +10,7 @@ COPY mvflix-storage/pom.xml mvflix-storage/pom.xml
 COPY mvflix-users/pom.xml mvflix-users/pom.xml
 COPY bff-mvflix-web/pom.xml bff-mvflix-web/pom.xml
 COPY . .
-RUN ./mvnw -pl mvflix-storage -am package -DskipTests
+RUN ./mvnw -pl mvflix-storage -am package -Dmaven.test.skip=true
 
 FROM eclipse-temurin:21-jre-jammy
 
