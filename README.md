@@ -49,7 +49,8 @@ Levanta postgres (crea `mvflix_users_db`, `mvflix_uploads_db`, `mvflix_authorize
 y MinIO con el bucket raiz y el webhook hacia el storage en `:6060`.
 Requiere `infra/docker/.env` (gitignored; hay una copia con valores dev). Para
 clientes Java ejecutándose fuera de Docker, como Termux, configura
-`KAFKA_ADVERTISED_HOST` y `KAFKA_BOOTSTRAP_SERVERS` con la IP LAN del host.
+`KAFKA_ADVERTISED_HOST` en `infra/docker/.env` y `KAFKA_BOOTSTRAP_SERVERS` en
+`envs/.env`, ambos con la IP LAN del host.
 
 ### 2. Aplicaciones (una terminal por servicio, en este orden)
 
@@ -123,10 +124,24 @@ Todo el stack corre en una maquina; el navegador (en otra maquina) solo ve **fro
 
 1. **Front**: apuntar el `environment.ts` de Angular al BFF por LAN: `http://<IP-LAN>:9091`.
 
-2. **Variables de entorno**: ponerlas en `envs/.env` (descomentar el bloque LAN de
-   `envs/.env.example` con la IP real). `scripts/stack-dev.sh` hace `source envs/.env`
-   (con `set -a`) antes de arrancar, asi que las apps las leen solas; si se arranca a
-   mano con `mvn spring-boot:run`, exportarlas antes en la misma terminal:
+2. **Variables de entorno**: poner las variables de las aplicaciones en `envs/.env`.
+   `scripts/stack-dev.sh` hace `source envs/.env` (con `set -a`) antes de arrancar,
+   asi que Movies y Storage las leen solas. Para Kafka, el ejemplo minimo es:
+
+   ```env
+   KAFKA_BOOTSTRAP_SERVERS=192.168.1.104:9094
+   MOVIES_KAFKA_GROUP=mvflix-movies
+   STORAGE_KAFKA_GROUP=mvflix-storage
+   ```
+
+   `KAFKA_BOOTSTRAP_SERVERS` debe apuntar al listener externo definido en
+   `infra/docker/.env`; `MOVIES_KAFKA_GROUP` y `STORAGE_KAFKA_GROUP` deben ser
+   distintos para que cada servicio mantenga sus offsets de forma independiente.
+   Las variables del broker (`KAFKA_ADVERTISED_HOST`, `KAFKA_EXTERNAL_PORT`,
+   `KAFKA_KRAFT_CLUSTER_ID`, retencion y volumen) pertenecen a
+   `infra/docker/.env` y no a `envs/.env`. Si se arranca una app a mano con
+   `mvn spring-boot:run`, hay que exportar las variables de `envs/.env` antes en
+   esa misma terminal:
 
    ```bash
    export AUTHORIZATION_ISSUER_URL="http://<IP-LAN>:9090"   # BFF: redirige el login al auth por LAN + auth: issuer fijo de los JWT
