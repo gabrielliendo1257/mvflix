@@ -11,7 +11,6 @@ import reactor.core.publisher.Mono;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Map;
 import java.util.UUID;
 
 @Component
@@ -35,20 +34,19 @@ public class UploadCompletionTransaction {
             .flatMap(saved -> this.storageOutbox.append(eventFor(saved)).thenReturn(saved)));
   }
 
-  private StorageIntegrationEvent eventFor(StoreObject object) {
+  private UploadCompletedIntegrationEvent eventFor(StoreObject object) {
     UUID eventId = UUID.nameUUIDFromBytes(
         ("UploadCompleted:" + object.getStorageId()).getBytes(StandardCharsets.UTF_8));
-    return new StorageIntegrationEvent(
+    return new UploadCompletedIntegrationEvent(
         eventId,
-        "UploadCompleted",
         1,
         Instant.now(),
         String.valueOf(object.getStorageId()),
-        Map.of(
-            "storageId", object.getStorageId(),
-            "ownerUsername", object.getOwnerUsername(),
-            "objectKey", object.getStorageKey().key(),
-            "contentType", object.contentType(),
-            "contentLength", object.sizeInBytes()));
+        new UploadCompletedIntegrationEvent.UploadCompletedPayload(
+            object.getStorageId(),
+            object.getOwnerUsername(),
+            object.getStorageKey().key(),
+            object.contentType(),
+            object.sizeInBytes()));
   }
 }

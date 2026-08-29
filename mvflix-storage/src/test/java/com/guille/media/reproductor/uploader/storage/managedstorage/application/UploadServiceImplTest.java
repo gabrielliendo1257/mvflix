@@ -197,14 +197,14 @@ class UploadServiceImplTest {
         .verifyComplete();
 
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
-    verify(this.storageOutbox).append(argThat(event ->
-        event.eventType().equals("UploadCompleted")
-            && event.eventVersion() == 1
-            && event.aggregateId().equals("7")
-            && event.payload().get("storageId").equals(7L)
-            && event.payload().get("ownerUsername").equals("pepe")
-            && event.payload().get("contentType").equals("video/mp4")
-            && event.payload().get("contentLength").equals(1024L)));
+     verify(this.storageOutbox).append(argThat((StorageIntegrationEvent<?> event) ->
+         event instanceof UploadCompletedIntegrationEvent uploadEvent
+             && uploadEvent.eventVersion() == 1
+             && uploadEvent.aggregateId().equals("7")
+             && uploadEvent.payload().storageId().equals(7L)
+             && uploadEvent.payload().ownerUsername().equals("pepe")
+             && uploadEvent.payload().contentType().equals("video/mp4")
+             && uploadEvent.payload().contentLength().equals(1024L)));
     verify(this.eventPublisher).publish(any(UploadCompletedEvent.class));
   }
 

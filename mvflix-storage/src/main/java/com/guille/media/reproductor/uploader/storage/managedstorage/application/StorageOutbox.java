@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public interface StorageOutbox {
-  Mono<Void> append(StorageIntegrationEvent event);
+  Mono<Void> append(StorageIntegrationEvent<?> event);
 
   Mono<Long> purgePublishedBefore(Instant cutoff);
 

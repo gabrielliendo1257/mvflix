@@ -30,7 +30,7 @@ public class SpringDataStorageOutbox implements StorageOutbox {
   }
 
   @Override
-  public Mono<Void> append(StorageIntegrationEvent event) {
+  public Mono<Void> append(StorageIntegrationEvent<?> event) {
     String payload;
     try {
       payload = this.objectMapper.writeValueAsString(Map.of(
@@ -39,10 +39,10 @@ public class SpringDataStorageOutbox implements StorageOutbox {
           "eventVersion", event.eventVersion(),
           "occurredAt", event.occurredAt(),
           "producer", "mvflix-storage",
-          "aggregate", Map.of("type", "ManagedObject", "id", event.aggregateId()),
+          "aggregate", Map.of("type", event.aggregateType(), "id", event.aggregateId()),
           "payload", event.payload()));
     } catch (JsonProcessingException error) {
-      return Mono.error(new IllegalArgumentException("Cannot encode deletion confirmation", error));
+      return Mono.error(new IllegalArgumentException("Cannot encode integration event", error));
     }
     return this.databaseClient.sql("""
         INSERT INTO storage_outbox_events
