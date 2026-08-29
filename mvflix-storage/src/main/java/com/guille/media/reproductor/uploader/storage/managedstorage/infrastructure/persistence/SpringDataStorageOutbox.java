@@ -47,10 +47,12 @@ public class SpringDataStorageOutbox implements StorageOutbox {
     return this.databaseClient.sql("""
         INSERT INTO storage_outbox_events
             (event_id, event_type, event_version, aggregate_id, occurred_at, payload)
-        VALUES (:eventId, 'StoredObjectDeleted', 1, :aggregateId, :occurredAt, CAST(:payload AS jsonb))
+        VALUES (:eventId, :eventType, :eventVersion, :aggregateId, :occurredAt, CAST(:payload AS jsonb))
         ON CONFLICT (event_id) DO NOTHING
         """)
         .bind("eventId", event.eventId())
+        .bind("eventType", event.eventType())
+        .bind("eventVersion", event.eventVersion())
         .bind("aggregateId", event.aggregateId())
         .bind("occurredAt", event.occurredAt())
         .bind("payload", payload)

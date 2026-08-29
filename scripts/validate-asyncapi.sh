@@ -13,15 +13,25 @@ command -v npx >/dev/null || { printf '%s\n' "npx is required" >&2; exit 1; }
 npx --yes @asyncapi/cli@6.0.2 validate "$SPEC"
 
 yq -o=json '.components.schemas' "$SPEC" > "$TMP_DIR/schemas.json"
-yq -o=json '.components.messages.StoredObjectDeleted.examples[0].payload' "$SPEC" \
-  > "$TMP_DIR/example.json"
 jq '{"$schema":"http://json-schema.org/draft-07/schema#", "$ref":"#/components/schemas/StoredObjectDeletedEnvelope", "components":{"schemas":.}}' \
   "$TMP_DIR/schemas.json" > "$TMP_DIR/schema.json"
+yq -o=json '.components.messages.StoredObjectDeleted.examples[0].payload' "$SPEC" \
+  > "$TMP_DIR/stored-object-deleted.json"
+yq -o=json '.components.messages.UploadCompleted.examples[0].payload' "$SPEC" \
+  > "$TMP_DIR/upload-completed.json"
 
 npx --yes ajv-cli@5.0.0 validate \
   --spec=draft7 \
   --strict=false \
   -s "$TMP_DIR/schema.json" \
-  -d "$TMP_DIR/example.json"
+  -d "$TMP_DIR/stored-object-deleted.json"
 
-printf '%s\n' "AsyncAPI contract and StoredObjectDeleted example are valid."
+jq '."$ref" = "#/components/schemas/UploadCompletedEnvelope"' "$TMP_DIR/schema.json" \
+  > "$TMP_DIR/upload-schema.json"
+npx --yes ajv-cli@5.0.0 validate \
+  --spec=draft7 \
+  --strict=false \
+  -s "$TMP_DIR/upload-schema.json" \
+  -d "$TMP_DIR/upload-completed.json"
+
+printf '%s\n' "AsyncAPI contract and integration event examples are valid."

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
@@ -64,6 +65,7 @@ class UploadServiceImplTest {
   private final UserProvider userProvider = mock(UserProvider.class);
   private final UserStorageRepository userStorageRepository = mock(UserStorageRepository.class);
   private final StorageEventPublisher eventPublisher = mock(StorageEventPublisher.class);
+  private final StorageOutbox storageOutbox = mock(StorageOutbox.class);
   private final TransactionalOperator transactionalOperator =
       mock(TransactionalOperator.class);
   private final TerminalUploadTransition terminalTransition =
@@ -79,12 +81,15 @@ class UploadServiceImplTest {
           userStorageRepository,
           eventPublisher,
           transactionalOperator,
-          terminalTransition);
+           terminalTransition,
+           new UploadCompletionTransaction(storageRepository, storageOutbox, transactionalOperator));
 
   @BeforeEach
   void passThroughTransaction() {
     when(this.transactionalOperator.transactional(any(Mono.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
+    when(this.storageOutbox.append(any(StorageIntegrationEvent.class)))
+        .thenReturn(Mono.empty());
   }
 
   private static final AuthenticatedUser PEPE = new AuthenticatedUser("pepe", "pepe@mvflix.dev");
@@ -192,6 +197,14 @@ class UploadServiceImplTest {
         .verifyComplete();
 
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
+    verify(this.storageOutbox).append(argThat(event ->
+        event.eventType().equals("UploadCompleted")
+            && event.eventVersion() == 1
+            && event.aggregateId().equals("7")
+            && event.payload().get("storageId").equals(7L)
+            && event.payload().get("ownerUsername").equals("pepe")
+            && event.payload().get("contentType").equals("video/mp4")
+            && event.payload().get("contentLength").equals(1024L)));
     verify(this.eventPublisher).publish(any(UploadCompletedEvent.class));
   }
 
@@ -580,4 +593,3 @@ class UploadServiceImplTest {
   }
 
 }
-

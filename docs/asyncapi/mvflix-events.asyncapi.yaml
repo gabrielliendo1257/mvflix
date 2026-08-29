@@ -51,6 +51,20 @@ channels:
       message:
         $ref: '#/components/messages/StoredObjectDeleted'
 
+  mvflix.upload-completed.v1:
+    description: Storage confirma que un objeto subido fue validado y quedó disponible.
+    publish:
+      operationId: publishUploadCompleted
+      summary: Upload completado
+      description: |
+        Storage publica este hecho después de confirmar la transición PENDING a
+        COMPLETED y persistir el mensaje en su outbox transaccional.
+      x-owner: mvflix-storage
+      x-delivery: at-least-once
+      x-partition-key: payload.storageId
+      message:
+        $ref: '#/components/messages/UploadCompleted'
+
 components:
   messages:
     ManagedMediaDeletionRequested:
@@ -92,6 +106,37 @@ components:
               ownerUsername: Javier
               releasedBytes: 734003200
               deletionStatus: DELETED
+      bindings:
+        kafka:
+          key:
+            type: string
+            description: storageId serializado como string.
+
+    UploadCompleted:
+      name: UploadCompleted
+      title: Upload completed
+      summary: Storage confirma que un objeto está disponible.
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/UploadCompletedEnvelope'
+      examples:
+        - name: upload-completed-v1
+          summary: Upload validado y disponible
+          payload:
+            eventId: 2d6a7e8b-5a44-4bf9-9f2e-1a5f4b2c9d10
+            eventType: UploadCompleted
+            eventVersion: 1
+            occurredAt: '2026-08-28T12:00:00Z'
+            producer: mvflix-storage
+            aggregate:
+              type: ManagedObject
+              id: '42'
+            payload:
+              storageId: 42
+              ownerUsername: Javier
+              objectKey: Javier/videos/dune.mp4
+              contentType: video/mp4
+              contentLength: 734003200
       bindings:
         kafka:
           key:
@@ -193,6 +238,25 @@ components:
             payload:
               $ref: '#/components/schemas/StoredObjectDeletedPayload'
 
+    UploadCompletedEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          properties:
+            eventType:
+              type: string
+              enum: [UploadCompleted]
+            eventVersion:
+              type: integer
+              enum: [1]
+            producer:
+              type: string
+              enum: [mvflix-storage]
+            aggregate:
+              $ref: '#/components/schemas/ManagedObjectAggregateReference'
+            payload:
+              $ref: '#/components/schemas/UploadCompletedPayload'
+
     MovieAggregateReference:
       allOf:
         - $ref: '#/components/schemas/AggregateReference'
@@ -266,3 +330,27 @@ components:
         - ownerUsername
         - releasedBytes
         - deletionStatus
+
+    UploadCompletedPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        storageId:
+          type: integer
+          format: int64
+        ownerUsername:
+          type: string
+        objectKey:
+          type: string
+        contentType:
+          type: string
+        contentLength:
+          type: integer
+          format: int64
+          minimum: 0
+      required:
+        - storageId
+        - ownerUsername
+        - objectKey
+        - contentType
+        - contentLength

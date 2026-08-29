@@ -51,6 +51,8 @@ class ManagedDeletionE2ETest {
     String storageKey = upload.get("storageKey").asText();
     put(storageKey, new byte[] {1, 2, 3, 4});
     post(STORAGE + "/api/v1/movie/storage/upload/" + uploadId + "/complete", token, null, 200, 202);
+    await().atMost(Duration.ofSeconds(30)).pollInterval(Duration.ofSeconds(1))
+        .until(() -> uploadCompletedPublished(uploadId));
 
     long movieId = JSON.readTree(post(MOVIES + "/api/v1/movies", token,
         "{\"title\":\"E2E managed deletion\",\"kind\":\"MOVIE\"}", 200)).get("id").asLong();
@@ -136,6 +138,18 @@ class ManagedDeletionE2ETest {
     }
     if (!"DELETED".equals(objectStatus) || !"COMPLETED".equals(inboxStatus) || usage != 0) return false;
     return !minioObjectExists(bucket, storageKey);
+  }
+
+  private static boolean uploadCompletedPublished(long uploadId) throws Exception {
+    try (Connection storage = db("mvflix_uploads_db"); var statement = storage.prepareStatement(
+        "select 1 from storage_outbox_events "
+            + "where event_type = 'UploadCompleted' and aggregate_id = ? "
+            + "and published_at is not null")) {
+      statement.setString(1, String.valueOf(uploadId));
+      try (var rows = statement.executeQuery()) {
+        return rows.next();
+      }
+    }
   }
 
   private static Connection db(String database) throws Exception {

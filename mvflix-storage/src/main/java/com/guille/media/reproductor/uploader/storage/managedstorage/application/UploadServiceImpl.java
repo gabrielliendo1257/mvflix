@@ -58,6 +58,7 @@ public class UploadServiceImpl implements UploadService {
   private final StorageEventPublisher eventPublisher;
   private final TransactionalOperator transactionalOperator;
   private final TerminalUploadTransition terminalTransition;
+  private final UploadCompletionTransaction uploadCompletionTransaction;
 
   public UploadServiceImpl(
       ObjectStorageService objectStorageService,
@@ -68,7 +69,8 @@ public class UploadServiceImpl implements UploadService {
       UserStorageRepository userStorageRepository,
       StorageEventPublisher eventPublisher,
       TransactionalOperator transactionalOperator,
-      TerminalUploadTransition terminalTransition) {
+      TerminalUploadTransition terminalTransition,
+      UploadCompletionTransaction uploadCompletionTransaction) {
     this.objectStoragePort = objectStorageService;
     this.storageKeyGenerator = storageKeyGenerator;
     this.uploadPolicy = uploadPolicy;
@@ -78,6 +80,7 @@ public class UploadServiceImpl implements UploadService {
     this.eventPublisher = eventPublisher;
     this.transactionalOperator = transactionalOperator;
     this.terminalTransition = terminalTransition;
+    this.uploadCompletionTransaction = uploadCompletionTransaction;
   }
 
   @Override
@@ -523,8 +526,8 @@ public class UploadServiceImpl implements UploadService {
         .flatMap(
             transitioned ->
                 transitioned
-                    ? this.storageRepository
-                        .updateStatus(object, StorageSessionStatus.PENDING)
+                    ? this.uploadCompletionTransaction
+                        .complete(object)
                         .map(saved -> new Completion(saved, true, false))
                         .onErrorResume(
                             IllegalStateTransitionException.class,

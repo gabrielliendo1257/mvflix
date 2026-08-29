@@ -7,7 +7,8 @@ import java.util.Map;
 @Component
 public class KafkaTopicResolver {
   private static final Map<String, String> TOPICS = Map.of(
-      "StoredObjectDeleted", "mvflix.stored-object-deleted.v1");
+      "StoredObjectDeleted", "mvflix.stored-object-deleted.v1",
+      "UploadCompleted", "mvflix.upload-completed.v1");
 
   public String resolve(String eventType) {
     String topic = TOPICS.get(eventType);
