@@ -7,6 +7,7 @@ import com.guille.media.reproductor.users.domain.models.BillingCycle;
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.Plan;
 import com.guille.media.reproductor.users.domain.models.PlanChangeDecision;
+import com.guille.media.reproductor.users.domain.models.MediaIngestionEligibility;
 import com.guille.media.reproductor.users.domain.models.User;
 import com.guille.media.reproductor.users.domain.models.Username;
 import com.guille.media.reproductor.users.domain.ports.SimpleUserRepository;
@@ -98,10 +99,16 @@ public class DefaultUserService implements UserService {
             });
   }
 
-  private Mono<User> getByUsername(String username) {
+  @Override
+  public Mono<User> getByUsername(String username) {
     return this.simpleUserRepository
         .findByUsername(username)
         .switchIfEmpty(
             Mono.error(new UserNotFoundException("Not exist user by username " + username)));
+  }
+
+  @Override
+  public Mono<MediaIngestionEligibility> getMediaIngestionEligibility(String username) {
+    return getByUsername(username).map(MediaIngestionEligibility::from);
   }
 }

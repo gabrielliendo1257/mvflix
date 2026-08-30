@@ -20,6 +20,12 @@ spring:
             client-id: ${MVFLIX_STORAGE_CLIENT_ID:media-ingestion}
             client-secret: ${MVFLIX_STORAGE_CLIENT_SECRET:super-secret}
             scope: ${MVFLIX_STORAGE_CLIENT_SCOPES:media-ingestion}
+          users:
+            provider: internal
+            authorization-grant-type: client_credentials
+            client-id: ${MVFLIX_USERS_CLIENT_ID:media-ingestion}
+            client-secret: ${MVFLIX_USERS_CLIENT_SECRET:super-secret}
+            scope: ${MVFLIX_USERS_CLIENT_SCOPES:media-ingestion}
   r2dbc.url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mvflix_media_ingestion_db}
   r2dbc.username: ${DB_USERNAME:db_rw}
   r2dbc.password: ${DB_RW_PASSWORD:12345678}
@@ -39,6 +45,7 @@ mvflix:
   messaging.kafka.consumer-group: ${MVFLIX_MEDIA_INGESTION_KAFKA_GROUP:mvflix-media-ingestion}
   downstream.movies-url: ${MOVIES_URL:http://localhost:4040}
   downstream.storage-url: ${STORAGE_URL:http://localhost:6060}
+  downstream.users-url: ${USERS_URL:http://localhost:8080}
   downstream.response-timeout-seconds: ${MVFLIX_DOWNSTREAM_RESPONSE_TIMEOUT_SECONDS:10}
   recovery.enabled: ${MVFLIX_RECOVERY_ENABLED:true}
   recovery.poll-ms: ${MVFLIX_RECOVERY_POLL_MS:5000}

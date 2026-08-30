@@ -17,15 +17,18 @@ import reactor.core.publisher.Mono;
 public class WebClientDownstreamClients implements DownstreamClients {
   private final WebClient movies;
   private final WebClient storage;
+  private final WebClient users;
 
   public WebClientDownstreamClients(
       @Value("${mvflix.downstream.movies-url:http://localhost:4040}") String moviesUrl,
       @Value("${mvflix.downstream.storage-url:http://localhost:6060}") String storageUrl,
+      @Value("${mvflix.downstream.users-url:http://localhost:8080}") String usersUrl,
       WebClient.Builder builder,
       ReactiveOAuth2AuthorizedClientManager authorizedClientManager,
       @Value("${mvflix.downstream.response-timeout-seconds:10}") long responseTimeoutSeconds) {
     this.movies = client(builder, moviesUrl, authorizedClientManager, "movies", responseTimeoutSeconds);
     this.storage = client(builder, storageUrl, authorizedClientManager, "storage", responseTimeoutSeconds);
+    this.users = client(builder, usersUrl, authorizedClientManager, "users", responseTimeoutSeconds);
   }
 
   public WebClientDownstreamClients(
@@ -33,7 +36,7 @@ public class WebClientDownstreamClients implements DownstreamClients {
       String storageUrl,
       WebClient.Builder builder,
       ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
-    this(moviesUrl, storageUrl, builder, authorizedClientManager, 10);
+    this(moviesUrl, storageUrl, "http://localhost:8080", builder, authorizedClientManager, 10);
   }
 
   private WebClient client(
@@ -67,6 +70,16 @@ public class WebClientDownstreamClients implements DownstreamClients {
         .retrieve()
         .bodyToMono(Map.class)
         .map(response -> ((Number) response.get("id")).longValue());
+  }
+
+  @Override
+  public Mono<MediaIngestionEligibility> mediaIngestionEligibility(String actor) {
+    return users
+        .get()
+        .uri("/api/v1/users/{username}/policy", actor)
+        .retrieve()
+        .bodyToMono(Map.class)
+        .map(response -> new MediaIngestionEligibility(Boolean.TRUE.equals(response.get("allowed"))));
   }
 
   @Override

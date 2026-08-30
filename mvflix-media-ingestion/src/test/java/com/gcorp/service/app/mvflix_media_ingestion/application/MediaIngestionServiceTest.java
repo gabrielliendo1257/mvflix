@@ -7,12 +7,59 @@ import static org.mockito.Mockito.*;
 
 import com.gcorp.service.app.mvflix_media_ingestion.domain.MediaIngestion;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 
 class MediaIngestionServiceTest {
+  @Test
+  void createRejectsUserThatIsNotEligibleBeforeCreatingIngestion() {
+    var fixture = fixture(MediaIngestion.Phase.STARTING);
+    when(fixture.repo.findByKey("a", "k")).thenReturn(Mono.empty());
+    when(fixture.clients.mediaIngestionEligibility("a"))
+        .thenReturn(Mono.just(new DownstreamClients.MediaIngestionEligibility(false)));
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> fixture.service.create("a", "k", Map.of(), "x", 1, "m").block());
+    verify(fixture.repo).findByKey("a", "k");
+    verify(fixture.clients).mediaIngestionEligibility("a");
+    verify(fixture.repo, never()).insert(any());
+  }
+
+  @Test
+  void createFailsClosedWhenEligibilityIsUnavailable() {
+    var fixture = fixture(MediaIngestion.Phase.STARTING);
+    when(fixture.repo.findByKey("a", "k")).thenReturn(Mono.empty());
+    when(fixture.clients.mediaIngestionEligibility("a")).thenReturn(Mono.empty());
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> fixture.service.create("a", "k", Map.of(), "x", 1, "m").block());
+    verify(fixture.repo, never()).insert(any());
+  }
+
+  @Test
+  void createReplaysExistingIngestionBeforeCheckingEligibility() {
+    var fixture = fixture(MediaIngestion.Phase.AWAITING_UPLOAD);
+    var existing = new MediaIngestion(
+        fixture.ingestion.ingestionId(), fixture.ingestion.actorId(), fixture.ingestion.catalogItemId(),
+        fixture.ingestion.uploadId(), fixture.ingestion.phase(), fixture.ingestion.failureCode(),
+        fixture.ingestion.version(), fixture.ingestion.retryCount(), fixture.ingestion.createdAt(),
+        fixture.ingestion.updatedAt(), fixture.ingestion.nextAttemptAt(), fixture.ingestion.idempotencyKey(),
+        fixture.ingestion.fileName(), fixture.ingestion.fileSize(), fixture.ingestion.mimeType(),
+        fixture.ingestion.uploadUrl(), fixture.ingestion.storageId(), fixture.ingestion.storageKey(),
+        MediaIngestionService.fingerprint(Map.of(), "x", 1, "m"), fixture.ingestion.causationId());
+    when(fixture.repo.findByKey("a", "k")).thenReturn(Mono.just(existing));
+
+    assertThat(fixture.service.create("a", "k", Map.of(), "x", 1, "m").block())
+        .isEqualTo(existing);
+    verify(fixture.clients, never()).mediaIngestionEligibility(any());
+    verify(fixture.repo, never()).insert(any());
+  }
+
   @Test
   void completeRequestsStorageAndKeepsIngestionAwaitingUpload() {
     var fixture = fixture(MediaIngestion.Phase.AWAITING_UPLOAD);

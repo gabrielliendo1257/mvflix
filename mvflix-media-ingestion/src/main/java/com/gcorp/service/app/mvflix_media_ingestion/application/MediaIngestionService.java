@@ -45,6 +45,26 @@ public class MediaIngestionService {
         .flatMap(existing -> sameRequest(existing, fingerprint)
             ? Mono.just(existing)
             : Mono.error(new IllegalStateException("idempotency key reused with different request")))
+        .switchIfEmpty(Mono.defer(() -> clients.mediaIngestionEligibility(actor)
+            .switchIfEmpty(Mono.error(new IllegalStateException("user eligibility unavailable")))
+            .flatMap(eligibility -> eligibility.allowed()
+                ? createInternal(actor, key, draft, fileName, size, mime, fingerprint)
+                : Mono.error(new IllegalStateException("media ingestion not allowed for user")))));
+  }
+
+  private Mono<MediaIngestion> createInternal(
+      String actor,
+      String key,
+      Map<String, Object> draft,
+      String fileName,
+      long size,
+      String mime,
+      String fingerprint) {
+    return repository
+        .findByKey(actor, key)
+        .flatMap(existing -> sameRequest(existing, fingerprint)
+            ? Mono.just(existing)
+            : Mono.error(new IllegalStateException("idempotency key reused with different request")))
         .switchIfEmpty(
             Mono.defer(
                 () -> {
@@ -106,7 +126,7 @@ public class MediaIngestionService {
     return fingerprint.equals(existing.requestFingerprint());
   }
 
-  private static String fingerprint(Map<String, Object> draft, String fileName, long size, String mime) {
+  static String fingerprint(Map<String, Object> draft, String fileName, long size, String mime) {
     try {
       var input = new TreeMap<String, Object>();
       input.put("draft", new TreeMap<>(draft));

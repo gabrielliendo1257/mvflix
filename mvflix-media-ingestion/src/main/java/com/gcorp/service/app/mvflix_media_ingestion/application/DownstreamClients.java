@@ -6,6 +6,8 @@ import reactor.core.publisher.Mono;
 public interface DownstreamClients {
   Mono<Long> createCatalogDraft(Map<String, Object> draft, String actor, String key, String correlationId);
 
+  Mono<MediaIngestionEligibility> mediaIngestionEligibility(String actor);
+
   Mono<Upload> prepareUpload(
       String fileName, long fileSize, String mimeType, String actor, String key);
 
@@ -26,4 +28,6 @@ public interface DownstreamClients {
   record StorageStatus(String status, Long objectId, String objectKey) {}
 
   record CatalogStatus(String status) {}
+
+  record MediaIngestionEligibility(boolean allowed) {}
 }

@@ -54,7 +54,9 @@ public class SecurityConfig {
                                         .pathMatchers(HttpMethod.POST, "/api/v1/users/me/violations")
                                         .authenticated()
                                         .pathMatchers("/api/v1/users/*/plan")
-                                        .hasAuthority("SCOPE_users.write")
+                                         .hasAuthority("SCOPE_users.write")
+                                         .pathMatchers("/api/v1/users/*/policy")
+                                         .hasAuthority("SCOPE_media-ingestion")
                                         .anyExchange()
                                         .denyAll());
 

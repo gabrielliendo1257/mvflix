@@ -1,6 +1,7 @@
 package com.guille.media.reproductor.users.domain.ports;
 
 import com.guille.media.reproductor.users.domain.models.Plan;
+import com.guille.media.reproductor.users.domain.models.MediaIngestionEligibility;
 import com.guille.media.reproductor.users.domain.models.User;
 
 import reactor.core.publisher.Mono;
@@ -9,6 +10,10 @@ public interface UserService {
     Mono<User> createStorageByNewUsers(String username, String email);
 
     Mono<User> getMe();
+
+    Mono<User> getByUsername(String username);
+
+    Mono<MediaIngestionEligibility> getMediaIngestionEligibility(String username);
 
     /**
      * Cambia el plan de {@code username} según la política de facturación

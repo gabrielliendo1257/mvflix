@@ -4,6 +4,7 @@ import com.guille.media.reproductor.users.api.dto.response.UserResponse;
 import com.guille.media.reproductor.users.domain.models.Email;
 import com.guille.media.reproductor.users.domain.models.Plan;
 import com.guille.media.reproductor.users.domain.models.User;
+import com.guille.media.reproductor.users.domain.models.MediaIngestionEligibility;
 import com.guille.media.reproductor.users.domain.models.Username;
 import com.guille.media.reproductor.users.domain.ports.UserService;
 import com.guille.media.reproductor.users.infra.security.SecurityConfig;
@@ -108,6 +109,52 @@ class UsersPresenterTest {
                 .uri("/api/v1/users/user/plan")
                 .contentType(MediaType.APPLICATION_JSON)
                 .bodyValue("{\"plan\":\"PRO\"}")
+                .exchange()
+                .expectStatus()
+                .isForbidden();
+    }
+
+    @Test
+    void shouldReturnPolicyWithMediaIngestionScope() {
+        User blockedUser = User.createNew(new Username("blocked"), new Email("blocked@example.com"));
+        blockedUser.registerViolation();
+        blockedUser.registerViolation();
+        blockedUser.registerViolation();
+        Mockito.when(defaultUserService.getMediaIngestionEligibility("blocked"))
+                .thenReturn(Mono.just(new MediaIngestionEligibility(false)));
+
+        Jwt m2mJwt =
+                Jwt.withTokenValue("token")
+                        .header("alg", "none")
+                        .subject("media-ingestion")
+                        .claim("sub", "media-ingestion")
+                        .claim("scope", "media-ingestion")
+                        .build();
+
+        this.webTestClient
+                .mutateWith(SecurityMockServerConfigurers.mockJwt().jwt(m2mJwt))
+                .get()
+                .uri("/api/v1/users/blocked/policy")
+                .exchange()
+                .expectStatus()
+                .isOk()
+                .expectBody(MediaIngestionEligibility.class)
+                .value(response -> org.assertj.core.api.Assertions.assertThat(response.allowed()).isFalse());
+    }
+
+    @Test
+    void shouldRejectPolicyWithoutMediaIngestionScope() {
+        Jwt userJwt =
+                Jwt.withTokenValue("token")
+                        .header("alg", "none")
+                        .subject("user")
+                        .claim("sub", "user")
+                        .build();
+
+        this.webTestClient
+                .mutateWith(SecurityMockServerConfigurers.mockJwt().jwt(userJwt))
+                .get()
+                .uri("/api/v1/users/user/policy")
                 .exchange()
                 .expectStatus()
                 .isForbidden();
