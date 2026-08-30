@@ -18,6 +18,7 @@ backoff; recovery never compensates based only on an exception.
 The current model does not persist the original draft, so interrupted starting
 or preparation phases cannot be recreated safely and become durable `FAILED`
 states. A pending upload may receive a cancellation only after Storage confirms
-it is pending. Movies has no discard-draft endpoint, so draft cleanup remains a
-manual reconciliation item; no fake discard call is made. `mvflix.recovery.enabled`
+it is pending. `DISCARD_DRAFT` compensation first queries Movies and discards only
+an actor-owned `DRAFT`; missing items and already non-draft items complete without
+a delete call. `mvflix.recovery.enabled`
 and `mvflix.compensation.enabled` can disable the respective workers.

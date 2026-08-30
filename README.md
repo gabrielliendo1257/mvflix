@@ -230,6 +230,7 @@ coinciden el fast path y el webhook).
 | Metodo | Ruta | Auth | Descripcion |
 |---|---|---|---|
 | `POST` | `storage:/internal/minio/events` | `X-Minio-Token` (tiempo constante) | Webhook de bucket events: procesa `s3:ObjectCreated:*` y completa el objeto por `objectKey`. Config en compose (`make up-dev`): target webhook `upload` + `mc event add` (`put, complete-multipart-upload`) |
+| `POST` | `movies:/api/v1/movies/{id}/discard-draft` | OAuth2 `SCOPE_media-ingestion` + `X-Actor-Id` | Compensación idempotente: elimina solo un draft perteneciente al actor |
 
 ## Docs
 

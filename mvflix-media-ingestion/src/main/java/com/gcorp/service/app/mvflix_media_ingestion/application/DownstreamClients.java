@@ -13,6 +13,8 @@ public interface DownstreamClients {
 
   Mono<Void> completeCatalog(long catalogItemId, String objectKey, long objectId, String actor);
 
+  Mono<Void> discardDraft(long catalogItemId, String actor, String idempotencyKey);
+
   Mono<Void> cancelUpload(String uploadId, String actor, String key);
 
   Mono<StorageStatus> storageStatus(String uploadId, String actor);

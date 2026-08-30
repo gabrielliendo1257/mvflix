@@ -95,6 +95,17 @@ public class WebClientDownstreamClients implements DownstreamClients {
   }
 
   @Override
+  public Mono<Void> discardDraft(long id, String actor, String idempotencyKey) {
+    return movies
+        .post()
+        .uri("/api/v1/movies/{id}/discard-draft", id)
+        .header("X-Actor-Id", actor)
+        .header("Idempotency-Key", idempotencyKey)
+        .retrieve()
+        .bodyToMono(Void.class);
+  }
+
+  @Override
   public Mono<Void> cancelUpload(String id, String actor, String key) {
     return storage
         .post()
@@ -129,6 +140,10 @@ public class WebClientDownstreamClients implements DownstreamClients {
         .header("X-Actor-Id", actor)
         .retrieve()
         .bodyToMono(Map.class)
+        .onErrorResume(
+            org.springframework.web.reactive.function.client.WebClientResponseException.NotFound
+                .class,
+            error -> Mono.just(Map.of("status", "MISSING")))
         .map(r -> new CatalogStatus(String.valueOf(r.get("status"))));
   }
 

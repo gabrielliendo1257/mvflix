@@ -45,8 +45,23 @@ public class CompensationScheduler {
                                           i.ingestionId() + ":compensation");
                                     });
                           }
-                          // Movies has no discard endpoint. Keep this row for manual
-                          // reconciliation.
+                          if ("DISCARD_DRAFT".equals(c.action())) {
+                            if (i.catalogItemId() == null) {
+                              return reactor.core.publisher.Mono.empty();
+                            }
+                            return clients
+                                .catalogStatus(i.catalogItemId(), i.actorId())
+                                .flatMap(
+                                    status -> {
+                                      if (!"DRAFT".equalsIgnoreCase(status.status())) {
+                                        return reactor.core.publisher.Mono.empty();
+                                      }
+                                      return clients.discardDraft(
+                                          i.catalogItemId(),
+                                          i.actorId(),
+                                          i.ingestionId() + ":discard-draft");
+                                    });
+                          }
                           return reactor.core.publisher.Mono.error(
                               new UnsupportedOperationException(
                                   "manual reconciliation required: " + c.action()));

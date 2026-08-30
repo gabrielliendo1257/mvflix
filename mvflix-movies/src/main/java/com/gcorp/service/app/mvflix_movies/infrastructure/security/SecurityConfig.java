@@ -8,17 +8,17 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
-import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
-import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import org.springframework.web.server.WebFilter;
@@ -45,17 +45,23 @@ public class SecurityConfig {
         .csrf(ServerHttpSecurity.CsrfSpec::disable)
         .authenticationManager(metricsAuthenticationManager(username, password))
         .httpBasic(org.springframework.security.config.Customizer.withDefaults())
-        .authorizeExchange(exchanges -> exchanges
-            .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
-            .anyExchange().hasRole("METRICS"))
+        .authorizeExchange(
+            exchanges ->
+                exchanges
+                    .pathMatchers("/actuator/health", "/actuator/health/**")
+                    .permitAll()
+                    .anyExchange()
+                    .hasRole("METRICS"))
         .build();
   }
 
   @Bean
   WebFilter serverWebExchangeContextFilter() {
     return (exchange, chain) ->
-        chain.filter(exchange)
-            .contextWrite(context -> context.put(InternalActorUserProvider.EXCHANGE_CONTEXT_KEY, exchange));
+        chain
+            .filter(exchange)
+            .contextWrite(
+                context -> context.put(InternalActorUserProvider.EXCHANGE_CONTEXT_KEY, exchange));
   }
 
   @Bean
@@ -69,7 +75,10 @@ public class SecurityConfig {
                     .permitAll()
                     .pathMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                     .permitAll()
-                    .pathMatchers("/admin/outbox/**").hasRole("ADMIN")
+                    .pathMatchers("/admin/outbox/**")
+                    .hasRole("ADMIN")
+                    .pathMatchers("/api/v1/movies/*/discard-draft")
+                    .hasAuthority("SCOPE_media-ingestion")
                     .anyExchange()
                     .authenticated())
         .oauth2ResourceServer(
@@ -116,11 +125,9 @@ public class SecurityConfig {
     return this.authorizationUrl + "/oauth2/jwks";
   }
 
-  private ReactiveAuthenticationManager metricsAuthenticationManager(String username, String password) {
-    var user = User.withUsername(username)
-        .password("{noop}" + password)
-        .roles("METRICS")
-        .build();
+  private ReactiveAuthenticationManager metricsAuthenticationManager(
+      String username, String password) {
+    var user = User.withUsername(username).password("{noop}" + password).roles("METRICS").build();
     return new UserDetailsRepositoryReactiveAuthenticationManager(
         new MapReactiveUserDetailsService(user));
   }
