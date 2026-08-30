@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Set up yq
+        uses: mikefarah/yq@v4.45.1
+
+      - name: Validate AsyncAPI
+        run: ./scripts/validate-asyncapi.sh
+
+      - name: Validate E2E Compose
+        env:
+          COMPOSE_PROJECT_NAME: mvflix-ci
+        run: >-
+          docker compose
+          --env-file infra/docker/container-versions.env
+          -f e2e/docker-compose-e2e.yml
+          config --quiet
+
+      - name: Maven reactor tests
+        run: ./mvnw -B -ntp test
