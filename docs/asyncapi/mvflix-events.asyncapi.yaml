@@ -65,6 +65,17 @@ channels:
       message:
         $ref: '#/components/messages/UploadCompleted'
 
+  mvflix.playback-progressed.v1:
+    description: Playback publica el progreso para construir la proyección de actividad.
+    publish:
+      operationId: publishPlaybackProgressed
+      x-owner: mvflix-playback
+      x-consumer: mvflix-activity
+      x-delivery: at-least-once
+      x-partition-key: aggregate.id
+      message:
+        $ref: '#/components/messages/PlaybackProgressed'
+
 components:
   messages:
     ManagedMediaDeletionRequested:
@@ -142,6 +153,23 @@ components:
           key:
             type: string
             description: storageId serializado como string.
+
+    PlaybackProgressed:
+      name: PlaybackProgressed
+      title: Playback progressed
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/PlaybackProgressedEnvelope'
+      examples:
+        - name: playback-progressed-v1
+          payload:
+            eventId: 7d9f3c1e-6c2d-4d79-9c3a-7fbcd5c6a2a1
+            eventType: PlaybackProgressed
+            eventVersion: 1
+            occurredAt: '2026-08-28T12:00:00Z'
+            producer: mvflix-playback
+            aggregate: { type: PlaybackSession, id: session-42 }
+            payload: { ownerUsername: Javier, movieId: 101, mediaId: 3, positionSeconds: 120, durationSeconds: 7200, completed: false, sequence: 4 }
 
   schemas:
     EventEnvelope:
@@ -257,6 +285,22 @@ components:
             payload:
               $ref: '#/components/schemas/UploadCompletedPayload'
 
+    PlaybackProgressedEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          properties:
+            eventType: { type: string, enum: [PlaybackProgressed] }
+            eventVersion: { type: integer, enum: [1] }
+            producer: { type: string, enum: [mvflix-playback] }
+            aggregate:
+              allOf:
+                - $ref: '#/components/schemas/AggregateReference'
+                - type: object
+                  properties: { type: { type: string, enum: [PlaybackSession] } }
+            payload:
+              $ref: '#/components/schemas/PlaybackProgressedPayload'
+
     MovieAggregateReference:
       allOf:
         - $ref: '#/components/schemas/AggregateReference'
@@ -354,3 +398,16 @@ components:
         - objectKey
         - contentType
         - contentLength
+
+    PlaybackProgressedPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        ownerUsername: { type: string }
+        movieId: { type: integer, format: int64, minimum: 0 }
+        mediaId: { type: integer, format: int64, minimum: 0, nullable: true }
+        positionSeconds: { type: integer, format: int64, minimum: 0 }
+        durationSeconds: { type: integer, format: int64, minimum: 0, nullable: true }
+        completed: { type: boolean }
+        sequence: { type: integer, format: int64, minimum: 1 }
+      required: [ownerUsername, movieId, positionSeconds, completed, sequence]

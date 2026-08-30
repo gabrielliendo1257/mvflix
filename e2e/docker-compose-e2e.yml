@@ -66,9 +66,34 @@ services:
            mvflix.upload-completed.v1.retry-0 \
            mvflix.upload-completed.v1.retry-1 \
            mvflix.upload-completed.v1.retry-2 \
-           mvflix.upload-completed.v1.DLT; do
+           mvflix.upload-completed.v1.DLT \
+           mvflix.playback-progressed.v1 \
+           mvflix.playback-progressed.v1.retry-0 \
+           mvflix.playback-progressed.v1.retry-1 \
+           mvflix.playback-progressed.v1.retry-2 \
+           mvflix.playback-progressed.v1.DLT; do
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$${topic}" --partitions 1 --replication-factor 1
-        done
+         done
+
+  activity:
+    build:
+      context: ..
+      dockerfile: mvflix-activity/Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: mvflix_activity_db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MVFLIX_MESSAGING_KAFKA_ENABLED: "true"
+      SECURITY_OAUTH2_JWK_SET_URI: http://jwks-stub:8080/oauth2/jwks
+      MANAGEMENT_SERVER_PORT: 10070
+    ports:
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:17070:8080"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:11070:10070"
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      jwks-stub: { condition: service_healthy }
 
   minio:
     image: ${MVFLIX_MINIO_IMAGE}
