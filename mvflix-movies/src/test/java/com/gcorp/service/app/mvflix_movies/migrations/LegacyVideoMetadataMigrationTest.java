@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.migrations;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 import java.sql.ResultSet;
@@ -20,7 +21,6 @@ class LegacyVideoMetadataMigrationTest extends PostgresIntegrationTest {
     try {
       flyway.migrate();
       insertLegacyVideo(schema);
-      insertDuplicateRenditions(schema);
 
       configuration(schema).load().migrate();
 
@@ -44,12 +44,50 @@ class LegacyVideoMetadataMigrationTest extends PostgresIntegrationTest {
 
         try (var statement = connection.createStatement();
             ResultSet result = statement.executeQuery(
-                "SELECT COUNT(*) AS count, MIN(id) AS retained_id "
-                    + "FROM " + schema + ".media_asset_renditions "
-                    + "WHERE media_asset_id = 1 AND profile = '1080p'")) {
+                "SELECT version FROM " + schema + ".flyway_schema_history "
+                    + "WHERE version = '20'")) {
+           assertThat(result.next()).isTrue();
+           assertThat(result.getString("version")).isEqualTo("20");
+         }
+      }
+    } finally {
+      flyway.clean();
+    }
+  }
+
+  @Test
+  void refusesLegacyRenditionDuplicatesWithoutChangingRowsOrApplyingV21() throws SQLException {
+    String schema = "migration_test_" + UUID.randomUUID().toString().replace('-', '_');
+    Flyway flyway = configuration(schema).target("19").load();
+
+    try {
+      flyway.migrate();
+      insertDuplicateRenditions(schema);
+
+      assertThatThrownBy(() -> configuration(schema).load().migrate())
+          .hasMessageContaining(
+              "Cannot create rendition uniqueness: duplicate source/profile rows exist");
+
+      try (var connection = POSTGRES.createConnection("");
+          var statement = connection.createStatement()) {
+        try (ResultSet result = statement.executeQuery(
+            "SELECT status, storage_object_id FROM " + schema
+                + ".media_asset_renditions WHERE media_asset_id = 1 "
+                + "AND profile = '1080p' ORDER BY id")) {
           assertThat(result.next()).isTrue();
-          assertThat(result.getLong("count")).isEqualTo(1L);
-          assertThat(result.getLong("retained_id")).isEqualTo(1L);
+          assertThat(result.getString("status")).isEqualTo("REQUESTED");
+          assertThat(result.getObject("storage_object_id", Long.class)).isNull();
+          assertThat(result.next()).isTrue();
+          assertThat(result.getString("status")).isEqualTo("READY");
+          assertThat(result.getLong("storage_object_id")).isEqualTo(101L);
+          assertThat(result.next()).isFalse();
+        }
+
+        try (ResultSet result = statement.executeQuery(
+            "SELECT COUNT(*) AS count FROM " + schema
+                + ".flyway_schema_history WHERE version = '21'")) {
+          assertThat(result.next()).isTrue();
+          assertThat(result.getLong("count")).isZero();
         }
       }
     } finally {
@@ -93,8 +131,8 @@ class LegacyVideoMetadataMigrationTest extends PostgresIntegrationTest {
                 + "VALUES (1, 'legacy-video.mp4', 1, 'video/mp4', 'UNIDENTIFIED')");
         statement.executeUpdate(
             "INSERT INTO " + schema + ".media_asset_renditions "
-                + "(media_asset_id, profile, status) VALUES "
-                + "(1, '1080p', 'REQUESTED'), (1, '1080p', 'REQUESTED')");
+                + "(media_asset_id, storage_object_id, profile, status) VALUES "
+                + "(1, NULL, '1080p', 'REQUESTED'), (1, 101, '1080p', 'READY')");
       }
     }
   }
