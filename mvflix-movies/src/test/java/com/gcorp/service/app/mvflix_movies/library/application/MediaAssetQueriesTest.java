@@ -11,8 +11,8 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemAccess;
 
 import org.junit.jupiter.api.Test;

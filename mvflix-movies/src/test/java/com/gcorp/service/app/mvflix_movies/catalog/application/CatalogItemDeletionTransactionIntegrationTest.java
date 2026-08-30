@@ -2,10 +2,10 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemConflictException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemConflictException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 
 import org.junit.jupiter.api.BeforeEach;

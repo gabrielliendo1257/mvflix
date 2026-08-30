@@ -4,11 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
@@ -74,16 +74,16 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
                 .block();
         this.mediaAssetRepository
                 .identifyIfUnidentified(discovered.getId(),
-                        com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(movie.getId().value()))
+                        com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(movie.getId().value()))
                 .block();
 
         StepVerifier.create(this.mediaAssetRepository.findByCatalogItemId(
-                        com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(movie.getId().value())))
+                        com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(movie.getId().value())))
                 .assertNext(asset -> {
                     assertThat(asset.isIdentified()).isTrue();
                     assertThat(asset.getPresent()).isTrue();
                     assertThat(asset.getCatalogItemId()).isEqualTo(
-                             com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(movie.getId().value()));
+                             com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(movie.getId().value()));
                 })
                 .verifyComplete();
     }

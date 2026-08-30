@@ -1,5 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.library.domain;
 
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+
 import java.time.Instant;
 
 import com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference;

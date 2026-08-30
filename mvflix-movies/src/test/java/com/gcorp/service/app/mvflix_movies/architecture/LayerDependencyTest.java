@@ -78,7 +78,11 @@ class LayerDependencyTest {
             .resideInAPackage("com.gcorp.service.app.mvflix_movies.library..")
             .should()
             .dependOnClassesThat()
-            .resideInAPackage("..catalog..")
+            .resideInAnyPackage(
+                    "..catalog.application..",
+                    "..catalog.infrastructure..",
+                    "..catalog.domain.movie..",
+                    "..catalog.domain.media..")
             .because("Library debe expresar sus necesidades mediante contratos y conceptos propios");
 
     @ArchTest

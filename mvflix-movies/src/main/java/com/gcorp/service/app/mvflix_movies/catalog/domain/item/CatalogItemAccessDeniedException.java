@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.item;
 
 /** Acceso denegado a una pelicula: no es PUBLIC, no es del dueño ni esta compartida. */
 public class CatalogItemAccessDeniedException extends RuntimeException {

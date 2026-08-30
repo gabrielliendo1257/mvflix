@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

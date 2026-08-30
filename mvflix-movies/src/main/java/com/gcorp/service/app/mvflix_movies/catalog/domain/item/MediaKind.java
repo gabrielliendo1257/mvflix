@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.item;
 
 /**
  * Tipo de contenido del catálogo. "CatalogItem" es un tipo, no la estructura del

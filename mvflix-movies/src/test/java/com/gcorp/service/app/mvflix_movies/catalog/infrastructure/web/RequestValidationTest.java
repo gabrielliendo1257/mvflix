@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CompleteMovieRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;

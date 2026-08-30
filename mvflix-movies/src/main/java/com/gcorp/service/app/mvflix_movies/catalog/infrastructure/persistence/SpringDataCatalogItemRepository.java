@@ -1,10 +1,10 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;

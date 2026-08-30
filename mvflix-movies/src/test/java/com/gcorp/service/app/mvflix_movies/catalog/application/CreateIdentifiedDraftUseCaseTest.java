@@ -5,11 +5,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 
@@ -45,7 +45,7 @@ class CreateIdentifiedDraftUseCaseTest {
         .thenAnswer(invocation -> {
           CatalogItem in = invocation.getArgument(0);
           return Mono.just(new CatalogItem(
-              com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(1L),
+              com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(1L),
               in.getOwnerUsername(),
               in.getTitle(),
               in.getStatus(),

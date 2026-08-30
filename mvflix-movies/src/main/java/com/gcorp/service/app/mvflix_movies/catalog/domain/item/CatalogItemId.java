@@ -1,6 +1,6 @@
-package com.gcorp.service.app.mvflix_movies.library.domain;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.item;
 
-/** Referencia local de Library al elemento asociado en Catalog. */
+/** Identificador tipado del agregado CatalogItem (evita {@code Long} desnudo en el dominio). */
 public record CatalogItemId(Long value) {
 
     public CatalogItemId {

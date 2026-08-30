@@ -1,14 +1,14 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

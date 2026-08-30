@@ -8,14 +8,14 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -106,7 +106,7 @@ class UpdateCatalogItemAccessUseCaseTest {
     void sharedWithoutUsersIsRejectedByDomain() {
         StepVerifier.create(this.useCase.execute(
                         CatalogItemId.of(1L), CatalogItemVisibility.SHARED, List.of()))
-                .expectError(com.gcorp.service.app.mvflix_movies.catalog.domain.movie.InvalidCatalogItemAccessException.class)
+                .expectError(com.gcorp.service.app.mvflix_movies.catalog.domain.item.InvalidCatalogItemAccessException.class)
                 .verify();
 
         verify(this.movieRepository, org.mockito.Mockito.never()).updateAccess(any());

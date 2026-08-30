@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.item;
 
 /** Acceso inválido declarado por el cliente: p.ej. SHARED sin usuarios. HTTP 400. */
 public class InvalidCatalogItemAccessException extends RuntimeException {

@@ -15,9 +15,9 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.ListCatalogItemsU
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemAccessUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichCatalogItemUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.application.ManagedObjectIdLookup;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityResponse;
@@ -136,7 +136,7 @@ public class MovieController {
     }
 
     /** Adds the legacy object_id only at the HTTP projection boundary. */
-    private Mono<MovieResponse> response(com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem movie) {
+    private Mono<MovieResponse> response(com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem movie) {
         return this.objectIdLookup == null
                 ? Mono.just(this.mapper.toResponse(movie))
                 : this.objectIdLookup.findObjectId(movie.getId())

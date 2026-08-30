@@ -4,9 +4,9 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryAsset
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedDeletionOutbox;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedMediaDeletionRequested;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 

@@ -10,7 +10,7 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
-import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 

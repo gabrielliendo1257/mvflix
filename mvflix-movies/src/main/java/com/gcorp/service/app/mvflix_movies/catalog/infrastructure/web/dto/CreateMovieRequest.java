@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
 
 import jakarta.validation.constraints.NotBlank;
 

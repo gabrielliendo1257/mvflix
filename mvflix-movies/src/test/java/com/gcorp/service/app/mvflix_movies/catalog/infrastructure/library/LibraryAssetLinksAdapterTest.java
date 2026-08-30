@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.library;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 
 import org.junit.jupiter.api.Test;
@@ -26,7 +26,7 @@ class LibraryAssetLinksAdapterTest {
     void delegatesUnlinkToLibraryRepository() {
         CatalogItemId movieId = CatalogItemId.of(10L);
          when(this.mediaAssetRepository.unlinkByCatalogItemId(
-                         com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(10L)))
+                         com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(10L)))
                 .thenReturn(Mono.just(2L));
 
         StepVerifier.create(this.adapter.unlinkByCatalogItemId(movieId))
@@ -34,6 +34,6 @@ class LibraryAssetLinksAdapterTest {
                 .verifyComplete();
 
          verify(this.mediaAssetRepository).unlinkByCatalogItemId(
-                 com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(10L));
+                 com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(10L));
     }
 }

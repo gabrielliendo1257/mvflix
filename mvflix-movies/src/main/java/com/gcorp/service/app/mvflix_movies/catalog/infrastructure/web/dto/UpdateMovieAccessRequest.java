@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 
 import jakarta.validation.constraints.NotNull;
 

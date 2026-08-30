@@ -4,13 +4,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemNotFoundException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +38,7 @@ class LibraryCatalogItemEnricherTest {
         when(this.enrichMovieUseCase.enrich(movie, 123L)).thenReturn(Mono.just(movie));
 
          StepVerifier.create(this.enricher.enrich(
-                         com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(50L), 123L))
+                         com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(50L), 123L))
                 .verifyComplete();
 
         verify(this.enrichMovieUseCase).enrich(movie, 123L);
@@ -49,7 +49,7 @@ class LibraryCatalogItemEnricherTest {
         when(this.movieRepository.findById(CatalogItemId.of(50L))).thenReturn(Mono.empty());
 
          StepVerifier.create(this.enricher.enrich(
-                         com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(50L), 123L))
+                         com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(50L), 123L))
                 .expectError(CatalogItemNotFoundException.class)
                 .verify();
     }

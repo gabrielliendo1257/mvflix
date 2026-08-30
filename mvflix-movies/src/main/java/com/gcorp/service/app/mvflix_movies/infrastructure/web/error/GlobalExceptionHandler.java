@@ -1,9 +1,9 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.web.error;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.InvalidCatalogStatusException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemConflictException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemConflictException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 
@@ -52,9 +52,9 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "MOVIE_CONFLICT", ex);
     }
 
-    @ExceptionHandler(com.gcorp.service.app.mvflix_movies.catalog.domain.movie.InvalidCatalogItemAccessException.class)
+    @ExceptionHandler(com.gcorp.service.app.mvflix_movies.catalog.domain.item.InvalidCatalogItemAccessException.class)
     public ResponseEntity<ErrorResponse> invalidMovieAccess(
-            com.gcorp.service.app.mvflix_movies.catalog.domain.movie.InvalidCatalogItemAccessException ex) {
+            com.gcorp.service.app.mvflix_movies.catalog.domain.item.InvalidCatalogItemAccessException ex) {
         return error(HttpStatus.BAD_REQUEST, "INVALID_MOVIE_ACCESS", ex);
     }
 

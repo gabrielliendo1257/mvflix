@@ -26,7 +26,7 @@ public class StoredObjectDeletedConsumer {
         return Mono.defer(() -> this.parse(rawEvent))
                 .flatMap(event -> this.deletionTransaction
                         .finalizeManagedDeletion(
-                                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(event.movieId()),
+                                com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(event.movieId()),
                                 event.storageId()))
                 .doOnError(error -> log.warn("Stored object deletion confirmation failed", error));
     }

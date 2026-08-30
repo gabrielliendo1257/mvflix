@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.library;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryAssetLinks;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -20,6 +20,6 @@ public class LibraryAssetLinksAdapter implements LibraryAssetLinks {
     @Override
     public Mono<Long> unlinkByCatalogItemId(CatalogItemId catalogItemId) {
         return this.mediaAssetRepository.unlinkByCatalogItemId(
-                com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(catalogItemId.value()));
+                com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(catalogItemId.value()));
     }
 }

@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
 
@@ -20,7 +20,7 @@ class MediaAssetTest {
         MediaAsset library = new com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset(
                 com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId.of(2L),
                 7L, "library/movie.mp4", 10L, "video/mp4", MediaAssetStatus.IDENTIFIED,
-                com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(1L), true,
+                com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(1L), true,
                 Instant.now(), Instant.now(), "admin");
 
         assertThat(managed.playbackReference().value()).isEqualTo("managed/movie.mp4");
@@ -36,7 +36,7 @@ class MediaAssetTest {
 
         assertThat(asset.isPlayable()).isFalse();
         assertThat(asset.identify(
-                com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(1L))
+                com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(1L))
                 .markMissing().isPlayable()).isFalse();
     }
 

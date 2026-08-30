@@ -1,5 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.library.domain;
 
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 

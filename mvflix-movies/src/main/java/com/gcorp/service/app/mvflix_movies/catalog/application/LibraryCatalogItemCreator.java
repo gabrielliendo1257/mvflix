@@ -1,12 +1,12 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.library.application.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemCreator;
-import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 
 import lombok.RequiredArgsConstructor;
 

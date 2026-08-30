@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
 

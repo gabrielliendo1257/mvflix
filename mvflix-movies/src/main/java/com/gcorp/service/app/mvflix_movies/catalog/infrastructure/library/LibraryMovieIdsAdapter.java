@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.library;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryMovieIds;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 

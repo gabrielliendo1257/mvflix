@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.scheduler;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogItemDeletionTransaction;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 
 import lombok.extern.slf4j.Slf4j;
 

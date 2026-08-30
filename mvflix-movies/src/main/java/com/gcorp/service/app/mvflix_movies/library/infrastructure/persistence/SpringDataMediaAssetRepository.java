@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.library.infrastructure.persistence;
 
-import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;

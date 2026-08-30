@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application.port;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 
 import reactor.core.publisher.Mono;
 

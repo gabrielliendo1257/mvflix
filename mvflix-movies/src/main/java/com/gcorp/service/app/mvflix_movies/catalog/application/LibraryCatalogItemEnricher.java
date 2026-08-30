@@ -1,9 +1,9 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemNotFoundException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemEnricher;
-import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,10 +21,10 @@ public class LibraryCatalogItemEnricher implements CatalogItemEnricher {
 
     @Override
     public Mono<Void> enrich(
-            com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId catalogItemId,
+            com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId catalogItemId,
             Long externalMetadataId) {
-        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId movieId =
-                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(catalogItemId.value());
+        com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId movieId =
+                com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(catalogItemId.value());
         return this.movieRepository
                 .findById(movieId)
                 .switchIfEmpty(Mono.error(new CatalogItemNotFoundException(

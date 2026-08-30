@@ -6,12 +6,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.library.application.CatalogItemKind;
 
 import org.junit.jupiter.api.Test;
@@ -51,7 +51,7 @@ class LibraryCatalogItemCreatorTest {
 
         StepVerifier.create(this.creator.createFromLibrary(
                         "Javier", "Dune", CatalogItemKind.MOVIE))
-                 .expectNext(com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(50L))
+                 .expectNext(com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(50L))
                 .verifyComplete();
 
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
@@ -85,7 +85,7 @@ class LibraryCatalogItemCreatorTest {
 
         StepVerifier.create(this.creator.createFromLibrary(
                         "Javier", "Live concert", CatalogItemKind.VIDEO))
-                 .expectNext(com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(51L))
+                 .expectNext(com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(51L))
                 .verifyComplete();
 
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
