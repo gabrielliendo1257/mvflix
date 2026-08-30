@@ -1,5 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
 
+import com.gcorp.service.app.mvflix_movies.catalog.domain.metadata.MovieMetadata;
+
 /**
  * Identidad confirmada o candidata de una pelicula en un proveedor externo.
  * La metadata puede ser null cuando solo se ha seleccionado el candidato.

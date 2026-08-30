@@ -1,6 +1,9 @@
-package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.metadata;
 
 import java.util.List;
+
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.ExternalMovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieProviderLink;
 
 public record MovieMetadata(
     String title,

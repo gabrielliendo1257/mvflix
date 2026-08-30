@@ -1,5 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
 
+import com.gcorp.service.app.mvflix_movies.catalog.domain.metadata.MovieMetadata;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

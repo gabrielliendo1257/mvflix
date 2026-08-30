@@ -3,10 +3,10 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.metadata.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.metadata.CatalogMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.metadata.VideoMetadata;
 
 import org.springframework.stereotype.Component;
 

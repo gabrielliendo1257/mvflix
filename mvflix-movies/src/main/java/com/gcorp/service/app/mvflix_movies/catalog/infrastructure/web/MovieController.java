@@ -6,7 +6,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.CompleteCatalogIt
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateCatalogItemCommand;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedDraftCommand;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedDraftUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.metadata.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.DeletionOutcome;

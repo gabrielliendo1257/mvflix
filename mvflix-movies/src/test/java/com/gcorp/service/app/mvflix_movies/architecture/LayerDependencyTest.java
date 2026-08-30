@@ -83,7 +83,8 @@ class LayerDependencyTest {
             .resideInAnyPackage(
                     "..catalog.application..",
                     "..catalog.infrastructure..",
-                    "..catalog.domain.movie..",
+                     "..catalog.domain.movie..",
+                     "..catalog.domain.metadata..",
                      "..catalog.domain.asset..")
             .because("los adapters de Library deben expresar sus necesidades mediante contratos propios");
 
