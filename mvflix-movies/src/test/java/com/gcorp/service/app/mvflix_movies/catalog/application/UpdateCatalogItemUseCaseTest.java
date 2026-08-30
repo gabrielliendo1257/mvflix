@@ -30,6 +30,7 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.List;
+import java.time.Instant;
 
 @ExtendWith(MockitoExtension.class)
 class UpdateCatalogItemUseCaseTest {
@@ -48,6 +49,13 @@ class UpdateCatalogItemUseCaseTest {
         return new CatalogItem(
                 CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
                 null, metadata, Visibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
+    }
+
+    private static CatalogItem video(long id, String owner, VideoMetadata metadata) {
+        return new CatalogItem(
+                CatalogItemId.of(id), owner, metadata.title(), CatalogItemStatus.READY,
+                EnrichmentStatus.RAW, null, metadata, Visibility.PRIVATE, java.util.Set.of(),
+                CatalogItemKind.VIDEO);
     }
 
     @Test
@@ -111,6 +119,62 @@ class UpdateCatalogItemUseCaseTest {
         assertThat(merged.popularity()).isEqualTo(9.1);
         assertThat(merged.tmdbId()).isEqualTo(438631L);
         assertThat(merged.title()).isEqualTo("Dune");
+    }
+
+    @Test
+    void explicitMovieKindUsesMovieMerge() {
+        MovieMetadata merged = UpdateCatalogItemUseCase.merge(METADATA, new UpdateCatalogItemCommand(
+                "Edited", null, null, null, null, null, null, null,
+                null, null, null, null, null, null, CatalogItemKind.MOVIE));
+
+        assertThat(merged.title()).isEqualTo("Edited");
+        assertThat(merged.tmdbId()).isEqualTo(438631L);
+    }
+
+    @Test
+    void videoMergeWithoutKindKeepsDescriptionAndRecordedAt() {
+        Instant recordedAt = Instant.parse("2024-01-01T00:00:00Z");
+        VideoMetadata merged = UpdateCatalogItemUseCase.merge(
+                new VideoMetadata("Clip", "Description", recordedAt),
+                new UpdateCatalogItemCommand(null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, null, null));
+
+        assertThat(merged.title()).isEqualTo("Clip");
+        assertThat(merged.description()).isEqualTo("Description");
+        assertThat(merged.recordedAt()).isEqualTo(recordedAt);
+    }
+
+    @Test
+    void videoItemCanBePartiallyUpdatedWithoutExplicitKind() {
+        Instant recordedAt = Instant.parse("2024-01-01T00:00:00Z");
+        CatalogItem video = video(1L, "Javier", new VideoMetadata("Clip", "Description", recordedAt));
+        when(this.userProvider.getAuthenticatedUser())
+                .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
+        when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(video));
+        when(this.movieRepository.updateDetails(any(CatalogItem.class)))
+                .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
+
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateCatalogItemCommand(
+                        "Edited clip", null, null, null, null, null, null, null,
+                        null, null, null, null, null, null, null)))
+                .assertNext(updated -> {
+                    assertThat(updated.getKind()).isEqualTo(CatalogItemKind.VIDEO);
+                    assertThat(updated.getVideoMetadata().description()).isEqualTo("Description");
+                    assertThat(updated.getVideoMetadata().recordedAt()).isEqualTo(recordedAt);
+                })
+                .verifyComplete();
+    }
+
+    @Test
+    void explicitVideoKindUsesVideoMerge() {
+        VideoMetadata merged = UpdateCatalogItemUseCase.merge(
+                new VideoMetadata("Clip", "Description", null),
+                new UpdateCatalogItemCommand(null, null, null, null, null, null, null,
+                        "Edited description", null, null, null, null, null, null,
+                        CatalogItemKind.VIDEO));
+
+        assertThat(merged.title()).isEqualTo("Clip");
+        assertThat(merged.description()).isEqualTo("Edited description");
     }
 
     @Test

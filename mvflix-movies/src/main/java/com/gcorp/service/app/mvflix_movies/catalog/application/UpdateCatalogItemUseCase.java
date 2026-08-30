@@ -52,55 +52,57 @@ public class UpdateCatalogItemUseCase {
                                 updated.isOwnedBy(user.subject()) ? "" : " (moderacion)")));
     }
 
-    /**
-     * Orquesta la edición: el paso a {@code VIDEO} descarta la metadata de película
-     * (solo queda lo que el usuario manda, sin proveedor) y revierte a RAW, todo en
-     * una sola llamada. El resto de casos hace merge normal.
-     */
     private Mono<CatalogItem> update(CatalogItem movie, UpdateCatalogItemCommand command) {
-        boolean switchedToVideo = command.kind() == CatalogItemKind.VIDEO
-                && movie.getKind() == CatalogItemKind.MOVIE;
-        boolean switchedToMovie = command.kind() == CatalogItemKind.MOVIE
-                && movie.getKind() == CatalogItemKind.VIDEO;
+        CatalogItemKind targetKind = command.kind() == null ? movie.getKind() : command.kind();
+        boolean reclassified = targetKind != movie.getKind();
+        CatalogMetadata merged = targetKind == CatalogItemKind.MOVIE
+                ? mergeMovie(movie, command)
+                : mergeVideo(movie, command);
 
-        CatalogMetadata merged = switchedToVideo
-                ? fromCommand(command)
-                : switchedToMovie
-                        ? fromCommand(command)
-                : merge(movie.getMovieMetadata(), command);
-
-        CatalogItem edited = switchedToVideo
-                ? movie.reclassifyAsVideo(merged)
-                : switchedToMovie
+        CatalogItem edited = reclassified
+                ? targetKind == CatalogItemKind.MOVIE
                         ? movie.reclassifyAsMovie(merged)
-                        : movie.withMetadata(merged);
+                        : movie.reclassifyAsVideo(merged)
+                : movie.withMetadata(merged);
         return this.movieRepository.updateDetails(edited);
     }
 
-    /** Metadata solo con lo que manda el usuario (sin proveedor): para el paso a VIDEO. */
-    private static CatalogMetadata fromCommand(UpdateCatalogItemCommand command) {
-        if (command.kind() == CatalogItemKind.VIDEO) {
-            return new VideoMetadata(command.title(), command.overview(), null);
+    private static MovieMetadata mergeMovie(CatalogItem item, UpdateCatalogItemCommand command) {
+        MovieMetadata current;
+        if (item.getKind() == CatalogItemKind.MOVIE) {
+            current = item.getMovieMetadata();
+        } else if (item.getKind() == CatalogItemKind.VIDEO
+                && item.getMetadata() instanceof VideoMetadata video) {
+            current = new MovieMetadata(video.title(), null, null, List.of(), null, null, null,
+                    List.of(), video.description(), null, null, null, null, List.of(), null);
+        } else {
+            throw new IllegalArgumentException("metadata does not match catalog kind");
         }
-        return new MovieMetadata(
-                command.title(),
-                command.originalTitle(),
-                command.year(),
-                command.genres() != null ? List.copyOf(command.genres()) : null,
-                null,
-                command.duration(),
-                command.director(),
-                command.cast() != null ? List.copyOf(command.cast()) : null,
-                command.overview(),
-                null,
-                command.releaseDate(),
-                command.country(),
-                command.language(),
-                command.awards() != null ? List.copyOf(command.awards()) : null,
-                null);
+        return merge(current, command);
     }
 
-    /** Merge: cada campo del command que no venga {@code null} reemplaza al actual. */
+    private static VideoMetadata mergeVideo(CatalogItem item, UpdateCatalogItemCommand command) {
+        VideoMetadata current;
+        if (item.getKind() == CatalogItemKind.VIDEO) {
+            current = item.getVideoMetadata();
+        } else if (item.getKind() == CatalogItemKind.MOVIE
+                && item.getMetadata() instanceof MovieMetadata movie) {
+            current = new VideoMetadata(movie.title(), movie.overview(), null);
+        } else {
+            throw new IllegalArgumentException("metadata does not match catalog kind");
+        }
+        return merge(current, command);
+    }
+
+    /** Merge de metadata de video; solo title y overview(description) son editables. */
+    static VideoMetadata merge(VideoMetadata current, UpdateCatalogItemCommand command) {
+        return new VideoMetadata(
+                command.title() != null ? command.title() : current.title(),
+                command.overview() != null ? command.overview() : current.description(),
+                current.recordedAt());
+    }
+
+    /** Merge de metadata de película; null conserva el valor actual. */
     static MovieMetadata merge(MovieMetadata current, UpdateCatalogItemCommand command) {
         return new MovieMetadata(
                 command.title() != null ? command.title() : current.title(),

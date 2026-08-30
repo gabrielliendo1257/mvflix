@@ -219,6 +219,13 @@ public class CatalogItem {
         return this.metadata instanceof MovieMetadata movieMetadata ? movieMetadata : null;
     }
 
+    public VideoMetadata getVideoMetadata() {
+        if (!(this.metadata instanceof VideoMetadata videoMetadata)) {
+            throw new CatalogItemConflictException("Catalog item does not contain video metadata");
+        }
+        return videoMetadata;
+    }
+
     /** Identidad externa tipada; null mientras la pelicula no esta identificada. */
     public MovieIdentification getIdentification() {
         return this.identification;
