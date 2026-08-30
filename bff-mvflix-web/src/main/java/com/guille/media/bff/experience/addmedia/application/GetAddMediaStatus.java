@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
+import com.guille.media.bff.experience.addmedia.application.port.MediaIngestionClient;
 
 import reactor.core.publisher.Mono;
 
@@ -22,13 +23,35 @@ import reactor.core.publisher.Mono;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class GetAddMediaStatus {
 
   private final AddMediaProcessRepository processes;
   private final AddMediaStorage storage;
+  private final MediaIngestionClient ingestion;
+  private final boolean ingestionEnabled;
+
+  public GetAddMediaStatus(AddMediaProcessRepository processes, AddMediaStorage storage) {
+    this(processes, storage, null, false);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public GetAddMediaStatus(AddMediaProcessRepository processes, AddMediaStorage storage,
+      MediaIngestionClient ingestion,
+      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:false}") boolean ingestionEnabled) {
+    this.processes = processes; this.storage = storage; this.ingestion = ingestion; this.ingestionEnabled = ingestionEnabled;
+  }
 
   public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId) {
+    return handle(ownerSubject, addMediaId, "add-media:" + addMediaId);
+  }
+
+  public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId, String correlationId) {
+    if (this.ingestionEnabled) {
+      return this.processes.findById(new AddMediaId(addMediaId)).filter(p -> p.ownedBy(ownerSubject))
+          .flatMap(this::withFreshInstructions)
+          .switchIfEmpty(Mono.defer(() -> this.ingestion.status(ownerSubject, addMediaId, correlationId)
+              .map(MediaIngestionResultMapper::map)));
+    }
     return this.processes
         .findById(new AddMediaId(addMediaId))
         .filter(process -> process.ownedBy(ownerSubject))

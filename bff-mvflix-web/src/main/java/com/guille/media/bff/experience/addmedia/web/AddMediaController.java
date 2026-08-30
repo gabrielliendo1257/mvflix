@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestHeader;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -81,9 +82,14 @@ public class AddMediaController {
   @Operation(summary = "Inicia el alta: draft identificado + sesión de upload (idempotente)")
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<AddMediaResponse>> start(
-      @Valid @RequestBody StartAddMediaRequest request) {
+      @Valid @RequestBody StartAddMediaRequest request,
+      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyHeader,
+      @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
+    String idempotencyKey = idempotencyHeader == null || idempotencyHeader.isBlank()
+        ? request.idempotencyKey() : idempotencyHeader;
     return this.ownerSubject()
-        .flatMap(owner -> this.startAddMedia.handle(owner, request.toCommand()))
+        .flatMap(owner -> this.startAddMedia.handle(owner, request.toCommand(idempotencyKey), correlationId == null
+            ? "add-media:" + idempotencyKey : correlationId))
         .map(result -> ResponseEntity.status(HttpStatus.CREATED)
             .body(AddMediaResponse.from(result)));
   }
@@ -91,9 +97,11 @@ public class AddMediaController {
   @Operation(summary = "Estado del proceso; restaura instrucciones frescas mientras espera upload")
   @GetMapping("/{addMediaId}")
   public Mono<AddMediaResponse> status(
-      @PathVariable String addMediaId) {
+      @PathVariable String addMediaId,
+      @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
     return this.ownerSubject()
-        .flatMap(owner -> this.getStatus.handle(owner, addMediaId))
+        .flatMap(owner -> this.getStatus.handle(owner, addMediaId, correlationId == null
+            ? "add-media:" + addMediaId : correlationId))
         .map(AddMediaResponse::from);
   }
 
@@ -104,10 +112,12 @@ public class AddMediaController {
   @PostMapping(value = "/{addMediaId}/complete", consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<AddMediaResponse>> complete(
       @PathVariable String addMediaId,
-      @RequestBody(required = false) CompleteSizeRequest request) {
+      @RequestBody(required = false) CompleteSizeRequest request,
+      @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
     Long sizeBytes = request == null ? null : request.sizeBytes();
     return this.ownerSubject()
-        .flatMap(owner -> this.completeProcess.handle(owner, addMediaId, sizeBytes))
+        .flatMap(owner -> this.completeProcess.handle(owner, addMediaId, sizeBytes,
+            correlationId == null ? "add-media:" + addMediaId : correlationId))
         .map(result -> result.phase() == com.guille.media.bff.experience.addmedia.model.AddMediaPhase.READY
             ? ResponseEntity.ok(AddMediaResponse.from(result))
             : ResponseEntity.accepted().body(AddMediaResponse.from(result)));
@@ -116,9 +126,11 @@ public class AddMediaController {
   /** Cancelación del proceso con compensaciones acotadas. */
   @Operation(summary = "Cancela el proceso y compensa recursos ya creados")
   @PostMapping("/{addMediaId}/cancel")
-  public Mono<AddMediaResponse> cancel(@PathVariable String addMediaId) {
+  public Mono<AddMediaResponse> cancel(@PathVariable String addMediaId,
+      @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
     return this.ownerSubject()
-        .flatMap(owner -> this.cancelAddMedia.handle(owner, addMediaId))
+        .flatMap(owner -> this.cancelAddMedia.handle(owner, addMediaId, correlationId == null
+            ? "add-media:" + addMediaId : correlationId))
         .map(AddMediaResponse::from);
   }
 

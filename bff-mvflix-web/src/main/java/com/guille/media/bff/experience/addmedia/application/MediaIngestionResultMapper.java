@@ -1,0 +1,27 @@
+package com.guille.media.bff.experience.addmedia.application;
+
+import com.guille.media.bff.experience.addmedia.application.port.MediaIngestionClient.MediaIngestionView;
+import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
+
+public final class MediaIngestionResultMapper {
+  private MediaIngestionResultMapper() {}
+
+  public static AddMediaResult map(MediaIngestionView view) {
+    AddMediaPhase phase = switch (view.phase()) {
+      case "AWAITING_UPLOAD" -> AddMediaPhase.WAITING_FOR_UPLOAD;
+      case "COMPLETED" -> AddMediaPhase.READY;
+      case "PREPARING_CATALOG", "PREPARING_UPLOAD", "FINALIZING_CATALOG" -> AddMediaPhase.PREPARING;
+      case "RECONCILIATION_REQUIRED" -> AddMediaPhase.FAILED;
+      default -> AddMediaPhase.valueOf(view.phase());
+    };
+    Long uploadId = null;
+    try { uploadId = view.uploadId() == null ? null : Long.valueOf(view.uploadId()); }
+    catch (NumberFormatException ignored) { /* preserve the public nullable field */ }
+    AddMediaResult.UploadInstructions upload = phase == AddMediaPhase.WAITING_FOR_UPLOAD
+        && view.uploadUrl() != null
+        ? new AddMediaResult.UploadInstructions(view.uploadUrl(), "PUT", view.storageKey(),
+            view.fileSize(), view.mimeType()) : null;
+    return new AddMediaResult(view.ingestionId(), view.actorId(), phase, view.catalogItemId(), uploadId,
+        upload, view.failureCode());
+  }
+}

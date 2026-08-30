@@ -15,6 +15,7 @@ import com.guille.media.bff.shared.error.EntityNotFound;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
+import com.guille.media.bff.experience.addmedia.application.port.MediaIngestionClient;
 
 import reactor.core.publisher.Mono;
 
@@ -32,6 +33,8 @@ public class CancelAddMedia {
   private final AddMediaStorage storage;
   private final AddMediaMovies movies;
   private final AddMediaCompensationRepository compensations;
+  private final MediaIngestionClient ingestion;
+  private final boolean ingestionEnabled;
 
   public CancelAddMedia(AddMediaProcessRepository processes, AddMediaStorage storage,
       AddMediaMovies movies) {
@@ -39,16 +42,34 @@ public class CancelAddMedia {
         processes instanceof AddMediaCompensationRepository repository ? repository : null);
   }
 
-  @org.springframework.beans.factory.annotation.Autowired
   public CancelAddMedia(AddMediaProcessRepository processes, AddMediaStorage storage,
       AddMediaMovies movies, AddMediaCompensationRepository compensations) {
     this.processes = processes;
     this.storage = storage;
     this.movies = movies;
     this.compensations = compensations;
+    this.ingestion = null; this.ingestionEnabled = false;
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public CancelAddMedia(AddMediaProcessRepository processes, AddMediaStorage storage, AddMediaMovies movies,
+      AddMediaCompensationRepository compensations, MediaIngestionClient ingestion,
+      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:false}") boolean ingestionEnabled) {
+    this.processes = processes; this.storage = storage; this.movies = movies; this.compensations = compensations;
+    this.ingestion = ingestion; this.ingestionEnabled = ingestionEnabled;
   }
 
   public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId) {
+    return handle(ownerSubject, addMediaId, "add-media:" + addMediaId);
+  }
+
+  public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId, String correlationId) {
+    if (this.ingestionEnabled) {
+      return this.processes.findById(new AddMediaId(addMediaId)).filter(p -> p.ownedBy(ownerSubject))
+          .flatMap(this::cancelIfAllowed)
+          .switchIfEmpty(Mono.defer(() -> this.ingestion.cancel(ownerSubject, addMediaId, correlationId)
+              .map(MediaIngestionResultMapper::map)));
+    }
     return this.processes
         .findById(new AddMediaId(addMediaId))
         .filter(process -> process.ownedBy(ownerSubject))

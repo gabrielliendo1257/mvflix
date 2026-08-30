@@ -22,14 +22,30 @@ public class MediaIngestionService {
   }
   private Mono<MediaIngestion> prepare(MediaIngestion i,String name,long size,String mime) {
     return clients.prepareUpload(name,size,mime,i.actorId(),i.ingestionId()+":prepare-upload").flatMap(u -> {
-      var n=new MediaIngestion(i.ingestionId(),i.actorId(),i.catalogItemId(),u.uploadId(),Phase.AWAITING_UPLOAD,null,i.version()+1,i.retryCount(),i.createdAt(),Instant.now(),i.nextAttemptAt(),i.idempotencyKey(),i.fileName(),i.fileSize(),i.mimeType(),u.uploadUrl(),null);
+      var n=new MediaIngestion(i.ingestionId(),i.actorId(),i.catalogItemId(),u.uploadId(),Phase.AWAITING_UPLOAD,null,i.version()+1,i.retryCount(),i.createdAt(),Instant.now(),i.nextAttemptAt(),i.idempotencyKey(),i.fileName(),i.fileSize(),i.mimeType(),u.uploadUrl(),null,u.storageKey());
       return repository.compareAndSet(i,n).flatMap(ok -> ok ? outbox.started(n).thenReturn(n) : Mono.error(new IllegalStateException("CAS failed")));
     }).onErrorResume(e -> fail(i,e));
   }
   public Mono<MediaIngestion> get(UUID id,String actor) { return repository.find(id).filter(i -> i.actorId().equals(actor)); }
   public Mono<MediaIngestion> cancel(UUID id,String actor) { return get(id,actor).flatMap(i -> { if(i.phase()==Phase.CANCELLED||i.phase()==Phase.COMPLETED)return Mono.just(i); var n=i.transition(Phase.CANCELLING,null,null,null); return repository.compareAndSet(i,n).flatMap(ok -> ok ? (i.uploadId()==null?Mono.empty():clients.cancelUpload(i.uploadId(),actor,id+":cancel-upload")).then(Mono.defer(() -> repository.compareAndSet(n,n.transition(Phase.CANCELLED,null,null,null)))).then(repository.find(id)).flatMap(x -> outbox.cancelled(x).thenReturn(x)) : Mono.error(new IllegalStateException("CAS failed"))); }).onErrorResume(e -> get(id,actor).flatMap(i -> fail(i,e)));
   }
-  public Mono<MediaIngestion> complete(UUID id,String actor,long objectId,String objectKey) { return get(id,actor).flatMap(i -> finalize(i,objectId,objectKey)); }
+  public Mono<MediaIngestion> complete(UUID id,String actor,Long reportedSize) {
+    return get(id,actor).flatMap(i -> {
+      if (i.phase() == Phase.COMPLETED) return Mono.just(i);
+      if (i.phase() != Phase.AWAITING_UPLOAD) {
+        return Mono.error(new IllegalStateException("cannot complete ingestion in phase " + i.phase()));
+      }
+      if (i.uploadId() == null) return Mono.error(new IllegalStateException("upload session unavailable"));
+
+      // CAS gives one completion request ownership without claiming the saga's final state.
+      var claimed = i.transition(Phase.AWAITING_UPLOAD,null,null,null);
+      return repository.compareAndSet(i,claimed)
+          .flatMap(ok -> ok
+              ? clients.requestUploadCompletion(i.uploadId(),actor,id + ":complete-upload")
+                  .then(repository.find(id))
+              : Mono.error(new IllegalStateException("CAS failed")));
+    });
+  }
   public Mono<Void> uploadCompleted(UUID id,long objectId,String objectKey,String causation) { return repository.find(id).switchIfEmpty(Mono.error(new IllegalArgumentException("unknown correlationId"))).flatMap(i -> finalize(i,objectId,objectKey).then()).then(); }
   public Mono<Void> uploadCompletedByUploadId(String uploadId,long objectId,String objectKey,String causation) { return repository.findByUploadId(uploadId).switchIfEmpty(Mono.error(new IllegalArgumentException("unknown uploadId"))).flatMap(i -> finalize(i,objectId,objectKey).then()).then(); }
   public Mono<Void> uploadCompletedByStorageId(long storageId,long objectId,String objectKey) { return repository.findByStorageId(storageId).switchIfEmpty(Mono.error(new IllegalArgumentException("unknown storageId"))).flatMap(i -> finalize(i,objectId,objectKey).then()).then(); }

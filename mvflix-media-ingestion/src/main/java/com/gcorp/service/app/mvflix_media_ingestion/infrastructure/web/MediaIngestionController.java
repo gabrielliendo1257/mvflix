@@ -13,8 +13,9 @@ public class MediaIngestionController {
   public record Create(@NotNull Map<String,Object> draft,@Valid @NotNull File file){}
   @PostMapping public Mono<ResponseEntity<MediaIngestion>> create(@RequestHeader("Idempotency-Key") String key,@Valid @RequestBody Create r,@AuthenticationPrincipal Jwt jwt){return service.create(actor(jwt),key,r.draft(),r.file().filename(),r.file().fileSize(),r.file().mimeType()).map(ResponseEntity::ok);}
   @GetMapping("/{id}") public Mono<ResponseEntity<MediaIngestion>> get(@PathVariable UUID id,@AuthenticationPrincipal Jwt jwt){return service.get(id,actor(jwt)).map(ResponseEntity::ok).defaultIfEmpty(ResponseEntity.notFound().build());}
-  public record Complete(@NotNull @JsonProperty("object_id") Long objectId,@NotBlank @JsonProperty("object_key") String objectKey){}
-  @PostMapping("/{id}/complete") public Mono<ResponseEntity<MediaIngestion>> complete(@PathVariable UUID id,@Valid @RequestBody Complete r,@AuthenticationPrincipal Jwt jwt){return service.complete(id,actor(jwt),r.objectId(),r.objectKey()).map(ResponseEntity::ok).defaultIfEmpty(ResponseEntity.notFound().build());}
+   public record Complete(@JsonProperty("object_id") Long objectId,@JsonProperty("object_key") String objectKey,
+       @JsonProperty("size_bytes") Long sizeBytes){}
+   @PostMapping("/{id}/complete") public Mono<ResponseEntity<MediaIngestion>> complete(@PathVariable UUID id,@Valid @RequestBody(required=false) Complete r,@AuthenticationPrincipal Jwt jwt){return service.complete(id,actor(jwt),r==null?null:r.sizeBytes()).map(ResponseEntity::ok).defaultIfEmpty(ResponseEntity.notFound().build());}
   @PostMapping("/{id}/cancel") public Mono<ResponseEntity<MediaIngestion>> cancel(@PathVariable UUID id,@AuthenticationPrincipal Jwt jwt){return service.cancel(id,actor(jwt)).map(ResponseEntity::ok).defaultIfEmpty(ResponseEntity.notFound().build());}
   private String actor(Jwt jwt){if(jwt==null||jwt.getSubject()==null)throw new IllegalStateException("JWT subject required"); return jwt.getSubject();}
 }

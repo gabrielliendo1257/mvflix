@@ -226,6 +226,19 @@ public class BffWebClientConfiguration {
         responseTimeoutMs);
   }
 
+  @Bean
+  WebClient mediaIngestionWebClient(
+      ServerOAuth2AuthorizedClientExchangeFilterFunction oauth2AuthorizedClientFilter,
+      ObjectProvider<ExchangeFilterFunction> devOutboundAuthFilter,
+      ObjectProvider<ExchangeFilterFunction> oauth2AccessTokenRefreshFilter,
+      @Value("${services.media-ingestion.url:${MEDIA_INGESTION_URL:http://localhost:8080}}") String mediaIngestionUrl,
+      @Value("${bff.webclient.connect-timeout-ms:2000}") int connectTimeoutMs,
+      @Value("${bff.webclient.response-timeout-ms:10000}") long responseTimeoutMs) {
+    return this.build(mediaIngestionUrl,
+        this.outboundAuthFilter(oauth2AuthorizedClientFilter, devOutboundAuthFilter, oauth2AccessTokenRefreshFilter),
+        connectTimeoutMs, responseTimeoutMs);
+  }
+
   /**
    * En dev el filtro de salida es el compuesto (Bearer o sesion); fuera de dev no hay bean
    * ExchangeFilterFunction propio y manda siempre el filtro oauth2 de sesion. En ambos

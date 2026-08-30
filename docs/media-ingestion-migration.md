@@ -1,6 +1,12 @@
 # Media ingestion
 
-`mvflix-media-ingestion` is the gradual orchestration boundary for the new BFF facade. The existing BFF `add_media_processes` and schedulers remain active; routing is not changed by this migration. The future facade should forward its stable draft/file command and `Idempotency-Key` to this service, then expose the returned `ingestionId` and presigned URL.
+`mvflix-media-ingestion` is the gradual orchestration boundary for the BFF facade. Set `features.add-media.media-ingestion-enabled` (or `MEDIA_INGESTION_ENABLED`) to `true` only after the service and its database migrations are healthy. The flag defaults to `false`, so existing BFF traffic keeps using `add_media_processes`.
+
+The BFF preserves `/web/add-media` and its public response. New creates forward the validated draft/file and `Idempotency-Key`; status/complete/cancel forward the ingestion UUID, correlation header and the authenticated Bearer. The actor is always derived by Media Ingestion from that JWT; it is never accepted from the request body or forwarded as a trusted actor header. The service persists the upload object key so the unchanged public complete request (which only has optional `sizeBytes`) can complete safely.
+
+During rollout, old BFF processes are selected by a lookup in `add_media_processes` before status/complete/cancel. Existing rows therefore remain on the legacy path and are not duplicated. This is the safe convention available in the current public model, which has no backend marker. A missing row is treated as a new ingestion UUID; consequently an old process whose BFF row has already been deleted cannot be identified and must not be retried blindly.
+
+Rollback is setting the flag back to `false`; this affects new operations and leaves both repositories and schedulers intact. Drain legacy processes by monitoring their phases, allowing uploads to finish or cancelling them through the BFF while the flag is enabled, and only then retiring the old scheduler/repository in a later migration. Do not delete legacy rows until their compensations are drained and terminal state is verified.
 
 Movies has no idempotency-key support in its current HTTP API, so `create-catalog-draft` and `complete-catalog` are protected only by the local durable state/CAS. Storage receives `{ingestionId}:prepare-upload` and already persists that key. `UploadCompleted.v1` is correlated by envelope `correlationId` when it is an ingestion UUID; legacy messages without it can be correlated only if Storage adds `payload.uploadId`. A storage event containing only `storageId` cannot be safely mapped and is ignored for reconciliation.
 

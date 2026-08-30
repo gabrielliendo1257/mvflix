@@ -3,13 +3,13 @@ package com.guille.media.bff.experience.addmedia.application;
 import com.guille.media.bff.app.dto.CompleteMovieRequest;
 import com.guille.media.bff.experience.addmedia.application.UploadCompletionOutcome.Completed;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
+import com.guille.media.bff.experience.addmedia.application.port.MediaIngestionClient;
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
@@ -29,14 +29,39 @@ import reactor.core.publisher.Mono;
  * </ul>
  */
 @Slf4j
-@RequiredArgsConstructor
 @Service
 public class CompleteProcessAddMedia {
 
   private final AddMediaProcessRepository processes;
   private final CompleteAddMedia completion;
+  private final MediaIngestionClient ingestion;
+  private final boolean ingestionEnabled;
+
+  public CompleteProcessAddMedia(AddMediaProcessRepository processes, CompleteAddMedia completion) {
+    this(processes, completion, null, false);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public CompleteProcessAddMedia(AddMediaProcessRepository processes, CompleteAddMedia completion,
+      MediaIngestionClient ingestion,
+      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:false}") boolean ingestionEnabled) {
+    this.processes = processes; this.completion = completion; this.ingestion = ingestion;
+    this.ingestionEnabled = ingestionEnabled;
+  }
 
   public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId, Long reportedSizeBytes) {
+    return handle(ownerSubject, addMediaId, reportedSizeBytes, "add-media:" + addMediaId);
+  }
+
+  public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId, Long reportedSizeBytes,
+      String correlationId) {
+    if (this.ingestionEnabled) {
+      return this.processes.findById(new AddMediaId(addMediaId))
+          .filter(process -> process.ownedBy(ownerSubject))
+          .flatMap(process -> this.legacyHandle(process, reportedSizeBytes))
+          .switchIfEmpty(Mono.defer(() -> this.ingestion.complete(ownerSubject, addMediaId, reportedSizeBytes,
+              correlationId).map(MediaIngestionResultMapper::map)));
+    }
     return this.processes
         .findById(new AddMediaId(addMediaId))
         .filter(process -> process.ownedBy(ownerSubject))
@@ -57,6 +82,16 @@ public class CompleteProcessAddMedia {
           }
           return this.claimAndComplete(process, reportedSizeBytes);
         });
+  }
+
+  private Mono<AddMediaResult> legacyHandle(AddMediaProcess process, Long reportedSizeBytes) {
+    if (process.phase() == AddMediaPhase.READY) return Mono.just(AddMediaResult.from(process));
+    if (process.phase() == AddMediaPhase.CANCELLED || process.phase() == AddMediaPhase.CANCELLING
+        || process.phase() == AddMediaPhase.FAILED || process.phase() == AddMediaPhase.STARTING
+        || process.phase() == AddMediaPhase.PREPARING) {
+      return Mono.error(new InvalidAddMediaTransition(process.phase(), AddMediaPhase.FINALIZING));
+    }
+    return this.claimAndComplete(process, reportedSizeBytes);
   }
 
   private Mono<AddMediaResult> claimAndComplete(AddMediaProcess process, Long reportedSizeBytes) {

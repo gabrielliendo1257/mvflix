@@ -46,6 +46,10 @@ public record StartAddMediaRequest(
 
 
   public StartAddMediaCommand toCommand() {
+    return toCommand(this.idempotencyKey);
+  }
+
+  public StartAddMediaCommand toCommand(String effectiveIdempotencyKey) {
     return new StartAddMediaCommand(
         new StartAddMediaCommand.FileSelection(
             file.filename(), file.sizeBytes(), file.mimeType()),
@@ -56,6 +60,6 @@ public record StartAddMediaRequest(
                 null, null)
             : new StartAddMediaCommand.InitialAccess(
                 access.visibility(), access.sharedWith()),
-        idempotencyKey);
+        effectiveIdempotencyKey);
   }
 }

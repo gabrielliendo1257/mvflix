@@ -18,6 +18,8 @@ import com.guille.media.bff.experience.addmedia.application.StartAddMediaCommand
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+import com.guille.media.bff.experience.addmedia.application.port.MediaIngestionClient;
 
 import reactor.core.publisher.Mono;
 
@@ -39,6 +41,8 @@ public class StartAddMedia {
   private final AddMediaProcessRepository processes;
   private final UsersWebPort users;
   private final AddMediaCompensationRepository compensations;
+  private final MediaIngestionClient ingestion;
+  private final boolean ingestionEnabled;
 
   public StartAddMedia(
       AddMediaMovies movies,
@@ -49,7 +53,6 @@ public class StartAddMedia {
         processes instanceof AddMediaCompensationRepository repository ? repository : null);
   }
 
-  @org.springframework.beans.factory.annotation.Autowired
   public StartAddMedia(
       AddMediaMovies movies,
       AddMediaStorage storage,
@@ -61,9 +64,27 @@ public class StartAddMedia {
     this.processes = processes;
     this.users = users;
     this.compensations = compensations;
+    this.ingestion = null;
+    this.ingestionEnabled = false;
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public StartAddMedia(AddMediaMovies movies, AddMediaStorage storage, AddMediaProcessRepository processes,
+      UsersWebPort users, AddMediaCompensationRepository compensations, MediaIngestionClient ingestion,
+      @Value("${features.add-media.media-ingestion-enabled:false}") boolean ingestionEnabled) {
+    this.movies = movies; this.storage = storage; this.processes = processes; this.users = users;
+    this.compensations = compensations; this.ingestion = ingestion; this.ingestionEnabled = ingestionEnabled;
   }
 
   public Mono<AddMediaResult> handle(String ownerSubject, StartAddMediaCommand command) {
+    return handle(ownerSubject, command, "add-media:" + command.idempotencyKey());
+  }
+
+  public Mono<AddMediaResult> handle(String ownerSubject, StartAddMediaCommand command, String correlationId) {
+    if (this.ingestionEnabled) {
+      return this.ingestion.create(ownerSubject, command, correlationId)
+          .map(MediaIngestionResultMapper::map);
+    }
     return this.processes
         .createIfAbsent(ownerSubject, command.idempotencyKey(), fingerprintOf(command))
         .flatMap(process -> {
