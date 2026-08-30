@@ -24,7 +24,7 @@ class CompleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   @BeforeEach
   void cleanDatabase() {
-    this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+    this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
   }
 
   @Test
@@ -47,7 +47,7 @@ class CompleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
     return this.databaseClient
         .sql(
             """
-            INSERT INTO movies (
+            INSERT INTO catalog_items (
                 owner_username, title, status, enrichment_status, metadata, visibility, kind)
             VALUES ('pepe', 'Dune', :status, 'RAW', '{"title":"Dune"}'::jsonb,
                     'PRIVATE', 'MOVIE')
@@ -63,10 +63,10 @@ class CompleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
     this.databaseClient
         .sql(
             """
-            INSERT INTO media (movie_id, object_id, object_key)
-            VALUES (:movie_id, :object_id, :object_key)
+            INSERT INTO media (catalog_item_id, object_id, object_key)
+            VALUES (:catalog_item_id, :object_id, :object_key)
             """)
-        .bind("movie_id", movieId)
+        .bind("catalog_item_id", movieId)
         .bind("object_id", objectId)
         .bind("object_key", objectKey)
         .fetch()
@@ -76,7 +76,7 @@ class CompleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   private reactor.core.publisher.Mono<String> movieStatus(Long movieId) {
     return this.databaseClient
-        .sql("SELECT status FROM movies WHERE id = :id")
+        .sql("SELECT status FROM catalog_items WHERE id = :id")
         .bind("id", movieId)
         .map((row, metadata) -> row.get("status", String.class))
         .one();
@@ -84,8 +84,8 @@ class CompleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   private reactor.core.publisher.Mono<Long> mediaCount(Long movieId) {
     return this.databaseClient
-        .sql("SELECT COUNT(*) AS count FROM media WHERE movie_id = :movie_id")
-        .bind("movie_id", movieId)
+        .sql("SELECT COUNT(*) AS count FROM media WHERE catalog_item_id = :catalog_item_id")
+        .bind("catalog_item_id", movieId)
         .map((row, metadata) -> row.get("count", Long.class))
         .one();
   }

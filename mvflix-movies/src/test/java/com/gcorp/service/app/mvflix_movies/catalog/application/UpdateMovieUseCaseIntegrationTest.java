@@ -30,7 +30,7 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
   @BeforeEach
   void setUp() {
     this.dropTestConstraint();
-    this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
   }
 
   @AfterEach
@@ -48,7 +48,7 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
             .block();
     this.databaseClient
         .sql(
-            "ALTER TABLE movies ADD CONSTRAINT "
+            "ALTER TABLE catalog_items ADD CONSTRAINT "
                 + TEST_CONSTRAINT
                 + " CHECK (kind = 'MOVIE')")
         .fetch()
@@ -87,7 +87,7 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   private void dropTestConstraint() {
     this.databaseClient
-        .sql("ALTER TABLE movies DROP CONSTRAINT IF EXISTS " + TEST_CONSTRAINT)
+        .sql("ALTER TABLE catalog_items DROP CONSTRAINT IF EXISTS " + TEST_CONSTRAINT)
         .fetch()
         .rowsUpdated()
         .block();

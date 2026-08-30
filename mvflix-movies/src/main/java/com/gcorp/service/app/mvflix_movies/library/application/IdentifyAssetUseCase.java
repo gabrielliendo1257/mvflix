@@ -76,7 +76,7 @@ public class IdentifyAssetUseCase {
                                 .filter(MediaAsset::isIdentified)
                                 .switchIfEmpty(Mono.error(conflict)))
                 .doOnNext(identified -> log.info(
-                        "Asset {} identificado: path={} -> movie_id={}",
+                        "Asset {} identificado: path={} -> catalog_item_id={}",
                         asset.getId(), asset.getRelativePath(),
                         identified.getCatalogItemId().value()));
     }

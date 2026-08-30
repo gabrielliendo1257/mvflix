@@ -43,7 +43,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
         this.databaseClient.sql("DELETE FROM media_assets").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM media").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
-        this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
     }
 
     @Test
@@ -95,15 +95,15 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
         Long movieDbId = movie.getId().value();
 
         this.databaseClient.sql(
-                "INSERT INTO movie_shares (movie_id, shared_with) VALUES (:m, :u)")
+                "INSERT INTO movie_shares (catalog_item_id, shared_with) VALUES (:m, :u)")
                 .bind("m", movieDbId).bind("u", "maria").then()
                 .then(this.databaseClient.sql(
-                        "INSERT INTO movie_shares (movie_id, shared_with) VALUES (:m, :u)")
+                        "INSERT INTO movie_shares (catalog_item_id, shared_with) VALUES (:m, :u)")
                         .bind("m", movieDbId).bind("u", "pedro").then())
                 .block();
 
         this.databaseClient.sql(
-                "SELECT COUNT(*) AS n FROM movie_shares WHERE movie_id = :m")
+                "SELECT COUNT(*) AS n FROM movie_shares WHERE catalog_item_id = :m")
                 .bind("m", movieDbId)
                 .map((row, meta) -> row.get("n", Long.class))
                 .one()
@@ -126,7 +126,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
                 SELECT m.metadata->>'posterPath' AS poster,
                        m.metadata->>'year' AS year,
                        m.metadata->>'duration' AS duration
-                FROM movies m WHERE m.title = 'Coraline'
+                FROM catalog_items m WHERE m.title = 'Coraline'
                 """)
                 .map((row, meta) -> java.util.Map.of(
                         "poster", String.valueOf(row.get("poster", String.class)),

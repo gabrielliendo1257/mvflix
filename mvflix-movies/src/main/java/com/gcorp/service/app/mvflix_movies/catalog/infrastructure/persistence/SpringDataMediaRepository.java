@@ -26,16 +26,16 @@ public class SpringDataMediaRepository implements MediaRepository {
         return this.databaseClient
                 .sql(
                         """
-                        INSERT INTO media (movie_id, object_id, object_key)
-                        VALUES (:movie_id, :object_id, :object_key)
-                        RETURNING id, movie_id, object_id, object_key, created_at
+                         INSERT INTO media (catalog_item_id, object_id, object_key)
+                         VALUES (:catalog_item_id, :object_id, :object_key)
+                         RETURNING id, catalog_item_id, object_id, object_key, created_at
                         """)
-                .bind("movie_id", media.getMovieId().value())
+                .bind("catalog_item_id", media.getMovieId().value())
                 .bind("object_id", media.getObjectId())
                 .bind("object_key", media.getObjectKey())
                 .map((row, metadata) -> new ManagedMediaAsset(
                         MediaId.of(row.get("id", Long.class)),
-                        CatalogItemId.of(row.get("movie_id", Long.class)),
+                        CatalogItemId.of(row.get("catalog_item_id", Long.class)),
                         row.get("object_id", Long.class),
                         row.get("object_key", String.class),
                         row.get("created_at", Instant.class)))
@@ -47,16 +47,16 @@ public class SpringDataMediaRepository implements MediaRepository {
         return this.databaseClient
                 .sql(
                         """
-                        SELECT id, movie_id, object_id, object_key, created_at
-                        FROM media
-                        WHERE movie_id = :movie_id
+                         SELECT id, catalog_item_id, object_id, object_key, created_at
+                         FROM media
+                         WHERE catalog_item_id = :catalog_item_id
                         ORDER BY id
                         LIMIT 1
                         """)
-                .bind("movie_id", movieId.value())
+                .bind("catalog_item_id", movieId.value())
                 .map((row, metadata) -> new ManagedMediaAsset(
                         MediaId.of(row.get("id", Long.class)),
-                        CatalogItemId.of(row.get("movie_id", Long.class)),
+                        CatalogItemId.of(row.get("catalog_item_id", Long.class)),
                         row.get("object_id", Long.class),
                         row.get("object_key", String.class),
                         row.get("created_at", Instant.class)))

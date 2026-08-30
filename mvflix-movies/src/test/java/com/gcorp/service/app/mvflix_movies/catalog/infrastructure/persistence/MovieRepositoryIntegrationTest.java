@@ -36,7 +36,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
   @BeforeEach
   void cleanDatabase() {
     this.dropAccessConstraint();
-    this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+    this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
   }
 
   @AfterEach
@@ -168,10 +168,10 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
     this.databaseClient
         .sql(
             """
-            INSERT INTO media (movie_id, object_id, object_key)
-            VALUES (:movie_id, :object_id, :object_key)
+            INSERT INTO media (catalog_item_id, object_id, object_key)
+            VALUES (:catalog_item_id, :object_id, :object_key)
             """)
-        .bind("movie_id", movieId)
+        .bind("catalog_item_id", movieId)
         .bind("object_id", objectId)
         .bind("object_key", objectKey)
         .fetch()
@@ -185,7 +185,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
             .sql(
                 """
                 SELECT title, metadata ->> 'title' AS metadata_title
-                FROM movies
+                FROM catalog_items
                 WHERE id = :id
                 """)
             .bind("id", movieId)

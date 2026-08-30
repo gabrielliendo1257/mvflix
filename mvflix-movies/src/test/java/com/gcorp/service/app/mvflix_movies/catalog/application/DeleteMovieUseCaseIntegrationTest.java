@@ -32,7 +32,7 @@ class DeleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
   @BeforeEach
   void cleanDatabase() {
     this.databaseClient.sql("DELETE FROM media_assets").fetch().rowsUpdated().block();
-    this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+    this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
   }
 
   @Test

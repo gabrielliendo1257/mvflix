@@ -21,7 +21,7 @@ import java.util.List;
  *   <li><b>MEDIA</b>: películas owned con EXISTS de media/media_assets
  *       identificadas (sin JOINs ⇒ una fila por película). display_status
  *       derivado en SQL (READY/PROCESSING/MISSING/ATTENTION).</li>
- *   <li><b>ASSET</b>: archivos de biblioteca SIN identificar (movie_id nulo),
+     *   <li><b>ASSET</b>: archivos de biblioteca SIN identificar (catalog_item_id nulo),
  *       visibles para su descubridor o admin. display_status UNIDENTIFIED,
  *       source LOCAL.</li>
  * </ol>
@@ -42,10 +42,10 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                    m.id AS key_id,
                    m.id AS media_id,
                    (SELECT ma.id FROM media_assets ma
-                    WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
+                     WHERE ma.catalog_item_id = m.id AND ma.status = 'IDENTIFIED'
                     ORDER BY ma.present DESC, ma.id LIMIT 1) AS asset_id,
                    (SELECT ma.present FROM media_assets ma
-                    WHERE ma.movie_id = m.id AND ma.status = 'IDENTIFIED'
+                     WHERE ma.catalog_item_id = m.id AND ma.status = 'IDENTIFIED'
                     ORDER BY ma.present DESC, ma.id LIMIT 1) AS asset_present,
                    m.title AS title,
                    COALESCE(m.metadata->>'posterPath', '') AS poster_url,
@@ -59,7 +59,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                         WHEN m.has_local THEN 'LOCAL'
                         ELSE 'NONE' END AS source,
                    m.visibility AS visibility,
-                   (SELECT COUNT(*) FROM movie_shares ms WHERE ms.movie_id = m.id) AS shared_count,
+                    (SELECT COUNT(*) FROM movie_shares ms WHERE ms.catalog_item_id = m.id) AS shared_count,
                    CASE WHEN m.metadata->>'tmdbId' IS NOT NULL THEN 'LINKED' ELSE 'NONE' END AS provider_status,
                    m.updated_at AS updated_at
             FROM (
@@ -71,13 +71,13 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                             ELSE 'ATTENTION' END AS display_status
                 FROM (
                     SELECT m0.*,
-                           EXISTS(SELECT 1 FROM media x WHERE x.movie_id = m0.id) AS has_managed,
+                           EXISTS(SELECT 1 FROM media x WHERE x.catalog_item_id = m0.id) AS has_managed,
                            EXISTS(SELECT 1 FROM media_assets x
-                                  WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED') AS has_local,
+                                   WHERE x.catalog_item_id = m0.id AND x.status = 'IDENTIFIED') AS has_local,
                            EXISTS(SELECT 1 FROM media_assets x
-                                  WHERE x.movie_id = m0.id AND x.status = 'IDENTIFIED'
+                                   WHERE x.catalog_item_id = m0.id AND x.status = 'IDENTIFIED'
                                     AND x.present) AS has_local_ready
-                    FROM movies m0
+                     FROM catalog_items m0
                     WHERE m0.owner_username = :owner
                 ) f
             ) m
@@ -108,7 +108,7 @@ public class CatalogViewSqlRepository implements CatalogViewRepository {
                    NULL::text AS provider_status,
                    a.updated_at AS updated_at
             FROM media_assets a
-            WHERE a.movie_id IS NULL
+             WHERE a.catalog_item_id IS NULL
               AND a.status = 'UNIDENTIFIED'
               AND (a.discovered_by = :owner OR :is_admin)
             """;

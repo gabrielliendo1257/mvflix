@@ -47,7 +47,7 @@ class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegratio
         this.databaseClient.sql("DELETE FROM media_assets").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM media").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
-        this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
 
         CatalogItem movie = this.movieRepository.save(CatalogItem.fromLibraryAsset(
                 "pepe", MovieMetadata.onlyTitle("Stalker"), MediaKind.MOVIE)).block();

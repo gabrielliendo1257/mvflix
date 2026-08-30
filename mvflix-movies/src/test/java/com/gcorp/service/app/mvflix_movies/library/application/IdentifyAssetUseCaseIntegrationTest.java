@@ -26,7 +26,7 @@ class IdentifyAssetUseCaseIntegrationTest extends PostgresIntegrationTest {
   @BeforeEach
   void cleanDatabase() {
     this.databaseClient.sql("DELETE FROM media_assets").fetch().rowsUpdated().block();
-    this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+    this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
   }
 
   @Test
@@ -56,7 +56,7 @@ class IdentifyAssetUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   private Mono<Long> countMovies() {
     return this.databaseClient
-        .sql("SELECT COUNT(*) AS count FROM movies")
+        .sql("SELECT COUNT(*) AS count FROM catalog_items")
         .map((row, metadata) -> row.get("count", Long.class))
         .one();
   }

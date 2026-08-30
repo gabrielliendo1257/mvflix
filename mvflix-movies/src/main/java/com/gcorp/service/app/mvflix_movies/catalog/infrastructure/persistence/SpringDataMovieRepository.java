@@ -22,13 +22,13 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
     private static final String MEDIA_OBJECT_ID =
             """
             (SELECT mm.object_id FROM media mm
-             WHERE mm.movie_id = m.id ORDER BY mm.id LIMIT 1) AS object_id
+             WHERE mm.catalog_item_id = m.id ORDER BY mm.id LIMIT 1) AS object_id
             """;
 
     private static final String SHARED_WITH =
             """
             COALESCE((SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
-                      FROM movie_shares ms WHERE ms.movie_id = m.id), ARRAY[]::varchar[]) AS shared_with
+                      FROM movie_shares ms WHERE ms.catalog_item_id = m.id), ARRAY[]::varchar[]) AS shared_with
             """;
 
     /**
@@ -42,7 +42,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                OR m.owner_username = :username
                OR (m.visibility = 'SHARED' AND EXISTS (
                    SELECT 1 FROM movie_shares ms
-                   WHERE ms.movie_id = m.id AND ms.shared_with = :username))
+                    WHERE ms.catalog_item_id = m.id AND ms.shared_with = :username))
             """;
 
     private static final String SELECT_MOVIE_COLUMNS =
@@ -68,7 +68,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         return this.databaseClient
                         .sql(
                                 """
-                                INSERT INTO movies (owner_username, title, status, enrichment_status, metadata, visibility, kind)
+                                 INSERT INTO catalog_items (owner_username, title, status, enrichment_status, metadata, visibility, kind)
                                 VALUES (:owner_username, :title, :status, :enrichment_status, CAST(:metadata AS jsonb), :visibility, :kind)
                                 RETURNING id, owner_username, title, status, enrichment_status, metadata::text, visibility, kind
                                 """)
@@ -110,7 +110,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .sql(
                         SELECT_MOVIE_COLUMNS
                         + """
-                        FROM movies m
+                         FROM catalog_items m
                         WHERE m.id = :id
                         """)
                 .bind("id", id.value())
@@ -125,7 +125,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .sql(
                         SELECT_MOVIE_COLUMNS
                         + """
-                        FROM movies m
+                         FROM catalog_items m
                         """
                         + VISIBLE_WHERE
                         + """
@@ -145,7 +145,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .sql(
                         SELECT_MOVIE_COLUMNS
                         + """
-                        FROM movies m
+                         FROM catalog_items m
                         WHERE m.owner_username = :owner_username
                         ORDER BY m.id DESC
                         LIMIT :limit
@@ -162,13 +162,13 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         return this.databaseClient
                 .sql(
                         """
-                        UPDATE movies
+                         UPDATE catalog_items
                         SET status = 'READY', updated_at = NOW()
                         WHERE id = :id AND status = 'DRAFT'
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility, kind,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
-                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
+                                    FROM movie_shares ms WHERE ms.catalog_item_id = catalog_items.id) AS shared_with
                         """)
                 .bind("id", id.value())
                 .map(this::toRow)
@@ -181,7 +181,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         return this.databaseClient
                 .sql(
                         """
-                        DELETE FROM movies
+                         DELETE FROM catalog_items
                         WHERE id = :id
                         """)
                 .bind("id", id.value())
@@ -195,15 +195,15 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         return this.databaseClient
                 .sql(
                         """
-                        UPDATE movies
+                         UPDATE catalog_items
                         SET status = 'DELETING', updated_at = NOW()
                         WHERE id = :id AND status = 'READY'
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility, kind,
                                   (SELECT mm.object_id FROM media mm
-                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
+                                   WHERE mm.catalog_item_id = catalog_items.id ORDER BY mm.id LIMIT 1) AS object_id,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
-                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
+                                    FROM movie_shares ms WHERE ms.catalog_item_id = catalog_items.id) AS shared_with
                         """)
                 .bind("id", id.value())
                 .map(this::toRow)
@@ -216,7 +216,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         return this.databaseClient
                 .sql(
                         """
-                        DELETE FROM movies
+                         DELETE FROM catalog_items
                         WHERE id = :id AND status = 'DELETING'
                         """)
                 .bind("id", id.value())
@@ -229,12 +229,12 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
     public Mono<Boolean> deleteIfDeletingAndStorageId(CatalogItemId id, long storageId) {
         return this.databaseClient
                 .sql("""
-                        DELETE FROM movies m
+                         DELETE FROM catalog_items m
                         WHERE m.id = :id
                           AND m.status = 'DELETING'
                           AND EXISTS (
                               SELECT 1 FROM media
-                              WHERE media.movie_id = m.id AND media.object_id = :storageId)
+                               WHERE media.catalog_item_id = m.id AND media.object_id = :storageId)
                         """)
                 .bind("id", id.value())
                 .bind("storageId", storageId)
@@ -249,7 +249,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .sql(
                         SELECT_MOVIE_COLUMNS
                         + """
-                        FROM movies m
+                         FROM catalog_items m
                         WHERE m.status = 'DELETING'
                         ORDER BY m.id
                         LIMIT :limit
@@ -265,7 +265,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         return this.databaseClient
                 .sql(SELECT_MOVIE_COLUMNS
                         + """
-                        FROM movies m
+                         FROM catalog_items m
                         WHERE m.status = 'DELETING'
                           AND (m.last_recovery_attempt_at IS NULL
                                OR m.last_recovery_attempt_at <= NOW() - make_interval(secs => :cooldown_seconds))
@@ -282,7 +282,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
     @Override
     public Mono<Void> markRecoveryAttempt(CatalogItemId id) {
         return this.databaseClient
-                .sql("UPDATE movies SET last_recovery_attempt_at = NOW() "
+                 .sql("UPDATE catalog_items SET last_recovery_attempt_at = NOW() "
                         + "WHERE id = :id AND status = 'DELETING'")
                 .bind("id", id.value())
                 .fetch()
@@ -295,7 +295,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         return this.databaseClient
                 .sql(
                         """
-                        DELETE FROM movies
+                         DELETE FROM catalog_items
                         WHERE status = 'DRAFT' AND created_at < :cutoff
                         """)
                 .bind("cutoff", cutoff)
@@ -319,7 +319,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         DatabaseClient.GenericExecuteSpec statement = this.databaseClient
                 .sql(
                         """
-                        UPDATE movies
+                         UPDATE catalog_items
                         SET title = :title, metadata = CAST(:metadata AS jsonb),
                             enrichment_status = :enrichment_status
                         """
@@ -330,9 +330,9 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility, kind,
                                   (SELECT mm.object_id FROM media mm
-                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
+                                   WHERE mm.catalog_item_id = catalog_items.id ORDER BY mm.id LIMIT 1) AS object_id,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
-                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
+                                    FROM movie_shares ms WHERE ms.catalog_item_id = catalog_items.id) AS shared_with
                         """)
                 .bind("metadata", this.jsonCodec.encode(movie.getMetadata()))
                 .bind("title", movie.getMetadata().title())
@@ -360,7 +360,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .sql(
                         SELECT_MOVIE_COLUMNS
                         + """
-                        FROM movies m
+                         FROM catalog_items m
                         WHERE m.owner_username = :owner_username
                           AND m.id IN ("""
                         + in
@@ -383,15 +383,15 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
         return this.databaseClient
                 .sql(
                         """
-                        UPDATE movies
+                         UPDATE catalog_items
                         SET visibility = :visibility, updated_at = NOW()
                         WHERE id = :id
                         RETURNING id, owner_username, title, status, enrichment_status,
                                   metadata::text, visibility, kind,
                                   (SELECT mm.object_id FROM media mm
-                                   WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
+                                   WHERE mm.catalog_item_id = catalog_items.id ORDER BY mm.id LIMIT 1) AS object_id,
                                   (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
-                                   FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
+                                    FROM movie_shares ms WHERE ms.catalog_item_id = catalog_items.id) AS shared_with
                         """)
                 .bind("visibility", movie.getVisibility().name())
                 .bind("id", movie.getId().value())
@@ -429,7 +429,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .sql(
                         """
                         DELETE FROM movie_shares
-                        WHERE movie_id = :id
+                         WHERE catalog_item_id = :id
                         """)
                 .bind("id", movie.getId().value())
                 .fetch()
@@ -440,10 +440,10 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                             .flatMap(username -> this.databaseClient
                                     .sql(
                                             """
-                                            INSERT INTO movie_shares (movie_id, shared_with)
+                                             INSERT INTO movie_shares (catalog_item_id, shared_with)
                                             SELECT :id, :username
                                             WHERE EXISTS (
-                                                SELECT 1 FROM movies m
+                                                 SELECT 1 FROM catalog_items m
                                                 WHERE m.id = :id)
                                             """)
                                     .bind("id", movie.getId().value())
@@ -453,15 +453,15 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .then(this.databaseClient
                         .sql(
                                 """
-                                UPDATE movies
+                                 UPDATE catalog_items
                                 SET updated_at = NOW()
                                 WHERE id = :id
                                 RETURNING id, owner_username, title, status, enrichment_status,
                                           metadata::text, visibility, kind,
                                           (SELECT mm.object_id FROM media mm
-                                           WHERE mm.movie_id = movies.id ORDER BY mm.id LIMIT 1) AS object_id,
+                                            WHERE mm.catalog_item_id = catalog_items.id ORDER BY mm.id LIMIT 1) AS object_id,
                                           (SELECT array_agg(ms.shared_with ORDER BY ms.shared_with)
-                                           FROM movie_shares ms WHERE ms.movie_id = movies.id) AS shared_with
+                                            FROM movie_shares ms WHERE ms.catalog_item_id = catalog_items.id) AS shared_with
                                 """)
                         .bind("id", movie.getId().value())
                         .map(this::toRow)
@@ -475,7 +475,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .sql(
                         SELECT_MOVIE_COLUMNS
                         + """
-                        FROM movies m
+                         FROM catalog_items m
                         WHERE m.enrichment_status = :enrichment_status
                         ORDER BY m.id
                         LIMIT :limit

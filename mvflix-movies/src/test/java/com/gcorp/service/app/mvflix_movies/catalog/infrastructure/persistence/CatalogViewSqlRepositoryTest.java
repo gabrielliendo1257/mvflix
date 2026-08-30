@@ -46,7 +46,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
         this.databaseClient.sql("DELETE FROM media_assets").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM media").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
-        this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
 
         // MANAGED: READY con metadata completa, objeto en media, 2 compartidos.
         CatalogItem managed = this.movieRepository.save(new CatalogItem(
@@ -79,7 +79,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
 
     private void share(long movieId, String user) {
         this.databaseClient.sql(
-                "INSERT INTO movie_shares (movie_id, shared_with) VALUES (:m, :u)")
+                "INSERT INTO movie_shares (catalog_item_id, shared_with) VALUES (:m, :u)")
                 .bind("m", movieId).bind("u", user).then().block();
     }
 

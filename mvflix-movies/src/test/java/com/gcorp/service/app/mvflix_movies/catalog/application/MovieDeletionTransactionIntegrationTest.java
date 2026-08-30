@@ -33,14 +33,14 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM media").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM media_assets").fetch().rowsUpdated().block();
-        this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
     }
 
     private Long insertMovie(String status) {
         return this.databaseClient
                 .sql(
                         """
-                        INSERT INTO movies (
+                        INSERT INTO catalog_items (
                             owner_username, title, status, enrichment_status, metadata, visibility, kind)
                         VALUES ('pepe', 'Dune', :status, 'RAW', '{"title":"Dune"}'::jsonb,
                                 'PRIVATE', 'MOVIE')
@@ -54,7 +54,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
 
     private void insertMedia(Long movieId, Long objectId, String objectKey) {
         this.databaseClient
-                .sql("INSERT INTO media (movie_id, object_id, object_key) VALUES (:m, :o, :k)")
+                .sql("INSERT INTO media (catalog_item_id, object_id, object_key) VALUES (:m, :o, :k)")
                 .bind("m", movieId).bind("o", objectId).bind("k", objectKey)
                 .fetch().rowsUpdated().block();
     }
@@ -64,7 +64,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
                 .sql(
                         """
                         INSERT INTO media_assets (
-                            library_id, relative_path, size, mime_type, status, movie_id,
+                            library_id, relative_path, size, mime_type, status, catalog_item_id,
                             discovered_by, present)
                         VALUES (7, :path, 1024, 'video/mp4', 'IDENTIFIED', :movie, 'admin', true)
                         """)
@@ -74,14 +74,14 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
 
     private void insertShare(Long movieId, String user) {
         this.databaseClient
-                .sql("INSERT INTO movie_shares (movie_id, shared_with) VALUES (:m, :u)")
+                .sql("INSERT INTO movie_shares (catalog_item_id, shared_with) VALUES (:m, :u)")
                 .bind("m", movieId).bind("u", user)
                 .fetch().rowsUpdated().block();
     }
 
     private Mono<String> status(Long movieId) {
         return this.databaseClient
-                .sql("SELECT status FROM movies WHERE id = :id")
+                .sql("SELECT status FROM catalog_items WHERE id = :id")
                 .bind("id", movieId)
                 .map((row, metadata) -> row.get("status", String.class))
                 .one();
@@ -89,7 +89,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
 
     private Mono<Long> count(String table, Long movieId) {
         return this.databaseClient
-                .sql("SELECT COUNT(*) AS n FROM " + table + " WHERE movie_id = :m")
+                .sql("SELECT COUNT(*) AS n FROM " + table + " WHERE catalog_item_id = :m")
                 .bind("m", movieId)
                 .map((row, metadata) -> row.get("n", Long.class))
                 .one();
@@ -184,11 +184,11 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         StepVerifier.create(this.count("media", movie)).expectNext(0L).verifyComplete();
         StepVerifier.create(this.count("movie_shares", movie)).expectNext(0L).verifyComplete();
         StepVerifier.create(this.databaseClient
-                        .sql("SELECT status, movie_id, present FROM media_assets WHERE relative_path = :p")
+                        .sql("SELECT status, catalog_item_id, present FROM media_assets WHERE relative_path = :p")
                         .bind("p", "Movies/dune.mkv")
                         .map((row, meta) -> java.util.Map.of(
                                 "status", String.valueOf(row.get("status", String.class)),
-                                "movie", String.valueOf(row.get("movie_id", Long.class)),
+                                "movie", String.valueOf(row.get("catalog_item_id", Long.class)),
                                 "present", String.valueOf(row.get("present", Boolean.class))))
                         .one())
                 .assertNext(asset -> {

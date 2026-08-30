@@ -35,7 +35,7 @@ class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
     @BeforeEach
     void seed() {
         this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
-        this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
+        this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
 
         CatalogItem movie = this.movieRepository.save(CatalogItem.createDraft(
                 "pepe", MovieMetadata.onlyTitle("Dune"), MediaKind.MOVIE)).block();
@@ -43,19 +43,19 @@ class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
         share("maria");
         share("pedro");
         // SHARED con dos compartidos: punto de partida con residuos a limpiar.
-        this.databaseClient.sql("UPDATE movies SET visibility = 'SHARED' WHERE id = :id")
+        this.databaseClient.sql("UPDATE catalog_items SET visibility = 'SHARED' WHERE id = :id")
                 .bind("id", this.movieId).then().block();
     }
 
     private void share(String username) {
         this.databaseClient.sql(
-                "INSERT INTO movie_shares (movie_id, shared_with) VALUES (:m, :u)")
+                "INSERT INTO movie_shares (catalog_item_id, shared_with) VALUES (:m, :u)")
                 .bind("m", this.movieId).bind("u", username).then().block();
     }
 
     private long sharesCount() {
         Long n = this.databaseClient.sql(
-                "SELECT COUNT(*) AS n FROM movie_shares WHERE movie_id = :id")
+                "SELECT COUNT(*) AS n FROM movie_shares WHERE catalog_item_id = :id")
                 .bind("id", this.movieId)
                 .map((row, meta) -> row.get("n", Long.class))
                 .one().block();
