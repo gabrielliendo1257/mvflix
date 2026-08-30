@@ -5,6 +5,7 @@ import com.gcorp.service.app.mvflix_media_ingestion.domain.MediaIngestion;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
 import reactor.core.publisher.Flux;
@@ -13,9 +14,13 @@ import reactor.core.publisher.Mono;
 @Repository
 public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
   private final DatabaseClient db;
+  private final long recoveryStaleAfterSeconds;
 
-  public R2dbcMediaIngestionRepository(DatabaseClient db) {
+  public R2dbcMediaIngestionRepository(
+      DatabaseClient db,
+      @Value("${mvflix.recovery.stale-after-seconds:30}") long recoveryStaleAfterSeconds) {
     this.db = db;
+    this.recoveryStaleAfterSeconds = recoveryStaleAfterSeconds;
   }
 
   private MediaIngestion map(io.r2dbc.spi.Row r) {
@@ -134,13 +139,18 @@ public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
     return db.sql(
             "WITH due AS (SELECT ingestion_id FROM media_ingestions WHERE phase IN"
                 + " ('STARTING','PREPARING_CATALOG','PREPARING_UPLOAD','FINALIZING_CATALOG','RECONCILIATION_REQUIRED')"
-                + " AND next_attempt_at<=now() AND (recovery_claimed_until IS NULL OR"
+                + " AND ((phase IN ('STARTING','PREPARING_CATALOG','PREPARING_UPLOAD')"
+                + " AND updated_at<=now() - (:stale * interval '1 second'))"
+                + " OR (phase IN ('FINALIZING_CATALOG','RECONCILIATION_REQUIRED')"
+                + " AND next_attempt_at<=now()))"
+                + " AND (recovery_claimed_until IS NULL OR"
                 + " recovery_claimed_until<now()) ORDER BY next_attempt_at FOR UPDATE SKIP LOCKED"
                 + " LIMIT :limit) UPDATE media_ingestions i SET recovery_claimed_until=now() +"
                 + " (:lease * interval '1 second'), retry_count=i.retry_count+1,"
                 + " version=i.version+1, updated_at=now() FROM due WHERE"
                 + " i.ingestion_id=due.ingestion_id RETURNING i.*")
         .bind("limit", limit)
+        .bind("stale", recoveryStaleAfterSeconds)
         .bind("lease", lease.toSeconds())
         .map((r, m) -> map(r))
         .all();

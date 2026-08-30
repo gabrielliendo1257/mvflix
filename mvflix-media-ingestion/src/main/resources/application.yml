@@ -11,14 +11,14 @@ spring:
           movies:
             provider: internal
             authorization-grant-type: client_credentials
-            client-id: ${MVFLIX_MOVIES_CLIENT_ID:mvflix-media-ingestion}
-            client-secret: ${MVFLIX_MOVIES_CLIENT_SECRET:}
+            client-id: ${MVFLIX_MOVIES_CLIENT_ID:media-ingestion}
+            client-secret: ${MVFLIX_MOVIES_CLIENT_SECRET:super-secret}
             scope: ${MVFLIX_MOVIES_CLIENT_SCOPES:media-ingestion}
           storage:
             provider: internal
             authorization-grant-type: client_credentials
-            client-id: ${MVFLIX_STORAGE_CLIENT_ID:mvflix-media-ingestion}
-            client-secret: ${MVFLIX_STORAGE_CLIENT_SECRET:}
+            client-id: ${MVFLIX_STORAGE_CLIENT_ID:media-ingestion}
+            client-secret: ${MVFLIX_STORAGE_CLIENT_SECRET:super-secret}
             scope: ${MVFLIX_STORAGE_CLIENT_SCOPES:media-ingestion}
   r2dbc.url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mvflix_media_ingestion_db}
   r2dbc.username: ${DB_USERNAME:db_rw}
@@ -41,4 +41,5 @@ mvflix:
   downstream.storage-url: ${STORAGE_URL:http://localhost:6060}
   recovery.enabled: ${MVFLIX_RECOVERY_ENABLED:true}
   recovery.poll-ms: ${MVFLIX_RECOVERY_POLL_MS:5000}
+  recovery.stale-after-seconds: ${MVFLIX_RECOVERY_STALE_AFTER_SECONDS:30}
   compensation.enabled: ${MVFLIX_COMPENSATION_ENABLED:true}
