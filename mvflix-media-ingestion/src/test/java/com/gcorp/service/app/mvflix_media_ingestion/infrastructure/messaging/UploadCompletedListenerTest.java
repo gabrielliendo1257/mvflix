@@ -1,0 +1,6 @@
+package com.gcorp.service.app.mvflix_media_ingestion.infrastructure.messaging;
+import static org.mockito.Mockito.*; import static org.junit.jupiter.api.Assertions.*;
+import com.fasterxml.jackson.databind.ObjectMapper; import com.gcorp.service.app.mvflix_media_ingestion.application.*; import org.junit.jupiter.api.Test; import reactor.core.publisher.Mono; import java.util.UUID;
+class UploadCompletedListenerTest {
+  @Test void duplicateCompletedInboxIsIgnored(){var service=mock(MediaIngestionService.class); var inbox=mock(InboxRepository.class); var id=UUID.randomUUID(); when(inbox.receive(id,"UploadCompleted")).thenReturn(Mono.just(false)); when(inbox.completed(id)).thenReturn(Mono.just(true)); var listener=new UploadCompletedListener(service,new ObjectMapper(),inbox); assertDoesNotThrow(()->listener.onMessage("{\"eventId\":\""+id+"\",\"eventType\":\"UploadCompleted\",\"eventVersion\":1,\"producer\":\"mvflix-storage\",\"correlationId\":null,\"aggregate\":{\"type\":\"ManagedObject\",\"id\":\"object-1\"},\"payload\":{\"storageId\":1,\"ownerUsername\":\"a\",\"objectKey\":\"x\",\"contentType\":\"video/mp4\",\"contentLength\":1}}")); verifyNoInteractions(service); verify(inbox).completed(id); }
+}

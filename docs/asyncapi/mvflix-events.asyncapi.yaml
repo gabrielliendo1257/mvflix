@@ -96,8 +96,33 @@ channels:
       message:
         $ref: '#/components/messages/PlaybackProgressed'
 
+  mvflix.media-ingestion-started.v1:
+    publish:
+      operationId: publishMediaIngestionStarted
+      x-owner: mvflix-media-ingestion
+      message: { $ref: '#/components/messages/MediaIngestionStarted' }
+  mvflix.media-ingestion-completed.v1:
+    publish:
+      operationId: publishMediaIngestionCompleted
+      x-owner: mvflix-media-ingestion
+      message: { $ref: '#/components/messages/MediaIngestionCompleted' }
+  mvflix.media-ingestion-failed.v1:
+    publish:
+      operationId: publishMediaIngestionFailed
+      x-owner: mvflix-media-ingestion
+      message: { $ref: '#/components/messages/MediaIngestionFailed' }
+  mvflix.media-ingestion-cancelled.v1:
+    publish:
+      operationId: publishMediaIngestionCancelled
+      x-owner: mvflix-media-ingestion
+      message: { $ref: '#/components/messages/MediaIngestionCancelled' }
+
 components:
   messages:
+    MediaIngestionStarted: { name: MediaIngestionStarted, payload: { $ref: '#/components/schemas/MediaIngestionEnvelope' } }
+    MediaIngestionCompleted: { name: MediaIngestionCompleted, payload: { $ref: '#/components/schemas/MediaIngestionEnvelope' } }
+    MediaIngestionFailed: { name: MediaIngestionFailed, payload: { $ref: '#/components/schemas/MediaIngestionEnvelope' } }
+    MediaIngestionCancelled: { name: MediaIngestionCancelled, payload: { $ref: '#/components/schemas/MediaIngestionEnvelope' } }
     CatalogItemAdded:
       name: CatalogItemAdded
       title: Catalog item added
@@ -218,6 +243,16 @@ components:
             payload: { ownerUsername: Javier, movieId: 101, mediaId: 3, positionSeconds: 120, durationSeconds: 7200, completed: false, sequence: 4 }
 
   schemas:
+    MediaIngestionEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/EventEnvelope'
+        - type: object
+          properties:
+            eventType: { type: string, enum: [MediaIngestionStarted, MediaIngestionCompleted, MediaIngestionFailed, MediaIngestionCancelled] }
+            eventVersion: { type: integer, enum: [1] }
+            producer: { type: string, enum: [mvflix-media-ingestion] }
+            aggregate: { $ref: '#/components/schemas/AggregateReference' }
+            payload: { type: object, required: [ingestionId, phase], properties: { ingestionId: { type: string, format: uuid }, phase: { type: string } } }
     EventEnvelope:
       type: object
       additionalProperties: false
@@ -452,6 +487,9 @@ components:
         storageId:
           type: integer
           format: int64
+        uploadId:
+          type: string
+          description: Referencia opcional para correlación con una ingestión; añadirla no rompe v1.
         objectKey:
           type: string
           description: Referencia interna del objeto eliminado.

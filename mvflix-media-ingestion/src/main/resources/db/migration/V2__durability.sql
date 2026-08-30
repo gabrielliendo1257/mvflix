@@ -1,0 +1,6 @@
+ALTER TABLE media_ingestions ADD COLUMN IF NOT EXISTS storage_id BIGINT;
+ALTER TABLE media_ingestion_outbox ADD COLUMN IF NOT EXISTS claimed_until TIMESTAMPTZ, ADD COLUMN IF NOT EXISTS attempts INTEGER NOT NULL DEFAULT 0, ADD COLUMN IF NOT EXISTS last_error TEXT, ADD COLUMN IF NOT EXISTS next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE media_ingestion_outbox ADD COLUMN IF NOT EXISTS event_version INTEGER NOT NULL DEFAULT 1, ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE media_ingestion_inbox ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'RECEIVED', ADD COLUMN IF NOT EXISTS last_error TEXT;
+CREATE TABLE IF NOT EXISTS media_ingestion_compensations (compensation_id UUID PRIMARY KEY, ingestion_id UUID NOT NULL REFERENCES media_ingestions(ingestion_id), action VARCHAR(40) NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'PENDING', attempts INTEGER NOT NULL DEFAULT 0, next_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(), last_error TEXT, claimed_until TIMESTAMPTZ, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE(ingestion_id, action));
+CREATE INDEX IF NOT EXISTS media_ingestion_compensation_due_idx ON media_ingestion_compensations(status, next_attempt_at);

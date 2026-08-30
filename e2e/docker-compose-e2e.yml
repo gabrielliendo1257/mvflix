@@ -73,9 +73,35 @@ services:
            mvflix.playback-progressed.v1.retry-0 \
            mvflix.playback-progressed.v1.retry-1 \
            mvflix.playback-progressed.v1.retry-2 \
-           mvflix.playback-progressed.v1.DLT; do
+           mvflix.playback-progressed.v1.DLT \
+           mvflix.media-ingestion-started.v1 \
+           mvflix.media-ingestion-completed.v1 \
+           mvflix.media-ingestion-failed.v1 \
+           mvflix.media-ingestion-cancelled.v1; do
           /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$${topic}" --partitions 1 --replication-factor 1
-         done
+          done
+
+  media-ingestion:
+    build:
+      context: ..
+      dockerfile: mvflix-media-ingestion/Dockerfile
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: mvflix_media_ingestion_db
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MVFLIX_MESSAGING_KAFKA_ENABLED: "true"
+      SECURITY_OAUTH2_JWK_SET_URI: http://jwks-stub:8080/oauth2/jwks
+      MOVIES_URL: http://movies:4040
+      STORAGE_URL: http://storage:6060
+      MANAGEMENT_SERVER_PORT: 10080
+    ports:
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:17080:8080"
+      - "${E2E_BIND_ADDRESS:-127.0.0.1}:11080:10080"
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      movies: { condition: service_healthy }
 
   activity:
     build:
