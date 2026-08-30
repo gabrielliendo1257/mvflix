@@ -6,8 +6,11 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieIdentification;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Sharing;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import java.util.Set;
+
 
 public class CatalogItem {
 
@@ -17,8 +20,8 @@ public class CatalogItem {
     private final CatalogItemStatus status;
     private final EnrichmentStatus enrichmentStatus;
     private final CatalogMetadata metadata;
-    private final CatalogItemVisibility visibility;
-    private final Set<String> sharedWith;
+    private final Visibility visibility;
+    private final Sharing sharing;
     private final CatalogItemKind kind;
     private final MovieIdentification identification;
 
@@ -30,8 +33,8 @@ public class CatalogItem {
         CatalogItemStatus status,
         EnrichmentStatus enrichmentStatus,
         CatalogMetadata metadata,
-        CatalogItemVisibility visibility,
-        Set<String> sharedWith,
+        Visibility visibility,
+        Sharing sharing,
         CatalogItemKind kind) {
         this.id = id;
         if (ownerId == null) {
@@ -42,8 +45,12 @@ public class CatalogItem {
         this.status = status;
         this.enrichmentStatus = enrichmentStatus;
         this.metadata = metadata;
-        this.visibility = visibility;
-        this.sharedWith = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
+        this.visibility = visibility == null ? Visibility.PRIVATE : visibility;
+        Sharing effectiveSharing = sharing == null ? Sharing.empty() : sharing;
+        if (this.visibility == Visibility.SHARED && effectiveSharing.isEmpty()) {
+            throw new InvalidCatalogItemAccessException("SHARED requires at least one user");
+        }
+        this.sharing = this.visibility == Visibility.SHARED ? effectiveSharing : Sharing.empty();
         this.kind = kind == null ? CatalogItemKind.MOVIE : kind;
         if (this.metadata != null && !matchesKind(this.metadata, this.kind)) {
             throw new IllegalArgumentException("metadata does not match catalog kind");
@@ -60,18 +67,18 @@ public class CatalogItem {
         CatalogItemStatus status,
         EnrichmentStatus enrichmentStatus,
         CatalogMetadata metadata,
-        CatalogItemVisibility visibility,
+        Visibility visibility,
         Set<String> sharedWith,
         CatalogItemKind kind) {
         this(id, OwnerId.of(ownerUsername), title, status, enrichmentStatus, metadata,
-                visibility, sharedWith, kind);
+                visibility, Sharing.of(sharedWith), kind);
     }
 
     /** Source compatibility for callers constructing the pre-separation shape; the locator is ignored. */
     @Deprecated
     public CatalogItem(CatalogItemId id, String ownerUsername, String title, CatalogItemStatus status,
             EnrichmentStatus enrichmentStatus, Long ignoredObjectId, CatalogMetadata metadata,
-            CatalogItemVisibility visibility, Set<String> sharedWith, CatalogItemKind kind) {
+            Visibility visibility, Set<String> sharedWith, CatalogItemKind kind) {
         this(id, ownerUsername, title, status, enrichmentStatus, metadata, visibility, sharedWith, kind);
     }
 
@@ -89,13 +96,13 @@ public class CatalogItem {
         requireMetadata(metadata, effectiveKind(kind));
         return new CatalogItem(
                 null,
-                ownerUsername,
+                OwnerId.of(ownerUsername),
                 metadata.title(),
                 CatalogItemStatus.DRAFT,
                  EnrichmentStatus.RAW,
                  metadata,
-                CatalogItemVisibility.PRIVATE,
-                Set.of(),
+                Visibility.PRIVATE,
+                Sharing.empty(),
                 kind);
     }
 
@@ -113,13 +120,13 @@ public class CatalogItem {
         requireMetadata(metadata, effectiveKind(kind));
         return new CatalogItem(
                 null,
-                ownerUsername,
+                OwnerId.of(ownerUsername),
                 metadata.title(),
                 CatalogItemStatus.READY,
                  EnrichmentStatus.RAW,
                  metadata,
-                CatalogItemVisibility.PRIVATE,
-                Set.of(),
+                Visibility.PRIVATE,
+                Sharing.empty(),
                 kind);
     }
 
@@ -217,12 +224,16 @@ public class CatalogItem {
         return this.identification;
     }
 
-    public CatalogItemVisibility getVisibility() {
+    public Visibility getVisibility() {
         return this.visibility;
     }
 
     public Set<String> getSharedWith() {
-        return this.sharedWith;
+        return this.sharing.users();
+    }
+
+    public Sharing getSharing() {
+        return this.sharing;
     }
 
     public CatalogItemKind getKind() {
@@ -245,14 +256,17 @@ public class CatalogItem {
      */
     public boolean isVisibleTo(String username) {
         return isOwnedBy(username)
-                || this.visibility == CatalogItemVisibility.PUBLIC
-                || (this.visibility == CatalogItemVisibility.SHARED
-                        && this.sharedWith.contains(username));
+                || this.visibility == Visibility.PUBLIC
+                || (this.visibility == Visibility.SHARED && this.sharing.contains(username));
     }
 
     /** Transición de dominio: cambia la visibilidad del catálogo (solo el dueño). */
-    public CatalogItem withVisibility(CatalogItemVisibility visibility) {
+    public CatalogItem withVisibility(Visibility visibility) {
         requireNotDeleting("change visibility");
+        if (visibility == Visibility.SHARED && this.sharing.isEmpty()) {
+            throw new InvalidCatalogItemAccessException("SHARED requires at least one user");
+        }
+        Sharing effective = visibility == Visibility.SHARED ? this.sharing : Sharing.empty();
         return new CatalogItem(
                 this.id,
                 this.ownerId,
@@ -261,23 +275,13 @@ public class CatalogItem {
                 this.enrichmentStatus,
                 this.metadata,
                 visibility,
-                this.sharedWith,
+                effective,
                 this.kind);
     }
 
     /** Transición de dominio: reemplaza la lista de compartidos (solo el dueño). */
     public CatalogItem withSharedWith(Set<String> sharedWith) {
-        requireNotDeleting("change shares");
-        return new CatalogItem(
-                this.id,
-                this.ownerId,
-                this.title,
-                this.status,
-                this.enrichmentStatus,
-                this.metadata,
-                this.visibility,
-                sharedWith,
-                this.kind);
+        return withAccess(this.visibility, sharedWith);
     }
 
     /**
@@ -292,14 +296,14 @@ public class CatalogItem {
      * Existe para que el cambio se persista como unidad y nunca quede una
      * película SHARED sin sus shares, ni PRIVATE/PUBLIC con residuos.
      */
-    public CatalogItem withAccess(CatalogItemVisibility visibility, Set<String> sharedWith) {
+    public CatalogItem withAccess(Visibility visibility, Set<String> sharedWith) {
         requireNotDeleting("change access");
-        Set<String> shares = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
-        if (visibility == CatalogItemVisibility.SHARED && shares.isEmpty()) {
+        Sharing shares = Sharing.of(sharedWith);
+        if (visibility == Visibility.SHARED && shares.isEmpty()) {
             throw new InvalidCatalogItemAccessException("SHARED requires at least one user");
         }
         // Solo SHARED retiene los compartidos; el resto los limpia.
-        Set<String> effective = visibility == CatalogItemVisibility.SHARED ? shares : Set.of();
+        Sharing effective = visibility == Visibility.SHARED ? shares : Sharing.empty();
         return new CatalogItem(
                 this.id,
                 this.ownerId,
@@ -324,7 +328,7 @@ public class CatalogItem {
                 this.enrichmentStatus,
                 metadata,
                 this.visibility,
-                this.sharedWith,
+                this.sharing,
                 this.kind);
     }
 
@@ -348,7 +352,7 @@ public class CatalogItem {
                 EnrichmentStatus.RAW,
                 manualMetadata,
                 this.visibility,
-                this.sharedWith,
+                this.sharing,
                 CatalogItemKind.VIDEO);
     }
 
@@ -384,7 +388,7 @@ public class CatalogItem {
                 EnrichmentStatus.RAW,
                 unlinkedMetadata,
                 this.visibility,
-                this.sharedWith,
+                this.sharing,
                 CatalogItemKind.MOVIE);
     }
 
@@ -414,7 +418,7 @@ public class CatalogItem {
                 this.enrichmentStatus,
                 this.metadata,
                 this.visibility,
-                this.sharedWith,
+                this.sharing,
                 this.kind);
     }
 
@@ -453,7 +457,7 @@ public class CatalogItem {
                 EnrichmentStatus.ENRICHED,
                 providerMetadata,
                 this.visibility,
-                this.sharedWith,
+                this.sharing,
                 this.kind);
     }
 
@@ -484,7 +488,7 @@ public class CatalogItem {
                 EnrichmentStatus.RAW,
                 unlinkedMetadata,
                 this.visibility,
-                this.sharedWith,
+                this.sharing,
                 this.kind);
     }
 
@@ -502,7 +506,7 @@ public class CatalogItem {
                 this.enrichmentStatus,
                 this.metadata,
                 this.visibility,
-                this.sharedWith,
+                this.sharing,
                 this.kind);
     }
 

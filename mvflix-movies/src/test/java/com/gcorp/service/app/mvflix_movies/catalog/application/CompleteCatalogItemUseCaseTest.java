@@ -15,7 +15,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -247,7 +247,7 @@ class CompleteCatalogItemUseCaseTest {
         EnrichmentStatus.RAW,
         objectId,
         MovieMetadata.onlyTitle("Dune"),
-        CatalogItemVisibility.PRIVATE,
+        Visibility.PRIVATE,
         Set.of(),
         CatalogItemKind.MOVIE);
   }

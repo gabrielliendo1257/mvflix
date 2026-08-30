@@ -15,7 +15,7 @@ import java.util.Set;
  */
 class CatalogItemAccessPolicyTest {
 
-    private static CatalogItem movie(CatalogItemVisibility visibility, Set<String> sharedWith) {
+    private static CatalogItem movie(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility visibility, Set<String> sharedWith) {
         return new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", CatalogItemStatus.READY,
                 EnrichmentStatus.ENRICHED, null, null, visibility, sharedWith, CatalogItemKind.MOVIE);
@@ -24,43 +24,43 @@ class CatalogItemAccessPolicyTest {
     @Test
     void sharedRequiresAtLeastOneUser() {
         assertThatThrownBy(() ->
-                movie(CatalogItemVisibility.PRIVATE, Set.of())
-                        .withAccess(CatalogItemVisibility.SHARED, Set.of()))
+                movie(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE, Set.of())
+                        .withAccess(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.SHARED, Set.of()))
                 .isInstanceOf(InvalidCatalogItemAccessException.class);
     }
 
     @Test
     void sharedWithNullUsersIsRejected() {
         assertThatThrownBy(() ->
-                movie(CatalogItemVisibility.PRIVATE, Set.of())
-                        .withAccess(CatalogItemVisibility.SHARED, null))
+                movie(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE, Set.of())
+                        .withAccess(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.SHARED, null))
                 .isInstanceOf(InvalidCatalogItemAccessException.class);
     }
 
     @Test
     void privateCleansShares() {
-        var m = movie(CatalogItemVisibility.SHARED, Set.of("Maria"))
-                .withAccess(CatalogItemVisibility.PRIVATE, Set.of("Maria"));
+        var m = movie(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.SHARED, Set.of("Maria"))
+                .withAccess(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE, Set.of("Maria"));
 
-        assertThat(m.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
+        assertThat(m.getVisibility()).isEqualTo(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE);
         assertThat(m.getSharedWith()).isEmpty();
     }
 
     @Test
     void publicCleansShares() {
-        var m = movie(CatalogItemVisibility.PRIVATE, Set.of())
-                .withAccess(CatalogItemVisibility.PUBLIC, Set.of("Maria"));
+        var m = movie(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE, Set.of())
+                .withAccess(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PUBLIC, Set.of("Maria"));
 
-        assertThat(m.getVisibility()).isEqualTo(CatalogItemVisibility.PUBLIC);
+        assertThat(m.getVisibility()).isEqualTo(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PUBLIC);
         assertThat(m.getSharedWith()).isEmpty();
     }
 
     @Test
     void sharedKeepsItsUsers() {
-        var m = movie(CatalogItemVisibility.PRIVATE, Set.of())
-                .withAccess(CatalogItemVisibility.SHARED, Set.of("Maria", "Pedro"));
+        var m = movie(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE, Set.of())
+                .withAccess(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.SHARED, Set.of("Maria", "Pedro"));
 
-        assertThat(m.getVisibility()).isEqualTo(CatalogItemVisibility.SHARED);
+        assertThat(m.getVisibility()).isEqualTo(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.SHARED);
         assertThat(m.getSharedWith()).containsExactlyInAnyOrder("Maria", "Pedro");
     }
 }

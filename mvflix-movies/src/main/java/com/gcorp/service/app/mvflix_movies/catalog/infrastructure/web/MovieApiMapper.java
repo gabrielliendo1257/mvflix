@@ -4,6 +4,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItem
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichMovieSearchResponse;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichmentPreviewResponse;
@@ -58,8 +59,9 @@ public interface MovieApiMapper {
          @Mapping(target = "country", source = "movieMetadataOrNull.country"),
          @Mapping(target = "language", source = "movieMetadataOrNull.language"),
          @Mapping(target = "awards", source = "movieMetadataOrNull.awards"),
-          @Mapping(target = "tmdbId", expression = "java(movie.getMovieMetadataOrNull() == null ? null : movie.getMovieMetadataOrNull().tmdbId())")
-    })
+         @Mapping(target = "tmdbId", expression = "java(movie.getMovieMetadataOrNull() == null ? null : movie.getMovieMetadataOrNull().tmdbId())")
+         , @Mapping(target = "visibility", expression = "java(CatalogItemVisibility.valueOf(movie.getVisibility().name()))")
+     })
     MovieResponse toResponse(CatalogItem movie);
 
     @Mapping(target = "objectId", source = "objectId")

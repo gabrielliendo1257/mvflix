@@ -17,7 +17,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -47,7 +47,7 @@ class UpdateCatalogItemUseCaseTest {
     private static CatalogItem movie(long id, String owner, MovieMetadata metadata) {
         return new CatalogItem(
                 CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
-                null, metadata, CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
+                null, metadata, Visibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
     }
 
     @Test
@@ -143,7 +143,7 @@ class UpdateCatalogItemUseCaseTest {
         CatalogItem other = new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Imported clip", CatalogItemStatus.READY,
                  EnrichmentStatus.RAW, null, new VideoMetadata("Imported clip", null, null),
-                CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.VIDEO);
+                Visibility.PRIVATE, java.util.Set.of(), CatalogItemKind.VIDEO);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));

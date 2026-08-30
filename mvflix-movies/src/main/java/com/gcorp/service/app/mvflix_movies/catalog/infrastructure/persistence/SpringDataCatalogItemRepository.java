@@ -4,7 +4,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -94,13 +94,13 @@ public class SpringDataCatalogItemRepository implements CatalogItemRepository {
             .flatMap(saved -> this.replaceShares(
                 new CatalogItem(
                     saved.getId(),
-                    saved.getOwnerUsername(),
+                    saved.getOwnerId(),
                     saved.getTitle(),
                     saved.getStatus(),
                     saved.getEnrichmentStatus(),
                     saved.getMetadata(),
                     saved.getVisibility(),
-                    movie.getSharedWith(),
+                    movie.getSharing(),
                     saved.getKind())));
     }
 
@@ -408,18 +408,19 @@ public class SpringDataCatalogItemRepository implements CatalogItemRepository {
     @Override
     @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
     public Mono<CatalogItem> updateAccess(CatalogItem movie) {
-        return this.updateVisibility(movie)
-            .flatMap(updated -> this.replaceShares(
-                new CatalogItem(
-                    updated.getId(),
-                    updated.getOwnerUsername(),
-                    updated.getTitle(),
-                    updated.getStatus(),
-                    updated.getEnrichmentStatus(),
-                    updated.getMetadata(),
-                    updated.getVisibility(),
-                    movie.getSharedWith(),
-                    updated.getKind())));
+        // Do not map the intermediate SHARED row: its shares are inserted next.
+        return this.databaseClient
+                .sql(
+                        """
+                         UPDATE catalog_items
+                        SET visibility = :visibility, updated_at = NOW()
+                        WHERE id = :id
+                        """)
+                .bind("visibility", movie.getVisibility().name())
+                .bind("id", movie.getId().value())
+                .fetch()
+                .rowsUpdated()
+                .then(this.replaceShares(movie));
     }
 
     @Override

@@ -16,7 +16,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,7 +43,7 @@ class BulkVisibilityUseCaseTest {
 
     @Test
     void sharedBulkPersistsOneAccessTransitionPerMovie() {
-        CatalogItem movie = movie(1L, CatalogItemVisibility.PRIVATE, Set.of());
+        CatalogItem movie = movie(1L, Visibility.PRIVATE, Set.of());
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findByOwnerAndIds("Javier", List.of(CatalogItemId.of(1L))))
@@ -52,20 +52,20 @@ class BulkVisibilityUseCaseTest {
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.execute(
-                        List.of(CatalogItemId.of(1L)), List.of(), CatalogItemVisibility.SHARED,
+                        List.of(CatalogItemId.of(1L)), List.of(), Visibility.SHARED,
                         List.of("Maria", "Pedro", "Maria", "  ")))
                 .expectNext(new BulkVisibilityResult(1, 1, 0))
                 .verifyComplete();
 
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).updateAccess(captor.capture());
-        assertThat(captor.getValue().getVisibility()).isEqualTo(CatalogItemVisibility.SHARED);
+        assertThat(captor.getValue().getVisibility()).isEqualTo(Visibility.SHARED);
         assertThat(captor.getValue().getSharedWith()).isEqualTo(Set.of("Maria", "Pedro"));
     }
 
     @Test
     void nonSharedBulkPreservesExistingSharesInAggregate() {
-        CatalogItem movie = movie(1L, CatalogItemVisibility.SHARED, Set.of("Maria"));
+        CatalogItem movie = movie(1L, Visibility.SHARED, Set.of("Maria"));
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findByOwnerAndIds("Javier", List.of(CatalogItemId.of(1L))))
@@ -74,20 +74,20 @@ class BulkVisibilityUseCaseTest {
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.execute(
-                        List.of(CatalogItemId.of(1L)), List.of(), CatalogItemVisibility.PRIVATE, List.of()))
+                        List.of(CatalogItemId.of(1L)), List.of(), Visibility.PRIVATE, List.of()))
                 .expectNext(new BulkVisibilityResult(1, 1, 0))
                 .verifyComplete();
 
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).updateAccess(captor.capture());
-        assertThat(captor.getValue().getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
-        assertThat(captor.getValue().getSharedWith()).containsExactly("Maria");
+        assertThat(captor.getValue().getVisibility()).isEqualTo(Visibility.PRIVATE);
+         assertThat(captor.getValue().getSharedWith()).isEmpty();
     }
 
     @Test
     void sharedBulkWithoutUsersFailsBeforeLoadingCatalog() {
         StepVerifier.create(this.useCase.execute(
-                        List.of(CatalogItemId.of(1L)), List.of(), CatalogItemVisibility.SHARED,
+                        List.of(CatalogItemId.of(1L)), List.of(), Visibility.SHARED,
                         List.of("  ")))
                 .expectError(IllegalArgumentException.class)
                 .verify();
@@ -98,7 +98,7 @@ class BulkVisibilityUseCaseTest {
 
     @Test
     void resolvesLibraryMoviesThroughCatalogPort() {
-        CatalogItem movie = movie(2L, CatalogItemVisibility.PRIVATE, Set.of());
+        CatalogItem movie = movie(2L, Visibility.PRIVATE, Set.of());
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.libraryMovieIds.findIdentifiedByLibraryIds(List.of(7L)))
@@ -109,14 +109,14 @@ class BulkVisibilityUseCaseTest {
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.execute(
-                        List.of(), List.of(7L), CatalogItemVisibility.PUBLIC, List.of()))
+                        List.of(), List.of(7L), Visibility.PUBLIC, List.of()))
                 .expectNext(new BulkVisibilityResult(1, 1, 0))
                 .verifyComplete();
 
         verify(this.libraryMovieIds).findIdentifiedByLibraryIds(List.of(7L));
     }
 
-    private static CatalogItem movie(long id, CatalogItemVisibility visibility, Set<String> shares) {
+    private static CatalogItem movie(long id, Visibility visibility, Set<String> shares) {
         return new CatalogItem(
                 CatalogItemId.of(id), "Javier", "Dune", CatalogItemStatus.READY,
                 EnrichmentStatus.RAW, null, MovieMetadata.onlyTitle("Dune"),

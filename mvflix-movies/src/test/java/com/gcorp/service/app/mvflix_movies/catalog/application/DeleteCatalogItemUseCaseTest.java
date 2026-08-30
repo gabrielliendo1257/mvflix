@@ -18,7 +18,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +44,7 @@ class DeleteCatalogItemUseCaseTest {
     private static CatalogItem movie(long id, String owner) {
         return new CatalogItem(
                 CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
-                77L, null, CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
+                77L, null, Visibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
     }
 
     @Test
@@ -145,7 +145,7 @@ class DeleteCatalogItemUseCaseTest {
     void alreadyDeletingMovieEnsuresDurableRequest() {
         CatalogItem movie = new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", CatalogItemStatus.DELETING, EnrichmentStatus.ENRICHED,
-                77L, null, CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
+                77L, null, Visibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));

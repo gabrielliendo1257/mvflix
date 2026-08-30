@@ -5,7 +5,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryMovie
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,8 +37,8 @@ public class BulkVisibilityUseCase {
 
     public Mono<BulkVisibilityResult> execute(
             List<CatalogItemId> movieIds, List<Long> libraryIds,
-            CatalogItemVisibility visibility, List<String> usernames) {
-        if (visibility == CatalogItemVisibility.SHARED
+            Visibility visibility, List<String> usernames) {
+        if (visibility == Visibility.SHARED
                 && (usernames == null
                         || usernames.stream().noneMatch(u -> u != null && !u.isBlank()))) {
             return Mono.error(new IllegalArgumentException(
@@ -83,11 +83,8 @@ public class BulkVisibilityUseCase {
     }
 
     private Mono<CatalogItem> applyVisibility(
-            CatalogItem movie, CatalogItemVisibility visibility, List<String> usernames) {
-        CatalogItem access = movie.withVisibility(visibility);
-        if (visibility == CatalogItemVisibility.SHARED) {
-            access = access.withSharedWith(Set.copyOf(usernames));
-        }
+            CatalogItem movie, Visibility visibility, List<String> usernames) {
+        CatalogItem access = movie.withAccess(visibility, Set.copyOf(usernames));
         return this.movieRepository.updateAccess(access);
     }
 }

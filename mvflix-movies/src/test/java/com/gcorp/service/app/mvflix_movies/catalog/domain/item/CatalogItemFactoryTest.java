@@ -26,7 +26,7 @@ class CatalogItemFactoryTest {
 
         assertThat(draft.getStatus()).isEqualTo(CatalogItemStatus.DRAFT);
         assertThat(draft.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-        assertThat(draft.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
+        assertThat(draft.getVisibility()).isEqualTo(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE);
         assertThat(draft.getSharedWith()).isEmpty();
         assertThat(draft.getTitle()).isEqualTo("Dune");
         assertThat(draft.getKind()).isEqualTo(CatalogItemKind.MOVIE);

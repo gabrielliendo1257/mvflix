@@ -13,7 +13,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -94,6 +94,6 @@ class PendingMediaDeletionJobTest {
     private static CatalogItem movie(long id) {
         return new CatalogItem(
                 CatalogItemId.of(id), "pepe", "Dune", CatalogItemStatus.DELETING, EnrichmentStatus.ENRICHED,
-                null, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
+                null, (MovieMetadata) null, Visibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
     }
 }

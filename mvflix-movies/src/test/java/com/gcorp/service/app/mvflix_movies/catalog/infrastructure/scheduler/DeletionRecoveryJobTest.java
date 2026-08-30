@@ -11,7 +11,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +29,7 @@ class DeletionRecoveryJobTest {
     @Test
     void ensuresDeletingMoviesAndReactivatesExhaustedOutbox() {
         CatalogItem movie = new CatalogItem(CatalogItemId.of(7L), "pepe", "Dune", CatalogItemStatus.DELETING,
-                EnrichmentStatus.ENRICHED, null, (MovieMetadata) null, CatalogItemVisibility.PRIVATE,
+                EnrichmentStatus.ENRICHED, null, (MovieMetadata) null, Visibility.PRIVATE,
                 Set.of(), CatalogItemKind.MOVIE);
         when(movieRepository.findDeletingForRecovery(25, Duration.ofMinutes(1))).thenReturn(Flux.just(movie));
         when(movieRepository.markRecoveryAttempt(movie.getId())).thenReturn(Mono.empty());

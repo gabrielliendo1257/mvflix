@@ -55,7 +55,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
                 null,
                 new MovieMetadata("Coraline", null, 2009, null, null, "1h 40m",
                         null, null, null, "/coraline.jpg", null, null, null, null, 57892L),
-                com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility.PRIVATE,
+                com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE,
                 java.util.Set.of(), CatalogItemKind.MOVIE)).block();
         this.managedId = movieRepository.findById(managed.getId()).block().getId().value();
         this.mediaRepository.save(ManagedMediaAsset.create(managed.getId(), 42L, "k")).block();

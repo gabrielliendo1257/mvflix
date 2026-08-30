@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import java.util.List;
 
@@ -13,5 +13,6 @@ import java.util.List;
 public record CreateIdentifiedDraftCommand(
         MovieMetadata metadata,
         CatalogItemKind kind,
-        CatalogItemVisibility visibility,
-        List<String> sharedWith) {}
+        Visibility visibility,
+        List<String> sharedWith) {
+}

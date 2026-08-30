@@ -4,7 +4,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 
 import lombok.RequiredArgsConstructor;
@@ -31,11 +31,11 @@ public class CreateIdentifiedDraftUseCase {
     private final UserProvider userProvider;
 
     public Mono<CatalogItem> execute(CreateIdentifiedDraftCommand command) {
-        CatalogItemVisibility visibility = command.visibility() == null
-                ? CatalogItemVisibility.PRIVATE
+        Visibility visibility = command.visibility() == null
+                ? Visibility.PRIVATE
                 : command.visibility();
         List<String> cleanShared = clean(command.sharedWith());
-        if (visibility == CatalogItemVisibility.SHARED && cleanShared.isEmpty()) {
+        if (visibility == Visibility.SHARED && cleanShared.isEmpty()) {
             return Mono.error(new IllegalArgumentException(
                     "SHARED requiere al menos un username en usernames"));
         }
@@ -43,8 +43,7 @@ public class CreateIdentifiedDraftUseCase {
                 .getAuthenticatedUser()
                 .flatMap(user -> {
                     CatalogItem draft = buildIdentifiedDraft(user.subject(), command)
-                            .withVisibility(visibility)
-                            .withSharedWith(java.util.Set.copyOf(cleanShared));
+                            .withAccess(visibility, java.util.Set.copyOf(cleanShared));
                     return this.movieRepository.saveDraftWithAccess(draft);
                 })
                 .doOnNext(saved -> log.info(

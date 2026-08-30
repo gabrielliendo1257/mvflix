@@ -10,7 +10,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 
 import org.junit.jupiter.api.Test;
@@ -60,7 +60,7 @@ class LibraryCatalogItemCreatorTest {
         assertThat(newMovie.getTitle()).isEqualTo("Dune");
         assertThat(newMovie.getStatus()).isEqualTo(CatalogItemStatus.READY);
         assertThat(newMovie.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-        assertThat(newMovie.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
+        assertThat(newMovie.getVisibility()).isEqualTo(Visibility.PRIVATE);
         assertThat(newMovie.getKind()).isEqualTo(CatalogItemKind.MOVIE);
     }
 

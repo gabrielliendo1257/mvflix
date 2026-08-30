@@ -9,7 +9,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 
@@ -67,7 +67,7 @@ class CreateIdentifiedDraftUseCaseTest {
 
   private CreateIdentifiedDraftCommand command(
       MovieMetadata metadata, CatalogItemKind kind,
-      CatalogItemVisibility visibility, List<String> shared) {
+      Visibility visibility, List<String> shared) {
     return new CreateIdentifiedDraftCommand(metadata, kind, visibility, shared);
   }
 
@@ -94,7 +94,7 @@ class CreateIdentifiedDraftUseCaseTest {
     StepVerifier.create(
             this.useCase.execute(command(
                 alienMetadata(348L), CatalogItemKind.MOVIE,
-                CatalogItemVisibility.SHARED, List.of())))
+                Visibility.SHARED, List.of())))
         .expectError(IllegalArgumentException.class)
         .verify();
 
@@ -106,7 +106,7 @@ class CreateIdentifiedDraftUseCaseTest {
     StepVerifier.create(
             this.useCase.execute(command(
                 alienMetadata(348L), CatalogItemKind.MOVIE,
-                CatalogItemVisibility.SHARED, List.of("ana", "ana", "  ", "luis"))))
+                Visibility.SHARED, List.of("ana", "ana", "  ", "luis"))))
         .assertNext(movie -> {
           assertThat(movie.getVisibility().name()).isEqualTo("SHARED");
           assertThat(movie.getSharedWith()).containsExactlyInAnyOrder("ana", "luis");
@@ -118,7 +118,7 @@ class CreateIdentifiedDraftUseCaseTest {
   void movieWithoutTmdbIdIsRejectedBeforePersistence() {
     StepVerifier.create(
             this.useCase.execute(command(
-                alienMetadata(null), CatalogItemKind.MOVIE, CatalogItemVisibility.PRIVATE, List.of())))
+                alienMetadata(null), CatalogItemKind.MOVIE, Visibility.PRIVATE, List.of())))
         .expectError(IllegalArgumentException.class)
         .verify();
 
@@ -129,7 +129,7 @@ class CreateIdentifiedDraftUseCaseTest {
   void otherKindStaysRawEvenWithProviderId() {
     StepVerifier.create(
             this.useCase.execute(command(
-                alienMetadata(348L), CatalogItemKind.VIDEO, CatalogItemVisibility.PUBLIC, List.of())))
+                alienMetadata(348L), CatalogItemKind.VIDEO, Visibility.PUBLIC, List.of())))
         .assertNext(movie -> {
           assertThat(movie.getEnrichmentStatus().name()).isEqualTo("RAW");
           assertThat(movie.getVisibility().name()).isEqualTo("PUBLIC");

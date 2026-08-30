@@ -5,7 +5,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ public class UpdateVisibilityUseCase {
     private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
 
-    public Mono<CatalogItem> execute(CatalogItemId id, CatalogItemVisibility visibility) {
+    public Mono<CatalogItem> execute(CatalogItemId id, Visibility visibility) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
@@ -42,4 +42,5 @@ public class UpdateVisibilityUseCase {
                                 "CatalogItem {} visibilidad {} -> {}",
                                 id.value(), visibility, updated.getVisibility())));
     }
+
 }

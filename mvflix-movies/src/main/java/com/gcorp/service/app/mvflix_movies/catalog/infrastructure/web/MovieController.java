@@ -16,6 +16,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItem
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.application.ManagedObjectIdLookup;
@@ -172,7 +173,7 @@ public class MovieController {
         return new CreateIdentifiedDraftCommand(
                 metadata,
                 request.draft().kind(),
-                request.visibility() == null ? null : CatalogItemVisibility.valueOf(request.visibility()),
+                request.visibility() == null ? null : Visibility.valueOf(request.visibility()),
                 request.sharedWith() == null ? java.util.List.of() : java.util.List.copyOf(request.sharedWith()));
     }
 
@@ -185,7 +186,7 @@ public class MovieController {
     public Mono<MovieResponse> updateVisibility(
             @PathVariable Long id, @Valid @RequestBody UpdateVisibilityRequest request) {
         return this.updateVisibilityUseCase
-                .execute(CatalogItemId.of(id), request.visibility())
+                .execute(CatalogItemId.of(id), toVisibility(request.visibility()))
                 .flatMap(this::response);
     }
 
@@ -207,7 +208,7 @@ public class MovieController {
                 ? List.of()
                 : request.libraryIds();
         return this.bulkVisibilityUseCase
-                .execute(movieIds, libraryIds, request.visibility(), request.usernames())
+                .execute(movieIds, libraryIds, toVisibility(request.visibility()), request.usernames())
                 .map(result -> new BulkVisibilityResponse(
                         result.total(), result.updated(), result.failed()));
     }
@@ -221,7 +222,7 @@ public class MovieController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateMovieAccessRequest request) {
         return this.updateMovieAccessUseCase
-                .execute(CatalogItemId.of(id), request.visibility(), request.sharedWith())
+                .execute(CatalogItemId.of(id), toVisibility(request.visibility()), request.sharedWith())
                 .flatMap(this::response);
     }
 
@@ -286,6 +287,10 @@ public class MovieController {
         return this.enrichMovieUseCase
                 .unlinkCurrentUser(CatalogItemId.of(id))
                 .flatMap(this::response);
+    }
+
+    private static Visibility toVisibility(CatalogItemVisibility visibility) {
+        return visibility == null ? null : visibility.toVisibility();
     }
 
     @GetMapping("/enrich/search")

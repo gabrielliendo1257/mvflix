@@ -10,7 +10,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -63,7 +63,7 @@ class LibraryCatalogItemEnricherTest {
                 EnrichmentStatus.RAW,
                 null,
                 null,
-                CatalogItemVisibility.PRIVATE,
+                Visibility.PRIVATE,
                 Set.of(),
                 CatalogItemKind.MOVIE);
     }

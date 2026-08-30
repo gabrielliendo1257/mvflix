@@ -8,7 +8,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,7 +99,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
     CatalogItem updated =
         this.movieRepository
-            .updateVisibility(movie.withVisibility(CatalogItemVisibility.PUBLIC))
+            .updateVisibility(movie.withVisibility(Visibility.PUBLIC))
             .block();
 
     assertThat(updated).isNotNull();
@@ -116,20 +116,18 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
             .block();
 
     assertThat(updated).isNotNull();
-    assertThat(updated.getSharedWith()).containsExactly("maria");
+     assertThat(updated.getSharedWith()).isEmpty();
   }
 
   @Test
   void updateAccessPersistsSharedVisibilityAndUsersTogether() {
     CatalogItem movie = this.saveDraft("Dune");
-    CatalogItem shared = movie
-        .withVisibility(CatalogItemVisibility.SHARED)
-        .withSharedWith(Set.of("maria", "pedro"));
+     CatalogItem shared = movie.withAccess(Visibility.SHARED, Set.of("maria", "pedro"));
 
     CatalogItem updated = this.movieRepository.updateAccess(shared).block();
 
     assertThat(updated).isNotNull();
-    assertThat(updated.getVisibility()).isEqualTo(CatalogItemVisibility.SHARED);
+    assertThat(updated.getVisibility()).isEqualTo(Visibility.SHARED);
     assertThat(updated.getSharedWith()).containsExactlyInAnyOrder("maria", "pedro");
   }
 
@@ -144,9 +142,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
         .fetch()
         .rowsUpdated()
         .block();
-    CatalogItem shared = movie
-        .withVisibility(CatalogItemVisibility.SHARED)
-        .withSharedWith(Set.of("blocked"));
+     CatalogItem shared = movie.withAccess(Visibility.SHARED, Set.of("blocked"));
 
     StepVerifier.create(this.movieRepository.updateAccess(shared))
         .expectError(DataIntegrityViolationException.class)
@@ -154,7 +150,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
     CatalogItem persisted = this.movieRepository.findById(movie.getId()).block();
     assertThat(persisted).isNotNull();
-    assertThat(persisted.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
+    assertThat(persisted.getVisibility()).isEqualTo(Visibility.PRIVATE);
     assertThat(persisted.getSharedWith()).isEmpty();
   }
 

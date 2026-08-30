@@ -20,7 +20,7 @@ class CatalogItemDeletionLifecycleTest {
     private static CatalogItem movie(CatalogItemStatus status) {
         return new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", status, EnrichmentStatus.ENRICHED,
-                42L, MovieMetadata.onlyTitle("Dune"), CatalogItemVisibility.PRIVATE,
+                42L, MovieMetadata.onlyTitle("Dune"), com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE,
                 Set.of(), CatalogItemKind.MOVIE);
     }
 
@@ -62,7 +62,7 @@ class CatalogItemDeletionLifecycleTest {
     void deletingMovieCannotChangeVisibility() {
         CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
-        assertThatThrownBy(() -> deleting.withVisibility(CatalogItemVisibility.PUBLIC))
+        assertThatThrownBy(() -> deleting.withVisibility(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PUBLIC))
                 .isInstanceOf(CatalogItemConflictException.class);
     }
 
@@ -78,7 +78,7 @@ class CatalogItemDeletionLifecycleTest {
     void deletingMovieCannotChangeAccess() {
         CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
-        assertThatThrownBy(() -> deleting.withAccess(CatalogItemVisibility.PRIVATE, Set.of()))
+        assertThatThrownBy(() -> deleting.withAccess(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PRIVATE, Set.of()))
                 .isInstanceOf(CatalogItemConflictException.class);
     }
 
@@ -118,8 +118,8 @@ class CatalogItemDeletionLifecycleTest {
         CatalogItem ready = movie(CatalogItemStatus.READY);
         CatalogItem draft = movie(CatalogItemStatus.DRAFT);
 
-        assertThat(ready.withVisibility(CatalogItemVisibility.PUBLIC).getVisibility())
-                .isEqualTo(CatalogItemVisibility.PUBLIC);
+        assertThat(ready.withVisibility(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PUBLIC).getVisibility())
+                .isEqualTo(com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility.PUBLIC);
         assertThat(draft.complete().getStatus()).isEqualTo(CatalogItemStatus.READY);
     }
 }

@@ -21,7 +21,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -49,7 +49,7 @@ class EnrichCatalogItemUseCaseTest {
     private static final CatalogItem DRAFT_RAW =
             new CatalogItem(
                     CatalogItemId.of(1L), "pepe", "The Colossus of Rhodes", CatalogItemStatus.DRAFT,
-                    EnrichmentStatus.RAW, null, RAW_METADATA, CatalogItemVisibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
+                    EnrichmentStatus.RAW, null, RAW_METADATA, Visibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
 
     private static final ExternalMovieDetail TMDB_DETAIL =
             new ExternalMovieDetail(
@@ -87,7 +87,7 @@ class EnrichCatalogItemUseCaseTest {
                 null, null, null, null, null, 274_003L);
         CatalogItem movie = new CatalogItem(
                 CatalogItemId.of(2L), "pepe", "The Colossus of Rhodes", CatalogItemStatus.DRAFT,
-                EnrichmentStatus.RAW, null, withTmdbId, CatalogItemVisibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
+                    EnrichmentStatus.RAW, null, withTmdbId, Visibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
 
         when(this.metadataSource.findById(274_003L)).thenReturn(Mono.just(TMDB_DETAIL));
         when(this.movieRepository.updateEnrichment(any(CatalogItem.class)))
@@ -187,7 +187,7 @@ class EnrichCatalogItemUseCaseTest {
                 List.of("Old Award"), 274_003L);
         CatalogItem movie = new CatalogItem(
                 CatalogItemId.of(3L), "pepe", "Old", CatalogItemStatus.READY,
-                EnrichmentStatus.ENRICHED, null, old, CatalogItemVisibility.PRIVATE, Set.of(),
+                EnrichmentStatus.ENRICHED, null, old, Visibility.PRIVATE, Set.of(),
                 CatalogItemKind.MOVIE);
 
         ExternalMovieDetail fresh = new ExternalMovieDetail(

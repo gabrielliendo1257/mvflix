@@ -9,7 +9,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccess
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +31,7 @@ class LibraryCatalogItemAccessTest {
 
     @Test
     void allowsAccessWhenCatalogItemIsVisibleToUser() {
-        CatalogItem movie = movie(CatalogItemVisibility.SHARED, Set.of("Maria"));
+        CatalogItem movie = movie(Visibility.SHARED, Set.of("Maria"));
         when(this.movieRepository.findById(CatalogItemId.of(10L))).thenReturn(Mono.just(movie));
 
          StepVerifier.create(this.access.requireVisible(
@@ -41,7 +41,7 @@ class LibraryCatalogItemAccessTest {
 
     @Test
     void deniesAccessWhenCatalogItemIsNotVisibleToUser() {
-        CatalogItem movie = movie(CatalogItemVisibility.PRIVATE, Set.of());
+        CatalogItem movie = movie(Visibility.PRIVATE, Set.of());
         when(this.movieRepository.findById(CatalogItemId.of(10L))).thenReturn(Mono.just(movie));
 
          StepVerifier.create(this.access.requireVisible(
@@ -60,7 +60,7 @@ class LibraryCatalogItemAccessTest {
                 .verify();
     }
 
-    private static CatalogItem movie(CatalogItemVisibility visibility, Set<String> sharedWith) {
+    private static CatalogItem movie(Visibility visibility, Set<String> sharedWith) {
         return new CatalogItem(
                 CatalogItemId.of(10L),
                 "Javier",

@@ -15,7 +15,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ class UpdateCatalogItemAccessUseCaseTest {
         this.movie = new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", CatalogItemStatus.READY,
                 EnrichmentStatus.ENRICHED, null, null,
-                CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
+                Visibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
         // Lenientes: el test de autorización corta el flujo antes de
         // consumir la cadena completa de stubs.
         org.mockito.Mockito.lenient()
@@ -62,9 +62,9 @@ class UpdateCatalogItemAccessUseCaseTest {
     @Test
     void appliesVisibilityAndSharesAsOneDecision() {
         StepVerifier.create(this.useCase.execute(
-                        CatalogItemId.of(1L), CatalogItemVisibility.SHARED, List.of("Maria", "", "Pedro")))
+                        CatalogItemId.of(1L), Visibility.SHARED, List.of("Maria", "", "Pedro")))
                 .assertNext(updated -> {
-                    assertThat(updated.getVisibility()).isEqualTo(CatalogItemVisibility.SHARED);
+                    assertThat(updated.getVisibility()).isEqualTo(Visibility.SHARED);
                     assertThat(updated.getSharedWith()).containsExactlyInAnyOrder("Maria", "Pedro");
                 })
                 .verifyComplete();
@@ -77,7 +77,7 @@ class UpdateCatalogItemAccessUseCaseTest {
     @Test
     void blankAndDuplicateUsernamesAreNormalized() {
         StepVerifier.create(this.useCase.execute(
-                        CatalogItemId.of(1L), CatalogItemVisibility.SHARED, List.of("Maria", "Maria", "  ")))
+                        CatalogItemId.of(1L), Visibility.SHARED, List.of("Maria", "Maria", "  ")))
                 .assertNext(updated ->
                         assertThat(updated.getSharedWith()).containsExactly("Maria"))
                 .verifyComplete();
@@ -95,7 +95,7 @@ class UpdateCatalogItemAccessUseCaseTest {
                 .thenReturn(Mono.empty());
 
         StepVerifier.create(this.useCase.execute(
-                        CatalogItemId.of(1L), CatalogItemVisibility.PUBLIC, List.of()))
+                        CatalogItemId.of(1L), Visibility.PUBLIC, List.of()))
                 .expectError(CatalogItemAccessDeniedException.class)
                 .verify();
 
@@ -105,7 +105,7 @@ class UpdateCatalogItemAccessUseCaseTest {
     @Test
     void sharedWithoutUsersIsRejectedByDomain() {
         StepVerifier.create(this.useCase.execute(
-                        CatalogItemId.of(1L), CatalogItemVisibility.SHARED, List.of()))
+                        CatalogItemId.of(1L), Visibility.SHARED, List.of()))
                 .expectError(com.gcorp.service.app.mvflix_movies.catalog.domain.item.InvalidCatalogItemAccessException.class)
                 .verify();
 
@@ -115,9 +115,9 @@ class UpdateCatalogItemAccessUseCaseTest {
     @Test
     void privateCleansSharesAtTheDomain() {
         StepVerifier.create(this.useCase.execute(
-                        CatalogItemId.of(1L), CatalogItemVisibility.PRIVATE, List.of("Maria")))
+                        CatalogItemId.of(1L), Visibility.PRIVATE, List.of("Maria")))
                 .assertNext(updated -> {
-                    assertThat(updated.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
+                    assertThat(updated.getVisibility()).isEqualTo(Visibility.PRIVATE);
                     assertThat(updated.getSharedWith()).isEmpty();
                 })
                 .verifyComplete();
@@ -130,9 +130,9 @@ class UpdateCatalogItemAccessUseCaseTest {
     @Test
     void publicCleansSharesAtTheDomain() {
         StepVerifier.create(this.useCase.execute(
-                        CatalogItemId.of(1L), CatalogItemVisibility.PUBLIC, List.of("Maria")))
+                        CatalogItemId.of(1L), Visibility.PUBLIC, List.of("Maria")))
                 .assertNext(updated -> {
-                    assertThat(updated.getVisibility()).isEqualTo(CatalogItemVisibility.PUBLIC);
+                    assertThat(updated.getVisibility()).isEqualTo(Visibility.PUBLIC);
                     assertThat(updated.getSharedWith()).isEmpty();
                 })
                 .verifyComplete();

@@ -6,7 +6,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -66,9 +66,9 @@ class UpdateCatalogItemAccessAtomicityTest extends PostgresIntegrationTest {
     void sharedToPrivateCleansSharesAndVisibilityTogether() {
         StepVerifier.create(this.useCase.execute(
                         com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(this.movieId),
-                        CatalogItemVisibility.PRIVATE, java.util.List.of()))
+                        Visibility.PRIVATE, java.util.List.of()))
                 .assertNext(updated -> {
-                    assertThat(updated.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
+                    assertThat(updated.getVisibility()).isEqualTo(Visibility.PRIVATE);
                     assertThat(updated.getSharedWith()).isEmpty();
                 })
                 .verifyComplete();
@@ -76,21 +76,21 @@ class UpdateCatalogItemAccessAtomicityTest extends PostgresIntegrationTest {
         assertThat(sharesCount()).isZero();
         var persisted = this.movieRepository.findById(
                 com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(this.movieId)).block();
-        assertThat(persisted.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
+        assertThat(persisted.getVisibility()).isEqualTo(Visibility.PRIVATE);
     }
 
     @Test
     void accessChangeReplacesShareSetInOneShot() {
         StepVerifier.create(this.useCase.execute(
                         com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(this.movieId),
-                        CatalogItemVisibility.SHARED, java.util.List.of("sofia")))
+                        Visibility.SHARED, java.util.List.of("sofia")))
                 .assertNext(updated ->
                         assertThat(updated.getSharedWith()).containsExactly("sofia"))
                 .verifyComplete();
 
         var persisted = this.movieRepository.findById(
                 com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(this.movieId)).block();
-        assertThat(persisted.getVisibility()).isEqualTo(CatalogItemVisibility.SHARED);
+        assertThat(persisted.getVisibility()).isEqualTo(Visibility.SHARED);
         assertThat(sharesCount()).isEqualTo(1);
     }
 
@@ -99,7 +99,7 @@ class UpdateCatalogItemAccessAtomicityTest extends PostgresIntegrationTest {
         // Punto de partida PRIVATE sin shares.
         this.useCase.execute(
                         com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(this.movieId),
-                        CatalogItemVisibility.PRIVATE, java.util.List.of())
+                        Visibility.PRIVATE, java.util.List.of())
                 .block();
         assertThat(sharesCount()).isZero();
 
@@ -108,14 +108,14 @@ class UpdateCatalogItemAccessAtomicityTest extends PostgresIntegrationTest {
         String tooLong = "x".repeat(300);
         StepVerifier.create(this.useCase.execute(
                         com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(this.movieId),
-                        CatalogItemVisibility.SHARED, java.util.List.of(tooLong)))
+                        Visibility.SHARED, java.util.List.of(tooLong)))
                 .expectError()
                 .verify();
 
         // Visibilidad revertida a PRIVATE y shares sin cambios: atomicidad.
         var persisted = this.movieRepository.findById(
                 com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(this.movieId)).block();
-        assertThat(persisted.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
+        assertThat(persisted.getVisibility()).isEqualTo(Visibility.PRIVATE);
         assertThat(sharesCount()).isZero();
     }
 }

@@ -19,7 +19,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -102,7 +102,7 @@ class ManagedMediaDeletionCoordinatorTest {
     private static CatalogItem movie() {
         return new CatalogItem(
                 MOVIE_ID, "Javier", "Dune", CatalogItemStatus.DELETING, EnrichmentStatus.ENRICHED,
-                42L, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
+                42L, (MovieMetadata) null, Visibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
     }
 
     private static ManagedMediaAsset managedMedia() {

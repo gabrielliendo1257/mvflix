@@ -15,7 +15,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccess
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,7 +35,7 @@ class UpdateVisibilityUseCaseTest {
 
     @InjectMocks private UpdateVisibilityUseCase useCase;
 
-    private static CatalogItem movie(long id, String owner, CatalogItemVisibility visibility) {
+    private static CatalogItem movie(long id, String owner, Visibility visibility) {
         return new CatalogItem(
                 CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
                 null, null, visibility, java.util.Set.of(), CatalogItemKind.MOVIE);
@@ -43,8 +43,8 @@ class UpdateVisibilityUseCaseTest {
 
     @Test
     void ownerChangesVisibility() {
-        CatalogItem movie = movie(1L, "Javier", CatalogItemVisibility.PRIVATE);
-        CatalogItem published = movie(1L, "Javier", CatalogItemVisibility.PUBLIC);
+        CatalogItem movie = movie(1L, "Javier", Visibility.PRIVATE);
+        CatalogItem published = movie(1L, "Javier", Visibility.PUBLIC);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
@@ -53,26 +53,26 @@ class UpdateVisibilityUseCaseTest {
         when(this.movieRepository.updateVisibility(any(CatalogItem.class)))
                 .thenReturn(Mono.just(published));
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), CatalogItemVisibility.PUBLIC))
-                .expectNextMatches(m -> m.getVisibility() == CatalogItemVisibility.PUBLIC)
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), Visibility.PUBLIC))
+                .expectNextMatches(m -> m.getVisibility() == Visibility.PUBLIC)
                 .verifyComplete();
 
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).updateVisibility(captor.capture());
         assertThat(captor.getValue().getId()).isEqualTo(CatalogItemId.of(1L));
-        assertThat(captor.getValue().getVisibility()).isEqualTo(CatalogItemVisibility.PUBLIC);
+        assertThat(captor.getValue().getVisibility()).isEqualTo(Visibility.PUBLIC);
     }
 
     @Test
     void nonOwnerIsDenied() {
-        CatalogItem movie = movie(1L, "Javier", CatalogItemVisibility.PRIVATE);
+        CatalogItem movie = movie(1L, "Javier", Visibility.PRIVATE);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L)))
                 .thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), CatalogItemVisibility.PUBLIC))
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), Visibility.PUBLIC))
                 .expectError(CatalogItemAccessDeniedException.class)
                 .verify();
 
@@ -86,7 +86,7 @@ class UpdateVisibilityUseCaseTest {
         when(this.movieRepository.findById(CatalogItemId.of(1L)))
                 .thenReturn(Mono.empty());
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), CatalogItemVisibility.PUBLIC))
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), Visibility.PUBLIC))
                 .expectError(CatalogItemAccessDeniedException.class)
                 .verify();
 

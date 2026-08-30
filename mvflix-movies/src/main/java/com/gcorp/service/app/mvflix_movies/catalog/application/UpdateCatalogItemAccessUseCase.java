@@ -5,7 +5,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ public class UpdateCatalogItemAccessUseCase {
     private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
 
-    public Mono<CatalogItem> execute(CatalogItemId id, CatalogItemVisibility visibility, List<String> sharedWith) {
+    public Mono<CatalogItem> execute(CatalogItemId id, Visibility visibility, List<String> sharedWith) {
         List<String> clean = sharedWith == null
                 ? List.of()
                 : sharedWith.stream()
@@ -53,4 +53,5 @@ public class UpdateCatalogItemAccessUseCase {
                                 "CatalogItem {} acceso -> {} compartidos={}",
                                 id.value(), visibility, clean)));
     }
+
 }
