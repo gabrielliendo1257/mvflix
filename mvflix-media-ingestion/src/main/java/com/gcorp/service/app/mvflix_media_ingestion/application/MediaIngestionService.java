@@ -327,13 +327,8 @@ public class MediaIngestionService {
          : compensations.schedule(i.ingestionId(), "DISCARD_DRAFT");
      Mono<Void> cancelUpload = i.uploadId() == null
          ? Mono.empty()
-         : clients.storageStatus(i.uploadId(), i.actorId())
-             .flatMap(status -> "PENDING".equalsIgnoreCase(status.status())
-                 ? compensations.schedule(i.ingestionId(), "CANCEL_UPLOAD")
-                 : Mono.empty());
-     return Mono.when(
-             discardDraft.onErrorResume(error -> Mono.empty()),
-             cancelUpload.onErrorResume(error -> Mono.empty()))
+         : compensations.schedule(i.ingestionId(), "CANCEL_UPLOAD");
+     return Mono.when(discardDraft, cancelUpload)
          .then();
    }
 
