@@ -176,13 +176,16 @@ public class MovieController {
   @PostMapping(value = "/identified-drafts", consumes = MediaType.APPLICATION_JSON_VALUE)
   @Operation(summary = "Draft identificado con acceso inicial, aplicado atómicamente")
   public Mono<MovieResponse> createIdentifiedDraft(
-      @Valid @RequestBody CreateIdentifiedDraftRequest request) {
+      @Valid @RequestBody CreateIdentifiedDraftRequest request,
+      @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+      @RequestHeader(name = "X-Correlation-Id", required = false) UUID correlationId) {
     return this.createIdentifiedDraftUseCase
-        .execute(this.toCommand(request))
+        .execute(this.toCommand(request, idempotencyKey, correlationId))
         .flatMap(this::response);
   }
 
-  private CreateIdentifiedDraftCommand toCommand(CreateIdentifiedDraftRequest request) {
+  private CreateIdentifiedDraftCommand toCommand(CreateIdentifiedDraftRequest request,
+      String idempotencyKey, UUID correlationId) {
     MovieMetadata metadata = this.mapper.toMetadata(request.draft());
     if (request.tmdbId() != null && request.draft().kind() != CatalogItemKind.VIDEO) {
       metadata = metadata.withTmdbId(request.tmdbId());
@@ -193,7 +196,9 @@ public class MovieController {
         request.visibility() == null ? null : Visibility.valueOf(request.visibility()),
         request.sharedWith() == null
             ? java.util.List.of()
-            : java.util.List.copyOf(request.sharedWith()));
+            : java.util.List.copyOf(request.sharedWith()),
+        idempotencyKey == null || idempotencyKey.isBlank() ? null : idempotencyKey,
+        correlationId);
   }
 
   @GetMapping("/{id}")

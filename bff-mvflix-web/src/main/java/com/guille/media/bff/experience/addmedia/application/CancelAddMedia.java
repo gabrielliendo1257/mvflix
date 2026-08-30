@@ -54,7 +54,7 @@ public class CancelAddMedia {
   @org.springframework.beans.factory.annotation.Autowired
   public CancelAddMedia(AddMediaProcessRepository processes, AddMediaStorage storage, AddMediaMovies movies,
       AddMediaCompensationRepository compensations, MediaIngestionClient ingestion,
-      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:true}") boolean ingestionEnabled) {
+      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:false}") boolean ingestionEnabled) {
     this.processes = processes; this.storage = storage; this.movies = movies; this.compensations = compensations;
     this.ingestion = ingestion; this.ingestionEnabled = ingestionEnabled;
   }

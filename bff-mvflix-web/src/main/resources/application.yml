@@ -34,4 +34,4 @@ services:
 
 features:
   add-media:
-    media-ingestion-enabled: ${MEDIA_INGESTION_ENABLED:true}
+    media-ingestion-enabled: ${MEDIA_INGESTION_ENABLED:false}

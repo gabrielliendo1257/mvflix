@@ -35,13 +35,15 @@ public class WebClientDownstreamClients implements DownstreamClients {
   }
 
   @Override
-  public Mono<Long> createCatalogDraft(Map<String, Object> draft, String actor, String key) {
+  public Mono<Long> createCatalogDraft(
+      Map<String, Object> draft, String actor, String key, String correlationId) {
     return movies
         .post()
         .uri("/api/v1/movies/identified-drafts")
         .contentType(MediaType.APPLICATION_JSON)
         .header("X-Actor-Id", actor)
         .header("Idempotency-Key", key)
+        .header("X-Correlation-Id", correlationId)
         .bodyValue(draft)
         .retrieve()
         .bodyToMono(Map.class)

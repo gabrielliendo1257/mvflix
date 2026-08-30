@@ -72,7 +72,7 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
   @Override
   public Mono<MovieDto> createIdentifiedDraft(
       CreateMovieRequest draft, Long tmdbId, String visibility,
-      java.util.List<String> sharedWith) {
+      java.util.List<String> sharedWith, String idempotencyKey) {
     java.util.Map<String, Object> payload = new java.util.HashMap<>();
     payload.put("draft", draft);
     payload.put("tmdb_id", tmdbId);
@@ -86,6 +86,7 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
         .post()
         .uri(API + "/identified-drafts")
         .contentType(MediaType.APPLICATION_JSON)
+        .header("Idempotency-Key", idempotencyKey == null ? "" : idempotencyKey)
         .bodyValue(payload)
         .retrieve()
         .bodyToMono(MovieDto.class);

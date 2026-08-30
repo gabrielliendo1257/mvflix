@@ -4,7 +4,7 @@ import java.util.Map;
 import reactor.core.publisher.Mono;
 
 public interface DownstreamClients {
-  Mono<Long> createCatalogDraft(Map<String, Object> draft, String actor, String key);
+  Mono<Long> createCatalogDraft(Map<String, Object> draft, String actor, String key, String correlationId);
 
   Mono<Upload> prepareUpload(
       String fileName, long fileSize, String mimeType, String actor, String key);

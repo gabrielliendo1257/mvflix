@@ -2,13 +2,18 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.metadata.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.IdentifiedDraftIdempotencyStore;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
@@ -23,19 +28,21 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.util.List;
-import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 @ExtendWith(MockitoExtension.class)
 class CreateIdentifiedDraftUseCaseTest {
 
   @Mock private CatalogItemRepository movieRepository;
   @Mock private UserProvider userProvider;
+  @Mock private IdentifiedDraftIdempotencyStore idempotencyStore;
 
   private CreateIdentifiedDraftUseCase useCase;
 
   @BeforeEach
   void setUp() {
-    this.useCase = new CreateIdentifiedDraftUseCase(this.movieRepository, this.userProvider);
+    this.useCase = new CreateIdentifiedDraftUseCase(this.movieRepository, this.userProvider,
+        null, this.idempotencyStore);
     org.mockito.Mockito.lenient()
         .when(this.userProvider.getAuthenticatedUser())
         .thenReturn(Mono.just(new AuthenticatedUser("pepe", "pepe@test")));
@@ -135,6 +142,55 @@ class CreateIdentifiedDraftUseCaseTest {
           assertThat(movie.getVisibility().name()).isEqualTo("PUBLIC");
         })
         .verifyComplete();
+  }
+
+  @Test
+  void sameIdempotencyKeyReturnsTheOriginalDraft() {
+    var command = command(alienMetadata(348L), CatalogItemKind.MOVIE,
+        Visibility.PRIVATE, List.of());
+    command = new CreateIdentifiedDraftCommand(command.metadata(), command.kind(),
+        command.visibility(), command.sharedWith(), "ingestion:create-catalog-draft");
+    var hash = new AtomicReference<String>();
+    when(this.idempotencyStore.claim(anyString(), anyString(), anyString(), anyString()))
+        .thenAnswer(invocation -> {
+          if (hash.get() == null) {
+            hash.set(invocation.getArgument(3));
+            return Mono.just(new IdentifiedDraftIdempotencyStore.Claim(
+                "pepe", "create-catalog-draft", "ingestion:create-catalog-draft",
+                hash.get(), null));
+          }
+          return Mono.just(new IdentifiedDraftIdempotencyStore.Claim(
+              "pepe", "create-catalog-draft", "ingestion:create-catalog-draft",
+              hash.get(), com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId.of(1L)));
+        });
+    var original = new CatalogItem(CatalogItemId.of(1L), "pepe", "Alien",
+        CatalogItemStatus.DRAFT, EnrichmentStatus.ENRICHED, null, alienMetadata(348L),
+        Visibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
+    when(this.movieRepository.findById(any())).thenReturn(Mono.just(original));
+    when(this.idempotencyStore.bind(anyString(), anyString(), anyString(), any()))
+        .thenReturn(Mono.empty());
+
+    this.useCase.execute(command).block();
+    this.useCase.execute(command).block();
+
+    org.mockito.Mockito.verify(this.movieRepository,
+        org.mockito.Mockito.times(1)).saveDraftWithAccess(any(CatalogItem.class));
+  }
+
+  @Test
+  void reusedIdempotencyKeyWithDifferentPayloadIsRejected() {
+    var command = new CreateIdentifiedDraftCommand(alienMetadata(348L), CatalogItemKind.MOVIE,
+        Visibility.PRIVATE, List.of(), "same-key");
+    when(this.idempotencyStore.claim(anyString(), anyString(), anyString(), anyString()))
+        .thenReturn(Mono.just(new IdentifiedDraftIdempotencyStore.Claim(
+            "pepe", "create-catalog-draft", "same-key", "different-hash", null)));
+
+    StepVerifier.create(this.useCase.execute(command))
+        .expectError(IdempotencyKeyReusedException.class)
+        .verify();
+
+    org.mockito.Mockito.verify(this.movieRepository,
+        org.mockito.Mockito.never()).saveDraftWithAccess(any(CatalogItem.class));
   }
 
   private void verifyNoAccessFallback() {

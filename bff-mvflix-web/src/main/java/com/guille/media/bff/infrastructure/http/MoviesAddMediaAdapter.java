@@ -36,7 +36,8 @@ public class MoviesAddMediaAdapter implements AddMediaMovies {
   @Override
   public Mono<MovieDto> createIdentifiedDraft(IdentifiedDraft command) {
     return this.translate(this.delegate.createIdentifiedDraft(
-        command.draft(), command.tmdbId(), command.visibility(), command.sharedWith()));
+        command.draft(), command.tmdbId(), command.visibility(), command.sharedWith(),
+        command.idempotencyKey()));
   }
 
   @Override

@@ -91,6 +91,7 @@ services:
       DB_NAME: mvflix_media_ingestion_db
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MVFLIX_MESSAGING_KAFKA_ENABLED: "true"
+      MVFLIX_INTERNAL_TOKEN_URI: http://jwks-stub:8080/oauth2/token
       SECURITY_OAUTH2_JWK_SET_URI: http://jwks-stub:8080/oauth2/jwks
       MOVIES_URL: http://movies:4040
       STORAGE_URL: http://storage:6060

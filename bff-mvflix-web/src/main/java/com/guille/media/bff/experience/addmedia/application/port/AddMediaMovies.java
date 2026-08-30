@@ -25,7 +25,12 @@ public interface AddMediaMovies {
    */
   record IdentifiedDraft(
       CreateMovieRequest draft, Long tmdbId, String visibility,
-      java.util.List<String> sharedWith) {}
+      java.util.List<String> sharedWith, String idempotencyKey) {
+    public IdentifiedDraft(CreateMovieRequest draft, Long tmdbId, String visibility,
+        java.util.List<String> sharedWith) {
+      this(draft, tmdbId, visibility, sharedWith, null);
+    }
+  }
 
   /** Crea la película en estado DRAFT ya identificado, con acceso inicial.
    * La política de usuario bloqueado se aplica aguas arriba (users); Movies

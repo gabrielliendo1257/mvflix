@@ -44,7 +44,7 @@ public class CompleteProcessAddMedia {
   @org.springframework.beans.factory.annotation.Autowired
   public CompleteProcessAddMedia(AddMediaProcessRepository processes, CompleteAddMedia completion,
       MediaIngestionClient ingestion,
-      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:true}") boolean ingestionEnabled) {
+      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:false}") boolean ingestionEnabled) {
     this.processes = processes; this.completion = completion; this.ingestion = ingestion;
     this.ingestionEnabled = ingestionEnabled;
   }

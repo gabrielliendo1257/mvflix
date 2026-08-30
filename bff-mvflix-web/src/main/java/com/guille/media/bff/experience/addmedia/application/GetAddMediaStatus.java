@@ -37,7 +37,7 @@ public class GetAddMediaStatus {
   @org.springframework.beans.factory.annotation.Autowired
   public GetAddMediaStatus(AddMediaProcessRepository processes, AddMediaStorage storage,
       MediaIngestionClient ingestion,
-      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:true}") boolean ingestionEnabled) {
+      @org.springframework.beans.factory.annotation.Value("${features.add-media.media-ingestion-enabled:false}") boolean ingestionEnabled) {
     this.processes = processes; this.storage = storage; this.ingestion = ingestion; this.ingestionEnabled = ingestionEnabled;
   }
 

@@ -5,6 +5,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.access.Visibility;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.IdentifiedDraftIdempotencyStore;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -17,7 +18,7 @@ import java.time.Duration;
 import java.util.List;
 
 @Repository
-public class SpringDataCatalogItemRepository implements CatalogItemRepository {
+public class SpringDataCatalogItemRepository implements CatalogItemRepository, IdentifiedDraftIdempotencyStore {
 
     private static final String MEDIA_OBJECT_ID =
             """
@@ -102,6 +103,53 @@ public class SpringDataCatalogItemRepository implements CatalogItemRepository {
                     saved.getVisibility(),
                     movie.getSharing(),
                     saved.getKind())));
+    }
+
+    @Override
+    public Mono<IdentifiedDraftIdempotencyStore.Claim> claim(
+            String actorId, String operation, String key, String requestHash) {
+        return this.databaseClient.sql("""
+                INSERT INTO movie_idempotency_keys
+                    (actor_id, operation, idempotency_key, request_hash)
+                VALUES (:actor_id, :operation, :idempotency_key, :request_hash)
+                ON CONFLICT (actor_id, operation, idempotency_key) DO NOTHING
+                """)
+            .bind("actor_id", actorId)
+            .bind("operation", operation)
+            .bind("idempotency_key", key)
+            .bind("request_hash", requestHash)
+            .fetch().rowsUpdated()
+            .then(this.databaseClient.sql("""
+                SELECT actor_id, operation, idempotency_key, request_hash, movie_id
+                FROM movie_idempotency_keys
+                WHERE actor_id = :actor_id AND operation = :operation
+                  AND idempotency_key = :idempotency_key
+                FOR UPDATE
+                """)
+                .bind("actor_id", actorId)
+                .bind("operation", operation)
+                .bind("idempotency_key", key)
+                .map((row, metadata) -> new IdentifiedDraftIdempotencyStore.Claim(
+                    row.get("actor_id", String.class), row.get("operation", String.class),
+                    row.get("idempotency_key", String.class), row.get("request_hash", String.class),
+                    row.get("movie_id", Long.class) == null ? null
+                        : CatalogItemId.of(row.get("movie_id", Long.class))))
+                .one());
+    }
+
+    @Override
+    public Mono<Void> bind(String actorId, String operation, String key,
+                                         CatalogItemId movieId) {
+        return this.databaseClient.sql("""
+                UPDATE movie_idempotency_keys SET movie_id = :movie_id
+                WHERE actor_id = :actor_id AND operation = :operation
+                  AND idempotency_key = :idempotency_key
+                """)
+            .bind("movie_id", movieId.value())
+            .bind("actor_id", actorId)
+            .bind("operation", operation)
+            .bind("idempotency_key", key)
+            .fetch().rowsUpdated().then();
     }
 
     @Override

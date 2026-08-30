@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.guille.media.bff.app.dto.CreateMovieRequest;
 import com.guille.media.bff.app.dto.MovieDto;
@@ -18,6 +19,7 @@ import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies.IdentifiedDraft;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
+import com.guille.media.bff.experience.addmedia.application.port.MediaIngestionClient;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
 import com.guille.media.bff.experience.addmedia.web.StartAddMediaRequest;
@@ -106,6 +108,22 @@ class StartAddMediaTest {
         .createIdentifiedDraft(captor.capture());
     assertThat(captor.getValue().tmdbId()).isEqualTo(348L);
     assertThat(captor.getValue().visibility()).isEqualTo("PRIVATE");
+  }
+
+  @Test
+  void ingestionPathRejectsBlockedUserBeforeDelegating() {
+    var ingestion = mock(MediaIngestionClient.class);
+    var blocked = new UserProfile(
+        "u1", "pepe", null, null, "pepe@mvflix.dev", "FREE", true, 3, true);
+    when(this.users.me()).thenReturn(Mono.just(blocked));
+    var enabled = new StartAddMedia(
+        this.movies, this.storage, this.processes, this.users, null, ingestion, true);
+
+    StepVerifier.create(enabled.handle("pepe", command("blocked"), "corr"))
+        .expectError(UserBlockedException.class)
+        .verify();
+
+    verifyNoInteractions(ingestion);
   }
 
   @Test

@@ -1,6 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.infrastructure.web.error;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.InvalidCatalogStatusException;
+import com.gcorp.service.app.mvflix_movies.catalog.application.IdempotencyKeyReusedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemConflictException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
@@ -50,6 +51,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CatalogItemConflictException.class)
     public ResponseEntity<ErrorResponse> movieConflict(CatalogItemConflictException ex) {
         return error(HttpStatus.CONFLICT, "MOVIE_CONFLICT", ex);
+    }
+
+    @ExceptionHandler(IdempotencyKeyReusedException.class)
+    public ResponseEntity<ErrorResponse> idempotencyKeyReused(IdempotencyKeyReusedException ex) {
+        return error(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_REUSED", ex);
     }
 
     @ExceptionHandler(com.gcorp.service.app.mvflix_movies.catalog.domain.item.InvalidCatalogItemAccessException.class)

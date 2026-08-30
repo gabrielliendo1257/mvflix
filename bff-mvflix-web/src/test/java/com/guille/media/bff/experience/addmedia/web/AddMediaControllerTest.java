@@ -70,8 +70,9 @@ class AddMediaControllerTest {
 
   @Test
   void startReturnsCreatedWithUploadInstructions() {
-    when(this.moviesWebClient.createIdentifiedDraft(
-            ArgumentMatchers.any(), ArgumentMatchers.eq(348L), ArgumentMatchers.any(), ArgumentMatchers.any()))
+        when(this.moviesWebClient.createIdentifiedDraft(
+            ArgumentMatchers.any(), ArgumentMatchers.eq(348L), ArgumentMatchers.any(),
+            ArgumentMatchers.any(), ArgumentMatchers.anyString()))
         .thenReturn(Mono.just(new com.guille.media.bff.app.dto.MovieDto(7L, "DRAFT", null,
             "PRIVATE", "MOVIE", "Alien", null, 1979, List.of(), null, null, null,
             List.of(), null, null, null, null, null, null, null)));
@@ -128,8 +129,9 @@ class AddMediaControllerTest {
   @Test
   void statusIsOwnerScopedAndHidesForeignProcesses() {
     when(this.session.currentSubject()).thenReturn(Mono.just("pepe"));
-    when(this.moviesWebClient.createIdentifiedDraft(
-            ArgumentMatchers.any(), ArgumentMatchers.eq(348L), ArgumentMatchers.any(), ArgumentMatchers.any()))
+        when(this.moviesWebClient.createIdentifiedDraft(
+            ArgumentMatchers.any(), ArgumentMatchers.eq(348L), ArgumentMatchers.any(),
+            ArgumentMatchers.any(), ArgumentMatchers.anyString()))
         .thenReturn(Mono.just(new com.guille.media.bff.app.dto.MovieDto(7L, "DRAFT", null,
             "PRIVATE", "MOVIE", "Alien", null, 1979, List.of(), null, null, null,
             List.of(), null, null, null, null, null, null, null)));

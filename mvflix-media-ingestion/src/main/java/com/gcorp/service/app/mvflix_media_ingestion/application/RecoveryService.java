@@ -85,10 +85,13 @@ public class RecoveryService {
         .defaultIfEmpty(new DownstreamClients.StorageStatus("UNKNOWN", null, null))
         .flatMap(
             state -> {
-              if ("PENDING".equalsIgnoreCase(state.status()) && i.uploadId() != null) {
-                return compensations
-                    .schedule(i.ingestionId(), "CANCEL_UPLOAD")
-                    .then(
+               if ("PENDING".equalsIgnoreCase(state.status()) && i.uploadId() != null) {
+                 return compensations
+                     .schedule(i.ingestionId(), "CANCEL_UPLOAD")
+                     .then(i.catalogItemId() == null
+                         ? Mono.empty()
+                         : compensations.schedule(i.ingestionId(), "DISCARD_DRAFT"))
+                     .then(
                         mark(
                             i, Phase.FAILED, "cannot resume " + i.phase() + "; upload is pending"));
               }
@@ -140,12 +143,19 @@ public class RecoveryService {
             .compareAndSet(i, next)
             .flatMap(
                 ok -> {
-                  if (!ok) return Mono.error(new IllegalStateException("recovery CAS failed"));
-                  Mono<MediaIngestion> saved =
-                      repository.find(i.ingestionId()).switchIfEmpty(Mono.just(next));
-                  return phase == Phase.FAILED
-                      ? saved.flatMap(value -> outbox.failed(value).thenReturn(value))
-                      : saved;
-                }));
-  }
+                   if (!ok) return Mono.error(new IllegalStateException("recovery CAS failed"));
+                   Mono<MediaIngestion> saved =
+                       repository.find(i.ingestionId()).switchIfEmpty(Mono.just(next));
+                   return phase == Phase.FAILED
+                       ? scheduleDraftCompensation(i)
+                           .then(saved.flatMap(value -> outbox.failed(value).thenReturn(value)))
+                       : saved;
+                 }));
+   }
+
+   private Mono<Void> scheduleDraftCompensation(MediaIngestion i) {
+     return i.catalogItemId() == null
+         ? Mono.empty()
+         : compensations.schedule(i.ingestionId(), "DISCARD_DRAFT");
+   }
 }

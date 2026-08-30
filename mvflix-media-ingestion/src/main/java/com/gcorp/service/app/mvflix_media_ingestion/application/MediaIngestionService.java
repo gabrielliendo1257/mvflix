@@ -75,10 +75,11 @@ public class MediaIngestionService {
                           saved ->
                               step(saved, Phase.PREPARING_CATALOG, null, null)
                                   .then(
-                                      clients.createCatalogDraft(
-                                          draft,
-                                          actor,
-                                          saved.ingestionId() + ":create-catalog-draft"))
+                                       clients.createCatalogDraft(
+                                           draft,
+                                           actor,
+                                           saved.ingestionId() + ":create-catalog-draft",
+                                           saved.ingestionId().toString()))
                                   .flatMap(
                                       catalog ->
                                           repository
@@ -113,13 +114,34 @@ public class MediaIngestionService {
       input.put("size", size);
       input.put("mime", mime);
       byte[] digest = MessageDigest.getInstance("SHA-256")
-          .digest(input.toString().getBytes(StandardCharsets.UTF_8));
+          .digest(("media-ingestion:v1|" + canonical(input)).getBytes(StandardCharsets.UTF_8));
       var result = new StringBuilder(64);
       for (byte value : digest) result.append(String.format("%02x", value));
       return result.toString();
     } catch (Exception error) {
       throw new IllegalStateException("could not fingerprint ingestion request", error);
     }
+  }
+
+  private static String canonical(Object value) {
+    if (value == null) return "null";
+    if (value instanceof Map<?, ?> map) {
+      var result = new StringBuilder("{");
+      map.entrySet().stream()
+          .sorted(java.util.Comparator.comparing(entry -> String.valueOf(entry.getKey())))
+          .forEach(entry -> {
+            String key = String.valueOf(entry.getKey());
+            result.append(key.length()).append(':').append(key).append('=')
+                .append(canonical(entry.getValue())).append(';');
+          });
+      return result.append('}').toString();
+    }
+    if (value instanceof List<?> list) {
+      return list.stream().map(MediaIngestionService::canonical)
+          .collect(java.util.stream.Collectors.joining(",", "[", "]"));
+    }
+    String text = String.valueOf(value);
+    return text.length() + ":" + text;
   }
 
   private Mono<MediaIngestion> prepare(MediaIngestion i, String name, long size, String mime) {
@@ -173,11 +195,12 @@ public class MediaIngestionService {
                   .compareAndSet(i, n)
                   .flatMap(
                       ok ->
-                          ok
-                              ? (i.uploadId() == null
-                                      ? Mono.empty()
-                                      : clients.cancelUpload(
-                                          i.uploadId(), actor, id + ":cancel-upload"))
+                               ok
+                               ? scheduleCompensations(i)
+                                   .then(i.uploadId() == null
+                                       ? Mono.empty()
+                                       : clients.cancelUpload(
+                                           i.uploadId(), actor, id + ":cancel-upload"))
                                   .then(
                                       inTransaction(
                                           repository
@@ -283,7 +306,7 @@ public class MediaIngestionService {
               var x =
                   current.failed(
                       e.getClass().getSimpleName() + ":" + String.valueOf(e.getMessage()));
-              Mono<Void> cleanup = safeUploadCompensation(current);
+               Mono<Void> cleanup = scheduleCompensations(current);
               return inTransaction(
                   repository
                       .compareAndSet(current, x)
@@ -297,17 +320,22 @@ public class MediaIngestionService {
             });
   }
 
-  private Mono<Void> safeUploadCompensation(MediaIngestion i) {
-    if (compensations == null || i.uploadId() == null) return Mono.empty();
-    return clients
-        .storageStatus(i.uploadId(), i.actorId())
-        .flatMap(
-            status ->
-                "PENDING".equalsIgnoreCase(status.status())
-                    ? compensations.schedule(i.ingestionId(), "CANCEL_UPLOAD")
-                    : Mono.empty())
-        .onErrorResume(error -> Mono.empty());
-  }
+   private Mono<Void> scheduleCompensations(MediaIngestion i) {
+     if (compensations == null) return Mono.empty();
+     Mono<Void> discardDraft = i.catalogItemId() == null
+         ? Mono.empty()
+         : compensations.schedule(i.ingestionId(), "DISCARD_DRAFT");
+     Mono<Void> cancelUpload = i.uploadId() == null
+         ? Mono.empty()
+         : clients.storageStatus(i.uploadId(), i.actorId())
+             .flatMap(status -> "PENDING".equalsIgnoreCase(status.status())
+                 ? compensations.schedule(i.ingestionId(), "CANCEL_UPLOAD")
+                 : Mono.empty());
+     return Mono.when(
+             discardDraft.onErrorResume(error -> Mono.empty()),
+             cancelUpload.onErrorResume(error -> Mono.empty()))
+         .then();
+   }
 
   private UUID parseUuid(String value) {
     try {
@@ -367,9 +395,7 @@ public class MediaIngestionService {
                  objectKey,
                  i.requestFingerprint(),
                  i.causationId());
-    return (i.phase() == Phase.FINALIZING_CATALOG
-            ? Mono.just(true)
-            : repository.compareAndSet(i, n))
+     return repository.compareAndSet(i, n)
         .flatMap(
             ok ->
                 ok
