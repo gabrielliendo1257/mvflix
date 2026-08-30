@@ -20,6 +20,7 @@ class LegacyVideoMetadataMigrationTest extends PostgresIntegrationTest {
     try {
       flyway.migrate();
       insertLegacyVideo(schema);
+      insertDuplicateRenditions(schema);
 
       configuration(schema).load().migrate();
 
@@ -39,6 +40,16 @@ class LegacyVideoMetadataMigrationTest extends PostgresIntegrationTest {
           assertThat(result.getString("recorded_at")).isNull();
           assertThat(result.getBoolean("has_overview")).isFalse();
           assertThat(result.getBoolean("has_genres")).isFalse();
+        }
+
+        try (var statement = connection.createStatement();
+            ResultSet result = statement.executeQuery(
+                "SELECT COUNT(*) AS count, MIN(id) AS retained_id "
+                    + "FROM " + schema + ".media_asset_renditions "
+                    + "WHERE media_asset_id = 1 AND profile = '1080p'")) {
+          assertThat(result.next()).isTrue();
+          assertThat(result.getLong("count")).isEqualTo(1L);
+          assertThat(result.getLong("retained_id")).isEqualTo(1L);
         }
       }
     } finally {
@@ -69,6 +80,21 @@ class LegacyVideoMetadataMigrationTest extends PostgresIntegrationTest {
             "{\"title\":\"Legacy clip\",\"originalTitle\":\"Old title\","
                 + "\"genres\":[\"documentary\"],\"overview\":\"Recorded before VIDEO existed\"}");
         statement.executeUpdate();
+      }
+    }
+  }
+
+  private void insertDuplicateRenditions(String schema) throws SQLException {
+    try (var connection = POSTGRES.createConnection("")) {
+      try (var statement = connection.createStatement()) {
+        statement.executeUpdate(
+            "INSERT INTO " + schema + ".media_assets "
+                + "(library_id, relative_path, size, mime_type, status) "
+                + "VALUES (1, 'legacy-video.mp4', 1, 'video/mp4', 'UNIDENTIFIED')");
+        statement.executeUpdate(
+            "INSERT INTO " + schema + ".media_asset_renditions "
+                + "(media_asset_id, profile, status) VALUES "
+                + "(1, '1080p', 'REQUESTED'), (1, '1080p', 'REQUESTED')");
       }
     }
   }
