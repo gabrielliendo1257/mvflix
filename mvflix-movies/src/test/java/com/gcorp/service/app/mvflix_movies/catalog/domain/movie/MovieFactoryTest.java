@@ -23,13 +23,10 @@ class MovieFactoryTest {
         assertThat(draft.getStatus()).isEqualTo(CatalogItemStatus.DRAFT);
         assertThat(draft.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(draft.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
-        assertThat(draft.getObjectId()).isNull();
         assertThat(draft.getSharedWith()).isEmpty();
         assertThat(draft.getTitle()).isEqualTo("Dune");
         assertThat(draft.getKind()).isEqualTo(MediaKind.MOVIE);
         assertThat(draft.isMovie()).isTrue();
-        assertThat(draft.isLibraryBacked()).isFalse();
-        assertThat(draft.isUploaded()).isFalse();
     }
 
     @Test
@@ -37,19 +34,13 @@ class MovieFactoryTest {
         CatalogItem movie = CatalogItem.fromLibraryAsset("Javier", TITLE, MediaKind.MOVIE);
 
         assertThat(movie.getStatus()).isEqualTo(CatalogItemStatus.READY);
-        assertThat(movie.getObjectId()).isNull();
-        assertThat(movie.isLibraryBacked()).isTrue();
-        assertThat(movie.isUploaded()).isFalse();
     }
 
     @Test
     void completeProduceReadySubidoAlStorage() {
-        CatalogItem uploaded = CatalogItem.createDraft("Javier", TITLE, MediaKind.MOVIE).complete(42L);
+        CatalogItem uploaded = CatalogItem.createDraft("Javier", TITLE, MediaKind.MOVIE).complete();
 
         assertThat(uploaded.getStatus()).isEqualTo(CatalogItemStatus.READY);
-        assertThat(uploaded.getObjectId()).isEqualTo(42L);
-        assertThat(uploaded.isUploaded()).isTrue();
-        assertThat(uploaded.isLibraryBacked()).isFalse();
     }
 
     @Test

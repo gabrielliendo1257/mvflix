@@ -18,6 +18,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCas
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.application.ManagedObjectIdLookup;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityResponse;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CatalogPageResponse;
@@ -77,6 +78,41 @@ public class MovieController {
     private final DeleteMovieUseCase deleteMovieUseCase;
     private final EnrichMovieUseCase enrichMovieUseCase;
     private final MovieApiMapper mapper;
+    private final ManagedObjectIdLookup objectIdLookup;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public MovieController(
+            CreateMovieUseCase createMovieUseCase,
+            CreateIdentifiedDraftUseCase createIdentifiedDraftUseCase,
+            GetMovieUseCase getMovieUseCase,
+            ListMoviesUseCase listMoviesUseCase,
+            CatalogQueryUseCase catalogQueryUseCase,
+            UpdateVisibilityUseCase updateVisibilityUseCase,
+            UpdateMovieAccessUseCase updateMovieAccessUseCase,
+            UpdateSharesUseCase updateSharesUseCase,
+            BulkVisibilityUseCase bulkVisibilityUseCase,
+            UpdateMovieUseCase updateMovieUseCase,
+            CompleteMovieUseCase completeMovieUseCase,
+            DeleteMovieUseCase deleteMovieUseCase,
+            EnrichMovieUseCase enrichMovieUseCase,
+            MovieApiMapper mapper,
+            ManagedObjectIdLookup objectIdLookup) {
+        this.createMovieUseCase = createMovieUseCase;
+        this.createIdentifiedDraftUseCase = createIdentifiedDraftUseCase;
+        this.getMovieUseCase = getMovieUseCase;
+        this.listMoviesUseCase = listMoviesUseCase;
+        this.catalogQueryUseCase = catalogQueryUseCase;
+        this.updateVisibilityUseCase = updateVisibilityUseCase;
+        this.updateMovieAccessUseCase = updateMovieAccessUseCase;
+        this.updateSharesUseCase = updateSharesUseCase;
+        this.bulkVisibilityUseCase = bulkVisibilityUseCase;
+        this.updateMovieUseCase = updateMovieUseCase;
+        this.completeMovieUseCase = completeMovieUseCase;
+        this.deleteMovieUseCase = deleteMovieUseCase;
+        this.enrichMovieUseCase = enrichMovieUseCase;
+        this.mapper = mapper;
+        this.objectIdLookup = objectIdLookup;
+    }
 
     public MovieController(
             CreateMovieUseCase createMovieUseCase,
@@ -93,20 +129,19 @@ public class MovieController {
             DeleteMovieUseCase deleteMovieUseCase,
             EnrichMovieUseCase enrichMovieUseCase,
             MovieApiMapper mapper) {
-        this.createMovieUseCase = createMovieUseCase;
-        this.createIdentifiedDraftUseCase = createIdentifiedDraftUseCase;
-        this.getMovieUseCase = getMovieUseCase;
-        this.listMoviesUseCase = listMoviesUseCase;
-        this.catalogQueryUseCase = catalogQueryUseCase;
-        this.updateVisibilityUseCase = updateVisibilityUseCase;
-        this.updateMovieAccessUseCase = updateMovieAccessUseCase;
-        this.updateSharesUseCase = updateSharesUseCase;
-        this.bulkVisibilityUseCase = bulkVisibilityUseCase;
-        this.updateMovieUseCase = updateMovieUseCase;
-        this.completeMovieUseCase = completeMovieUseCase;
-        this.deleteMovieUseCase = deleteMovieUseCase;
-        this.enrichMovieUseCase = enrichMovieUseCase;
-        this.mapper = mapper;
+        this(createMovieUseCase, createIdentifiedDraftUseCase, getMovieUseCase, listMoviesUseCase,
+                catalogQueryUseCase, updateVisibilityUseCase, updateMovieAccessUseCase,
+                updateSharesUseCase, bulkVisibilityUseCase, updateMovieUseCase,
+                completeMovieUseCase, deleteMovieUseCase, enrichMovieUseCase, mapper, null);
+    }
+
+    /** Adds the legacy object_id only at the HTTP projection boundary. */
+    private Mono<MovieResponse> response(com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem movie) {
+        return this.objectIdLookup == null
+                ? Mono.just(this.mapper.toResponse(movie))
+                : this.objectIdLookup.findObjectId(movie.getId())
+                    .map(objectId -> this.mapper.toResponse(movie, objectId))
+                    .switchIfEmpty(Mono.fromSupplier(() -> this.mapper.toResponse(movie, null)));
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -114,7 +149,7 @@ public class MovieController {
         MediaKind kind = request.kind() == null ? MediaKind.MOVIE : request.kind();
         return this.createMovieUseCase
                 .execute(new CreateMovieCommand(this.mapper.toMetadata(request), kind))
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     /** Alta guiada (Add Media): draft identificado + acceso inicial, atómicos. */
@@ -126,7 +161,7 @@ public class MovieController {
             @Valid @RequestBody CreateIdentifiedDraftRequest request) {
         return this.createIdentifiedDraftUseCase
                 .execute(this.toCommand(request))
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     private CreateIdentifiedDraftCommand toCommand(CreateIdentifiedDraftRequest request) {
@@ -143,7 +178,7 @@ public class MovieController {
 
     @GetMapping("/{id}")
     public Mono<MovieResponse> findById(@PathVariable Long id) {
-        return this.getMovieUseCase.execute(CatalogItemId.of(id)).map(this.mapper::toResponse);
+        return this.getMovieUseCase.execute(CatalogItemId.of(id)).flatMap(this::response);
     }
 
     @PostMapping("/{id}/visibility")
@@ -151,7 +186,7 @@ public class MovieController {
             @PathVariable Long id, @Valid @RequestBody UpdateVisibilityRequest request) {
         return this.updateVisibilityUseCase
                 .execute(CatalogItemId.of(id), request.visibility())
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     @PostMapping("/{id}/shares")
@@ -159,7 +194,7 @@ public class MovieController {
             @PathVariable Long id, @Valid @RequestBody UpdateSharesRequest request) {
         return this.updateSharesUseCase
                 .execute(CatalogItemId.of(id), request.usernames())
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     @PostMapping(value = "/visibility/bulk", consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -187,14 +222,14 @@ public class MovieController {
             @Valid @RequestBody UpdateMovieAccessRequest request) {
         return this.updateMovieAccessUseCase
                 .execute(CatalogItemId.of(id), request.visibility(), request.sharedWith())
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     @GetMapping
     public Flux<MovieResponse> list(
             @RequestParam(defaultValue = "visible") String scope,
             @RequestParam(defaultValue = "20") int limit) {
-        return this.listMoviesUseCase.execute(scope, limit).map(this.mapper::toResponse);
+        return this.listMoviesUseCase.execute(scope, limit).flatMap(this::response);
     }
 
     /** Proyección owned paginada para la grilla de administración del BFF. */
@@ -216,7 +251,7 @@ public class MovieController {
             @PathVariable Long id, @Valid @RequestBody CompleteMovieRequest request) {
         return this.completeMovieUseCase
                 .execute(CatalogItemId.of(id), request.objectId(), request.objectKey())
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     /** Edición manual de la metadata del dueño (merge: null conserva el valor actual). */
@@ -225,7 +260,7 @@ public class MovieController {
             @PathVariable Long id, @Valid @RequestBody UpdateMovieRequest request) {
         return this.updateMovieUseCase
                 .execute(CatalogItemId.of(id), this.mapper.toCommand(request))
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     @DeleteMapping("/{id}")
@@ -243,14 +278,14 @@ public class MovieController {
         return this.enrichMovieUseCase
                 .enrichCurrentUser(
                         CatalogItemId.of(id), request == null ? null : request.tmdbId())
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     @DeleteMapping("/{id}/enrich")
     public Mono<MovieResponse> unlinkEnrichment(@PathVariable Long id) {
         return this.enrichMovieUseCase
                 .unlinkCurrentUser(CatalogItemId.of(id))
-                .map(this.mapper::toResponse);
+                .flatMap(this::response);
     }
 
     @GetMapping("/enrich/search")

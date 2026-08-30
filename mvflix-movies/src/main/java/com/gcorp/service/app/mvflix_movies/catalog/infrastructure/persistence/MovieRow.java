@@ -6,7 +6,6 @@ public record MovieRow(
     String title,
     String status,
     String enrichmentStatus,
-    Long objectId,
     String metadata,
     String visibility,
     String[] sharedWith,

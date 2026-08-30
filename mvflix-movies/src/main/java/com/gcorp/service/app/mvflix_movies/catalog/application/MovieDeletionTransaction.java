@@ -74,18 +74,23 @@ public class MovieDeletionTransaction {
                                 "Cannot finalize movie=" + movieId.value()
                                         + ": status=" + movie.getStatus()));
                     }
-                    if (!Objects.equals(movie.getObjectId(), storageId)) {
-                        return Mono.error(new IllegalStateException(
-                                "Cannot finalize movie=" + movieId.value()
-                                        + ": storageId mismatch"));
-                    }
-                    return this.libraryAssetLinks.unlinkByMovieId(movieId)
-                            .then(this.movieRepository.deleteIfDeletingAndStorageId(movieId, storageId))
-                            .flatMap(deleted -> deleted
-                                    ? Mono.empty()
-                                    : Mono.error(new IllegalStateException(
-                                            "CatalogItem changed while finalizing movie=" + movieId.value())));
-                })
+                     return this.mediaRepository.findByMovieId(movieId)
+                         .switchIfEmpty(Mono.error(new IllegalStateException(
+                                 "Managed media missing for movie=" + movieId.value())))
+                         .flatMap(media -> {
+                           if (!Objects.equals(media.getObjectId(), storageId)) {
+                             return Mono.error(new IllegalStateException(
+                                     "Cannot finalize movie=" + movieId.value()
+                                             + ": storageId mismatch"));
+                           }
+                           return this.libraryAssetLinks.unlinkByMovieId(movieId)
+                             .then(this.movieRepository.deleteIfDeletingAndStorageId(movieId, storageId))
+                             .flatMap(deleted -> deleted
+                                     ? Mono.empty()
+                                     : Mono.error(new IllegalStateException(
+                                             "CatalogItem changed while finalizing movie=" + movieId.value())));
+                         });
+                 })
                 .then();
     }
 

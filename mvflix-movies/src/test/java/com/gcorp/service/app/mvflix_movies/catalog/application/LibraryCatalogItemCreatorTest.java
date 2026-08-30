@@ -42,7 +42,7 @@ class LibraryCatalogItemCreatorTest {
                             movie.getTitle(),
                             movie.getStatus(),
                             movie.getEnrichmentStatus(),
-                            movie.getObjectId(),
+                            null,
                             movie.getMetadata(),
                             movie.getVisibility(),
                             movie.getSharedWith(),
@@ -62,7 +62,6 @@ class LibraryCatalogItemCreatorTest {
         assertThat(newMovie.getStatus()).isEqualTo(CatalogItemStatus.READY);
         assertThat(newMovie.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(newMovie.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
-        assertThat(newMovie.getObjectId()).isNull();
         assertThat(newMovie.getKind()).isEqualTo(MediaKind.MOVIE);
     }
 
@@ -77,7 +76,7 @@ class LibraryCatalogItemCreatorTest {
                             movie.getTitle(),
                             movie.getStatus(),
                             movie.getEnrichmentStatus(),
-                            movie.getObjectId(),
+                            null,
                             movie.getMetadata(),
                             movie.getVisibility(),
                             movie.getSharedWith(),

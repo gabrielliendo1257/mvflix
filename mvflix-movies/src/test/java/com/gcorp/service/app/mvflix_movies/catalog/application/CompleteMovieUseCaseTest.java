@@ -62,7 +62,6 @@ class CompleteMovieUseCaseTest {
             movie -> {
               assertThat(movie.getId()).isEqualTo(MOVIE_ID);
               assertThat(movie.getStatus()).isEqualTo(CatalogItemStatus.READY);
-              assertThat(movie.getObjectId()).isEqualTo(OBJECT_ID);
             })
         .verifyComplete();
 
@@ -112,7 +111,6 @@ class CompleteMovieUseCaseTest {
         .assertNext(
             movie -> {
               assertThat(movie.getStatus()).isEqualTo(CatalogItemStatus.READY);
-              assertThat(movie.getObjectId()).isEqualTo(123L);
             })
         .verifyComplete();
 

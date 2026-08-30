@@ -9,19 +9,18 @@ public class CatalogItem {
     private final String title;
     private final CatalogItemStatus status;
     private final EnrichmentStatus enrichmentStatus;
-    private final Long objectId;
     private final CatalogMetadata metadata;
     private final CatalogItemVisibility visibility;
     private final Set<String> sharedWith;
     private final MediaKind kind;
 
+    @Default
     public CatalogItem(
         CatalogItemId id,
         String ownerUsername,
         String title,
         CatalogItemStatus status,
         EnrichmentStatus enrichmentStatus,
-        Long objectId,
         CatalogMetadata metadata,
         CatalogItemVisibility visibility,
         Set<String> sharedWith,
@@ -31,7 +30,6 @@ public class CatalogItem {
         this.title = title;
         this.status = status;
         this.enrichmentStatus = enrichmentStatus;
-        this.objectId = objectId;
         this.metadata = metadata;
         this.visibility = visibility;
         this.sharedWith = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
@@ -41,9 +39,17 @@ public class CatalogItem {
         }
     }
 
+    /** Source compatibility for callers constructing the pre-separation shape; the locator is ignored. */
+    @Deprecated
+    public CatalogItem(CatalogItemId id, String ownerUsername, String title, CatalogItemStatus status,
+            EnrichmentStatus enrichmentStatus, Long ignoredObjectId, CatalogMetadata metadata,
+            CatalogItemVisibility visibility, Set<String> sharedWith, MediaKind kind) {
+        this(id, ownerUsername, title, status, enrichmentStatus, metadata, visibility, sharedWith, kind);
+    }
+
     /**
      * Nacimiento de un item en DRAFT (flujo de upload): el dueño aporta la
-     * metadata mínima y el objeto se asocia después con {@link #complete(Long)}.
+     * metadata mínima y el objeto se asocia después mediante MediaRepository.
      */
     public static CatalogItem createDraft(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
         return createDraft(ownerUsername, metadataForKind(metadata, kind), kind);
@@ -58,9 +64,8 @@ public class CatalogItem {
                 ownerUsername,
                 metadata.title(),
                 CatalogItemStatus.DRAFT,
-                EnrichmentStatus.RAW,
-                null,
-                metadata,
+                 EnrichmentStatus.RAW,
+                 metadata,
                 CatalogItemVisibility.PRIVATE,
                 Set.of(),
                 kind);
@@ -68,8 +73,7 @@ public class CatalogItem {
 
     /**
      * Nacimiento de un item desde una biblioteca (media server): el archivo ya
-     * existe en el filesystem, por eso nace READY sin objeto subido (objectId
-     * null). Es la otra clase de READY, complementaria a {@link #complete(Long)}.
+     * existe en el filesystem, por eso nace READY sin objeto gestionado.
      */
     public static CatalogItem fromLibraryAsset(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
         return fromLibraryAsset(ownerUsername, metadataForKind(metadata, kind), kind);
@@ -84,9 +88,8 @@ public class CatalogItem {
                 ownerUsername,
                 metadata.title(),
                 CatalogItemStatus.READY,
-                EnrichmentStatus.RAW,
-                null,
-                metadata,
+                 EnrichmentStatus.RAW,
+                 metadata,
                 CatalogItemVisibility.PRIVATE,
                 Set.of(),
                 kind);
@@ -145,10 +148,6 @@ public class CatalogItem {
 
     public String getOwnerUsername() {
         return this.ownerUsername;
-    }
-
-    public Long getObjectId() {
-        return this.objectId;
     }
 
     public String getTitle() {
@@ -223,7 +222,6 @@ public class CatalogItem {
                 this.title,
                 this.status,
                 this.enrichmentStatus,
-                this.objectId,
                 this.metadata,
                 visibility,
                 this.sharedWith,
@@ -239,7 +237,6 @@ public class CatalogItem {
                 this.title,
                 this.status,
                 this.enrichmentStatus,
-                this.objectId,
                 this.metadata,
                 this.visibility,
                 sharedWith,
@@ -272,7 +269,6 @@ public class CatalogItem {
                 this.title,
                 this.status,
                 this.enrichmentStatus,
-                this.objectId,
                 this.metadata,
                 visibility,
                 effective,
@@ -289,7 +285,6 @@ public class CatalogItem {
                 metadata.title(),
                 this.status,
                 this.enrichmentStatus,
-                this.objectId,
                 metadata,
                 this.visibility,
                 this.sharedWith,
@@ -314,7 +309,6 @@ public class CatalogItem {
                 manualMetadata.title(),
                 this.status,
                 EnrichmentStatus.RAW,
-                this.objectId,
                 manualMetadata,
                 this.visibility,
                 this.sharedWith,
@@ -351,7 +345,6 @@ public class CatalogItem {
                 unlinkedMetadata.title(),
                 this.status,
                 EnrichmentStatus.RAW,
-                this.objectId,
                 unlinkedMetadata,
                 this.visibility,
                 this.sharedWith,
@@ -382,7 +375,6 @@ public class CatalogItem {
                 this.title,
                 CatalogItemStatus.DELETING,
                 this.enrichmentStatus,
-                this.objectId,
                 this.metadata,
                 this.visibility,
                 this.sharedWith,
@@ -395,20 +387,6 @@ public class CatalogItem {
             throw new CatalogItemConflictException(
                     "Cannot " + transition + " a movie in DELETING state");
         }
-    }
-
-
-    /**
-     * READY respaldado por un archivo de biblioteca (sin objeto subido): el
-     * playback se resuelve por {@code MediaAsset}, no por el storage del upload.
-     */
-    public boolean isLibraryBacked() {
-        return this.status == CatalogItemStatus.READY && this.objectId == null;
-    }
-
-    /** READY con objeto subido al storage (flujo de upload). */
-    public boolean isUploaded() {
-        return this.objectId != null;
     }
 
     public boolean isEnriched() {
@@ -435,7 +413,6 @@ public class CatalogItem {
                 providerMetadata.title(),
                 this.status,
                 EnrichmentStatus.ENRICHED,
-                this.objectId,
                 providerMetadata,
                 this.visibility,
                 this.sharedWith,
@@ -455,7 +432,6 @@ public class CatalogItem {
                 unlinkedMetadata.title(),
                 this.status,
                 EnrichmentStatus.RAW,
-                this.objectId,
                 unlinkedMetadata,
                 this.visibility,
                 this.sharedWith,
@@ -464,10 +440,9 @@ public class CatalogItem {
 
     /**
      * Transición de dominio: un item en borrador pasa a lista cuando se le asigna su objeto.
-     * Solo el {@code objectId} (referencia publica) vive en el agregado; la key del objeto
-      * es un secreto interno que queda en {@code ManagedMediaAsset}, nunca en CatalogItem.
+     * El locator no forma parte del agregado; el asset gestionado vive en MediaRepository.
      */
-    public CatalogItem complete(Long objectId) {
+    public CatalogItem complete() {
         requireNotDeleting("complete");
         return new CatalogItem(
                 this.id,
@@ -475,7 +450,6 @@ public class CatalogItem {
                 this.title,
                 CatalogItemStatus.READY,
                 this.enrichmentStatus,
-                objectId,
                 this.metadata,
                 this.visibility,
                 this.sharedWith,

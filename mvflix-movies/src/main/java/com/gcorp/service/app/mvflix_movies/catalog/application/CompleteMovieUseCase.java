@@ -49,7 +49,7 @@ public class CompleteMovieUseCase {
                                             .save(
                                                  ManagedMediaAsset.create(
                                                     completed.getId(), objectId, objectKey))
-                                            .thenReturn(completed.complete(objectId)))
+                                             .thenReturn(completed.complete()))
                                 .doOnNext(
                                     completed ->
                                         log.info(
@@ -84,7 +84,7 @@ public class CompleteMovieUseCase {
                         if (Objects.equals(objectKey, media.getObjectKey())) {
                           log.info(
                               "Pelicula {} ya READY con el mismo object_key: no-op", id.value());
-                          return Mono.just(movie.complete(media.getObjectId()));
+                           return Mono.just(movie.complete());
                         }
                         log.warn(
                             "Pelicula {} no completable: object_key_actual={} pedido={}",

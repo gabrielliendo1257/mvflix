@@ -50,7 +50,7 @@ class CreateIdentifiedDraftUseCaseTest {
               in.getTitle(),
               in.getStatus(),
               in.getEnrichmentStatus(),
-              in.getObjectId(),
+              null,
               in.getMetadata(),
               in.getVisibility(),
               in.getSharedWith(),

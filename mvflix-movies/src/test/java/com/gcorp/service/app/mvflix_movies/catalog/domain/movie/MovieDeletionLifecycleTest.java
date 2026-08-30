@@ -42,7 +42,7 @@ class MovieDeletionLifecycleTest {
     void deletingMovieCannotComplete() {
         CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
-        assertThatThrownBy(() -> deleting.complete(99L))
+        assertThatThrownBy(deleting::complete)
                 .isInstanceOf(CatalogItemConflictException.class)
                 .hasMessageContaining("DELETING");
     }
@@ -108,7 +108,6 @@ class MovieDeletionLifecycleTest {
         CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
         assertThat(deleting.getStatus()).isNotEqualTo(CatalogItemStatus.READY);
-        assertThat(deleting.isLibraryBacked()).isFalse();
     }
 
     @Test
@@ -118,6 +117,6 @@ class MovieDeletionLifecycleTest {
 
         assertThat(ready.withVisibility(CatalogItemVisibility.PUBLIC).getVisibility())
                 .isEqualTo(CatalogItemVisibility.PUBLIC);
-        assertThat(draft.complete(77L).getStatus()).isEqualTo(CatalogItemStatus.READY);
+        assertThat(draft.complete().getStatus()).isEqualTo(CatalogItemStatus.READY);
     }
 }

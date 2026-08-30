@@ -60,4 +60,8 @@ public interface MovieApiMapper {
          @Mapping(target = "tmdbId", source = "movieMetadataOrNull.tmdbId")
     })
     MovieResponse toResponse(CatalogItem movie);
+
+    @Mapping(target = "objectId", source = "objectId")
+    @Mapping(target = "id", expression = "java(movie.getId().value())")
+    MovieResponse toResponse(CatalogItem movie, Long objectId);
 }

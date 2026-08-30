@@ -103,7 +103,6 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
             .block();
 
     assertThat(updated).isNotNull();
-    assertThat(updated.getObjectId()).isEqualTo(700L);
   }
 
   @Test
@@ -117,7 +116,6 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
             .block();
 
     assertThat(updated).isNotNull();
-    assertThat(updated.getObjectId()).isEqualTo(701L);
     assertThat(updated.getSharedWith()).containsExactly("maria");
   }
 
