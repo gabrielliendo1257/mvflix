@@ -168,8 +168,10 @@ services:
       DB_NAME: mvflix_media_ingestion_db
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       MVFLIX_MESSAGING_KAFKA_ENABLED: ${MVFLIX_MESSAGING_KAFKA_ENABLED:-false}
-      MOVIES_URL: http://movies:4040
-      STORAGE_URL: http://storage:6060
+      MOVIES_URL: ${MOVIES_URL:-http://host.docker.internal:4040}
+      STORAGE_URL: ${STORAGE_URL:-http://host.docker.internal:6060}
+      USERS_URL: ${USERS_URL:-http://host.docker.internal:8080}
+      MVFLIX_INTERNAL_TOKEN_URI: ${MVFLIX_INTERNAL_TOKEN_URI:-http://host.docker.internal:8081/oauth2/token}
       SECURITY_OAUTH2_JWK_SET_URI: ${SECURITY_OAUTH2_JWK_SET_URI:-http://host.docker.internal:8081/oauth2/jwks}
       MANAGEMENT_SERVER_PORT: 10080
     ports:
@@ -178,6 +180,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       kafka-init: { condition: service_completed_successfully }
+    extra_hosts: ["host.docker.internal:host-gateway"]
 
   activity:
     build:

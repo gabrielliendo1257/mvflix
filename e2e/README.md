@@ -27,8 +27,8 @@ the runner and the static Movies M2M token mapping. It must never be reused by
 any deployed authorization service.
 
 The default host ports are Movies `14040`, Storage `16060`, PostgreSQL `15432`,
-MinIO `19000`, and JWKS `18080`. Override `MOVIES_URL` and `STORAGE_URL` when
-running the runner against an already-started stack.
+MinIO `19000`, and JWKS `18080`. Override `MOVIES_URL`, `STORAGE_URL`, and
+`USERS_URL` when running the runner against an already-started stack.
 
 All published ports bind to `127.0.0.1` by default. For a runner in Termux or
 another host on the LAN, opt in explicitly with
