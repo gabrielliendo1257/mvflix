@@ -56,6 +56,44 @@ class IdentifyAssetUseCaseIntegrationTest extends PostgresIntegrationTest {
     StepVerifier.create(this.countMovies()).expectNext(1L).verifyComplete();
   }
 
+  @Test
+  void technicalMetadataRoundTripsThroughR2dbcInsertAndUpdate() {
+    MediaAsset asset =
+        this.assetRepository
+            .save(
+                MediaAsset.create(
+                        7L, new ScannedFile("Dune.mkv", 1024L, "video/x-matroska"), "pepe")
+                    .withTechnicalMetadata(
+                        "Dune.mkv", 155L, "matroska", "h264", "1920x1080", "library/Dune.mkv"))
+            .block();
+
+    MediaAsset inserted = this.assetRepository.findById(asset.getId()).block();
+    assertTechnicalMetadata(inserted);
+
+    this.assetRepository
+        .save(inserted.withTechnicalMetadata(
+            "Dune-remuxed.mkv", 156L, "matroska", "h265", "3840x2160", "library/Dune-remuxed.mkv"))
+        .block();
+
+    assertTechnicalMetadata(this.assetRepository.findById(asset.getId()).block(),
+        "Dune-remuxed.mkv", 156L, "h265", "3840x2160", "library/Dune-remuxed.mkv");
+  }
+
+  private static void assertTechnicalMetadata(MediaAsset asset) {
+    assertTechnicalMetadata(asset, "Dune.mkv", 155L, "h264", "1920x1080", "library/Dune.mkv");
+  }
+
+  private static void assertTechnicalMetadata(
+      MediaAsset asset, String filename, Long duration, String codec, String resolution,
+      String storageReference) {
+    assertThat(asset.getFilename()).isEqualTo(filename);
+    assertThat(asset.getDuration()).isEqualTo(duration);
+    assertThat(asset.getVideoCodec()).isEqualTo(codec);
+    assertThat(asset.getResolution()).isEqualTo(resolution);
+    assertThat(asset.getStorageReference()).isEqualTo(storageReference);
+    assertThat(asset.getContainer()).isEqualTo("matroska");
+  }
+
   private Mono<Long> countMovies() {
     return this.databaseClient
         .sql("SELECT COUNT(*) AS count FROM catalog_items")

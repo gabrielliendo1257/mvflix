@@ -3,6 +3,7 @@ package com.gcorp.service.app.mvflix_movies.library.domain;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 
 import java.time.Instant;
+import java.util.Objects;
 
 import com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference;
 
@@ -112,18 +113,8 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.catalog.d
         if (this.isIdentified() && this.catalogItemId != null) {
             return this;
         }
-        return new MediaAsset(
-                this.id,
-                this.libraryId,
-                this.relativePath,
-                this.size,
-                this.mimeType,
-                MediaAssetStatus.IDENTIFIED,
-                catalogItemId,
-                this.present,
-                this.createdAt,
-                Instant.now(),
-                this.discoveredBy);
+        return this.copy(MediaAssetStatus.IDENTIFIED, catalogItemId, this.present,
+                this.size, this.mimeType, Instant.now());
     }
 
     /** Desvincula el activo cuando su película se elimina; el archivo sigue catalogado. */
@@ -131,18 +122,8 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.catalog.d
         if (!this.isIdentified() && this.catalogItemId == null) {
             return this;
         }
-        return new MediaAsset(
-                this.id,
-                this.libraryId,
-                this.relativePath,
-                this.size,
-                this.mimeType,
-                MediaAssetStatus.UNIDENTIFIED,
-                null,
-                this.present,
-                this.createdAt,
-                Instant.now(),
-                this.discoveredBy);
+        return this.copy(MediaAssetStatus.UNIDENTIFIED, null, this.present,
+                this.size, this.mimeType, Instant.now());
     }
 
     /** El scan ya no encontro el archivo: marca ausencia sin tocar el vinculo. */
@@ -150,18 +131,8 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.catalog.d
         if (this.isMissing()) {
             return this;
         }
-        return new MediaAsset(
-                this.id,
-                this.libraryId,
-                this.relativePath,
-                this.size,
-                this.mimeType,
-                this.status,
-                this.catalogItemId,
-                false,
-                this.createdAt,
-                Instant.now(),
-                this.discoveredBy);
+        return this.copy(this.status, this.catalogItemId, false,
+                this.size, this.mimeType, Instant.now());
     }
 
     /** El scan volvio a encontrar el archivo: marca presencia sin tocar el vinculo. */
@@ -169,18 +140,8 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.catalog.d
         if (this.isPresent()) {
             return this;
         }
-        return new MediaAsset(
-                this.id,
-                this.libraryId,
-                this.relativePath,
-                this.size,
-                this.mimeType,
-                this.status,
-                this.catalogItemId,
-                true,
-                this.createdAt,
-                Instant.now(),
-                this.discoveredBy);
+        return this.copy(this.status, this.catalogItemId, true,
+                this.size, this.mimeType, Instant.now());
     }
 
     /** Refresca lo que el filesystem dice (size/mime pueden cambiar en disco). */
@@ -188,18 +149,34 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.catalog.d
         if (this.size == size && this.mimeType.equals(mimeType)) {
             return this;
         }
-        return new MediaAsset(
-                this.id,
-                this.libraryId,
-                this.relativePath,
-                size,
-                mimeType,
-                this.status,
-                this.catalogItemId,
-                this.present,
-                this.createdAt,
-                Instant.now(),
-                this.discoveredBy);
+        return this.copy(this.status, this.catalogItemId, this.present,
+                size, mimeType, Instant.now());
+    }
+
+    /** Reemplaza los datos obtenidos por FFprobe sin alterar el lifecycle del asset. */
+    public MediaAsset withTechnicalMetadata(
+            String filename, Long duration, String container, String videoCodec,
+            String resolution, String storageReference) {
+        if (Objects.equals(this.filename, filename)
+                && Objects.equals(this.duration, duration)
+                && Objects.equals(this.container, container)
+                && Objects.equals(this.videoCodec, videoCodec)
+                && Objects.equals(this.resolution, resolution)
+                && Objects.equals(this.storageReference, storageReference)) {
+            return this;
+        }
+        return new MediaAsset(this.id, this.libraryId, this.relativePath, this.size,
+                this.mimeType, this.status, this.catalogItemId, this.present,
+                this.createdAt, this.updatedAt, this.discoveredBy, filename, duration,
+                container, videoCodec, resolution, storageReference);
+    }
+
+    private MediaAsset copy(MediaAssetStatus status, CatalogItemId catalogItemId,
+            boolean present, long size, String mimeType, Instant updatedAt) {
+        return new MediaAsset(this.id, this.libraryId, this.relativePath, size, mimeType,
+                status, catalogItemId, present, this.createdAt, updatedAt, this.discoveredBy,
+                this.filename, this.duration, this.container, this.videoCodec,
+                this.resolution, this.storageReference);
     }
 
     public MediaAssetId getId() {

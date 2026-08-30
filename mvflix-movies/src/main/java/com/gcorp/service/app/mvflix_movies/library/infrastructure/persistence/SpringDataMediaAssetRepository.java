@@ -41,7 +41,7 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                                         (library_id, relative_path, size, mime_type, status, present, catalog_item_id, discovered_by,
                                          filename, duration, container, video_codec, resolution, storage_reference)
                                     VALUES (:library_id, :relative_path, :size, :mime_type, :status, :present, :catalog_item_id, :discovered_by,
-                                            NULL, NULL, NULL, NULL, NULL, NULL)
+                                            :filename, :duration, :container, :video_codec, :resolution, :storage_reference)
                                     RETURNING
                                     """ + ASSET_COLUMNS)
                             .bind("library_id", asset.getLibraryId())
@@ -49,8 +49,14 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                             .bind("size", asset.getSize())
                             .bind("mime_type", asset.getMimeType())
                             .bind("status", asset.getStatus().name())
-                            .bind("present", asset.getPresent())
-                            .bindNull("catalog_item_id", Long.class);
+                            .bind("present", asset.getPresent());
+            insertSpec = bindCatalogItemId(insertSpec, asset.getCatalogItemId());
+            insertSpec = bindNullable(insertSpec, "filename", asset.getFilename(), String.class);
+            insertSpec = bindNullable(insertSpec, "duration", asset.getDuration(), Long.class);
+            insertSpec = bindNullable(insertSpec, "container", asset.getContainer(), String.class);
+            insertSpec = bindNullable(insertSpec, "video_codec", asset.getVideoCodec(), String.class);
+            insertSpec = bindNullable(insertSpec, "resolution", asset.getResolution(), String.class);
+            insertSpec = bindNullable(insertSpec, "storage_reference", asset.getStorageReference(), String.class);
             return this.bindDiscoveredBy(insertSpec, asset.getDiscoveredBy())
                     .map((row, metadata) -> this.toDomain(row))
                     .one();
@@ -61,7 +67,10 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                                 """
                                 UPDATE media_assets
                                 SET size = :size, mime_type = :mime_type, status = :status,
-                                    present = :present, catalog_item_id = :catalog_item_id, updated_at = NOW()
+                                     present = :present, catalog_item_id = :catalog_item_id,
+                                     filename = :filename, duration = :duration, container = :container,
+                                     video_codec = :video_codec, resolution = :resolution,
+                                     storage_reference = :storage_reference, updated_at = NOW()
                                 WHERE id = :id
                                 RETURNING
                                 """ + ASSET_COLUMNS)
@@ -70,9 +79,22 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                         .bind("status", asset.getStatus().name())
                         .bind("present", asset.getPresent())
                         .bind("id", asset.getId().value());
-        return bindCatalogItemId(spec, asset.getCatalogItemId())
+        spec = bindCatalogItemId(spec, asset.getCatalogItemId());
+        spec = bindNullable(spec, "filename", asset.getFilename(), String.class);
+        spec = bindNullable(spec, "duration", asset.getDuration(), Long.class);
+        spec = bindNullable(spec, "container", asset.getContainer(), String.class);
+        spec = bindNullable(spec, "video_codec", asset.getVideoCodec(), String.class);
+        spec = bindNullable(spec, "resolution", asset.getResolution(), String.class);
+        spec = bindNullable(spec, "storage_reference", asset.getStorageReference(), String.class);
+        return spec
                 .map((row, metadata) -> this.toDomain(row))
                 .one();
+    }
+
+    private static org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec bindNullable(
+            org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec spec,
+            String name, Object value, Class<?> type) {
+        return value == null ? spec.bindNull(name, type) : spec.bind(name, value);
     }
 
     private static org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec bindCatalogItemId(
