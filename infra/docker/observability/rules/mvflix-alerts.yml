@@ -1,0 +1,56 @@
+groups:
+  - name: mvflix-operational
+    rules:
+      - alert: MvflixOutboxBacklog
+        expr: mvflix_outbox_pending{service=~"movies|storage"} > 100
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Outbox backlog alto en {{ $labels.service }}"
+          description: "Hay {{ $value }} eventos pendientes durante al menos 10 minutos."
+
+      - alert: MvflixOutboxExhausted
+        expr: mvflix_outbox_exhausted{service=~"movies|storage"} > 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Outbox agotada en {{ $labels.service }}"
+          description: "Existen eventos que superaron los reintentos y requieren intervención."
+
+      - alert: MvflixKafkaConsumerFailures
+        expr: increase(mvflix_kafka_consumer_failures_total[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Fallos de consumidores Kafka en {{ $labels.service }}"
+          description: "El consumidor acumula más de 5 fallos en 10 minutos."
+
+      - alert: MvflixKafkaDltMessages
+        expr: increase(mvflix_kafka_dlq_messages_total[15m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Mensajes en DLT de {{ $labels.service }}"
+          description: "Revisar payload, contrato y causa antes de reactivar mensajes."
+
+      - alert: MvflixActivityDltMessages
+        expr: increase(mvflix_activity_kafka_dlt_total[10m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Mensajes de Activity en DLT"
+          description: "La proyección de Activity no está aplicando eventos correctamente."
+
+      - alert: MvflixTargetDown
+        expr: up{job=~"mvflix-(bff|movies|storage|users|authorization|activity)"} == 0
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Servicio {{ $labels.job }} no disponible"
+          description: "Prometheus no puede hacer scrape del servicio durante 5 minutos."

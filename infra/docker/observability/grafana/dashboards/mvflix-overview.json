@@ -1,0 +1,18 @@
+{
+  "uid": "mvflix-overview",
+  "title": "Mvflix Overview",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {"from": "now-6h", "to": "now"},
+  "templating": {"list": []},
+  "panels": [
+    {"type":"stat","title":"Targets down","gridPos":{"h":4,"w":6,"x":0,"y":0},"targets":[{"expr":"sum(up{job=~\"mvflix-.*\"} == 0)","refId":"A"}]},
+    {"type":"timeseries","title":"Outbox pending","gridPos":{"h":8,"w":12,"x":6,"y":0},"targets":[{"expr":"mvflix_outbox_pending","legendFormat":"{{service}}","refId":"A"}]},
+    {"type":"timeseries","title":"Outbox oldest age","gridPos":{"h":8,"w":12,"x":18,"y":0},"targets":[{"expr":"mvflix_outbox_oldest_age_seconds","legendFormat":"{{service}}","refId":"A"}]},
+    {"type":"timeseries","title":"Kafka consumer failures","gridPos":{"h":8,"w":12,"x":0,"y":8},"targets":[{"expr":"sum by (service) (rate(mvflix_kafka_consumer_failures_total[5m]))","legendFormat":"{{service}}","refId":"A"}]},
+    {"type":"timeseries","title":"Kafka DLT messages","gridPos":{"h":8,"w":12,"x":12,"y":8},"targets":[{"expr":"sum by (service) (increase(mvflix_kafka_dlq_messages_total[1h]))","legendFormat":"{{service}}","refId":"A"}]},
+    {"type":"timeseries","title":"Managed deletion duration","gridPos":{"h":8,"w":12,"x":0,"y":16},"targets":[{"expr":"histogram_quantile(0.95, sum by (le) (rate(mvflix_managed_media_deletion_duration_seconds_bucket[10m])))","legendFormat":"p95","refId":"A"}]},
+    {"type":"timeseries","title":"Activity DLT messages","gridPos":{"h":8,"w":12,"x":12,"y":16},"targets":[{"expr":"increase(mvflix_activity_kafka_dlt_total[1h])","legendFormat":"messages","refId":"A"}]}
+  ]
+}
