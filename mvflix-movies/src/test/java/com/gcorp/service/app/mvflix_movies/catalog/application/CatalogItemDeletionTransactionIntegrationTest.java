@@ -117,16 +117,18 @@ class CatalogItemDeletionTransactionIntegrationTest extends PostgresIntegrationT
         StepVerifier.create(this.outboxCount(movie)).expectNext(1L).verifyComplete();
 
         StepVerifier.create(this.databaseClient
-                        .sql("SELECT event_type, event_version, payload->'payload'->>'storageId' AS storage_id "
+                         .sql("SELECT event_type, event_version, aggregate_type, "
+                                 + "payload->'payload'->>'storageId' AS storage_id "
                                 + "FROM outbox_events WHERE aggregate_id = :id")
                         .bind("id", String.valueOf(movie))
                         .map((row, metadata) -> java.util.List.of(
-                                row.get("event_type", String.class),
-                                String.valueOf(row.get("event_version", Integer.class)),
-                                row.get("storage_id", String.class)))
+                                 row.get("event_type", String.class),
+                                 String.valueOf(row.get("event_version", Integer.class)),
+                                 row.get("aggregate_type", String.class),
+                                 row.get("storage_id", String.class)))
                         .one())
                 .assertNext(event -> {
-                    assertThat(event).containsExactly("ManagedMediaDeletionRequested", "1", "1");
+                         assertThat(event).containsExactly("ManagedMediaDeletionRequested", "1", "Movie", "1");
                 })
                 .verifyComplete();
     }

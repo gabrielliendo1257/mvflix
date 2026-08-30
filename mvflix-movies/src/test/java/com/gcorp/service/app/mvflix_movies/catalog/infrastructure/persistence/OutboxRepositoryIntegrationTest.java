@@ -80,7 +80,7 @@ class OutboxRepositoryIntegrationTest extends PostgresIntegrationTest {
                         INSERT INTO outbox_events (
                             event_id, event_type, event_version, aggregate_type,
                             aggregate_id, occurred_at, payload)
-                        VALUES (:id, 'ManagedMediaDeletionRequested', 1, 'CatalogItem',
+                         VALUES (:id, 'ManagedMediaDeletionRequested', 1, 'Movie',
                                 '7', NOW(), '{"payload":{}}'::jsonb)
                         """)
                 .bind("id", eventId)

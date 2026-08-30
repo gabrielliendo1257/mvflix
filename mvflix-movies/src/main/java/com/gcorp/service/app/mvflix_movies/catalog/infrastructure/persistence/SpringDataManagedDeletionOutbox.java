@@ -39,7 +39,7 @@ public class SpringDataManagedDeletionOutbox implements ManagedDeletionOutbox {
                     "eventVersion", 1,
                     "occurredAt", event.occurredAt(),
                     "producer", "mvflix-movies",
-                    "aggregate", Map.of("type", "CatalogItem", "id", String.valueOf(event.movieId())),
+                    "aggregate", Map.of("type", "Movie", "id", String.valueOf(event.movieId())),
                     "payload", eventPayload));
         } catch (JsonProcessingException error) {
             return Mono.error(new IllegalArgumentException("Cannot encode deletion event", error));
@@ -59,7 +59,7 @@ public class SpringDataManagedDeletionOutbox implements ManagedDeletionOutbox {
                 .bind("event_id", event.eventId())
                 .bind("event_type", "ManagedMediaDeletionRequested")
                 .bind("event_version", 1)
-                .bind("aggregate_type", "CatalogItem")
+                 .bind("aggregate_type", "Movie")
                 .bind("aggregate_id", String.valueOf(event.movieId()))
                 .bind("occurred_at", event.occurredAt())
                 .bind("payload", payload)
