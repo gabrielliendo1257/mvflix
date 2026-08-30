@@ -26,11 +26,10 @@ spring:
             scope: storage.stream
         provider:
           mvflix-auth:
-            issuer-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}
-            #authorization-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}/oauth2/authorize
-            #token-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}/oauth2/token
-            #user-info-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}/userinfo
-            #jwk-set-uri: ${AUTHORIZATION_ISSUER_URL:http://127.0.0.1:9090}/oauth2/jwks
+            authorization-uri: ${AUTHORIZATION_URL:http://127.0.0.1:9090}/oauth2/authorize
+            token-uri: ${AUTHORIZATION_URL:http://127.0.0.1:9090}/oauth2/token
+            user-info-uri: ${AUTHORIZATION_URL:http://127.0.0.1:9090}/userinfo
+            jwk-set-uri: ${SECURITY_OAUTH2_JWK_SET_URI:http://127.0.0.1:9090/oauth2/jwks}
 
 server:
   port: 9091

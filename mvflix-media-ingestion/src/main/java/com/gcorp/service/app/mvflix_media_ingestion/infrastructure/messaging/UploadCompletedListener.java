@@ -36,7 +36,9 @@ public class UploadCompletedListener {
       JsonNode payload=envelope.path("payload");
       UUID correlation=envelope.path("correlationId").isNull()?null:UUID.fromString(envelope.path("correlationId").asText());
       long storageId=payload.path("storageId").asLong(); String key=payload.path("objectKey").asText();
-      Mono<Void> work=correlation!=null?service.uploadCompleted(correlation,storageId,key,eventId.toString()):service.uploadCompletedByStorageId(storageId,storageId,key);
+      String causation = envelope.path("causationId").isNull()
+          ? eventId.toString() : envelope.path("causationId").asText();
+      Mono<Void> work=correlation!=null?service.uploadCompleted(correlation,storageId,key,causation):service.uploadCompletedByStorageId(storageId,storageId,key);
       UUID completedEventId=eventId;
       work.then(Mono.defer(() -> inbox.markCompleted(completedEventId))).block();
     } catch (Exception error) {

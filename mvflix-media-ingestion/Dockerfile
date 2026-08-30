@@ -3,7 +3,9 @@ WORKDIR /workspace
 COPY . .
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -pl mvflix-media-ingestion -am package -Dmaven.test.skip=true
 FROM eclipse-temurin:21-jre-jammy
-RUN useradd --system --create-home --uid 10001 app
+RUN apt-get update && apt-get install --no-install-recommends -y curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --uid 10001 app
 WORKDIR /app
 COPY --from=build /workspace/mvflix-media-ingestion/target/*.jar app.jar
 RUN chown app:app app.jar

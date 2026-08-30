@@ -1,6 +1,6 @@
 # Media ingestion
 
-`mvflix-media-ingestion` is the gradual orchestration boundary for the BFF facade. Set `features.add-media.media-ingestion-enabled` (or `MEDIA_INGESTION_ENABLED`) to `true` only after the service and its database migrations are healthy. The flag defaults to `false`, so existing BFF traffic keeps using `add_media_processes`.
+`mvflix-media-ingestion` is the orchestration boundary for the BFF facade. The flag `features.add-media.media-ingestion-enabled` (or `MEDIA_INGESTION_ENABLED`) defaults to `true`; set it to `false` for an explicit rollback to the legacy coordinator.
 
 The BFF preserves `/web/add-media` and its public response. New creates forward the validated draft/file and `Idempotency-Key`; status/complete/cancel forward the ingestion UUID, correlation header and the authenticated Bearer. The actor is always derived by Media Ingestion from that JWT; it is never accepted from the request body or forwarded as a trusted actor header. The service persists the upload object key so the unchanged public complete request (which only has optional `sizeBytes`) can complete safely.
 

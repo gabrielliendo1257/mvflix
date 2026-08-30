@@ -25,29 +25,18 @@ public class DatabaseOutbox implements Outbox {
     try {
       var eventId = UUID.randomUUID();
       var occurred = i.updatedAt();
-      var payload =
-          mapper.writeValueAsString(
-              new java.util.LinkedHashMap<>(
-                  java.util.Map.of(
-                      "eventId",
-                      eventId,
-                      "eventType",
-                      type,
-                      "eventVersion",
-                      1,
-                      "occurredAt",
-                      occurred,
-                      "actorId",
-                      i.actorId(),
-                      "correlationId",
-                      i.ingestionId(),
-                      "producer",
-                      "mvflix-media-ingestion",
-                      "aggregate",
-                      Map.of("type", "MediaIngestion", "id", i.ingestionId()),
-                      "payload",
-                      Map.of(
-                          "phase", i.phase().name(), "ingestionId", i.ingestionId()))));
+      var envelope = new java.util.LinkedHashMap<String, Object>();
+      envelope.put("eventId", eventId);
+      envelope.put("eventType", type);
+      envelope.put("eventVersion", 1);
+      envelope.put("occurredAt", occurred);
+      envelope.put("actorId", i.actorId());
+      envelope.put("correlationId", i.ingestionId());
+      if (i.causationId() != null) envelope.put("causationId", i.causationId());
+      envelope.put("producer", "mvflix-media-ingestion");
+      envelope.put("aggregate", Map.of("type", "MediaIngestion", "id", i.ingestionId()));
+      envelope.put("payload", Map.of("phase", i.phase().name(), "ingestionId", i.ingestionId()));
+      var payload = mapper.writeValueAsString(envelope);
       return db.sql(
               "INSERT INTO media_ingestion_outbox(event_id,event_type,event_version,aggregate_id,occurred_at,payload) VALUES(:e,:t,1,:a,:o,CAST(:p AS jsonb)) ON CONFLICT(event_id) DO NOTHING")
           .bind("e", eventId)

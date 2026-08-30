@@ -23,7 +23,7 @@ public class MediaIngestionController {
 
   @PostMapping
   public Mono<ResponseEntity<MediaIngestion>> create(
-      @RequestHeader("Idempotency-Key") String key,
+      @RequestHeader("Idempotency-Key") @NotBlank String key,
       @Valid @RequestBody Create r,
       @AuthenticationPrincipal Jwt jwt) {
     return service
@@ -52,7 +52,8 @@ public class MediaIngestionController {
       @Valid @RequestBody(required = false) Complete r,
       @AuthenticationPrincipal Jwt jwt) {
     return service
-        .complete(id, actor(jwt), r == null ? null : r.sizeBytes())
+        .complete(id, actor(jwt), r == null ? null : r.objectId(),
+            r == null ? null : r.objectKey(), r == null ? null : r.sizeBytes())
         .map(ResponseEntity::ok)
         .defaultIfEmpty(ResponseEntity.notFound().build());
   }
@@ -80,7 +81,9 @@ public class MediaIngestionController {
   public record Create(@NotNull Map<String, Object> draft, @Valid @NotNull File file) {}
 
   public record Complete(
+      @Positive
       @JsonProperty("object_id") Long objectId,
       @JsonProperty("object_key") String objectKey,
+      @Positive
       @JsonProperty("size_bytes") Long sizeBytes) {}
 }

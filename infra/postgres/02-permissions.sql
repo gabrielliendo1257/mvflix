@@ -205,3 +205,20 @@ GRANT USAGE ON SCHEMA public TO db_rw, db_ro;
 ALTER DEFAULT PRIVILEGES FOR ROLE db_migrator IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO db_rw;
 ALTER DEFAULT PRIVILEGES FOR ROLE db_migrator IN SCHEMA public GRANT SELECT ON TABLES TO db_ro;
 GRANT CONNECT ON DATABASE mvflix_media_ingestion_db TO db_migrator, db_rw, db_ro;
+
+------------------------------------------------------------
+-- Setup for bff-mvflix-web
+------------------------------------------------------------
+\connect mvflix_app
+REVOKE ALL ON DATABASE mvflix_app FROM PUBLIC;
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+ALTER SCHEMA public OWNER TO db_migrator;
+GRANT USAGE, CREATE ON SCHEMA public TO db_migrator;
+GRANT USAGE ON SCHEMA public TO db_rw, db_ro;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO db_rw;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO db_ro;
+ALTER DEFAULT PRIVILEGES FOR ROLE db_migrator IN SCHEMA public
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO db_rw;
+ALTER DEFAULT PRIVILEGES FOR ROLE db_migrator IN SCHEMA public
+    GRANT SELECT ON TABLES TO db_ro;
+GRANT CONNECT ON DATABASE mvflix_app TO db_migrator, db_rw, db_ro;

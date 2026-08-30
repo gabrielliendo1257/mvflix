@@ -20,6 +20,7 @@ class RecoveryServiceTest {
     when(f.clients.storageStatus("9", "actor"))
         .thenReturn(Mono.just(new DownstreamClients.StorageStatus("COMPLETED", 9L, "object")));
     when(f.repository.compareAndSet(eq(f.ingestion), any())).thenReturn(Mono.just(true));
+    when(f.repository.find(f.ingestion.ingestionId())).thenReturn(Mono.just(f.ingestion));
     when(f.outbox.completed(any())).thenReturn(Mono.empty());
 
     f.service.recover(f.ingestion).block();

@@ -4,6 +4,9 @@ import com.gcorp.service.app.mvflix_media_ingestion.domain.MediaIngestion;
 import com.gcorp.service.app.mvflix_media_ingestion.domain.MediaIngestion.Phase;
 import java.time.Instant;
 import java.util.*;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
@@ -36,8 +39,12 @@ public class MediaIngestionService {
       String fileName,
       long size,
       String mime) {
+    String fingerprint = fingerprint(draft, fileName, size, mime);
     return repository
         .findByKey(actor, key)
+        .flatMap(existing -> sameRequest(existing, fingerprint)
+            ? Mono.just(existing)
+            : Mono.error(new IllegalStateException("idempotency key reused with different request")))
         .switchIfEmpty(
             Mono.defer(
                 () -> {
@@ -59,9 +66,11 @@ public class MediaIngestionService {
                           fileName,
                           size,
                           mime,
-                          null);
-                  return repository
-                      .insert(i)
+                           null,
+                           null,
+                           fingerprint);
+                   return repository
+                       .insert(i)
                       .flatMap(
                           saved ->
                               step(saved, Phase.PREPARING_CATALOG, null, null)
@@ -82,8 +91,35 @@ public class MediaIngestionService {
                                                           catalog,
                                                           null)))
                                   .flatMap(x -> prepare(x, fileName, size, mime))
-                                  .onErrorResume(e -> fail(saved, e)));
-                }));
+                                   .onErrorResume(e -> fail(saved, e))
+                       .onErrorResume(DataIntegrityViolationException.class,
+                           e -> repository.findByKey(actor, key)
+                               .flatMap(existing -> sameRequest(existing, fingerprint)
+                                   ? Mono.just(existing)
+                                   : Mono.error(new IllegalStateException(
+                                       "idempotency key reused with different request")))));
+                 }));
+  }
+
+  private static boolean sameRequest(MediaIngestion existing, String fingerprint) {
+    return fingerprint.equals(existing.requestFingerprint());
+  }
+
+  private static String fingerprint(Map<String, Object> draft, String fileName, long size, String mime) {
+    try {
+      var input = new TreeMap<String, Object>();
+      input.put("draft", new TreeMap<>(draft));
+      input.put("fileName", fileName);
+      input.put("size", size);
+      input.put("mime", mime);
+      byte[] digest = MessageDigest.getInstance("SHA-256")
+          .digest(input.toString().getBytes(StandardCharsets.UTF_8));
+      var result = new StringBuilder(64);
+      for (byte value : digest) result.append(String.format("%02x", value));
+      return result.toString();
+    } catch (Exception error) {
+      throw new IllegalStateException("could not fingerprint ingestion request", error);
+    }
   }
 
   private Mono<MediaIngestion> prepare(MediaIngestion i, String name, long size, String mime) {
@@ -167,6 +203,11 @@ public class MediaIngestionService {
   }
 
   public Mono<MediaIngestion> complete(UUID id, String actor, Long reportedSize) {
+    return complete(id, actor, null, null, reportedSize);
+  }
+
+  public Mono<MediaIngestion> complete(
+      UUID id, String actor, Long objectId, String objectKey, Long reportedSize) {
     return get(id, actor)
         .flatMap(
             i -> {
@@ -177,6 +218,10 @@ public class MediaIngestionService {
               }
               if (i.uploadId() == null)
                 return Mono.error(new IllegalStateException("upload session unavailable"));
+              if (objectId != null && i.storageId() != null && !objectId.equals(i.storageId()))
+                return Mono.error(new IllegalArgumentException("object_id does not match upload"));
+              if (objectKey != null && i.storageKey() != null && !objectKey.equals(i.storageKey()))
+                return Mono.error(new IllegalArgumentException("object_key does not match upload"));
 
               // CAS gives one completion request ownership without claiming the saga's final state.
               var claimed = i.transition(Phase.AWAITING_UPLOAD, null, null, null);
@@ -197,7 +242,7 @@ public class MediaIngestionService {
     return repository
         .find(id)
         .switchIfEmpty(Mono.error(new IllegalArgumentException("unknown correlationId")))
-        .flatMap(i -> finalize(i, objectId, objectKey).then())
+        .flatMap(i -> finalize(i, objectId, objectKey, parseUuid(causation)).then())
         .then();
   }
 
@@ -206,7 +251,7 @@ public class MediaIngestionService {
     return repository
         .findByUploadId(uploadId)
         .switchIfEmpty(Mono.error(new IllegalArgumentException("unknown uploadId")))
-        .flatMap(i -> finalize(i, objectId, objectKey).then())
+        .flatMap(i -> finalize(i, objectId, objectKey, parseUuid(causation)).then())
         .then();
   }
 
@@ -214,7 +259,7 @@ public class MediaIngestionService {
     return repository
         .findByStorageId(storageId)
         .switchIfEmpty(Mono.error(new IllegalArgumentException("unknown storageId")))
-        .flatMap(i -> finalize(i, objectId, objectKey).then())
+        .flatMap(i -> finalize(i, objectId, objectKey, null).then())
         .then();
   }
 
@@ -264,7 +309,17 @@ public class MediaIngestionService {
         .onErrorResume(error -> Mono.empty());
   }
 
-  private Mono<MediaIngestion> finalize(MediaIngestion i, long objectId, String objectKey) {
+  private UUID parseUuid(String value) {
+    try {
+      return value == null ? null : UUID.fromString(value);
+    } catch (IllegalArgumentException ignored) {
+      return null;
+    }
+  }
+
+  private Mono<MediaIngestion> finalize(
+      MediaIngestion i, long objectId, String objectKey, UUID causation) {
+    if (causation != null) i = i.withCausationId(causation);
     if (i.phase() == Phase.COMPLETED) return Mono.just(i);
     if (i.phase() != Phase.AWAITING_UPLOAD && i.phase() != Phase.FINALIZING_CATALOG)
       return Mono.error(new IllegalStateException("ingestion not awaiting upload"));
@@ -286,9 +341,11 @@ public class MediaIngestionService {
                 i.fileName(),
                 i.fileSize(),
                 i.mimeType(),
-                i.uploadUrl(),
-                objectId,
-                objectKey)
+                 i.uploadUrl(),
+                 objectId,
+                 objectKey,
+                 i.requestFingerprint(),
+                 i.causationId())
             : new MediaIngestion(
                 i.ingestionId(),
                 i.actorId(),
@@ -305,9 +362,11 @@ public class MediaIngestionService {
                 i.fileName(),
                 i.fileSize(),
                 i.mimeType(),
-                i.uploadUrl(),
-                objectId,
-                objectKey);
+                 i.uploadUrl(),
+                 objectId,
+                 objectKey,
+                 i.requestFingerprint(),
+                 i.causationId());
     return (i.phase() == Phase.FINALIZING_CATALOG
             ? Mono.just(true)
             : repository.compareAndSet(i, n))
@@ -325,7 +384,7 @@ public class MediaIngestionService {
                                         completed ->
                                             completed
                                                 ? repository
-                                                    .find(i.ingestionId())
+                                                    .find(n.ingestionId())
                                                     .flatMap(x -> outbox.completed(x).thenReturn(x))
                                                 : Mono.error(
                                                     new IllegalStateException("CAS failed")))))
@@ -352,7 +411,10 @@ public class MediaIngestionService {
             i.fileSize(),
             i.mimeType(),
             i.uploadUrl(),
-            i.storageId());
+                i.storageId(),
+                 i.storageKey(),
+                 i.requestFingerprint(),
+                 i.causationId());
     return inTransaction(
         repository
             .compareAndSet(i, n)

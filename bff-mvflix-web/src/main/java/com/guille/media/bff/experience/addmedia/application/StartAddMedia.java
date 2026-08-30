@@ -71,7 +71,7 @@ public class StartAddMedia {
   @org.springframework.beans.factory.annotation.Autowired
   public StartAddMedia(AddMediaMovies movies, AddMediaStorage storage, AddMediaProcessRepository processes,
       UsersWebPort users, AddMediaCompensationRepository compensations, MediaIngestionClient ingestion,
-      @Value("${features.add-media.media-ingestion-enabled:false}") boolean ingestionEnabled) {
+      @Value("${features.add-media.media-ingestion-enabled:true}") boolean ingestionEnabled) {
     this.movies = movies; this.storage = storage; this.processes = processes; this.users = users;
     this.compensations = compensations; this.ingestion = ingestion; this.ingestionEnabled = ingestionEnabled;
   }

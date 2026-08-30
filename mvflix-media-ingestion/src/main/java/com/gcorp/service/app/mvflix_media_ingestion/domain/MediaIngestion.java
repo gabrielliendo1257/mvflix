@@ -21,7 +21,9 @@ public record MediaIngestion(
     String mimeType,
     String uploadUrl,
     Long storageId,
-    String storageKey) {
+    String storageKey,
+    String requestFingerprint,
+    UUID causationId) {
   public MediaIngestion(
       UUID id,
       String actor,
@@ -41,7 +43,7 @@ public record MediaIngestion(
       String url) {
     this(
         id, actor, catalog, upload, phase, failure, version, retries, created, updated, next, key,
-        name, size, mime, url, null, null);
+        name, size, mime, url, null, null, null, null);
   }
 
   public MediaIngestion(
@@ -64,7 +66,24 @@ public record MediaIngestion(
       Long storageId) {
     this(
         id, actor, catalog, upload, phase, failure, version, retries, created, updated, next, key,
-        name, size, mime, url, storageId, null);
+        name, size, mime, url, storageId, null, null, null);
+  }
+
+  public MediaIngestion(
+      UUID id, String actor, Long catalog, String upload, Phase phase, String failure, long version,
+      int retries, Instant created, Instant updated, Instant next, String key, String name,
+      long size, String mime, String url, Long storageId, String storageKey) {
+    this(id, actor, catalog, upload, phase, failure, version, retries, created, updated, next,
+        key, name, size, mime, url, storageId, storageKey, null, null);
+  }
+
+  public MediaIngestion(
+      UUID id, String actor, Long catalog, String upload, Phase phase, String failure, long version,
+      int retries, Instant created, Instant updated, Instant next, String key, String name,
+      long size, String mime, String url, Long storageId, String storageKey,
+      String requestFingerprint) {
+    this(id, actor, catalog, upload, phase, failure, version, retries, created, updated, next,
+        key, name, size, mime, url, storageId, storageKey, requestFingerprint, null);
   }
 
   public enum Phase {
@@ -83,6 +102,8 @@ public record MediaIngestion(
   public MediaIngestion transition(Phase next, Long catalog, String upload, String failure) {
     if (phase == Phase.COMPLETED || phase == Phase.CANCELLED)
       throw new IllegalStateException("terminal ingestion");
+    if (!allowed(phase, next))
+      throw new IllegalStateException("invalid ingestion transition " + phase + " -> " + next);
     return new MediaIngestion(
         ingestionId,
         actorId,
@@ -101,7 +122,24 @@ public record MediaIngestion(
         mimeType,
         uploadUrl,
         storageId,
-        storageKey);
+        storageKey,
+        requestFingerprint,
+        causationId);
+  }
+
+  private static boolean allowed(Phase current, Phase next) {
+    return switch (current) {
+      case STARTING -> next == Phase.PREPARING_CATALOG || next == Phase.CANCELLING;
+      case PREPARING_CATALOG -> next == Phase.PREPARING_UPLOAD || next == Phase.CANCELLING;
+      case PREPARING_UPLOAD -> next == Phase.AWAITING_UPLOAD || next == Phase.CANCELLING;
+      case AWAITING_UPLOAD -> next == Phase.AWAITING_UPLOAD
+          || next == Phase.FINALIZING_CATALOG || next == Phase.CANCELLING;
+      case FINALIZING_CATALOG -> next == Phase.COMPLETED || next == Phase.CANCELLING;
+      case CANCELLING -> next == Phase.CANCELLED;
+      case RECONCILIATION_REQUIRED -> next == Phase.COMPLETED
+          || next == Phase.FINALIZING_CATALOG || next == Phase.CANCELLING;
+      case COMPLETED, CANCELLED, FAILED -> false;
+    };
   }
 
   public MediaIngestion failed(String code) {
@@ -127,7 +165,9 @@ public record MediaIngestion(
         mimeType,
         uploadUrl,
         storageId,
-        storageKey);
+        storageKey,
+        requestFingerprint,
+        causationId);
   }
 
   public MediaIngestion rescheduled(Phase next, String reason, long delaySeconds) {
@@ -149,6 +189,14 @@ public record MediaIngestion(
         mimeType,
         uploadUrl,
         storageId,
-        storageKey);
+        storageKey,
+        requestFingerprint,
+        causationId);
+  }
+
+  public MediaIngestion withCausationId(UUID causation) {
+    return new MediaIngestion(ingestionId, actorId, catalogItemId, uploadId, phase, failureCode,
+        version, retryCount, createdAt, updatedAt, nextAttemptAt, idempotencyKey, fileName,
+        fileSize, mimeType, uploadUrl, storageId, storageKey, requestFingerprint, causation);
   }
 }

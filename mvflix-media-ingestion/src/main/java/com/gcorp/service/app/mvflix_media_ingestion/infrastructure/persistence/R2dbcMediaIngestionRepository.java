@@ -37,7 +37,9 @@ public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
         r.get("mime_type", String.class),
         r.get("upload_url", String.class),
         r.get("storage_id", Long.class),
-        r.get("storage_key", String.class));
+        r.get("storage_key", String.class),
+        r.get("request_fingerprint", String.class),
+        r.get("causation_id", UUID.class));
   }
 
   private org.springframework.r2dbc.core.DatabaseClient.GenericExecuteSpec bind(
@@ -82,8 +84,8 @@ public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
     var s =
         db.sql(
             "INSERT INTO"
-                + " media_ingestions(ingestion_id,actor_id,phase,version,retry_count,created_at,updated_at,next_attempt_at,idempotency_key,file_name,file_size,mime_type,correlation_id,storage_id)"
-                + " VALUES(:id,:a,:p,:v,0,:c,:u,:n,:k,:f,:s,:m,:id,:sid) RETURNING *");
+                + " media_ingestions(ingestion_id,actor_id,phase,version,retry_count,created_at,updated_at,next_attempt_at,idempotency_key,file_name,file_size,mime_type,correlation_id,storage_id,request_fingerprint,causation_id)"
+                + " VALUES(:id,:a,:p,:v,0,:c,:u,:n,:k,:f,:s,:m,:id,:sid,:fp,:cause) RETURNING *");
     s = bind(s, "id", i.ingestionId(), UUID.class);
     s = bind(s, "a", i.actorId(), String.class);
     s = bind(s, "p", i.phase().name(), String.class);
@@ -97,6 +99,8 @@ public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
     s = bind(s, "m", i.mimeType(), String.class);
     s = bind(s, "id", i.ingestionId(), UUID.class);
     s = bind(s, "sid", i.storageId(), Long.class);
+    s = bind(s, "fp", i.requestFingerprint(), String.class);
+    s = bind(s, "cause", i.causationId(), UUID.class);
     return s.map((r, m) -> map(r)).one();
   }
 
@@ -104,13 +108,15 @@ public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
     var s =
         db.sql(
             "UPDATE media_ingestions SET"
-                + " catalog_item_id=:c,upload_id=:u,storage_id=:sid,storage_key=:skey,upload_url=:url,phase=:p,failure_code=:f,version=:nv,updated_at=:now,retry_count=:r,next_attempt_at=:next,recovery_claimed_until=NULL"
+                + " catalog_item_id=:c,upload_id=:u,storage_id=:sid,storage_key=:skey,upload_url=:url,request_fingerprint=:fp,causation_id=:cause,phase=:p,failure_code=:f,version=:nv,updated_at=:now,retry_count=:r,next_attempt_at=:next,recovery_claimed_until=NULL"
                 + " WHERE ingestion_id=:id AND version=:ov");
     s = bind(s, "c", n.catalogItemId(), Long.class);
     s = bind(s, "u", n.uploadId(), String.class);
     s = bind(s, "sid", n.storageId(), Long.class);
     s = bind(s, "skey", n.storageKey(), String.class);
     s = bind(s, "url", n.uploadUrl(), String.class);
+    s = bind(s, "fp", n.requestFingerprint(), String.class);
+    s = bind(s, "cause", n.causationId(), UUID.class);
     s = bind(s, "p", n.phase().name(), String.class);
     s = bind(s, "f", n.failureCode(), String.class);
     s = bind(s, "nv", n.version(), Long.class);
