@@ -1,7 +1,7 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /workspace
 COPY .mvn .mvn
-COPY mvnw pom.xml mvflix-activity/pom.xml ./
+COPY mvnw pom.xml ./
 COPY . .
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -pl mvflix-activity -am package -Dmaven.test.skip=true
 FROM eclipse-temurin:21-jre-jammy

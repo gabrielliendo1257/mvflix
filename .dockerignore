@@ -35,4 +35,9 @@
 !bff-mvflix-web/src/
 !bff-mvflix-web/src/**
 
+!mvflix-activity/
+!mvflix-activity/pom.xml
+!mvflix-activity/src/
+!mvflix-activity/src/**
+
 **/target/
