@@ -47,6 +47,13 @@ public class JsonCodec {
     public CatalogMetadata decode(String json, CatalogItemKind kind) {
         try {
             if (kind == CatalogItemKind.VIDEO) {
+                ObjectNode node = (ObjectNode) this.objectMapper.readTree(json);
+                if (node.has("overview") && !node.has("description")) {
+                    return new VideoMetadata(
+                            node.path("title").asText(null),
+                            node.path("overview").asText(null),
+                            null);
+                }
                 VideoMetadata video = this.objectMapper.readValue(json, VideoMetadata.class);
                 return video;
             }
