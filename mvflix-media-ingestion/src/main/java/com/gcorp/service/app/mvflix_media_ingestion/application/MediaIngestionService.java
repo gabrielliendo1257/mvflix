@@ -5,6 +5,7 @@ import com.gcorp.service.app.mvflix_media_ingestion.domain.MediaIngestion.Phase;
 import java.time.Instant;
 import java.util.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
 
 @Service
@@ -13,16 +14,19 @@ public class MediaIngestionService {
   private final DownstreamClients clients;
   private final Outbox outbox;
   private final CompensationRepository compensations;
+  private final TransactionalOperator transactions;
 
   public MediaIngestionService(
       MediaIngestionRepository repository,
       DownstreamClients clients,
       Outbox outbox,
-      CompensationRepository compensations) {
+      CompensationRepository compensations,
+      TransactionalOperator transactions) {
     this.repository = repository;
     this.clients = clients;
     this.outbox = outbox;
     this.compensations = compensations;
+    this.transactions = transactions;
   }
 
   public Mono<MediaIngestion> create(
@@ -107,13 +111,14 @@ public class MediaIngestionService {
                       u.uploadUrl(),
                       null,
                       u.storageKey());
-              return repository
-                  .compareAndSet(i, n)
-                  .flatMap(
-                      ok ->
-                          ok
-                              ? outbox.started(n).thenReturn(n)
-                              : Mono.error(new IllegalStateException("CAS failed")));
+              return inTransaction(
+                  repository
+                      .compareAndSet(i, n)
+                      .flatMap(
+                          ok ->
+                              ok
+                                  ? outbox.started(n).thenReturn(n)
+                                  : Mono.error(new IllegalStateException("CAS failed"))));
             })
         .onErrorResume(e -> fail(i, e));
   }
@@ -138,13 +143,24 @@ public class MediaIngestionService {
                                       : clients.cancelUpload(
                                           i.uploadId(), actor, id + ":cancel-upload"))
                                   .then(
-                                      Mono.defer(
-                                          () ->
-                                              repository.compareAndSet(
+                                      inTransaction(
+                                          repository
+                                              .compareAndSet(
                                                   n,
-                                                  n.transition(Phase.CANCELLED, null, null, null))))
-                                  .then(repository.find(id))
-                                  .flatMap(x -> outbox.cancelled(x).thenReturn(x))
+                                                  n.transition(Phase.CANCELLED, null, null, null))
+                                              .flatMap(
+                                                  cancelled ->
+                                                      cancelled
+                                                          ? repository
+                                                              .find(id)
+                                                              .flatMap(
+                                                                  x ->
+                                                                      outbox
+                                                                          .cancelled(x)
+                                                                          .thenReturn(x))
+                                                          : Mono.error(
+                                                              new IllegalStateException(
+                                                                  "CAS failed")))))
                               : Mono.error(new IllegalStateException("CAS failed")));
             })
         .onErrorResume(e -> get(id, actor).flatMap(i -> fail(i, e)));
@@ -233,14 +249,16 @@ public class MediaIngestionService {
                                   ? compensations.schedule(x.ingestionId(), "DISCARD_DRAFT")
                                   : Mono.empty())
                           .then();
-              return repository
-                  .compareAndSet(current, x)
-                  .flatMap(
-                      ok ->
-                          ok
-                              ? cleanup.then(repository.find(current.ingestionId()))
-                              : Mono.error(new IllegalStateException("CAS failed")))
-                  .flatMap(saved -> outbox.failed(saved).thenReturn(saved));
+              return inTransaction(
+                  repository
+                      .compareAndSet(current, x)
+                      .flatMap(
+                          ok ->
+                              ok
+                                  ? cleanup
+                                      .then(repository.find(current.ingestionId()))
+                                      .flatMap(saved -> outbox.failed(saved).thenReturn(saved))
+                                  : Mono.error(new IllegalStateException("CAS failed"))));
             });
   }
 
@@ -261,10 +279,18 @@ public class MediaIngestionService {
                     ? clients
                         .completeCatalog(n.catalogItemId(), objectKey, objectId, n.actorId())
                         .then(
-                            repository.compareAndSet(
-                                n, n.transition(Phase.COMPLETED, null, null, null)))
-                        .then(repository.find(i.ingestionId()))
-                        .flatMap(x -> outbox.completed(x).thenReturn(x))
+                            inTransaction(
+                                repository
+                                    .compareAndSet(
+                                        n, n.transition(Phase.COMPLETED, null, null, null))
+                                    .flatMap(
+                                        completed ->
+                                            completed
+                                                ? repository
+                                                    .find(i.ingestionId())
+                                                    .flatMap(x -> outbox.completed(x).thenReturn(x))
+                                                : Mono.error(
+                                                    new IllegalStateException("CAS failed")))))
                     : Mono.error(new IllegalStateException("CAS failed")))
         .onErrorResume(e -> reconcile(n, e));
   }
@@ -297,12 +323,17 @@ public class MediaIngestionService {
             i.catalogItemId() != null
                 ? compensations.schedule(i.ingestionId(), "DISCARD_DRAFT")
                 : Mono.empty());
-    return repository
-        .compareAndSet(i, n)
-        .flatMap(
-            ok ->
-                ok
-                    ? cleanup.then(outbox.failed(n)).thenReturn(n)
-                    : Mono.error(new IllegalStateException("CAS failed")));
+    return inTransaction(
+        repository
+            .compareAndSet(i, n)
+            .flatMap(
+                ok ->
+                    ok
+                        ? cleanup.then(outbox.failed(n)).thenReturn(n)
+                        : Mono.error(new IllegalStateException("CAS failed"))));
+  }
+
+  private <T> Mono<T> inTransaction(Mono<T> work) {
+    return transactions.transactional(work);
   }
 }
