@@ -53,12 +53,30 @@ public class SpringDataRenditionRepository implements RenditionRepository {
                 + "SET storage_object_id = :storage_object_id, status = :status, "
                 + "filename = :filename, duration = :duration, container = :container, "
                 + "video_codec = :video_codec, resolution = :resolution, updated_at = NOW() "
-                + "WHERE id = :id AND (status = :status "
+                + "WHERE id = :id AND ((status = :status AND :status <> 'READY') "
                 + "OR (status = 'REQUESTED' AND :status IN ('PROCESSING', 'FAILED')) "
                 + "OR (status = 'PROCESSING' AND :status IN ('READY', 'FAILED'))) "
                 + "RETURNING " + COLUMNS);
         spec = spec.bind("id", rendition.getId().value())
                 .bind("status", rendition.getStatus().name());
+        spec = bindNullable(spec, "storage_object_id", rendition.getStorageObjectId() == null
+                ? null : rendition.getStorageObjectId().value(), Long.class);
+        spec = bindMetadata(spec, rendition);
+        return spec.map((row, ignored) -> toDomain(row)).one()
+                .switchIfEmpty(rendition.getStatus() == RenditionStatus.READY
+                        ? findReadyIfIdentical(rendition) : Mono.empty());
+    }
+
+    private Mono<Rendition> findReadyIfIdentical(Rendition rendition) {
+        var spec = this.databaseClient.sql("SELECT " + COLUMNS + " FROM media_asset_renditions "
+                + "WHERE id = :id AND status = 'READY' "
+                + "AND storage_object_id IS NOT DISTINCT FROM :storage_object_id "
+                + "AND filename IS NOT DISTINCT FROM :filename "
+                + "AND duration IS NOT DISTINCT FROM :duration "
+                + "AND container IS NOT DISTINCT FROM :container "
+                + "AND video_codec IS NOT DISTINCT FROM :video_codec "
+                + "AND resolution IS NOT DISTINCT FROM :resolution");
+        spec = spec.bind("id", rendition.getId().value());
         spec = bindNullable(spec, "storage_object_id", rendition.getStorageObjectId() == null
                 ? null : rendition.getStorageObjectId().value(), Long.class);
         spec = bindMetadata(spec, rendition);

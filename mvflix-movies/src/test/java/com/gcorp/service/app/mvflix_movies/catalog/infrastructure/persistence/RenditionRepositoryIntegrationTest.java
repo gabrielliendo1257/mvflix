@@ -6,6 +6,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.Rendition;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.RenditionOrigin;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.RenditionStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.RenditionTechnicalMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.StorageObjectId;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 
@@ -56,5 +57,26 @@ class RenditionRepositoryIntegrationTest extends PostgresIntegrationTest {
 
         var secondProfile = Rendition.requested(MediaAssetId.of(this.sourceId), RenditionOrigin.MEDIA_ASSET, "720p");
         assertThat(this.repository.save(secondProfile).block().getId()).isNotEqualTo(inserted.getId());
+    }
+
+    @Test
+    void completionIsIdempotentAndCannotReplaceReadyResult() {
+        var requested = Rendition.requested(MediaAssetId.of(this.sourceId), RenditionOrigin.MEDIA_ASSET, "1080p");
+        var processing = this.repository.save(requested).block();
+        processing = this.repository.save(processing.processing()).block();
+        var metadata = new RenditionTechnicalMetadata("movie.mp4", 120L, "mp4", "h264", "1920x1080");
+
+        var first = this.repository.save(processing.ready(StorageObjectId.of(100L), metadata)).block();
+        var identical = this.repository.save(processing.ready(StorageObjectId.of(100L), metadata)).block();
+        assertThat(identical.getId()).isEqualTo(first.getId());
+        assertThat(identical.getStorageObjectId()).isEqualTo(StorageObjectId.of(100L));
+
+        var differentMetadata = new RenditionTechnicalMetadata("movie.mp4", 121L, "mp4", "h264", "1920x1080");
+        assertThat(this.repository.save(processing.ready(StorageObjectId.of(100L), differentMetadata)).block())
+                .isNull();
+        var different = this.repository.save(processing.ready(StorageObjectId.of(200L), metadata)).block();
+        assertThat(different).isNull();
+        assertThat(this.repository.findById(first.getId()).block().getStorageObjectId())
+                .isEqualTo(StorageObjectId.of(100L));
     }
 }
