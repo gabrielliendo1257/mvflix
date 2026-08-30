@@ -104,4 +104,35 @@ public class WebClientDownstreamClients implements DownstreamClients {
         .retrieve()
         .bodyToMono(Void.class);
   }
+
+  @Override
+  public Mono<StorageStatus> storageStatus(String uploadId, String actor) {
+    return storage
+        .get()
+        .uri("/api/v1/movie/storage/upload/{uploadId}", uploadId)
+        .header("X-Actor-Id", actor)
+        .retrieve()
+        .bodyToMono(Map.class)
+        .map(
+            r ->
+                new StorageStatus(
+                    String.valueOf(r.get("status")),
+                    number(r.get("storageId")),
+                    r.get("storageKey") == null ? null : String.valueOf(r.get("storageKey"))));
+  }
+
+  @Override
+  public Mono<CatalogStatus> catalogStatus(long id, String actor) {
+    return movies
+        .get()
+        .uri("/api/v1/movies/{id}", id)
+        .header("X-Actor-Id", actor)
+        .retrieve()
+        .bodyToMono(Map.class)
+        .map(r -> new CatalogStatus(String.valueOf(r.get("status"))));
+  }
+
+  private static Long number(Object value) {
+    return value instanceof Number n ? n.longValue() : null;
+  }
 }

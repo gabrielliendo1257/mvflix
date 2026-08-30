@@ -39,3 +39,6 @@ mvflix:
   messaging.kafka.consumer-group: ${MVFLIX_MEDIA_INGESTION_KAFKA_GROUP:mvflix-media-ingestion}
   downstream.movies-url: ${MOVIES_URL:http://localhost:4040}
   downstream.storage-url: ${STORAGE_URL:http://localhost:6060}
+  recovery.enabled: ${MVFLIX_RECOVERY_ENABLED:true}
+  recovery.poll-ms: ${MVFLIX_RECOVERY_POLL_MS:5000}
+  compensation.enabled: ${MVFLIX_COMPENSATION_ENABLED:true}

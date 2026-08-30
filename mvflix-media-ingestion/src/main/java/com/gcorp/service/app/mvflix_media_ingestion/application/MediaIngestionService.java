@@ -238,17 +238,7 @@ public class MediaIngestionService {
               var x =
                   current.failed(
                       e.getClass().getSimpleName() + ":" + String.valueOf(e.getMessage()));
-              Mono<Void> cleanup =
-                  compensations == null
-                      ? Mono.empty()
-                      : Mono.when(
-                              current.uploadId() != null
-                                  ? compensations.schedule(x.ingestionId(), "CANCEL_UPLOAD")
-                                  : Mono.empty(),
-                              current.catalogItemId() != null
-                                  ? compensations.schedule(x.ingestionId(), "DISCARD_DRAFT")
-                                  : Mono.empty())
-                          .then();
+              Mono<Void> cleanup = safeUploadCompensation(current);
               return inTransaction(
                   repository
                       .compareAndSet(current, x)
@@ -262,14 +252,62 @@ public class MediaIngestionService {
             });
   }
 
+  private Mono<Void> safeUploadCompensation(MediaIngestion i) {
+    if (compensations == null || i.uploadId() == null) return Mono.empty();
+    return clients
+        .storageStatus(i.uploadId(), i.actorId())
+        .flatMap(
+            status ->
+                "PENDING".equalsIgnoreCase(status.status())
+                    ? compensations.schedule(i.ingestionId(), "CANCEL_UPLOAD")
+                    : Mono.empty())
+        .onErrorResume(error -> Mono.empty());
+  }
+
   private Mono<MediaIngestion> finalize(MediaIngestion i, long objectId, String objectKey) {
     if (i.phase() == Phase.COMPLETED) return Mono.just(i);
     if (i.phase() != Phase.AWAITING_UPLOAD && i.phase() != Phase.FINALIZING_CATALOG)
       return Mono.error(new IllegalStateException("ingestion not awaiting upload"));
     var n =
         i.phase() == Phase.FINALIZING_CATALOG
-            ? i
-            : i.transition(Phase.FINALIZING_CATALOG, null, null, null);
+            ? new MediaIngestion(
+                i.ingestionId(),
+                i.actorId(),
+                i.catalogItemId(),
+                i.uploadId(),
+                Phase.FINALIZING_CATALOG,
+                i.failureCode(),
+                i.version() + 1,
+                i.retryCount(),
+                i.createdAt(),
+                Instant.now(),
+                i.nextAttemptAt(),
+                i.idempotencyKey(),
+                i.fileName(),
+                i.fileSize(),
+                i.mimeType(),
+                i.uploadUrl(),
+                objectId,
+                objectKey)
+            : new MediaIngestion(
+                i.ingestionId(),
+                i.actorId(),
+                i.catalogItemId(),
+                i.uploadId(),
+                Phase.FINALIZING_CATALOG,
+                null,
+                i.version() + 1,
+                i.retryCount(),
+                i.createdAt(),
+                Instant.now(),
+                i.nextAttemptAt(),
+                i.idempotencyKey(),
+                i.fileName(),
+                i.fileSize(),
+                i.mimeType(),
+                i.uploadUrl(),
+                objectId,
+                objectKey);
     return (i.phase() == Phase.FINALIZING_CATALOG
             ? Mono.just(true)
             : repository.compareAndSet(i, n))
@@ -315,21 +353,13 @@ public class MediaIngestionService {
             i.mimeType(),
             i.uploadUrl(),
             i.storageId());
-    Mono<Void> cleanup =
-        Mono.when(
-            i.uploadId() != null
-                ? compensations.schedule(i.ingestionId(), "CANCEL_UPLOAD")
-                : Mono.empty(),
-            i.catalogItemId() != null
-                ? compensations.schedule(i.ingestionId(), "DISCARD_DRAFT")
-                : Mono.empty());
     return inTransaction(
         repository
             .compareAndSet(i, n)
             .flatMap(
                 ok ->
                     ok
-                        ? cleanup.then(outbox.failed(n)).thenReturn(n)
+                        ? outbox.failed(n).thenReturn(n)
                         : Mono.error(new IllegalStateException("CAS failed"))));
   }
 
