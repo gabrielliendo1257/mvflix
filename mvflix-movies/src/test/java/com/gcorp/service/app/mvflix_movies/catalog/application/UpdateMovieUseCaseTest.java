@@ -124,14 +124,14 @@ class UpdateMovieUseCaseTest {
 
         StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
                         "Mi grabacion", null, null, null, null, null, null, null,
-                        null, null, null, null, null, null, MediaKind.OTHER)))
+                        null, null, null, null, null, null, MediaKind.VIDEO)))
                 .expectNextCount(1)
                 .verifyComplete();
 
         ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
         verify(this.movieRepository).updateDetails(captor.capture());
         Movie reclassified = captor.getValue();
-        assertThat(reclassified.getKind()).isEqualTo(MediaKind.OTHER);
+        assertThat(reclassified.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(reclassified.getMetadata().title()).isEqualTo("Mi grabacion");
         assertThat(reclassified.getMetadata().tmdbId()).isNull();
@@ -146,7 +146,7 @@ class UpdateMovieUseCaseTest {
         Movie other = new Movie(
                 MovieId.of(1L), "Javier", "Imported clip", MovieStatus.READY,
                 EnrichmentStatus.RAW, null, MovieMetadata.onlyTitle("Imported clip"),
-                MovieVisibility.PRIVATE, java.util.Set.of(), MediaKind.OTHER);
+                MovieVisibility.PRIVATE, java.util.Set.of(), MediaKind.VIDEO);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));

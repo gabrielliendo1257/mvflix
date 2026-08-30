@@ -83,10 +83,10 @@ class GetCatalogTest {
                     new CatalogPage.Key("MEDIA", 1L), 1L, null, Boolean.TRUE,
                     "Coraline", "/c.jpg", 2009, "1h 40m", "MOVIE",
                     "READY", "READY", "LOCAL", "PRIVATE", 0, "LINKED"),
-                // OTHER → nunca se vincula a proveedores.
+                // VIDEO → nunca se vincula a proveedores.
                 new CatalogPage.Item(
                     new CatalogPage.Key("MEDIA", 2L), 2L, null, Boolean.TRUE,
-                    "Clip propio", null, null, "0h 30s", "OTHER",
+                    "Clip propio", null, null, "0h 30s", "VIDEO",
                     "READY", "READY", "LOCAL", "PRIVATE", 0, "NONE")),
             0, 25, 2, 1)));
 

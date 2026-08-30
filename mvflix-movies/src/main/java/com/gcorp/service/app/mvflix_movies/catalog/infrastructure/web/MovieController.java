@@ -131,7 +131,7 @@ public class MovieController {
 
     private CreateIdentifiedDraftCommand toCommand(CreateIdentifiedDraftRequest request) {
         MovieMetadata metadata = this.mapper.toMetadata(request.draft());
-        if (request.tmdbId() != null && request.draft().kind() != MediaKind.OTHER) {
+        if (request.tmdbId() != null && request.draft().kind() != MediaKind.VIDEO) {
             metadata = metadata.withTmdbId(request.tmdbId());
         }
         return new CreateIdentifiedDraftCommand(

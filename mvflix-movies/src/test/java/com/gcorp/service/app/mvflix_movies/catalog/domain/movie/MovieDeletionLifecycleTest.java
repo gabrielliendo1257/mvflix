@@ -95,7 +95,7 @@ class MovieDeletionLifecycleTest {
     void deletingMovieCannotBeReclassified() {
         Movie deleting = movie(MovieStatus.DELETING);
 
-        assertThatThrownBy(() -> deleting.reclassifyAsOther(MovieMetadata.onlyTitle("Clip")))
+        assertThatThrownBy(() -> deleting.reclassifyAsVideo(MovieMetadata.onlyTitle("Clip")))
                 .isInstanceOf(MovieConflictException.class);
         assertThatThrownBy(deleting::reclassifyAsMovie)
                 .isInstanceOf(MovieConflictException.class);

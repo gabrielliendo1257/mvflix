@@ -58,7 +58,7 @@ class MediaDetailTest {
 
   @Test
   void otherKindNeverLinksToProviderEvenWithoutTmdb() {
-    var detail = MediaDetail.from(source("READY", null, null, null, "OTHER", null));
+    var detail = MediaDetail.from(source("READY", null, null, null, "VIDEO", null));
 
     assertThat(detail.provider().status()).isEqualTo("NONE");
     assertThat(detail.capabilities().linkProvider()).isFalse();

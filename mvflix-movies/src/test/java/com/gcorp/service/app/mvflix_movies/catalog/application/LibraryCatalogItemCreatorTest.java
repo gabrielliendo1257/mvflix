@@ -86,12 +86,12 @@ class LibraryCatalogItemCreatorTest {
                 });
 
         StepVerifier.create(this.creator.createFromLibrary(
-                        "Javier", "Live concert", CatalogItemKind.OTHER))
+                        "Javier", "Live concert", CatalogItemKind.VIDEO))
                 .expectNext(CatalogItemId.of(51L))
                 .verifyComplete();
 
         ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
         verify(this.movieRepository).save(captor.capture());
-        assertThat(captor.getValue().getKind()).isEqualTo(MediaKind.OTHER);
+        assertThat(captor.getValue().getKind()).isEqualTo(MediaKind.VIDEO);
     }
 }

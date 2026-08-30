@@ -54,9 +54,9 @@ class MovieFactoryTest {
 
     @Test
     void otherNaceConSoloTituloYSinProveedor() {
-        Movie clip = Movie.fromLibraryAsset("Javier", TITLE, MediaKind.OTHER);
+        Movie clip = Movie.fromLibraryAsset("Javier", TITLE, MediaKind.VIDEO);
 
-        assertThat(clip.getKind()).isEqualTo(MediaKind.OTHER);
+        assertThat(clip.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(clip.isMovie()).isFalse();
         assertThat(clip.getMetadata().tmdbId()).isNull();
         assertThat(clip.getMetadata().posterPath()).isNull();

@@ -82,7 +82,7 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
         null,
         null,
         null,
-        MediaKind.OTHER);
+        MediaKind.VIDEO);
   }
 
   private void dropTestConstraint() {

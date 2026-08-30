@@ -73,7 +73,7 @@ public record CatalogPage(
      *         <li>viewDetail/editMetadata/changeVisibility/manageSharing:
      *             scope OWNED ⇒ el dueño gestiona su ficha.</li>
      *         <li>linkProvider/unlinkProvider: solo MOVIE; exactamente una
-     *             según providerStatus. OTHER no se vincula.</li>
+     *             según providerStatus. VIDEO no se vincula.</li>
      *         <li>delete: bloqueado para INVALID (conciliar orígenes) y
      *             MISSING (reconciliar el archivo).</li>
      *         <li>identify: no aplica (ya es una media identificada).</li>

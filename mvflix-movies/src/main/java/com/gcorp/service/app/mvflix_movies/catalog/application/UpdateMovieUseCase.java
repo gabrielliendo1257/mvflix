@@ -51,31 +51,31 @@ public class UpdateMovieUseCase {
     }
 
     /**
-     * Orquesta la edición: el paso a {@code OTHER} descarta la metadata de película
+     * Orquesta la edición: el paso a {@code VIDEO} descarta la metadata de película
      * (solo queda lo que el usuario manda, sin proveedor) y revierte a RAW, todo en
      * una sola llamada. El resto de casos hace merge normal.
      */
     private Mono<Movie> update(Movie movie, UpdateMovieCommand command) {
-        boolean switchedToOther = command.kind() == MediaKind.OTHER
+        boolean switchedToVideo = command.kind() == MediaKind.VIDEO
                 && movie.getKind() == MediaKind.MOVIE;
 
-        MovieMetadata merged = switchedToOther
+        MovieMetadata merged = switchedToVideo
                 ? fromCommand(command)
                 : merge(movie.getMetadata(), command);
 
-        Movie edited = switchedToOther
-                ? movie.reclassifyAsOther(merged)
+        Movie edited = switchedToVideo
+                ? movie.reclassifyAsVideo(merged)
                 : movie.withMetadata(merged);
 
-        if (!switchedToOther
+        if (!switchedToVideo
                 && command.kind() == MediaKind.MOVIE
-                && movie.getKind() == MediaKind.OTHER) {
+                && movie.getKind() == MediaKind.VIDEO) {
             edited = edited.reclassifyAsMovie();
         }
         return this.movieRepository.updateDetails(edited);
     }
 
-    /** Metadata solo con lo que manda el usuario (sin proveedor): para el paso a OTHER. */
+    /** Metadata solo con lo que manda el usuario (sin proveedor): para el paso a VIDEO. */
     private static MovieMetadata fromCommand(UpdateMovieCommand command) {
         return new MovieMetadata(
                 command.title(),

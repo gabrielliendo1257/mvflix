@@ -55,7 +55,7 @@ public class CreateIdentifiedDraftUseCase {
 
     /**
      * Identidad del proveedor: para MOVIE el tmdbId es obligatorio (el flujo
-     * guiado nace de un candidato); OTHER no se identifica con TMDB.
+     * guiado nace de un candidato); VIDEO no se identifica con TMDB.
      */
     private Movie buildIdentifiedDraft(String owner, CreateIdentifiedDraftCommand command) {
         MediaKind kind = command.kind() == null ? MediaKind.MOVIE : command.kind();

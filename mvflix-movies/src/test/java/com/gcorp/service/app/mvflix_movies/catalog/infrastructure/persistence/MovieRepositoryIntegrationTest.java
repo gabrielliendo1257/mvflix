@@ -63,12 +63,12 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
         .linkProviderMetadata(new MovieMetadata(
             "Provider title", null, null, List.of(), null, null, null,
             List.of(), null, null, null, null, null, List.of(), 100L));
-    Movie reclassified = movie.reclassifyAsOther(MovieMetadata.onlyTitle("Family recording"));
+    Movie reclassified = movie.reclassifyAsVideo(MovieMetadata.onlyTitle("Family recording"));
 
     Movie updated = this.movieRepository.updateDetails(reclassified).block();
 
     assertThat(updated).isNotNull();
-    assertThat(updated.getKind()).isEqualTo(MediaKind.OTHER);
+    assertThat(updated.getKind()).isEqualTo(MediaKind.VIDEO);
     assertThat(updated.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
     assertThat(updated.getMetadata().tmdbId()).isNull();
     this.assertPersistedTitles(movie.getId().value(), "Family recording");

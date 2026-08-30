@@ -241,7 +241,7 @@ public class Movie {
      * proveedor deja de ser válido y el item deja de estar identificado como
      * película.
      */
-    public Movie reclassifyAsOther(MovieMetadata manualMetadata) {
+    public Movie reclassifyAsVideo(MovieMetadata manualMetadata) {
         requireNotDeleting("reclassify");
         requireTitle(manualMetadata);
         MovieMetadata unlinkedMetadata = manualMetadata.withoutProvider();
@@ -255,7 +255,7 @@ public class Movie {
                 unlinkedMetadata,
                 this.visibility,
                 this.sharedWith,
-                MediaKind.OTHER);
+                MediaKind.VIDEO);
     }
 
     /**

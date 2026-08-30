@@ -30,7 +30,7 @@ class MovieProviderLinkTest {
 
     @Test
     void rejectsProviderLinkForNonMovieItem() {
-        Movie clip = Movie.fromLibraryAsset("Javier", RAW_METADATA, MediaKind.OTHER);
+        Movie clip = Movie.fromLibraryAsset("Javier", RAW_METADATA, MediaKind.VIDEO);
 
         assertThatThrownBy(() -> clip.linkProviderMetadata(PROVIDER_METADATA))
                 .isInstanceOf(MovieConflictException.class);
@@ -68,9 +68,9 @@ class MovieProviderLinkTest {
                 List.of(), "Metadata manual", "/provider-poster.jpg", null, null,
                 null, List.of(), 438631L);
 
-        Movie reclassified = linked.reclassifyAsOther(manualMetadata);
+        Movie reclassified = linked.reclassifyAsVideo(manualMetadata);
 
-        assertThat(reclassified.getKind()).isEqualTo(MediaKind.OTHER);
+        assertThat(reclassified.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(reclassified.getTitle()).isEqualTo("Grabación familiar");
         assertThat(reclassified.getMetadata().overview()).isEqualTo("Metadata manual");
@@ -86,7 +86,7 @@ class MovieProviderLinkTest {
                 null, null, null, List.of(), null, null, null, List.of(), null,
                 null, null, null, null, List.of(), null);
 
-        assertThatThrownBy(() -> movie.reclassifyAsOther(missingTitle))
+        assertThatThrownBy(() -> movie.reclassifyAsVideo(missingTitle))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("movie title is required");
     }
@@ -97,7 +97,7 @@ class MovieProviderLinkTest {
                 "Imported clip", null, null, List.of(), 8.0, null, null,
                 List.of(), null, "/poster.jpg", null, null, null, List.of(), 99L);
         Movie clip = Movie.fromLibraryAsset(
-                "Javier", inconsistentProviderMetadata, MediaKind.OTHER);
+                "Javier", inconsistentProviderMetadata, MediaKind.VIDEO);
 
         Movie reclassified = clip.reclassifyAsMovie();
 

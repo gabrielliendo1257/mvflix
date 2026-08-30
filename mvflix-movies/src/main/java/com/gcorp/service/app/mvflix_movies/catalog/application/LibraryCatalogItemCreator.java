@@ -34,7 +34,7 @@ public class LibraryCatalogItemCreator implements CatalogItemCreator {
     private static MediaKind toMediaKind(CatalogItemKind kind) {
         return switch (kind) {
             case MOVIE -> MediaKind.MOVIE;
-            case OTHER -> MediaKind.OTHER;
+            case VIDEO -> MediaKind.VIDEO;
         };
     }
 }

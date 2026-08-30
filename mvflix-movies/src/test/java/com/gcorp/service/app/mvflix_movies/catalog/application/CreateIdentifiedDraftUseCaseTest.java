@@ -129,7 +129,7 @@ class CreateIdentifiedDraftUseCaseTest {
   void otherKindStaysRawEvenWithProviderId() {
     StepVerifier.create(
             this.useCase.execute(command(
-                alienMetadata(348L), MediaKind.OTHER, MovieVisibility.PUBLIC, List.of())))
+                alienMetadata(348L), MediaKind.VIDEO, MovieVisibility.PUBLIC, List.of())))
         .assertNext(movie -> {
           assertThat(movie.getEnrichmentStatus().name()).isEqualTo("RAW");
           assertThat(movie.getVisibility().name()).isEqualTo("PUBLIC");
