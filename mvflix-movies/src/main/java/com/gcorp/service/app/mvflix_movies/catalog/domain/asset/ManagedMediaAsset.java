@@ -4,6 +4,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference;
 
 import java.time.Instant;
+import java.util.Objects;
 
 /**
  * Objeto de video de una película (trailer, versión principal, ...).
@@ -35,7 +36,10 @@ public class ManagedMediaAsset implements MediaAsset {
             String resolution, String storageReference, Instant createdAt) {
         this.id = id;
         this.movieId = movieId;
-        this.storageObjectId = storageObjectId;
+        this.storageObjectId = Objects.requireNonNull(storageObjectId, "storageObjectId");
+        if (objectKey == null || objectKey.isBlank()) {
+            throw new IllegalArgumentException("Managed media object key is required");
+        }
         this.objectKey = objectKey;
         this.filename = filename;
         this.duration = duration;

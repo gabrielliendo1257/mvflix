@@ -23,6 +23,9 @@ class RenditionTest {
         assertThatThrownBy(() -> new Rendition(null, MediaAssetId.of(1L), RenditionOrigin.MEDIA,
                 null, "1080p", RenditionStatus.READY, null))
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThat(new Rendition(null, MediaAssetId.of(1L), RenditionOrigin.MEDIA,
+                StorageObjectId.of(1L), "1080p", RenditionStatus.READY, null).getStatus())
+                .isEqualTo(RenditionStatus.READY);
         assertThatThrownBy(() -> new RenditionTechnicalMetadata(null, -1L, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }

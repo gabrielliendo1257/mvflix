@@ -45,4 +45,14 @@ class MediaAssetTest {
         assertThatThrownBy(() -> new MediaAssetReference("  "))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void managedAssetRequiresAReproducibleStorageObject() {
+        assertThatThrownBy(() -> ManagedMediaAsset.create(CatalogItemId.of(1L), null, "managed/movie.mp4"))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> ManagedMediaAsset.create(CatalogItemId.of(1L), 10L, null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ManagedMediaAsset.create(CatalogItemId.of(1L), 10L, "  "))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }
