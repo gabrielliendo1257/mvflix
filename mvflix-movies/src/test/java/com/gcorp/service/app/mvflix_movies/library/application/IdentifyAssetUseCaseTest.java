@@ -1,5 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.library.application;
 
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;

@@ -14,7 +14,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovi
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.MetadataSource;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
@@ -49,7 +49,7 @@ class EnrichCatalogItemUseCaseTest {
     private static final CatalogItem DRAFT_RAW =
             new CatalogItem(
                     CatalogItemId.of(1L), "pepe", "The Colossus of Rhodes", CatalogItemStatus.DRAFT,
-                    EnrichmentStatus.RAW, null, RAW_METADATA, CatalogItemVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
+                    EnrichmentStatus.RAW, null, RAW_METADATA, CatalogItemVisibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
 
     private static final ExternalMovieDetail TMDB_DETAIL =
             new ExternalMovieDetail(
@@ -87,7 +87,7 @@ class EnrichCatalogItemUseCaseTest {
                 null, null, null, null, null, 274_003L);
         CatalogItem movie = new CatalogItem(
                 CatalogItemId.of(2L), "pepe", "The Colossus of Rhodes", CatalogItemStatus.DRAFT,
-                EnrichmentStatus.RAW, null, withTmdbId, CatalogItemVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
+                EnrichmentStatus.RAW, null, withTmdbId, CatalogItemVisibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
 
         when(this.metadataSource.findById(274_003L)).thenReturn(Mono.just(TMDB_DETAIL));
         when(this.movieRepository.updateEnrichment(any(CatalogItem.class)))
@@ -188,7 +188,7 @@ class EnrichCatalogItemUseCaseTest {
         CatalogItem movie = new CatalogItem(
                 CatalogItemId.of(3L), "pepe", "Old", CatalogItemStatus.READY,
                 EnrichmentStatus.ENRICHED, null, old, CatalogItemVisibility.PRIVATE, Set.of(),
-                MediaKind.MOVIE);
+                CatalogItemKind.MOVIE);
 
         ExternalMovieDetail fresh = new ExternalMovieDetail(
                 43020L, "New", "New", 2021, List.of("Sci-Fi"), 8.0, 120, null,

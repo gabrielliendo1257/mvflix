@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
@@ -38,7 +38,7 @@ class UpdateCatalogItemAccessAtomicityTest extends PostgresIntegrationTest {
         this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
 
         CatalogItem movie = this.movieRepository.save(CatalogItem.createDraft(
-                "pepe", MovieMetadata.onlyTitle("Dune"), MediaKind.MOVIE)).block();
+                "pepe", MovieMetadata.onlyTitle("Dune"), CatalogItemKind.MOVIE)).block();
         this.movieId = movie.getId().value();
         share("maria");
         share("pedro");

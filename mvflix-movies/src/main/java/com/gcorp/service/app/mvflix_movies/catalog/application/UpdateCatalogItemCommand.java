@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 
 import java.util.List;
 
@@ -25,4 +25,4 @@ public record UpdateCatalogItemCommand(
     String language,
     List<String> awards,
     Double popularity,
-    MediaKind kind) {}
+    CatalogItemKind kind) {}

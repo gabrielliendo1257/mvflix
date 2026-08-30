@@ -18,7 +18,7 @@ class CatalogItemAccessPolicyTest {
     private static CatalogItem movie(CatalogItemVisibility visibility, Set<String> sharedWith) {
         return new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", CatalogItemStatus.READY,
-                EnrichmentStatus.ENRICHED, null, null, visibility, sharedWith, MediaKind.MOVIE);
+                EnrichmentStatus.ENRICHED, null, null, visibility, sharedWith, CatalogItemKind.MOVIE);
     }
 
     @Test

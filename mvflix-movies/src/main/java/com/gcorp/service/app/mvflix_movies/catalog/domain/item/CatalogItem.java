@@ -11,16 +11,44 @@ import java.util.Set;
 public class CatalogItem {
 
     private final CatalogItemId id;
-    private final String ownerUsername;
+    private final OwnerId ownerId;
     private final String title;
     private final CatalogItemStatus status;
     private final EnrichmentStatus enrichmentStatus;
     private final CatalogMetadata metadata;
     private final CatalogItemVisibility visibility;
     private final Set<String> sharedWith;
-    private final MediaKind kind;
+    private final CatalogItemKind kind;
 
     @Default
+    public CatalogItem(
+        CatalogItemId id,
+        OwnerId ownerId,
+        String title,
+        CatalogItemStatus status,
+        EnrichmentStatus enrichmentStatus,
+        CatalogMetadata metadata,
+        CatalogItemVisibility visibility,
+        Set<String> sharedWith,
+        CatalogItemKind kind) {
+        this.id = id;
+        if (ownerId == null) {
+            throw new IllegalArgumentException("catalog item owner is required");
+        }
+        this.ownerId = ownerId;
+        this.title = title;
+        this.status = status;
+        this.enrichmentStatus = enrichmentStatus;
+        this.metadata = metadata;
+        this.visibility = visibility;
+        this.sharedWith = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
+        this.kind = kind == null ? CatalogItemKind.MOVIE : kind;
+        if (this.metadata != null && !matchesKind(this.metadata, this.kind)) {
+            throw new IllegalArgumentException("metadata does not match catalog kind");
+        }
+    }
+
+    /** Source compatibility for callers that still provide the owner username. */
     public CatalogItem(
         CatalogItemId id,
         String ownerUsername,
@@ -30,26 +58,16 @@ public class CatalogItem {
         CatalogMetadata metadata,
         CatalogItemVisibility visibility,
         Set<String> sharedWith,
-        MediaKind kind) {
-        this.id = id;
-        this.ownerUsername = ownerUsername;
-        this.title = title;
-        this.status = status;
-        this.enrichmentStatus = enrichmentStatus;
-        this.metadata = metadata;
-        this.visibility = visibility;
-        this.sharedWith = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
-        this.kind = kind == null ? MediaKind.MOVIE : kind;
-        if (this.metadata != null && !matchesKind(this.metadata, this.kind)) {
-            throw new IllegalArgumentException("metadata does not match catalog kind");
-        }
+        CatalogItemKind kind) {
+        this(id, OwnerId.of(ownerUsername), title, status, enrichmentStatus, metadata,
+                visibility, sharedWith, kind);
     }
 
     /** Source compatibility for callers constructing the pre-separation shape; the locator is ignored. */
     @Deprecated
     public CatalogItem(CatalogItemId id, String ownerUsername, String title, CatalogItemStatus status,
             EnrichmentStatus enrichmentStatus, Long ignoredObjectId, CatalogMetadata metadata,
-            CatalogItemVisibility visibility, Set<String> sharedWith, MediaKind kind) {
+            CatalogItemVisibility visibility, Set<String> sharedWith, CatalogItemKind kind) {
         this(id, ownerUsername, title, status, enrichmentStatus, metadata, visibility, sharedWith, kind);
     }
 
@@ -57,11 +75,11 @@ public class CatalogItem {
      * Nacimiento de un item en DRAFT (flujo de upload): el dueño aporta la
      * metadata mínima y el objeto se asocia después mediante MediaRepository.
      */
-    public static CatalogItem createDraft(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
+    public static CatalogItem createDraft(String ownerUsername, MovieMetadata metadata, CatalogItemKind kind) {
         return createDraft(ownerUsername, metadataForKind(metadata, kind), kind);
     }
 
-    public static CatalogItem createDraft(String ownerUsername, CatalogMetadata metadata, MediaKind kind) {
+    public static CatalogItem createDraft(String ownerUsername, CatalogMetadata metadata, CatalogItemKind kind) {
         requireOwner(ownerUsername);
         requireTitle(metadata, effectiveKind(kind));
         requireMetadata(metadata, effectiveKind(kind));
@@ -81,11 +99,11 @@ public class CatalogItem {
      * Nacimiento de un item desde una biblioteca (media server): el archivo ya
      * existe en el filesystem, por eso nace READY sin objeto gestionado.
      */
-    public static CatalogItem fromLibraryAsset(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
+    public static CatalogItem fromLibraryAsset(String ownerUsername, MovieMetadata metadata, CatalogItemKind kind) {
         return fromLibraryAsset(ownerUsername, metadataForKind(metadata, kind), kind);
     }
 
-    public static CatalogItem fromLibraryAsset(String ownerUsername, CatalogMetadata metadata, MediaKind kind) {
+    public static CatalogItem fromLibraryAsset(String ownerUsername, CatalogMetadata metadata, CatalogItemKind kind) {
         requireOwner(ownerUsername);
         requireTitle(metadata, effectiveKind(kind));
         requireMetadata(metadata, effectiveKind(kind));
@@ -107,13 +125,13 @@ public class CatalogItem {
         }
     }
 
-    private static void requireMetadata(CatalogMetadata metadata, MediaKind kind) {
+    private static void requireMetadata(CatalogMetadata metadata, CatalogItemKind kind) {
         if (metadata == null) {
-            throw new IllegalArgumentException(kind == MediaKind.VIDEO
+            throw new IllegalArgumentException(kind == CatalogItemKind.VIDEO
                     ? "video metadata is required" : "movie metadata is required");
         }
         if (metadata.title() == null || metadata.title().isBlank()) {
-            throw new IllegalArgumentException(kind == MediaKind.VIDEO
+            throw new IllegalArgumentException(kind == CatalogItemKind.VIDEO
                     ? "video title is required" : "movie title is required");
         }
         if (!matchesKind(metadata, kind)) {
@@ -121,28 +139,28 @@ public class CatalogItem {
         }
     }
 
-    private static void requireTitle(CatalogMetadata metadata, MediaKind kind) {
+    private static void requireTitle(CatalogMetadata metadata, CatalogItemKind kind) {
         if (metadata == null || metadata.title() == null || metadata.title().isBlank()) {
-            throw new IllegalArgumentException(kind == MediaKind.VIDEO
+            throw new IllegalArgumentException(kind == CatalogItemKind.VIDEO
                     ? "movie title is required" : "movie title is required");
         }
     }
 
-    private static boolean matchesKind(CatalogMetadata metadata, MediaKind kind) {
-        return (kind == MediaKind.MOVIE && metadata instanceof MovieMetadata)
-                || (kind == MediaKind.VIDEO && metadata instanceof VideoMetadata);
+    private static boolean matchesKind(CatalogMetadata metadata, CatalogItemKind kind) {
+        return (kind == CatalogItemKind.MOVIE && metadata instanceof MovieMetadata)
+                || (kind == CatalogItemKind.VIDEO && metadata instanceof VideoMetadata);
     }
 
-    private static MediaKind effectiveKind(MediaKind kind) {
-        return kind == null ? MediaKind.MOVIE : kind;
+    private static CatalogItemKind effectiveKind(CatalogItemKind kind) {
+        return kind == null ? CatalogItemKind.MOVIE : kind;
     }
 
-    private static CatalogMetadata metadataForKind(MovieMetadata metadata, MediaKind kind) {
-        if (effectiveKind(kind) == MediaKind.VIDEO
+    private static CatalogMetadata metadataForKind(MovieMetadata metadata, CatalogItemKind kind) {
+        if (effectiveKind(kind) == CatalogItemKind.VIDEO
                 && (metadata == null || metadata.title() == null || metadata.title().isBlank())) {
             throw new IllegalArgumentException("movie title is required");
         }
-        return effectiveKind(kind) == MediaKind.VIDEO
+        return effectiveKind(kind) == CatalogItemKind.VIDEO
                 ? new VideoMetadata(metadata == null ? null : metadata.title(),
                         metadata == null ? null : metadata.overview(), null)
                 : metadata;
@@ -153,7 +171,11 @@ public class CatalogItem {
     }
 
     public String getOwnerUsername() {
-        return this.ownerUsername;
+        return this.ownerId.value();
+    }
+
+    public OwnerId getOwnerId() {
+        return this.ownerId;
     }
 
     public String getTitle() {
@@ -194,18 +216,18 @@ public class CatalogItem {
         return this.sharedWith;
     }
 
-    public MediaKind getKind() {
+    public CatalogItemKind getKind() {
         return this.kind;
     }
 
     /** {@code true} si el item representa una película (tipo de contenido). */
     public boolean isMovie() {
-        return this.kind == MediaKind.MOVIE;
+        return this.kind == CatalogItemKind.MOVIE;
     }
 
     /** Solo el dueño puede administrar el item (visibilidad, compartidos, borrado). */
     public boolean isOwnedBy(String username) {
-        return this.ownerUsername.equals(username);
+        return this.ownerId.value().equals(username);
     }
 
     /**
@@ -224,7 +246,7 @@ public class CatalogItem {
         requireNotDeleting("change visibility");
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 this.title,
                 this.status,
                 this.enrichmentStatus,
@@ -239,7 +261,7 @@ public class CatalogItem {
         requireNotDeleting("change shares");
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 this.title,
                 this.status,
                 this.enrichmentStatus,
@@ -271,7 +293,7 @@ public class CatalogItem {
         Set<String> effective = visibility == CatalogItemVisibility.SHARED ? shares : Set.of();
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 this.title,
                 this.status,
                 this.enrichmentStatus,
@@ -287,7 +309,7 @@ public class CatalogItem {
         requireMetadata(metadata, this.kind);
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 metadata.title(),
                 this.status,
                 this.enrichmentStatus,
@@ -303,22 +325,22 @@ public class CatalogItem {
      * película.
      */
     public CatalogItem reclassifyAsVideo(MovieMetadata manualMetadata) {
-        return reclassifyAsVideo(metadataForKind(manualMetadata, MediaKind.VIDEO));
+        return reclassifyAsVideo(metadataForKind(manualMetadata, CatalogItemKind.VIDEO));
     }
 
     public CatalogItem reclassifyAsVideo(CatalogMetadata manualMetadata) {
         requireNotDeleting("reclassify");
-        requireMetadata(manualMetadata, MediaKind.VIDEO);
+        requireMetadata(manualMetadata, CatalogItemKind.VIDEO);
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 manualMetadata.title(),
                 this.status,
                 EnrichmentStatus.RAW,
                 manualMetadata,
                 this.visibility,
                 this.sharedWith,
-                MediaKind.VIDEO);
+                CatalogItemKind.VIDEO);
     }
 
     /**
@@ -338,7 +360,7 @@ public class CatalogItem {
 
     public CatalogItem reclassifyAsMovie(CatalogMetadata manualMetadata) {
         requireNotDeleting("reclassify");
-        requireMetadata(manualMetadata, MediaKind.MOVIE);
+        requireMetadata(manualMetadata, CatalogItemKind.MOVIE);
         MovieMetadata unlinkedMetadata = manualMetadata instanceof MovieMetadata movieMetadata
                 ? movieMetadata.withoutProvider()
                 : new MovieMetadata(manualMetadata.title(), null, null, java.util.List.of(), null,
@@ -347,14 +369,14 @@ public class CatalogItem {
                         null, null, null, null, java.util.List.of(), null);
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 unlinkedMetadata.title(),
                 this.status,
                 EnrichmentStatus.RAW,
                 unlinkedMetadata,
                 this.visibility,
                 this.sharedWith,
-                MediaKind.MOVIE);
+                CatalogItemKind.MOVIE);
     }
 
     public boolean isDraft() {
@@ -377,7 +399,7 @@ public class CatalogItem {
         }
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 this.title,
                 CatalogItemStatus.DELETING,
                 this.enrichmentStatus,
@@ -412,10 +434,10 @@ public class CatalogItem {
         if (providerMetadata == null || providerMetadata.tmdbId() == null) {
             throw new IllegalArgumentException("provider metadata id is required");
         }
-        requireMetadata(providerMetadata, MediaKind.MOVIE);
+        requireMetadata(providerMetadata, CatalogItemKind.MOVIE);
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 providerMetadata.title(),
                 this.status,
                 EnrichmentStatus.ENRICHED,
@@ -434,7 +456,7 @@ public class CatalogItem {
         MovieMetadata unlinkedMetadata = getMovieMetadata().withoutProvider();
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 unlinkedMetadata.title(),
                 this.status,
                 EnrichmentStatus.RAW,
@@ -452,7 +474,7 @@ public class CatalogItem {
         requireNotDeleting("complete");
         return new CatalogItem(
                 this.id,
-                this.ownerUsername,
+                this.ownerId,
                 this.title,
                 CatalogItemStatus.READY,
                 this.enrichmentStatus,

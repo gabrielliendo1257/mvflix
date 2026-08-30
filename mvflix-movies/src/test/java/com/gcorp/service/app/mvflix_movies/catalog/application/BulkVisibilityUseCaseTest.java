@@ -10,7 +10,7 @@ import com.gcorp.service.app.mvflix_movies.shared.application.security.Authentic
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryMovieIds;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
@@ -120,6 +120,6 @@ class BulkVisibilityUseCaseTest {
         return new CatalogItem(
                 CatalogItemId.of(id), "Javier", "Dune", CatalogItemStatus.READY,
                 EnrichmentStatus.RAW, null, MovieMetadata.onlyTitle("Dune"),
-                visibility, shares, MediaKind.MOVIE);
+                visibility, shares, CatalogItemKind.MOVIE);
     }
 }

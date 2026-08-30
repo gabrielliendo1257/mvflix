@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
@@ -47,7 +47,7 @@ class UpdateCatalogItemUseCaseTest {
     private static CatalogItem movie(long id, String owner, MovieMetadata metadata) {
         return new CatalogItem(
                 CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
-                null, metadata, CatalogItemVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
+                null, metadata, CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
     }
 
     @Test
@@ -125,14 +125,14 @@ class UpdateCatalogItemUseCaseTest {
 
         StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateCatalogItemCommand(
                         "Mi grabacion", null, null, null, null, null, null, null,
-                        null, null, null, null, null, null, MediaKind.VIDEO)))
+                        null, null, null, null, null, null, CatalogItemKind.VIDEO)))
                 .expectNextCount(1)
                 .verifyComplete();
 
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).updateDetails(captor.capture());
         CatalogItem reclassified = captor.getValue();
-        assertThat(reclassified.getKind()).isEqualTo(MediaKind.VIDEO);
+        assertThat(reclassified.getKind()).isEqualTo(CatalogItemKind.VIDEO);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
          assertThat(reclassified.getMetadata().title()).isEqualTo("Mi grabacion");
          assertThat(reclassified.getMetadata()).isInstanceOf(VideoMetadata.class);
@@ -143,7 +143,7 @@ class UpdateCatalogItemUseCaseTest {
         CatalogItem other = new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Imported clip", CatalogItemStatus.READY,
                  EnrichmentStatus.RAW, null, new VideoMetadata("Imported clip", null, null),
-                CatalogItemVisibility.PRIVATE, java.util.Set.of(), MediaKind.VIDEO);
+                CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.VIDEO);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
@@ -153,9 +153,9 @@ class UpdateCatalogItemUseCaseTest {
 
         StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateCatalogItemCommand(
                         "Identifiable movie", null, null, null, null, null, null, null,
-                        null, null, null, null, null, null, MediaKind.MOVIE)))
+                        null, null, null, null, null, null, CatalogItemKind.MOVIE)))
                 .assertNext(updated -> {
-                    assertThat(updated.getKind()).isEqualTo(MediaKind.MOVIE);
+                    assertThat(updated.getKind()).isEqualTo(CatalogItemKind.MOVIE);
                     assertThat(updated.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
                     assertThat(updated.getMetadata().title()).isEqualTo("Identifiable movie");
                      assertThat(updated.getMovieMetadata().tmdbId()).isNull();

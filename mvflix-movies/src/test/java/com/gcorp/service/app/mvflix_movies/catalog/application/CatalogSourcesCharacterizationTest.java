@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
@@ -49,7 +49,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
     @Test
     void managedUploadIsRepresentedByAMediaRowWithObject() {
         CatalogItem movie = this.movieRepository.save(CatalogItem.createDraft(
-                "pepe", MovieMetadata.onlyTitle("Coraline"), MediaKind.MOVIE)).block();
+                "pepe", MovieMetadata.onlyTitle("Coraline"), CatalogItemKind.MOVIE)).block();
 
         this.mediaRepository.save(ManagedMediaAsset.create(movie.getId(), 42L, "pepe/coraline.mp4"))
                 .as(StepVerifier::create)
@@ -64,7 +64,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
     @Test
     void localLibraryMovieLinksAnIdentifiedPresentAsset() {
         CatalogItem movie = this.movieRepository.save(CatalogItem.fromLibraryAsset(
-                "admin", MovieMetadata.onlyTitle("Dune"), MediaKind.MOVIE)).block();
+                "admin", MovieMetadata.onlyTitle("Dune"), CatalogItemKind.MOVIE)).block();
 
         // Flujo real: el insert nace UNIDENTIFIED y la transacción de
         // identificación es quien pone el vínculo (identifyIfUnidentified).
@@ -91,7 +91,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
     @Test
     void sharesTableHoldsOneRowPerSharedUser() {
         CatalogItem movie = this.movieRepository.save(CatalogItem.createDraft(
-                "pepe", MovieMetadata.onlyTitle("Alien"), MediaKind.MOVIE)).block();
+                "pepe", MovieMetadata.onlyTitle("Alien"), CatalogItemKind.MOVIE)).block();
         Long movieDbId = movie.getId().value();
 
         this.databaseClient.sql(
@@ -119,7 +119,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
                 new MovieMetadata("Coraline", null, 2009, null, null,
                         "1h 40m", null, null, null, "/coraline.jpg", null,
                         null, null, null, null),
-                MediaKind.MOVIE))
+                CatalogItemKind.MOVIE))
                 .block();
 
         this.databaseClient.sql("""

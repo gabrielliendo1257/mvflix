@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
@@ -69,7 +69,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
     CatalogItem updated = this.movieRepository.updateDetails(reclassified).block();
 
     assertThat(updated).isNotNull();
-    assertThat(updated.getKind()).isEqualTo(MediaKind.VIDEO);
+    assertThat(updated.getKind()).isEqualTo(CatalogItemKind.VIDEO);
     assertThat(updated.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
      assertThat(updated.getMetadata()).isInstanceOf(VideoMetadata.class);
     this.assertPersistedTitles(movie.getId().value(), "Family recording");
@@ -160,7 +160,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
   private CatalogItem saveDraft(String title) {
     return this.movieRepository
-        .save(CatalogItem.createDraft("pepe", MovieMetadata.onlyTitle(title), MediaKind.MOVIE))
+        .save(CatalogItem.createDraft("pepe", MovieMetadata.onlyTitle(title), CatalogItemKind.MOVIE))
         .block();
   }
 

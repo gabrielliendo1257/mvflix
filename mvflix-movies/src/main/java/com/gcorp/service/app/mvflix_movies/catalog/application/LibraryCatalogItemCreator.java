@@ -1,10 +1,9 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
-import com.gcorp.service.app.mvflix_movies.library.application.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemCreator;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 
@@ -25,16 +24,10 @@ public class LibraryCatalogItemCreator implements CatalogItemCreator {
     public Mono<CatalogItemId> createFromLibrary(
             String ownerUsername, String title, CatalogItemKind kind) {
         CatalogItem movie = CatalogItem.fromLibraryAsset(
-                ownerUsername, MovieMetadata.onlyTitle(title), toMediaKind(kind));
+                ownerUsername, MovieMetadata.onlyTitle(title), kind);
         return this.movieRepository
                 .save(movie)
                 .map(saved -> CatalogItemId.of(saved.getId().value()));
     }
 
-    private static MediaKind toMediaKind(CatalogItemKind kind) {
-        return switch (kind) {
-            case MOVIE -> MediaKind.MOVIE;
-            case VIDEO -> MediaKind.VIDEO;
-        };
-    }
 }

@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
@@ -58,9 +58,9 @@ public class CreateIdentifiedDraftUseCase {
      * guiado nace de un candidato); VIDEO no se identifica con TMDB.
      */
     private CatalogItem buildIdentifiedDraft(String owner, CreateIdentifiedDraftCommand command) {
-        MediaKind kind = command.kind() == null ? MediaKind.MOVIE : command.kind();
+        CatalogItemKind kind = command.kind() == null ? CatalogItemKind.MOVIE : command.kind();
         CatalogItem draft = CatalogItem.createDraft(owner, command.metadata(), kind);
-        if (kind == MediaKind.MOVIE) {
+        if (kind == CatalogItemKind.MOVIE) {
             if (command.metadata().tmdbId() == null) {
                 throw new IllegalArgumentException(
                         "tmdbId es obligatorio para crear un draft identificado de película");

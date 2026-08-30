@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
@@ -71,6 +71,6 @@ class LibraryCatalogItemAccessTest {
                 null,
                 visibility,
                 sharedWith,
-                MediaKind.MOVIE);
+                CatalogItemKind.MOVIE);
     }
 }

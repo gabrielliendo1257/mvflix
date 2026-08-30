@@ -13,7 +13,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsse
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
@@ -102,7 +102,7 @@ class ManagedMediaDeletionCoordinatorTest {
     private static CatalogItem movie() {
         return new CatalogItem(
                 MOVIE_ID, "Javier", "Dune", CatalogItemStatus.DELETING, EnrichmentStatus.ENRICHED,
-                42L, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
+                42L, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
     }
 
     private static ManagedMediaAsset managedMedia() {

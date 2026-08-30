@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
@@ -50,7 +50,7 @@ class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegratio
         this.databaseClient.sql("DELETE FROM catalog_items").fetch().rowsUpdated().block();
 
         CatalogItem movie = this.movieRepository.save(CatalogItem.fromLibraryAsset(
-                "pepe", MovieMetadata.onlyTitle("Stalker"), MediaKind.MOVIE)).block();
+                "pepe", MovieMetadata.onlyTitle("Stalker"), CatalogItemKind.MOVIE)).block();
         this.catalogMovieId = movie.getId().value();
 
         // id menor: versión vieja SIN archivo; id mayor: remux presente.

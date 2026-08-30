@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
@@ -58,10 +58,10 @@ public class UpdateCatalogItemUseCase {
      * una sola llamada. El resto de casos hace merge normal.
      */
     private Mono<CatalogItem> update(CatalogItem movie, UpdateCatalogItemCommand command) {
-        boolean switchedToVideo = command.kind() == MediaKind.VIDEO
-                && movie.getKind() == MediaKind.MOVIE;
-        boolean switchedToMovie = command.kind() == MediaKind.MOVIE
-                && movie.getKind() == MediaKind.VIDEO;
+        boolean switchedToVideo = command.kind() == CatalogItemKind.VIDEO
+                && movie.getKind() == CatalogItemKind.MOVIE;
+        boolean switchedToMovie = command.kind() == CatalogItemKind.MOVIE
+                && movie.getKind() == CatalogItemKind.VIDEO;
 
         CatalogMetadata merged = switchedToVideo
                 ? fromCommand(command)
@@ -79,7 +79,7 @@ public class UpdateCatalogItemUseCase {
 
     /** Metadata solo con lo que manda el usuario (sin proveedor): para el paso a VIDEO. */
     private static CatalogMetadata fromCommand(UpdateCatalogItemCommand command) {
-        if (command.kind() == MediaKind.VIDEO) {
+        if (command.kind() == CatalogItemKind.VIDEO) {
             return new VideoMetadata(command.title(), command.overview(), null);
         }
         return new MovieMetadata(

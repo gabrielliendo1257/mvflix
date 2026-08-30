@@ -11,7 +11,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
@@ -44,7 +44,7 @@ class DeleteCatalogItemUseCaseTest {
     private static CatalogItem movie(long id, String owner) {
         return new CatalogItem(
                 CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
-                77L, null, CatalogItemVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
+                77L, null, CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
     }
 
     @Test
@@ -145,7 +145,7 @@ class DeleteCatalogItemUseCaseTest {
     void alreadyDeletingMovieEnsuresDurableRequest() {
         CatalogItem movie = new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", CatalogItemStatus.DELETING, EnrichmentStatus.ENRICHED,
-                77L, null, CatalogItemVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
+                77L, null, CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));

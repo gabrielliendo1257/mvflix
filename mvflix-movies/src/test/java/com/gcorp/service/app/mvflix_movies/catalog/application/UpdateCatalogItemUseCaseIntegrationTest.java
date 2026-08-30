@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
@@ -44,7 +44,7 @@ class UpdateCatalogItemUseCaseIntegrationTest extends PostgresIntegrationTest {
         this.movieRepository
             .save(
                 CatalogItem.createDraft(
-                    "pepe", MovieMetadata.onlyTitle("Original title"), MediaKind.MOVIE))
+                    "pepe", MovieMetadata.onlyTitle("Original title"), CatalogItemKind.MOVIE))
             .block();
     this.databaseClient
         .sql(
@@ -61,7 +61,7 @@ class UpdateCatalogItemUseCaseIntegrationTest extends PostgresIntegrationTest {
 
     CatalogItem persisted = this.movieRepository.findById(movie.getId()).block();
     assertThat(persisted).isNotNull();
-    assertThat(persisted.getKind()).isEqualTo(MediaKind.MOVIE);
+    assertThat(persisted.getKind()).isEqualTo(CatalogItemKind.MOVIE);
     assertThat(persisted.getTitle()).isEqualTo("Original title");
     assertThat(persisted.getMetadata().title()).isEqualTo("Original title");
   }
@@ -82,7 +82,7 @@ class UpdateCatalogItemUseCaseIntegrationTest extends PostgresIntegrationTest {
         null,
         null,
         null,
-        MediaKind.VIDEO);
+        CatalogItemKind.VIDEO);
   }
 
   private void dropTestConstraint() {

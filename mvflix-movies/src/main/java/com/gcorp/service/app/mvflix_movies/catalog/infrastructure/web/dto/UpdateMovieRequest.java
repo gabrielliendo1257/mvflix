@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 
 import java.util.List;
 
@@ -26,4 +26,4 @@ public record UpdateMovieRequest(
     String language,
     List<String> awards,
     Double popularity,
-    MediaKind kind) {}
+    CatalogItemKind kind) {}

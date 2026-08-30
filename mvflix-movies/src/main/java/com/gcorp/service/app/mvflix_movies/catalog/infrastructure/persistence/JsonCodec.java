@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
 
 import org.springframework.stereotype.Component;
@@ -35,9 +35,9 @@ public class JsonCodec {
         }
     }
 
-    public CatalogMetadata decode(String json, MediaKind kind) {
+    public CatalogMetadata decode(String json, CatalogItemKind kind) {
         try {
-            if (kind == MediaKind.VIDEO) {
+            if (kind == CatalogItemKind.VIDEO) {
                 VideoMetadata video = this.objectMapper.readValue(json, VideoMetadata.class);
                 return video;
             }

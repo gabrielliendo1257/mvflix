@@ -21,7 +21,7 @@ class CatalogItemDeletionLifecycleTest {
         return new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", status, EnrichmentStatus.ENRICHED,
                 42L, MovieMetadata.onlyTitle("Dune"), CatalogItemVisibility.PRIVATE,
-                Set.of(), MediaKind.MOVIE);
+                Set.of(), CatalogItemKind.MOVIE);
     }
 
     @Test

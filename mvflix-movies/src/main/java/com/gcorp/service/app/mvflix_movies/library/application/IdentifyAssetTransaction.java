@@ -1,5 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.library.application;
 
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
+
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemCreator;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetAlreadyIdentifiedException;

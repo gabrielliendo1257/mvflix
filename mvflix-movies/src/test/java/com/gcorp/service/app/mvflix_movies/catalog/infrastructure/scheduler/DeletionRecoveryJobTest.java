@@ -5,7 +5,7 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogItemDeletionTransaction;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
@@ -30,7 +30,7 @@ class DeletionRecoveryJobTest {
     void ensuresDeletingMoviesAndReactivatesExhaustedOutbox() {
         CatalogItem movie = new CatalogItem(CatalogItemId.of(7L), "pepe", "Dune", CatalogItemStatus.DELETING,
                 EnrichmentStatus.ENRICHED, null, (MovieMetadata) null, CatalogItemVisibility.PRIVATE,
-                Set.of(), MediaKind.MOVIE);
+                Set.of(), CatalogItemKind.MOVIE);
         when(movieRepository.findDeletingForRecovery(25, Duration.ofMinutes(1))).thenReturn(Flux.just(movie));
         when(movieRepository.markRecoveryAttempt(movie.getId())).thenReturn(Mono.empty());
         when(transaction.ensureDeletionRequested(movie.getId())).thenReturn(Mono.empty());

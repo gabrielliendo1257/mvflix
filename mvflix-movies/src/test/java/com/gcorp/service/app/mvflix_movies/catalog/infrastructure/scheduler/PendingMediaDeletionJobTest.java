@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.ManagedMediaDeletionCoordinator;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
@@ -94,6 +94,6 @@ class PendingMediaDeletionJobTest {
     private static CatalogItem movie(long id) {
         return new CatalogItem(
                 CatalogItemId.of(id), "pepe", "Dune", CatalogItemStatus.DELETING, EnrichmentStatus.ENRICHED,
-                null, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
+                null, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), CatalogItemKind.MOVIE);
     }
 }

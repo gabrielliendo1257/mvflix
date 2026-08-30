@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
@@ -45,7 +45,7 @@ class UpdateCatalogItemAccessUseCaseTest {
         this.movie = new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", CatalogItemStatus.READY,
                 EnrichmentStatus.ENRICHED, null, null,
-                CatalogItemVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
+                CatalogItemVisibility.PRIVATE, java.util.Set.of(), CatalogItemKind.MOVIE);
         // Lenientes: el test de autorización corta el flujo antes de
         // consumir la cadena completa de stubs.
         org.mockito.Mockito.lenient()

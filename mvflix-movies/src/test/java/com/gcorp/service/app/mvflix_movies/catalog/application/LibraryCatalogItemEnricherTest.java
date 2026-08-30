@@ -4,7 +4,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
@@ -65,6 +65,6 @@ class LibraryCatalogItemEnricherTest {
                 null,
                 CatalogItemVisibility.PRIVATE,
                 Set.of(),
-                MediaKind.MOVIE);
+                CatalogItemKind.MOVIE);
     }
 }

@@ -18,7 +18,7 @@ class CatalogItemVisibilityPolicyTest {
     private static CatalogItem movie(CatalogItemVisibility visibility, Set<String> sharedWith) {
         return new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", CatalogItemStatus.READY,
-                EnrichmentStatus.ENRICHED, null, null, visibility, sharedWith, MediaKind.MOVIE);
+                EnrichmentStatus.ENRICHED, null, null, visibility, sharedWith, CatalogItemKind.MOVIE);
     }
 
     @Test
@@ -86,7 +86,7 @@ class CatalogItemVisibilityPolicyTest {
     void nullSharedWithIsTreatedAsEmpty() {
         CatalogItem movie = new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Dune", CatalogItemStatus.READY,
-                EnrichmentStatus.ENRICHED, null, null, CatalogItemVisibility.SHARED, null, MediaKind.MOVIE);
+                EnrichmentStatus.ENRICHED, null, null, CatalogItemVisibility.SHARED, null, CatalogItemKind.MOVIE);
         assertThat(movie.getSharedWith()).isEmpty();
         assertThat(movie.isVisibleTo("Pepe")).isFalse();
     }

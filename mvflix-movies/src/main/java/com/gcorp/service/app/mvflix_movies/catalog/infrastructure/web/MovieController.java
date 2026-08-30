@@ -15,7 +15,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.ListCatalogItemsU
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemAccessUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichCatalogItemUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.application.ManagedObjectIdLookup;
@@ -146,7 +146,7 @@ public class MovieController {
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<MovieResponse> create(@Valid @RequestBody CreateMovieRequest request) {
-        MediaKind kind = request.kind() == null ? MediaKind.MOVIE : request.kind();
+        CatalogItemKind kind = request.kind() == null ? CatalogItemKind.MOVIE : request.kind();
         return this.createMovieUseCase
                 .execute(new CreateCatalogItemCommand(this.mapper.toMetadata(request), kind))
                 .flatMap(this::response);
@@ -166,7 +166,7 @@ public class MovieController {
 
     private CreateIdentifiedDraftCommand toCommand(CreateIdentifiedDraftRequest request) {
         MovieMetadata metadata = this.mapper.toMetadata(request.draft());
-        if (request.tmdbId() != null && request.draft().kind() != MediaKind.VIDEO) {
+        if (request.tmdbId() != null && request.draft().kind() != CatalogItemKind.VIDEO) {
             metadata = metadata.withTmdbId(request.tmdbId());
         }
         return new CreateIdentifiedDraftCommand(

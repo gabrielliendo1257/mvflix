@@ -24,7 +24,7 @@ class MovieProviderLinkTest {
 
     @Test
     void linksProviderMetadataAndMarksMovieAsEnriched() {
-        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
+        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, CatalogItemKind.MOVIE);
 
         CatalogItem linked = movie.linkProviderMetadata(PROVIDER_METADATA);
 
@@ -36,7 +36,7 @@ class MovieProviderLinkTest {
     @Test
     void rejectsProviderLinkForNonMovieItem() {
         CatalogItem clip = CatalogItem.fromLibraryAsset(
-                "Javier", new VideoMetadata("Family clip", "Home video", Instant.parse("2024-01-01T00:00:00Z")), MediaKind.VIDEO);
+                "Javier", new VideoMetadata("Family clip", "Home video", Instant.parse("2024-01-01T00:00:00Z")), CatalogItemKind.VIDEO);
 
         assertThatThrownBy(() -> clip.linkProviderMetadata(PROVIDER_METADATA))
                 .isInstanceOf(CatalogItemConflictException.class);
@@ -45,7 +45,7 @@ class MovieProviderLinkTest {
     @Test
     void videoMetadataCannotBeStoredAsMovie() {
         assertThatThrownBy(() -> CatalogItem.createDraft(
-                "Javier", new VideoMetadata("Clip", "Description", null), MediaKind.MOVIE))
+                "Javier", new VideoMetadata("Clip", "Description", null), CatalogItemKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("metadata does not match catalog kind");
     }
@@ -53,7 +53,7 @@ class MovieProviderLinkTest {
     @Test
     void videoCannotUnlinkProvider() {
         CatalogItem clip = CatalogItem.fromLibraryAsset(
-                "Javier", new VideoMetadata("Family clip", "Home video", null), MediaKind.VIDEO);
+                "Javier", new VideoMetadata("Family clip", "Home video", null), CatalogItemKind.VIDEO);
 
         assertThatThrownBy(clip::unlinkProvider)
                 .isInstanceOf(CatalogItemConflictException.class);
@@ -61,7 +61,7 @@ class MovieProviderLinkTest {
 
     @Test
     void rejectsProviderMetadataWithoutStableId() {
-        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
+        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, CatalogItemKind.MOVIE);
 
         assertThatThrownBy(() -> movie.linkProviderMetadata(RAW_METADATA))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -69,7 +69,7 @@ class MovieProviderLinkTest {
 
     @Test
     void unlinksProviderAndPreservesManualMetadata() {
-        CatalogItem linked = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE)
+        CatalogItem linked = CatalogItem.createDraft("Javier", RAW_METADATA, CatalogItemKind.MOVIE)
                 .linkProviderMetadata(PROVIDER_METADATA);
 
         CatalogItem unlinked = linked.unlinkProvider();
@@ -84,7 +84,7 @@ class MovieProviderLinkTest {
 
     @Test
     void reclassifiesMovieAsOtherAndDropsProviderIdentity() {
-        CatalogItem linked = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE)
+        CatalogItem linked = CatalogItem.createDraft("Javier", RAW_METADATA, CatalogItemKind.MOVIE)
                 .linkProviderMetadata(PROVIDER_METADATA);
         MovieMetadata manualMetadata = new MovieMetadata(
                 "Grabación familiar", null, null, List.of(), null, null, null,
@@ -93,7 +93,7 @@ class MovieProviderLinkTest {
 
         CatalogItem reclassified = linked.reclassifyAsVideo(manualMetadata);
 
-        assertThat(reclassified.getKind()).isEqualTo(MediaKind.VIDEO);
+        assertThat(reclassified.getKind()).isEqualTo(CatalogItemKind.VIDEO);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(reclassified.getTitle()).isEqualTo("Grabación familiar");
         assertThat(reclassified.getMetadata()).isEqualTo(new VideoMetadata("Grabación familiar", "Metadata manual", null));
@@ -101,7 +101,7 @@ class MovieProviderLinkTest {
 
     @Test
     void rejectsReclassificationWithoutTitle() {
-        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
+        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, CatalogItemKind.MOVIE);
         MovieMetadata missingTitle = new MovieMetadata(
                 null, null, null, List.of(), null, null, null, List.of(), null,
                 null, null, null, null, List.of(), null);
@@ -117,11 +117,11 @@ class MovieProviderLinkTest {
                 "Imported clip", null, null, List.of(), 8.0, null, null,
                 List.of(), null, "/poster.jpg", null, null, null, List.of(), 99L);
         CatalogItem clip = CatalogItem.fromLibraryAsset(
-                "Javier", inconsistentProviderMetadata, MediaKind.VIDEO);
+                "Javier", inconsistentProviderMetadata, CatalogItemKind.VIDEO);
 
         CatalogItem reclassified = clip.reclassifyAsMovie();
 
-        assertThat(reclassified.getKind()).isEqualTo(MediaKind.MOVIE);
+        assertThat(reclassified.getKind()).isEqualTo(CatalogItemKind.MOVIE);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(reclassified.getMovieMetadata().tmdbId()).isNull();
         assertThat(reclassified.getMovieMetadata().posterPath()).isNull();

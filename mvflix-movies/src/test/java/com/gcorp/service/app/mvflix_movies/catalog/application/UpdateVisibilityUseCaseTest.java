@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
@@ -38,7 +38,7 @@ class UpdateVisibilityUseCaseTest {
     private static CatalogItem movie(long id, String owner, CatalogItemVisibility visibility) {
         return new CatalogItem(
                 CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
-                null, null, visibility, java.util.Set.of(), MediaKind.MOVIE);
+                null, null, visibility, java.util.Set.of(), CatalogItemKind.MOVIE);
     }
 
     @Test

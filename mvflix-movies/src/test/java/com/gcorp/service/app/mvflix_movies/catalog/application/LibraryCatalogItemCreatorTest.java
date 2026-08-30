@@ -6,13 +6,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemVisibility;
-import com.gcorp.service.app.mvflix_movies.library.application.CatalogItemKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,7 +61,7 @@ class LibraryCatalogItemCreatorTest {
         assertThat(newMovie.getStatus()).isEqualTo(CatalogItemStatus.READY);
         assertThat(newMovie.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(newMovie.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
-        assertThat(newMovie.getKind()).isEqualTo(MediaKind.MOVIE);
+        assertThat(newMovie.getKind()).isEqualTo(CatalogItemKind.MOVIE);
     }
 
     @Test
@@ -90,6 +89,6 @@ class LibraryCatalogItemCreatorTest {
 
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).save(captor.capture());
-        assertThat(captor.getValue().getKind()).isEqualTo(MediaKind.VIDEO);
+        assertThat(captor.getValue().getKind()).isEqualTo(CatalogItemKind.VIDEO);
     }
 }

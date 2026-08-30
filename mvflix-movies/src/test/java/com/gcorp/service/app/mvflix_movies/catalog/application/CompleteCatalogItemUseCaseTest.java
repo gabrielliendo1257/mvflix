@@ -7,7 +7,7 @@ import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvi
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.item.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemConflictException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
@@ -249,7 +249,7 @@ class CompleteCatalogItemUseCaseTest {
         MovieMetadata.onlyTitle("Dune"),
         CatalogItemVisibility.PRIVATE,
         Set.of(),
-        MediaKind.MOVIE);
+        CatalogItemKind.MOVIE);
   }
 
   private static final class StubUserProvider implements UserProvider {
