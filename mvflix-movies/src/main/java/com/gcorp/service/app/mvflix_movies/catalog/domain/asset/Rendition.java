@@ -35,14 +35,30 @@ public final class Rendition {
         return new Rendition(null, mediaAssetId, origin, null, profile, RenditionStatus.REQUESTED, null);
     }
 
+    public Rendition processing() {
+        requireStatus(RenditionStatus.REQUESTED, "processing");
+        return new Rendition(this.id, this.mediaAssetId, this.origin, this.storageObjectId, this.profile,
+                RenditionStatus.PROCESSING, this.technicalMetadata);
+    }
+
     public Rendition ready(StorageObjectId storageObjectId, RenditionTechnicalMetadata metadata) {
+        requireStatus(RenditionStatus.PROCESSING, "ready");
         return new Rendition(this.id, this.mediaAssetId, this.origin, storageObjectId, this.profile,
                 RenditionStatus.READY, metadata);
     }
 
     public Rendition failed() {
+        if (this.status != RenditionStatus.REQUESTED && this.status != RenditionStatus.PROCESSING) {
+            throw new IllegalStateException("Only requested or processing renditions can fail");
+        }
         return new Rendition(this.id, this.mediaAssetId, this.origin, this.storageObjectId, this.profile,
                 RenditionStatus.FAILED, this.technicalMetadata);
+    }
+
+    private void requireStatus(RenditionStatus expected, String target) {
+        if (this.status != expected) {
+            throw new IllegalStateException("Only " + expected + " renditions can become " + target);
+        }
     }
 
     public RenditionId getId() { return this.id; }

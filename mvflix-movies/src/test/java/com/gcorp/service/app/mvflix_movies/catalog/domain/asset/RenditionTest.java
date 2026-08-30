@@ -8,14 +8,30 @@ import org.junit.jupiter.api.Test;
 class RenditionTest {
 
     @Test
-    void requestedRenditionCanBecomeReadyOrFailed() {
+    void renditionFollowsProcessingLifecycle() {
         var requested = Rendition.requested(MediaAssetId.of(1L), RenditionOrigin.MEDIA_ASSET, "1080p");
 
         assertThat(requested.getStatus()).isEqualTo(RenditionStatus.REQUESTED);
-        assertThat(requested.ready(StorageObjectId.of(2L), new RenditionTechnicalMetadata(
+        var processing = requested.processing();
+        assertThat(processing.getStatus()).isEqualTo(RenditionStatus.PROCESSING);
+        assertThat(processing.ready(StorageObjectId.of(2L), new RenditionTechnicalMetadata(
                 "movie.mp4", 120L, "mp4", "h264", "1920x1080")).getStatus())
                 .isEqualTo(RenditionStatus.READY);
         assertThat(requested.failed().getStatus()).isEqualTo(RenditionStatus.FAILED);
+    }
+
+    @Test
+    void terminalStatesCannotTransitionAgain() {
+        var ready = Rendition.requested(MediaAssetId.of(1L), RenditionOrigin.MEDIA_ASSET, "1080p")
+                .processing().ready(StorageObjectId.of(2L), null);
+        var failed = Rendition.requested(MediaAssetId.of(1L), RenditionOrigin.MEDIA_ASSET, "720p").failed();
+
+        assertThatThrownBy(() -> ready.failed()).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> ready.processing()).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> failed.ready(StorageObjectId.of(3L), null))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> Rendition.requested(MediaAssetId.of(1L), RenditionOrigin.MEDIA_ASSET, "4k")
+                .ready(StorageObjectId.of(4L), null)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
