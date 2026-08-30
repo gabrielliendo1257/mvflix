@@ -2,12 +2,15 @@ package com.gcorp.service.app.mvflix_media_ingestion.infrastructure.http;
 
 import com.gcorp.service.app.mvflix_media_ingestion.application.DownstreamClients;
 import java.util.Map;
+import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
+import reactor.netty.http.client.HttpClient;
 import reactor.core.publisher.Mono;
 
 @Component
@@ -19,19 +22,35 @@ public class WebClientDownstreamClients implements DownstreamClients {
       @Value("${mvflix.downstream.movies-url:http://localhost:4040}") String moviesUrl,
       @Value("${mvflix.downstream.storage-url:http://localhost:6060}") String storageUrl,
       WebClient.Builder builder,
+      ReactiveOAuth2AuthorizedClientManager authorizedClientManager,
+      @Value("${mvflix.downstream.response-timeout-seconds:10}") long responseTimeoutSeconds) {
+    this.movies = client(builder, moviesUrl, authorizedClientManager, "movies", responseTimeoutSeconds);
+    this.storage = client(builder, storageUrl, authorizedClientManager, "storage", responseTimeoutSeconds);
+  }
+
+  public WebClientDownstreamClients(
+      String moviesUrl,
+      String storageUrl,
+      WebClient.Builder builder,
       ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
-    this.movies = client(builder, moviesUrl, authorizedClientManager, "movies");
-    this.storage = client(builder, storageUrl, authorizedClientManager, "storage");
+    this(moviesUrl, storageUrl, builder, authorizedClientManager, 10);
   }
 
   private WebClient client(
       WebClient.Builder builder,
       String baseUrl,
       ReactiveOAuth2AuthorizedClientManager manager,
-      String registrationId) {
+      String registrationId,
+      long responseTimeoutSeconds) {
     var oauth2 = new ServerOAuth2AuthorizedClientExchangeFilterFunction(manager);
     oauth2.setDefaultClientRegistrationId(registrationId);
-    return builder.clone().baseUrl(baseUrl).filter(oauth2).build();
+    var httpClient = HttpClient.create()
+        .responseTimeout(Duration.ofSeconds(responseTimeoutSeconds));
+    return builder.clone()
+        .baseUrl(baseUrl)
+        .clientConnector(new ReactorClientHttpConnector(httpClient))
+        .filter(oauth2)
+        .build();
   }
 
   @Override
