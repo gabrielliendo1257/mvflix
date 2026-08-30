@@ -16,6 +16,7 @@ import org.mapstruct.Mappings;
 @Mapper(componentModel = "spring")
 public interface MovieApiMapper {
 
+    @Mapping(target = "providerLink", ignore = true)
     MovieMetadata toMetadata(CreateMovieRequest request);
 
     UpdateCatalogItemCommand toCommand(UpdateMovieRequest request);
@@ -36,7 +37,7 @@ public interface MovieApiMapper {
         @Mapping(target = "releaseDate", source = "releaseDate"),
         @Mapping(target = "country", source = "country"),
         @Mapping(target = "language", source = "language"),
-        @Mapping(target = "tmdbId", source = "tmdbId")
+         @Mapping(target = "tmdbId", expression = "java(metadata.tmdbId())")
     })
     EnrichmentPreviewResponse toPreviewResponse(MovieMetadata metadata);
 
@@ -57,7 +58,7 @@ public interface MovieApiMapper {
          @Mapping(target = "country", source = "movieMetadataOrNull.country"),
          @Mapping(target = "language", source = "movieMetadataOrNull.language"),
          @Mapping(target = "awards", source = "movieMetadataOrNull.awards"),
-         @Mapping(target = "tmdbId", source = "movieMetadataOrNull.tmdbId")
+          @Mapping(target = "tmdbId", expression = "java(movie.getMovieMetadataOrNull() == null ? null : movie.getMovieMetadataOrNull().tmdbId())")
     })
     MovieResponse toResponse(CatalogItem movie);
 

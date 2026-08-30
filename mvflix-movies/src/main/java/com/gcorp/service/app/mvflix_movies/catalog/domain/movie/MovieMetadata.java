@@ -17,7 +17,26 @@ public record MovieMetadata(
     String country,
     String language,
     List<String> awards,
-    Long tmdbId) implements CatalogMetadata {
+    MovieProviderLink providerLink) implements CatalogMetadata {
+
+    /** Legacy construction boundary; the domain stores a typed provider link. */
+    public MovieMetadata(String title, String originalTitle, Integer year, List<String> genres,
+            Double popularity, String duration, String director, List<String> cast, String overview,
+            String posterPath, String releaseDate, String country, String language, List<String> awards,
+            Object legacyProviderId) {
+        this(title, originalTitle, year, genres, popularity, duration, director, cast, overview,
+                posterPath, releaseDate, country, language, awards,
+                legacyProviderId instanceof MovieProviderLink link
+                        ? link
+                        : legacyProviderId == null
+                                ? null
+                                : MovieProviderLink.tmdb(ExternalMovieId.of((Long) legacyProviderId)));
+    }
+
+    /** Numeric compatibility projection used only by existing application ports. */
+    public Long tmdbId() {
+        return this.providerLink == null ? null : this.providerLink.externalId().value();
+    }
 
     /**
      * Metadata minima del flujo de biblioteca: solo se conoce el titulo
@@ -52,7 +71,7 @@ public record MovieMetadata(
                 this.country,
                 this.language,
                 this.awards,
-                tmdbId);
+                tmdbId == null ? null : MovieProviderLink.tmdb(ExternalMovieId.of(tmdbId)));
     }
 
     /**
