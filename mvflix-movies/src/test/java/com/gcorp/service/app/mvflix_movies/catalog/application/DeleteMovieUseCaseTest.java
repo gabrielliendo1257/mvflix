@@ -8,7 +8,7 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
@@ -96,7 +96,7 @@ class DeleteMovieUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
         when(this.mediaRepository.findByMovieId(CatalogItemId.of(1L)))
-                .thenReturn(Mono.just(new Media(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
+                .thenReturn(Mono.just(new ManagedMediaAsset(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
         when(this.deletionTransaction.requestDeletion(CatalogItemId.of(1L)))
                 .thenReturn(Mono.just(movie));
 
@@ -114,7 +114,7 @@ class DeleteMovieUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
         when(this.mediaRepository.findByMovieId(CatalogItemId.of(1L)))
-                .thenReturn(Mono.just(new Media(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
+                .thenReturn(Mono.just(new ManagedMediaAsset(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
         RuntimeException failure = new RuntimeException("outbox unavailable");
         when(this.deletionTransaction.requestDeletion(CatalogItemId.of(1L)))
                 .thenReturn(Mono.error(failure));
@@ -131,7 +131,7 @@ class DeleteMovieUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
         when(this.mediaRepository.findByMovieId(CatalogItemId.of(1L)))
-                .thenReturn(Mono.just(new Media(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
+                .thenReturn(Mono.just(new ManagedMediaAsset(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
         when(this.deletionTransaction.requestDeletion(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
 
         StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L)))

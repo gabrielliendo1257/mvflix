@@ -9,7 +9,7 @@ import java.time.Instant;
  * {@code objectKey} es la referencia interna al storage: nunca se expone
  * al front; solo {@code objectId} viaja en las respuestas de la API.
  */
-public class Media {
+public class ManagedMediaAsset implements com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAsset {
 
     private final MediaId id;
     private final CatalogItemId movieId;
@@ -17,7 +17,7 @@ public class Media {
     private final String objectKey;
     private final Instant createdAt;
 
-    public Media(MediaId id, CatalogItemId movieId, Long objectId, String objectKey,
+    public ManagedMediaAsset(MediaId id, CatalogItemId movieId, Long objectId, String objectKey,
             Instant createdAt) {
         this.id = id;
         this.movieId = movieId;
@@ -26,8 +26,8 @@ public class Media {
         this.createdAt = createdAt;
     }
 
-    public static Media create(CatalogItemId movieId, Long objectId, String objectKey) {
-        return new Media(null, movieId, objectId, objectKey, Instant.now());
+    public static ManagedMediaAsset create(CatalogItemId movieId, Long objectId, String objectKey) {
+        return new ManagedMediaAsset(null, movieId, objectId, objectKey, Instant.now());
     }
 
     public MediaId getId() {
@@ -48,5 +48,15 @@ public class Media {
 
     public Instant getCreatedAt() {
         return this.createdAt;
+    }
+
+    @Override
+    public com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference playbackReference() {
+        return new com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference(this.objectKey);
+    }
+
+    @Override
+    public boolean isPlayable() {
+        return this.objectKey != null && !this.objectKey.isBlank();
     }
 }

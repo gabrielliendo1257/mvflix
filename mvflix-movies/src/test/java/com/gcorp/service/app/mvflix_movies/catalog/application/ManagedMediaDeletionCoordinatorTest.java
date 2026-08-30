@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectDeletion;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectReference;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
@@ -49,7 +49,7 @@ class ManagedMediaDeletionCoordinatorTest {
     @Test
     void deletesManagedObjectBeforeFinalizingCatalog() {
         CatalogItem movie = movie();
-        Media media = managedMedia();
+        ManagedMediaAsset media = managedMedia();
         when(this.movieRepository.findById(MOVIE_ID)).thenReturn(Mono.just(movie));
         when(this.mediaRepository.findByMovieId(MOVIE_ID)).thenReturn(Mono.just(media));
         when(this.storageDeletion.delete(new ManagedObjectReference(
@@ -105,8 +105,8 @@ class ManagedMediaDeletionCoordinatorTest {
                 42L, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
     }
 
-    private static Media managedMedia() {
-        return new Media(
+    private static ManagedMediaAsset managedMedia() {
+        return new ManagedMediaAsset(
                 MediaId.of(11L), MOVIE_ID, 42L, "Javier/videos/dune.mp4", Instant.now());
     }
 }

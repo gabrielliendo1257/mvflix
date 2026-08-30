@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
@@ -22,7 +22,7 @@ public class SpringDataMediaRepository implements MediaRepository {
     }
 
     @Override
-    public Mono<Media> save(Media media) {
+    public Mono<ManagedMediaAsset> save(ManagedMediaAsset media) {
         return this.databaseClient
                 .sql(
                         """
@@ -33,7 +33,7 @@ public class SpringDataMediaRepository implements MediaRepository {
                 .bind("movie_id", media.getMovieId().value())
                 .bind("object_id", media.getObjectId())
                 .bind("object_key", media.getObjectKey())
-                .map((row, metadata) -> new Media(
+                .map((row, metadata) -> new ManagedMediaAsset(
                         MediaId.of(row.get("id", Long.class)),
                         CatalogItemId.of(row.get("movie_id", Long.class)),
                         row.get("object_id", Long.class),
@@ -43,7 +43,7 @@ public class SpringDataMediaRepository implements MediaRepository {
     }
 
     @Override
-    public Mono<Media> findByMovieId(CatalogItemId movieId) {
+    public Mono<ManagedMediaAsset> findByMovieId(CatalogItemId movieId) {
         return this.databaseClient
                 .sql(
                         """
@@ -54,7 +54,7 @@ public class SpringDataMediaRepository implements MediaRepository {
                         LIMIT 1
                         """)
                 .bind("movie_id", movieId.value())
-                .map((row, metadata) -> new Media(
+                .map((row, metadata) -> new ManagedMediaAsset(
                         MediaId.of(row.get("id", Long.class)),
                         CatalogItemId.of(row.get("movie_id", Long.class)),
                         row.get("object_id", Long.class),

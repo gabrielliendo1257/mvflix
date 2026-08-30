@@ -6,7 +6,7 @@ import reactor.core.publisher.Mono;
 
 public interface MediaRepository {
 
-    Mono<Media> save(Media media);
+    Mono<ManagedMediaAsset> save(ManagedMediaAsset media);
 
-    Mono<Media> findByMovieId(CatalogItemId movieId);
+    Mono<ManagedMediaAsset> findByMovieId(CatalogItemId movieId);
 }

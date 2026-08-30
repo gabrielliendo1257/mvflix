@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
@@ -106,7 +106,7 @@ class CompleteMovieUseCaseTest {
   void repeatedCompletionWithSameObjectKeyIsIdempotent() {
     this.movieRepository.findByIdReturns(readyMovie(null), readyMovie(null));
     this.movieRepository.completeIfDraftReturnsEmpty();
-    this.mediaRepository.findByMovieIdReturns(Media.create(MOVIE_ID, 123L, OBJECT_KEY));
+    this.mediaRepository.findByMovieIdReturns(ManagedMediaAsset.create(MOVIE_ID, 123L, OBJECT_KEY));
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
         .assertNext(
@@ -127,7 +127,7 @@ class CompleteMovieUseCaseTest {
     this.movieRepository.findByIdReturns(readyMovie(null), readyMovie(null));
     this.movieRepository.completeIfDraftReturnsEmpty();
     this.mediaRepository.findByMovieIdReturns(
-        Media.create(MOVIE_ID, 123L, "movies/10/another.mp4"));
+        ManagedMediaAsset.create(MOVIE_ID, 123L, "movies/10/another.mp4"));
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
         .expectError(CatalogItemConflictException.class)
@@ -270,24 +270,24 @@ class CompleteMovieUseCaseTest {
 
   private static final class RecordingMediaRepository implements MediaRepository {
 
-    private final List<Media> savedMedia = new ArrayList<>();
+    private final List<ManagedMediaAsset> savedMedia = new ArrayList<>();
     private final List<CatalogItemId> findByMovieIdIds = new ArrayList<>();
-    private Function<Media, Mono<Media>> saveResult = Mono::just;
-    private Mono<Media> findByMovieIdResult = unexpectedMono("findByMovieId");
+    private Function<ManagedMediaAsset, Mono<ManagedMediaAsset>> saveResult = Mono::just;
+    private Mono<ManagedMediaAsset> findByMovieIdResult = unexpectedMono("findByMovieId");
 
     @Override
-    public Mono<Media> save(Media media) {
+    public Mono<ManagedMediaAsset> save(ManagedMediaAsset media) {
       this.savedMedia.add(media);
       return this.saveResult.apply(media);
     }
 
     @Override
-    public Mono<Media> findByMovieId(CatalogItemId movieId) {
+    public Mono<ManagedMediaAsset> findByMovieId(CatalogItemId movieId) {
       this.findByMovieIdIds.add(movieId);
       return this.findByMovieIdResult;
     }
 
-    private void findByMovieIdReturns(Media media) {
+    private void findByMovieIdReturns(ManagedMediaAsset media) {
       this.findByMovieIdResult = Mono.just(media);
     }
 

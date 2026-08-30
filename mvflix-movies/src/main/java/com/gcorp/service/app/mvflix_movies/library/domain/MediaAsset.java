@@ -2,9 +2,11 @@ package com.gcorp.service.app.mvflix_movies.library.domain;
 
 import java.time.Instant;
 
+import com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference;
+
 /**
  * Entrada de catalogo de una biblioteca del operador. Es la contraparte
- * "media server" de {@code Media} (que pertenece al flujo de upload): el
+ * "media server" de {@code ManagedMediaAsset} (que pertenece al flujo de upload): el
  * archivo no esta en el storage-managed del uploader sino en un root que el
  * operador confia al scan.
  *
@@ -16,7 +18,7 @@ import java.time.Instant;
  * base de la autorización de gestión (cada quien lista sus descubrimientos;
  * admin ve todo). Null en assets previos al sello = solo admin.
  */
-public class MediaAsset {
+public class MediaAsset implements com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAsset {
 
     private final MediaAssetId id;
     private final Long libraryId;
@@ -220,5 +222,15 @@ public class MediaAsset {
     /** Quién pidió el scan que lo trajo; null = previo al sello (solo admin). */
     public String getDiscoveredBy() {
         return this.discoveredBy;
+    }
+
+    @Override
+    public MediaAssetReference playbackReference() {
+        return new MediaAssetReference(this.relativePath);
+    }
+
+    @Override
+    public boolean isPlayable() {
+        return this.isIdentified() && this.isPresent();
     }
 }

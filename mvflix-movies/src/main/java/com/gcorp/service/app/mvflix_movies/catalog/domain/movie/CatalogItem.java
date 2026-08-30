@@ -384,7 +384,7 @@ public class CatalogItem {
     /**
      * Transición de dominio: un item en borrador pasa a lista cuando se le asigna su objeto.
      * Solo el {@code objectId} (referencia publica) vive en el agregado; la key del objeto
-     * es un secreto interno que queda en {@code Media}, nunca en CatalogItem.
+      * es un secreto interno que queda en {@code ManagedMediaAsset}, nunca en CatalogItem.
      */
     public CatalogItem complete(Long objectId) {
         requireNotDeleting("complete");

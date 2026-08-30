@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
@@ -51,7 +51,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
         CatalogItem movie = this.movieRepository.save(CatalogItem.createDraft(
                 "pepe", MovieMetadata.onlyTitle("Coraline"), MediaKind.MOVIE)).block();
 
-        this.mediaRepository.save(Media.create(movie.getId(), 42L, "pepe/coraline.mp4"))
+        this.mediaRepository.save(ManagedMediaAsset.create(movie.getId(), 42L, "pepe/coraline.mp4"))
                 .as(StepVerifier::create)
                 .expectNextCount(1)
                 .verifyComplete();

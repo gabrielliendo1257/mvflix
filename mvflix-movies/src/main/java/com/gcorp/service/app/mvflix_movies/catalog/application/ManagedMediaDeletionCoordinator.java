@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectDeletion;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectReference;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
@@ -43,7 +43,7 @@ public class ManagedMediaDeletionCoordinator {
                         .flatMap(ignored -> this.deletionTransaction.finalizeDeletion(movieId)));
     }
 
-    private ManagedObjectReference referenceOf(CatalogItem movie, Media media) {
+    private ManagedObjectReference referenceOf(CatalogItem movie, ManagedMediaAsset media) {
         return new ManagedObjectReference(
                 media.getObjectId(), movie.getOwnerUsername(), media.getObjectKey());
     }

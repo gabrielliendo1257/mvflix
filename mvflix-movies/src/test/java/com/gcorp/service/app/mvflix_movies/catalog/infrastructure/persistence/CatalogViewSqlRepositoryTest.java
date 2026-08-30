@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogItemView;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogPageView;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogReadQuery;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
@@ -58,7 +58,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
                 com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility.PRIVATE,
                 java.util.Set.of(), MediaKind.MOVIE)).block();
         this.managedId = movieRepository.findById(managed.getId()).block().getId().value();
-        this.mediaRepository.save(Media.create(managed.getId(), 42L, "k")).block();
+        this.mediaRepository.save(ManagedMediaAsset.create(managed.getId(), 42L, "k")).block();
         share(managed.getId().value(), "maria");
         share(managed.getId().value(), "pedro");
 
@@ -235,7 +235,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
     @Test
     void movieWithMultipleMediaRowsAppearsExactlyOnceAndPaginationStaysConsistent() {
         // Segunda fila de media para la misma película (trailer futuro, etc.).
-        this.mediaRepository.save(Media.create(
+        this.mediaRepository.save(ManagedMediaAsset.create(
                 com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.managedId),
                 43L, "k2")).block();
 
