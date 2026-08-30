@@ -29,8 +29,8 @@ public class LibraryCatalogItemEnricher implements CatalogItemEnricher {
                 .findById(movieId)
                 .switchIfEmpty(Mono.error(new CatalogItemNotFoundException(
                         "Movie not found: " + movieId.value())))
-                .flatMap(movie -> this.enrichMovieUseCase.enrich(
-                        movie, externalMetadataId))
+                .flatMap(movie -> this.enrichMovieUseCase.enrich(movie, externalMetadataId))
                 .then();
     }
+
 }

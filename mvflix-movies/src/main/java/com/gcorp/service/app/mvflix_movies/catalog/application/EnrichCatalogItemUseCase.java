@@ -8,6 +8,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieIdentification;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemNotFoundException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
 
@@ -116,6 +117,8 @@ public class EnrichCatalogItemUseCase {
     }
 
     public Mono<CatalogItem> enrich(CatalogItem movie, Long explicitTmdbId) {
+        MovieIdentification identification = explicitTmdbId == null
+                ? null : MovieIdentification.tmdb(explicitTmdbId);
         // El enriquecimiento solo aplica a items MOVIE; un VIDEO (media que no
         // representa una película) nunca se enriquece ni se matchea con TMDB.
         if (!movie.isMovie()) {
@@ -129,8 +132,8 @@ public class EnrichCatalogItemUseCase {
             return Mono.just(movie);
         }
 
-        Long tmdbId = explicitTmdbId != null
-                ? explicitTmdbId
+        Long tmdbId = identification != null
+                ? identification.tmdbId()
                 : movie.getMovieMetadata().tmdbId();
         Mono<ExternalMovieDetail> detail = Mono.defer(() -> tmdbId != null
                 ? this.metadataSource.findById(tmdbId)
@@ -154,6 +157,11 @@ public class EnrichCatalogItemUseCase {
                             movie.getId().value());
                     return Mono.just(movie);
                 }));
+    }
+
+    /** Variante interna que recibe la identidad de proveedor ya validada. */
+    public Mono<CatalogItem> enrichIdentified(CatalogItem movie, MovieIdentification identification) {
+        return this.enrich(movie, identification == null ? null : identification.tmdbId());
     }
 
     /**

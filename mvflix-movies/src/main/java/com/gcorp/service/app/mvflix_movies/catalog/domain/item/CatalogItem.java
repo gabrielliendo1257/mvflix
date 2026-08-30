@@ -4,6 +4,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Default;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieIdentification;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
 
 import java.util.Set;
@@ -19,6 +20,7 @@ public class CatalogItem {
     private final CatalogItemVisibility visibility;
     private final Set<String> sharedWith;
     private final CatalogItemKind kind;
+    private final MovieIdentification identification;
 
     @Default
     public CatalogItem(
@@ -46,6 +48,8 @@ public class CatalogItem {
         if (this.metadata != null && !matchesKind(this.metadata, this.kind)) {
             throw new IllegalArgumentException("metadata does not match catalog kind");
         }
+        this.identification = metadata instanceof MovieMetadata movie && movie.providerLink() != null
+                ? MovieIdentification.of(movie) : null;
     }
 
     /** Source compatibility for callers that still provide the owner username. */
@@ -206,6 +210,11 @@ public class CatalogItem {
     /** Safe nullable accessor for projections that also contain VIDEO items. */
     public MovieMetadata getMovieMetadataOrNull() {
         return this.metadata instanceof MovieMetadata movieMetadata ? movieMetadata : null;
+    }
+
+    /** Identidad externa tipada; null mientras la pelicula no esta identificada. */
+    public MovieIdentification getIdentification() {
+        return this.identification;
     }
 
     public CatalogItemVisibility getVisibility() {
@@ -434,6 +443,7 @@ public class CatalogItem {
         if (providerMetadata == null || providerMetadata.tmdbId() == null) {
             throw new IllegalArgumentException("provider metadata id is required");
         }
+        MovieIdentification.of(providerMetadata);
         requireMetadata(providerMetadata, CatalogItemKind.MOVIE);
         return new CatalogItem(
                 this.id,
@@ -445,6 +455,18 @@ public class CatalogItem {
                 this.visibility,
                 this.sharedWith,
                 this.kind);
+    }
+
+    /** Vincula una identidad y su metadata confirmada en una sola transicion. */
+    public CatalogItem identify(MovieIdentification identification) {
+        requireNotDeleting("identify");
+        if (!isMovie()) {
+            throw new CatalogItemConflictException("Only movie items can be identified");
+        }
+        if (identification == null || identification.metadata() == null) {
+            throw new IllegalArgumentException("identified movie metadata is required");
+        }
+        return linkProviderMetadata(identification.metadata());
     }
 
     /** Desvincula el proveedor y devuelve el item a RAW conservando metadata manual. */
