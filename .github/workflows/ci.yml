@@ -49,12 +49,12 @@ jobs:
           prom/prometheus:v3.5.0
           check rules /etc/prometheus/rules/mvflix-alerts.yml
 
-      - name: Build Activity image
+      - name: Build service images
         run: >-
           docker compose
           --env-file infra/docker/container-versions.env
           -f e2e/docker-compose-e2e.yml
-          build activity
+          build activity media-ingestion
 
       - name: Maven reactor tests
         run: ./mvnw -B -ntp test
