@@ -2,8 +2,8 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.ManagedMediaAsset;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;

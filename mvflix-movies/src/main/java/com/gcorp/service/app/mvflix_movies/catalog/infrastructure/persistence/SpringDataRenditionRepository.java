@@ -1,13 +1,13 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaAssetId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Rendition;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.RenditionId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.RenditionOrigin;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.RenditionRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.RenditionStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.RenditionTechnicalMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.StorageObjectId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.MediaAssetId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.Rendition;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.RenditionId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.RenditionOrigin;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.RenditionRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.RenditionStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.RenditionTechnicalMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.StorageObjectId;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;

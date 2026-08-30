@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.catalog.domain.media;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.asset;
 
 import java.util.Objects;
 

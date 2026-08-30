@@ -1,4 +1,4 @@
-package com.gcorp.service.app.mvflix_movies.catalog.domain.media;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.asset;
 
 /** Optional facts produced while inspecting or transcoding a rendition. */
 public record RenditionTechnicalMetadata(

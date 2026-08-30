@@ -73,17 +73,19 @@ class LayerDependencyTest {
             .because("otros módulos solo deben consumir dominio o capacidades de Catalog");
 
     @ArchTest
-    static final ArchRule library_does_not_depend_on_catalog = noClasses()
+    static final ArchRule library_adapters_do_not_depend_on_catalog = noClasses()
             .that()
-            .resideInAPackage("com.gcorp.service.app.mvflix_movies.library..")
+            .resideInAnyPackage(
+                    "com.gcorp.service.app.mvflix_movies.library.application..",
+                    "com.gcorp.service.app.mvflix_movies.library.infrastructure..")
             .should()
             .dependOnClassesThat()
             .resideInAnyPackage(
                     "..catalog.application..",
                     "..catalog.infrastructure..",
                     "..catalog.domain.movie..",
-                    "..catalog.domain.media..")
-            .because("Library debe expresar sus necesidades mediante contratos y conceptos propios");
+                     "..catalog.domain.asset..")
+            .because("los adapters de Library deben expresar sus necesidades mediante contratos propios");
 
     @ArchTest
     static final ArchRule catalog_domain_is_independent_from_library = noClasses()

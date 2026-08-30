@@ -20,7 +20,7 @@ import com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReferen
  * base de la autorización de gestión (cada quien lista sus descubrimientos;
  * admin ve todo). Null en assets previos al sello = solo admin.
  */
-public class MediaAsset implements com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAsset {
+public class MediaAsset implements com.gcorp.service.app.mvflix_movies.catalog.domain.asset.MediaAsset {
 
     private final MediaAssetId id;
     private final Long libraryId;

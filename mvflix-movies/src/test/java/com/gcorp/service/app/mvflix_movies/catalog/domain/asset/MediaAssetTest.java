@@ -1,12 +1,12 @@
-package com.gcorp.service.app.mvflix_movies.shared.domain.media;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.asset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
+import com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference;
 
 import java.time.Instant;
 

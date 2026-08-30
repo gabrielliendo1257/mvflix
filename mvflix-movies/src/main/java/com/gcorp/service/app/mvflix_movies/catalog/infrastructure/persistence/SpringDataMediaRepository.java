@@ -1,9 +1,9 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.StorageObjectId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.ManagedMediaAsset;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.MediaId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.MediaRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.StorageObjectId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 
 import org.springframework.r2dbc.core.DatabaseClient;

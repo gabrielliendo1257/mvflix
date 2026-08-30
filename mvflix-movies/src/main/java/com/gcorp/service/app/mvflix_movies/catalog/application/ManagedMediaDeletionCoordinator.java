@@ -2,8 +2,8 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectDeletion;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectReference;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.ManagedMediaAsset;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.ManagedMediaAsset;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;

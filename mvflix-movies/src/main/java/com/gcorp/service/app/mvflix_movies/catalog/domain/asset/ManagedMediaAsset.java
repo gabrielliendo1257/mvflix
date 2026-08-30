@@ -1,6 +1,7 @@
-package com.gcorp.service.app.mvflix_movies.catalog.domain.media;
+package com.gcorp.service.app.mvflix_movies.catalog.domain.asset;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference;
 
 import java.time.Instant;
 
@@ -9,7 +10,7 @@ import java.time.Instant;
  * {@code objectKey} es la referencia interna al storage: nunca se expone
  * al front; solo {@code objectId} viaja en las respuestas de la API.
  */
-public class ManagedMediaAsset implements com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAsset {
+public class ManagedMediaAsset implements MediaAsset {
 
     private final MediaId id;
     private final CatalogItemId movieId;
@@ -92,8 +93,8 @@ public class ManagedMediaAsset implements com.gcorp.service.app.mvflix_movies.sh
     }
 
     @Override
-    public com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference playbackReference() {
-        return new com.gcorp.service.app.mvflix_movies.shared.domain.media.MediaAssetReference(this.objectKey);
+    public MediaAssetReference playbackReference() {
+        return new MediaAssetReference(this.objectKey);
     }
 
     @Override

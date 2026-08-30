@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryAssetLinks;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedDeletionOutbox;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedMediaDeletionRequested;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.asset.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.item.CatalogItemRepository;
