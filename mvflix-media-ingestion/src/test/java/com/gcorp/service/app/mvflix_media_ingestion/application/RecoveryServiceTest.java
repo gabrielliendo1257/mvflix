@@ -49,6 +49,24 @@ class RecoveryServiceTest {
   }
 
   @Test
+  void completedUploadNeedsReconciliationWhenCatalogFinalizationFails() {
+    var f = fixture(MediaIngestion.Phase.PREPARING_UPLOAD);
+    when(f.clients.storageStatus("9", "actor"))
+        .thenReturn(Mono.just(new DownstreamClients.StorageStatus("COMPLETED", 9L, "object")));
+    when(f.repository.compareAndSet(any(), any())).thenReturn(Mono.just(true));
+    when(f.repository.find(f.ingestion.ingestionId())).thenReturn(Mono.just(f.ingestion));
+    when(f.clients.completeCatalog(3L, "object", 9L, "actor"))
+        .thenReturn(Mono.error(new IllegalStateException("Movies unavailable")));
+
+    f.service.recover(f.ingestion).block();
+
+    verify(f.repository)
+        .compareAndSet(any(), argThat(i -> i.phase() == MediaIngestion.Phase.RECONCILIATION_REQUIRED));
+    verifyNoInteractions(f.compensations);
+    verifyNoInteractions(f.outbox);
+  }
+
+  @Test
   void earlyPhaseIsFailedWithoutRecreatingDraft() {
     var f = fixture(MediaIngestion.Phase.PREPARING_CATALOG);
     when(f.repository.compareAndSet(eq(f.ingestion), any())).thenReturn(Mono.just(true));

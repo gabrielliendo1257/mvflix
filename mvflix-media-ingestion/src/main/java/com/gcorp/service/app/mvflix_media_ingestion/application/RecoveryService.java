@@ -110,13 +110,15 @@ public class RecoveryService {
 
    private Mono<MediaIngestion> finishCompletedUpload(
        MediaIngestion i, DownstreamClients.StorageStatus storage) {
-     if (i.catalogItemId() == null) {
-       return mark(i, Phase.FAILED, "upload is completed but catalog identity is unavailable");
+      if (i.catalogItemId() == null) {
+        return mark(i, Phase.RECONCILIATION_REQUIRED,
+            "upload is completed but catalog identity is unavailable");
      }
      Long objectId = i.storageId() != null ? i.storageId() : storage.objectId();
      String objectKey = i.storageKey() != null ? i.storageKey() : storage.objectKey();
-     if (objectId == null || objectKey == null) {
-       return mark(i, Phase.FAILED, "upload is completed but object identity is unavailable");
+      if (objectId == null || objectKey == null) {
+        return mark(i, Phase.RECONCILIATION_REQUIRED,
+            "upload is completed but object identity is unavailable");
      }
      var finalizing = new MediaIngestion(
          i.ingestionId(), i.actorId(), i.catalogItemId(), i.uploadId(),
@@ -130,8 +132,9 @@ public class RecoveryService {
              ? clients.completeCatalog(i.catalogItemId(), objectKey, objectId, i.actorId())
                  .then(complete(finalizing))
              : Mono.error(new IllegalStateException("recovery CAS failed")))
-         .onErrorResume(error -> mark(
-             finalizing, Phase.FAILED, "completed upload finalization failed: " + error));
+          .onErrorResume(error -> mark(
+              finalizing, Phase.RECONCILIATION_REQUIRED,
+              "completed upload finalization requires reconciliation: " + error));
    }
 
   private Mono<MediaIngestion> complete(MediaIngestion i) {
