@@ -8,9 +8,9 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +25,7 @@ import reactor.test.StepVerifier;
 class DeleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   @Autowired private DeleteMovieUseCase useCase;
-  @Autowired private MovieRepository movieRepository;
+  @Autowired private CatalogItemRepository movieRepository;
   @Autowired private MediaAssetRepository mediaAssetRepository;
   @Autowired private DatabaseClient databaseClient;
 
@@ -37,10 +37,10 @@ class DeleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   @Test
   void deletingMovieLeavesItsLibraryAssetUnidentified() {
-    Movie movie =
+    CatalogItem movie =
         this.movieRepository
             .save(
-                Movie.fromLibraryAsset(
+                CatalogItem.fromLibraryAsset(
                     "pepe", MovieMetadata.onlyTitle("Dune"), MediaKind.MOVIE))
             .block();
     MediaAsset discovered =

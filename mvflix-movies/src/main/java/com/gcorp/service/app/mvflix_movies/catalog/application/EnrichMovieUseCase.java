@@ -5,11 +5,11 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovi
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.MetadataSource;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,27 +25,27 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EnrichMovieUseCase {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final MetadataSource metadataSource;
     private final UserProvider userProvider;
 
     /** Variante HTTP: resuelve la pelicula del usuario autenticado y la enriquece. */
-    public Mono<Movie> enrichCurrentUser(MovieId id) {
+    public Mono<CatalogItem> enrichCurrentUser(CatalogItemId id) {
         return this.enrichCurrentUser(id, null);
     }
 
     /**
-     * Como {@link #enrichCurrentUser(MovieId)} pero si {@code explicitTmdbId} viene,
+     * Como {@link #enrichCurrentUser(CatalogItemId)} pero si {@code explicitTmdbId} viene,
      * el usuario ya eligio el candidato en la UI y se salta el match automatico.
      */
-    public Mono<Movie> enrichCurrentUser(MovieId id, Long explicitTmdbId) {
+    public Mono<CatalogItem> enrichCurrentUser(CatalogItemId id, Long explicitTmdbId) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
                         .findById(id)
                         .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(
-                                new MovieNotFoundException("Movie not found: " + id.value())))
+                                new CatalogItemNotFoundException("Movie not found: " + id.value())))
                         .flatMap(movie -> this.enrich(movie, explicitTmdbId)));
     }
 
@@ -54,15 +54,15 @@ public class EnrichMovieUseCase {
      * y la devuelve a RAW para que el usuario rellene sus propios datos (media que
      * no representa una película). Solo el dueño.
      */
-    public Mono<Movie> unlinkCurrentUser(MovieId id) {
+    public Mono<CatalogItem> unlinkCurrentUser(CatalogItemId id) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
                         .findById(id)
                         .filter(movie -> movie.isOwnedBy(user.subject()))
                         .switchIfEmpty(Mono.error(
-                                new MovieNotFoundException("Movie not found: " + id.value())))
-                        .map(Movie::unlinkProvider)
+                                new CatalogItemNotFoundException("Movie not found: " + id.value())))
+                        .map(CatalogItem::unlinkProvider)
                         .flatMap(this.movieRepository::updateEnrichment)
                         .doOnNext(unlinked -> log.info(
                                 "Pelicula {} desvinculada del proveedor: queda RAW",
@@ -111,11 +111,11 @@ public class EnrichMovieUseCase {
      * idempotente (si ya ENRICHED no toca nada), matchea por tmdbId explícito,
      * por tmdbId persistido o por titulo+año; sin match deja la pelicula en RAW.
      */
-    public Mono<Movie> enrich(Movie movie) {
+    public Mono<CatalogItem> enrich(CatalogItem movie) {
         return this.enrich(movie, null);
     }
 
-    public Mono<Movie> enrich(Movie movie, Long explicitTmdbId) {
+    public Mono<CatalogItem> enrich(CatalogItem movie, Long explicitTmdbId) {
         // El enriquecimiento solo aplica a items MOVIE; un VIDEO (media que no
         // representa una película) nunca se enriquece ni se matchea con TMDB.
         if (!movie.isMovie()) {
@@ -143,7 +143,7 @@ public class EnrichMovieUseCase {
                     MovieMetadata metadata = isReMatch(movie, explicitTmdbId)
                             ? fromDetail(d)
                             : merge(movie.getMetadata(), d);
-                    Movie linked = movie.linkProviderMetadata(metadata);
+                    CatalogItem linked = movie.linkProviderMetadata(metadata);
                     return this.movieRepository.updateEnrichment(linked);
                 })
                 .doOnNext(enriched -> log.info(
@@ -161,7 +161,7 @@ public class EnrichMovieUseCase {
      * la metadata se reemplaza por completo desde el nuevo detalle (sin conservar
      * campos viejos); si es el mismo o es el primer enrich, se fusiona.
      */
-    private static boolean isReMatch(Movie movie, Long explicitTmdbId) {
+    private static boolean isReMatch(CatalogItem movie, Long explicitTmdbId) {
         return explicitTmdbId != null
                 && movie.getMetadata().tmdbId() != null
                 && !explicitTmdbId.equals(movie.getMetadata().tmdbId());

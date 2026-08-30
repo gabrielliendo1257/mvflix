@@ -1,10 +1,10 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 
 import lombok.RequiredArgsConstructor;
@@ -27,22 +27,22 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CreateIdentifiedDraftUseCase {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
 
-    public Mono<Movie> execute(CreateIdentifiedDraftCommand command) {
-        MovieVisibility visibility = command.visibility() == null
-                ? MovieVisibility.PRIVATE
+    public Mono<CatalogItem> execute(CreateIdentifiedDraftCommand command) {
+        CatalogItemVisibility visibility = command.visibility() == null
+                ? CatalogItemVisibility.PRIVATE
                 : command.visibility();
         List<String> cleanShared = clean(command.sharedWith());
-        if (visibility == MovieVisibility.SHARED && cleanShared.isEmpty()) {
+        if (visibility == CatalogItemVisibility.SHARED && cleanShared.isEmpty()) {
             return Mono.error(new IllegalArgumentException(
                     "SHARED requiere al menos un username en usernames"));
         }
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> {
-                    Movie draft = buildIdentifiedDraft(user.subject(), command)
+                    CatalogItem draft = buildIdentifiedDraft(user.subject(), command)
                             .withVisibility(visibility)
                             .withSharedWith(java.util.Set.copyOf(cleanShared));
                     return this.movieRepository.saveDraftWithAccess(draft);
@@ -57,9 +57,9 @@ public class CreateIdentifiedDraftUseCase {
      * Identidad del proveedor: para MOVIE el tmdbId es obligatorio (el flujo
      * guiado nace de un candidato); VIDEO no se identifica con TMDB.
      */
-    private Movie buildIdentifiedDraft(String owner, CreateIdentifiedDraftCommand command) {
+    private CatalogItem buildIdentifiedDraft(String owner, CreateIdentifiedDraftCommand command) {
         MediaKind kind = command.kind() == null ? MediaKind.MOVIE : command.kind();
-        Movie draft = Movie.createDraft(owner, command.metadata(), kind);
+        CatalogItem draft = CatalogItem.createDraft(owner, command.metadata(), kind);
         if (kind == MediaKind.MOVIE) {
             if (command.metadata().tmdbId() == null) {
                 throw new IllegalArgumentException(

@@ -3,8 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
@@ -32,18 +31,21 @@ class LibraryMovieIdsAdapterTest {
     @Test
     void returnsDistinctIdentifiedMovieIdsAcrossLibraries() {
         when(this.mediaAssetRepository.findAllByLibraryId(7L))
-                .thenReturn(Flux.just(asset(1L, 7L, CatalogItemId.of(10L)), asset(2L, 7L, null)));
+                 .thenReturn(Flux.just(asset(1L, 7L,
+                         com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(10L)), asset(2L, 7L, null)));
         when(this.mediaAssetRepository.findAllByLibraryId(8L))
-                .thenReturn(Flux.just(asset(3L, 8L, CatalogItemId.of(10L)),
-                        asset(4L, 8L, CatalogItemId.of(11L))));
+                 .thenReturn(Flux.just(asset(3L, 8L,
+                         com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(10L)),
+                         asset(4L, 8L, com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(11L))));
 
         StepVerifier.create(this.adapter.findIdentifiedByLibraryIds(List.of(7L, 8L)).collectList())
                 .assertNext(ids -> assertThat(ids)
-                        .containsExactly(MovieId.of(10L), MovieId.of(11L)))
+                         .containsExactly(CatalogItemId.of(10L), CatalogItemId.of(11L)))
                 .verifyComplete();
     }
 
-    private static MediaAsset asset(long id, long libraryId, CatalogItemId catalogItemId) {
+    private static MediaAsset asset(long id, long libraryId,
+            com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId catalogItemId) {
         Instant now = Instant.parse("2026-08-22T00:00:00Z");
         return new MediaAsset(
                 MediaAssetId.of(id), libraryId, "movie-" + id + ".mkv", 100L,

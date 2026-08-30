@@ -2,7 +2,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieCommand;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CreateMovieRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.EnrichMovieSearchResponse;
@@ -59,5 +59,5 @@ public interface MovieApiMapper {
         @Mapping(target = "awards", source = "metadata.awards"),
         @Mapping(target = "tmdbId", source = "metadata.tmdbId")
     })
-    MovieResponse toResponse(Movie movie);
+    MovieResponse toResponse(CatalogItem movie);
 }

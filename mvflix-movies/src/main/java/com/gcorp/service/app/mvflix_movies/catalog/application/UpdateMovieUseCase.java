@@ -2,11 +2,11 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,7 +20,7 @@ import java.util.List;
 
 /**
  * Edición manual de la metadata de una película (título, año, sinopsis, ...) sin
- * depender de la fuente externa. Solo el dueño (lo decide {@link Movie#isOwnedBy(String)});
+ * depender de la fuente externa. Solo el dueño (lo decide {@link CatalogItem#isOwnedBy(String)});
  * el resto ve 403/404 sin revelar existencia, igual que el resto del catálogo.
  * Semántica de merge: campos {@code null} del command conservan el valor actual.
  */
@@ -29,23 +29,23 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UpdateMovieUseCase {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
 
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<Movie> execute(MovieId id, UpdateMovieCommand command) {
+    public Mono<CatalogItem> execute(CatalogItemId id, UpdateMovieCommand command) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
                         .findById(id)
-                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
+                        .switchIfEmpty(Mono.error(new CatalogItemAccessDeniedException(
                                 "Movie not accessible: " + id.value())))
                         .filter(movie -> movie.isOwnedBy(user.subject()) || user.isAdmin())
-                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
-                                "Movie not owned: " + id.value())))
+                        .switchIfEmpty(Mono.error(new CatalogItemAccessDeniedException(
+                                "CatalogItem not owned: " + id.value())))
                         .flatMap(movie -> this.update(movie, command))
                         .doOnNext(updated -> log.info(
-                                "Movie {} metadata actualizada manualmente{}",
+                                "CatalogItem {} metadata actualizada manualmente{}",
                                 id.value(),
                                 updated.isOwnedBy(user.subject()) ? "" : " (moderacion)")));
     }
@@ -55,7 +55,7 @@ public class UpdateMovieUseCase {
      * (solo queda lo que el usuario manda, sin proveedor) y revierte a RAW, todo en
      * una sola llamada. El resto de casos hace merge normal.
      */
-    private Mono<Movie> update(Movie movie, UpdateMovieCommand command) {
+    private Mono<CatalogItem> update(CatalogItem movie, UpdateMovieCommand command) {
         boolean switchedToVideo = command.kind() == MediaKind.VIDEO
                 && movie.getKind() == MediaKind.MOVIE;
 
@@ -63,7 +63,7 @@ public class UpdateMovieUseCase {
                 ? fromCommand(command)
                 : merge(movie.getMetadata(), command);
 
-        Movie edited = switchedToVideo
+        CatalogItem edited = switchedToVideo
                 ? movie.reclassifyAsVideo(merged)
                 : movie.withMetadata(merged);
 

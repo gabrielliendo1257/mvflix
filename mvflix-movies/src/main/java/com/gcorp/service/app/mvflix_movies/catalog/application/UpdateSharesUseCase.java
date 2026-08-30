@@ -1,10 +1,10 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,7 @@ import java.util.Set;
 
 /**
  * Reemplaza la lista de usuarios con quienes se comparte una pelicula
- * (visibilidad SHARED). Solo el dueño (lo decide {@link Movie#isOwnedBy(String)});
+ * (visibilidad SHARED). Solo el dueño (lo decide {@link CatalogItem#isOwnedBy(String)});
  * el resto ve 403.
  */
 @Slf4j
@@ -26,10 +26,10 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class UpdateSharesUseCase {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
 
-    public Mono<Movie> execute(MovieId id, List<String> usernames) {
+    public Mono<CatalogItem> execute(CatalogItemId id, List<String> usernames) {
         List<String> clean = usernames == null
                 ? List.of()
                 : usernames.stream()
@@ -40,15 +40,15 @@ public class UpdateSharesUseCase {
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
                         .findById(id)
-                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
+                        .switchIfEmpty(Mono.error(new CatalogItemAccessDeniedException(
                                 "Movie not accessible: " + id.value())))
                         .filter(movie -> movie.isOwnedBy(user.subject()))
-                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
-                                "Movie not owned: " + id.value())))
+                        .switchIfEmpty(Mono.error(new CatalogItemAccessDeniedException(
+                                "CatalogItem not owned: " + id.value())))
                         .map(movie -> movie.withSharedWith(Set.copyOf(clean)))
                         .flatMap(this.movieRepository::replaceShares)
                         .doOnNext(updated -> log.info(
-                                "Movie {} compartida con {}",
+                                "CatalogItem {} compartida con {}",
                                 id.value(), clean)));
     }
 }

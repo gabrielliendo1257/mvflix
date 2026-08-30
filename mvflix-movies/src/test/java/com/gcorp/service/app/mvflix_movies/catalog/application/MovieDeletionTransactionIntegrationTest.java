@@ -2,10 +2,10 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieConflictException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemConflictException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -23,7 +23,7 @@ import reactor.test.StepVerifier;
 class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
 
     @Autowired private MovieDeletionTransaction transaction;
-    @Autowired private MovieRepository movieRepository;
+    @Autowired private CatalogItemRepository movieRepository;
     @Autowired private CompleteMovieUseCase completeMovieUseCase;
     @Autowired private DatabaseClient databaseClient;
 
@@ -108,9 +108,9 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         Long movie = this.insertMovie("READY");
         this.insertMedia(movie, 1L, "pepe/videos/mark.mp4");
 
-        StepVerifier.create(this.transaction.requestDeletion(MovieId.of(movie)))
+        StepVerifier.create(this.transaction.requestDeletion(CatalogItemId.of(movie)))
                 .assertNext(deleting ->
-                        assertThat(deleting.getStatus()).isEqualTo(MovieStatus.DELETING))
+                        assertThat(deleting.getStatus()).isEqualTo(CatalogItemStatus.DELETING))
                 .verifyComplete();
 
         StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
@@ -136,8 +136,8 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         Long movie = this.insertMovie("READY");
         this.insertMedia(movie, 2L, "pepe/videos/second.mp4");
 
-        this.transaction.requestDeletion(MovieId.of(movie)).block();
-        StepVerifier.create(this.transaction.requestDeletion(MovieId.of(movie)))
+        this.transaction.requestDeletion(CatalogItemId.of(movie)).block();
+        StepVerifier.create(this.transaction.requestDeletion(CatalogItemId.of(movie)))
                 .verifyComplete();
 
         StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
@@ -149,9 +149,9 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         Long movie = this.insertMovie("DELETING");
         this.insertMedia(movie, 2L, "pepe/videos/legacy.mp4");
 
-        StepVerifier.create(this.transaction.ensureDeletionRequested(MovieId.of(movie)))
+        StepVerifier.create(this.transaction.ensureDeletionRequested(CatalogItemId.of(movie)))
                 .verifyComplete();
-        StepVerifier.create(this.transaction.ensureDeletionRequested(MovieId.of(movie)))
+        StepVerifier.create(this.transaction.ensureDeletionRequested(CatalogItemId.of(movie)))
                 .verifyComplete();
 
         StepVerifier.create(this.outboxCount(movie)).expectNext(1L).verifyComplete();
@@ -161,7 +161,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
     void deleteIfDeletingDoesNotDeleteReadyMovie() {
         Long movie = this.insertMovie("READY");
 
-        StepVerifier.create(this.movieRepository.deleteIfDeleting(MovieId.of(movie)))
+        StepVerifier.create(this.movieRepository.deleteIfDeleting(CatalogItemId.of(movie)))
                 .expectNext(false)
                 .verifyComplete();
 
@@ -174,12 +174,12 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         this.insertMedia(movie, 1L, "pepe/videos/dune.mp4");
         this.insertAsset(movie, "Movies/dune.mkv");
         this.insertShare(movie, "maria");
-        this.transaction.requestDeletion(MovieId.of(movie)).block();
+        this.transaction.requestDeletion(CatalogItemId.of(movie)).block();
 
-        StepVerifier.create(this.transaction.finalizeDeletion(MovieId.of(movie)))
+        StepVerifier.create(this.transaction.finalizeDeletion(CatalogItemId.of(movie)))
                 .verifyComplete();
 
-        StepVerifier.create(this.movieRepository.findById(MovieId.of(movie)))
+        StepVerifier.create(this.movieRepository.findById(CatalogItemId.of(movie)))
                 .verifyComplete();
         StepVerifier.create(this.count("media", movie)).expectNext(0L).verifyComplete();
         StepVerifier.create(this.count("movie_shares", movie)).expectNext(0L).verifyComplete();
@@ -205,7 +205,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         this.insertMedia(movie, 1L, "pepe/videos/dune.mp4");
         this.insertAsset(movie, "Movies/dune.mkv");
 
-        StepVerifier.create(this.transaction.finalizeManagedDeletion(MovieId.of(movie), 999L))
+        StepVerifier.create(this.transaction.finalizeManagedDeletion(CatalogItemId.of(movie), 999L))
                 .expectError(IllegalStateException.class)
                 .verify();
 
@@ -219,7 +219,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         this.insertMedia(movie, 1L, "pepe/videos/dune.mp4");
         this.insertAsset(movie, "Movies/dune.mkv");
 
-        StepVerifier.create(this.transaction.finalizeManagedDeletion(MovieId.of(movie), 1L))
+        StepVerifier.create(this.transaction.finalizeManagedDeletion(CatalogItemId.of(movie), 1L))
                 .expectError(IllegalStateException.class)
                 .verify();
 
@@ -229,7 +229,7 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void managedDeletionOfAbsentMovieIsIdempotent() {
-        StepVerifier.create(this.transaction.finalizeManagedDeletion(MovieId.of(999999L), 1L))
+        StepVerifier.create(this.transaction.finalizeManagedDeletion(CatalogItemId.of(999999L), 1L))
                 .verifyComplete();
     }
 
@@ -237,11 +237,11 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
     void completeMovieCannotReviveDeletingMovie() {
         Long movie = this.insertMovie("READY");
         this.insertMedia(movie, 3L, "pepe/videos/complete.mp4");
-        this.transaction.requestDeletion(MovieId.of(movie)).block();
+        this.transaction.requestDeletion(CatalogItemId.of(movie)).block();
 
         StepVerifier.create(
-                        this.completeMovieUseCase.execute(MovieId.of(movie), 700L, "pepe/videos/dune.mp4"))
-                .expectError(MovieConflictException.class)
+                        this.completeMovieUseCase.execute(CatalogItemId.of(movie), 700L, "pepe/videos/dune.mp4"))
+                .expectError(CatalogItemConflictException.class)
                 .verify();
 
         StepVerifier.create(this.status(movie)).expectNext("DELETING").verifyComplete();
@@ -253,12 +253,12 @@ class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
         this.insertMedia(deleting, 4L, "pepe/videos/find.mp4");
         this.insertMovie("READY");
         this.insertMovie("DRAFT");
-        this.transaction.requestDeletion(MovieId.of(deleting)).block();
+        this.transaction.requestDeletion(CatalogItemId.of(deleting)).block();
 
         StepVerifier.create(this.movieRepository.findDeleting(10))
                 .assertNext(movie -> {
-                    assertThat(movie.getId()).isEqualTo(MovieId.of(deleting));
-                    assertThat(movie.getStatus()).isEqualTo(MovieStatus.DELETING);
+                    assertThat(movie.getId()).isEqualTo(CatalogItemId.of(deleting));
+                    assertThat(movie.getStatus()).isEqualTo(CatalogItemStatus.DELETING);
                 })
                 .verifyComplete();
     }

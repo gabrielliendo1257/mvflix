@@ -6,10 +6,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 
@@ -28,7 +28,7 @@ import java.util.List;
 @ExtendWith(MockitoExtension.class)
 class CreateIdentifiedDraftUseCaseTest {
 
-  @Mock private MovieRepository movieRepository;
+  @Mock private CatalogItemRepository movieRepository;
   @Mock private UserProvider userProvider;
 
   private CreateIdentifiedDraftUseCase useCase;
@@ -41,11 +41,11 @@ class CreateIdentifiedDraftUseCaseTest {
         .thenReturn(Mono.just(new AuthenticatedUser("pepe", "pepe@test")));
     // Simula el INSERT ... RETURNING: la fila guardada sale CON id asignado.
     org.mockito.Mockito.lenient()
-        .when(this.movieRepository.saveDraftWithAccess(any(Movie.class)))
+        .when(this.movieRepository.saveDraftWithAccess(any(CatalogItem.class)))
         .thenAnswer(invocation -> {
-          Movie in = invocation.getArgument(0);
-          return Mono.just(new Movie(
-              com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(1L),
+          CatalogItem in = invocation.getArgument(0);
+          return Mono.just(new CatalogItem(
+              com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(1L),
               in.getOwnerUsername(),
               in.getTitle(),
               in.getStatus(),
@@ -67,7 +67,7 @@ class CreateIdentifiedDraftUseCaseTest {
 
   private CreateIdentifiedDraftCommand command(
       MovieMetadata metadata, MediaKind kind,
-      MovieVisibility visibility, List<String> shared) {
+      CatalogItemVisibility visibility, List<String> shared) {
     return new CreateIdentifiedDraftCommand(metadata, kind, visibility, shared);
   }
 
@@ -94,7 +94,7 @@ class CreateIdentifiedDraftUseCaseTest {
     StepVerifier.create(
             this.useCase.execute(command(
                 alienMetadata(348L), MediaKind.MOVIE,
-                MovieVisibility.SHARED, List.of())))
+                CatalogItemVisibility.SHARED, List.of())))
         .expectError(IllegalArgumentException.class)
         .verify();
 
@@ -106,7 +106,7 @@ class CreateIdentifiedDraftUseCaseTest {
     StepVerifier.create(
             this.useCase.execute(command(
                 alienMetadata(348L), MediaKind.MOVIE,
-                MovieVisibility.SHARED, List.of("ana", "ana", "  ", "luis"))))
+                CatalogItemVisibility.SHARED, List.of("ana", "ana", "  ", "luis"))))
         .assertNext(movie -> {
           assertThat(movie.getVisibility().name()).isEqualTo("SHARED");
           assertThat(movie.getSharedWith()).containsExactlyInAnyOrder("ana", "luis");
@@ -118,7 +118,7 @@ class CreateIdentifiedDraftUseCaseTest {
   void movieWithoutTmdbIdIsRejectedBeforePersistence() {
     StepVerifier.create(
             this.useCase.execute(command(
-                alienMetadata(null), MediaKind.MOVIE, MovieVisibility.PRIVATE, List.of())))
+                alienMetadata(null), MediaKind.MOVIE, CatalogItemVisibility.PRIVATE, List.of())))
         .expectError(IllegalArgumentException.class)
         .verify();
 
@@ -129,7 +129,7 @@ class CreateIdentifiedDraftUseCaseTest {
   void otherKindStaysRawEvenWithProviderId() {
     StepVerifier.create(
             this.useCase.execute(command(
-                alienMetadata(348L), MediaKind.VIDEO, MovieVisibility.PUBLIC, List.of())))
+                alienMetadata(348L), MediaKind.VIDEO, CatalogItemVisibility.PUBLIC, List.of())))
         .assertNext(movie -> {
           assertThat(movie.getEnrichmentStatus().name()).isEqualTo("RAW");
           assertThat(movie.getVisibility().name()).isEqualTo("PUBLIC");
@@ -144,14 +144,14 @@ class CreateIdentifiedDraftUseCaseTest {
 
   private void verifyNoInteractionsFallbackPorts() {
     org.mockito.Mockito.verify(this.movieRepository,
-        org.mockito.Mockito.never()).updateAccess(any(Movie.class));
+        org.mockito.Mockito.never()).updateAccess(any(CatalogItem.class));
     org.mockito.Mockito.verify(this.movieRepository,
-        org.mockito.Mockito.never()).replaceShares(any(Movie.class));
+        org.mockito.Mockito.never()).replaceShares(any(CatalogItem.class));
     org.mockito.Mockito.verify(this.movieRepository,
-        org.mockito.Mockito.never()).updateVisibility(any(Movie.class));
+        org.mockito.Mockito.never()).updateVisibility(any(CatalogItem.class));
   }
 
   private void verifySavedThroughAtomicPort() {
-    org.mockito.Mockito.verify(this.movieRepository).saveDraftWithAccess(any(Movie.class));
+    org.mockito.Mockito.verify(this.movieRepository).saveDraftWithAccess(any(CatalogItem.class));
   }
 }

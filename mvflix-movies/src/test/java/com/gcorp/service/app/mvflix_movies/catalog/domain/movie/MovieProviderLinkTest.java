@@ -19,9 +19,9 @@ class MovieProviderLinkTest {
 
     @Test
     void linksProviderMetadataAndMarksMovieAsEnriched() {
-        Movie movie = Movie.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
+        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
 
-        Movie linked = movie.linkProviderMetadata(PROVIDER_METADATA);
+        CatalogItem linked = movie.linkProviderMetadata(PROVIDER_METADATA);
 
         assertThat(linked.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.ENRICHED);
         assertThat(linked.getMetadata()).isEqualTo(PROVIDER_METADATA);
@@ -30,15 +30,15 @@ class MovieProviderLinkTest {
 
     @Test
     void rejectsProviderLinkForNonMovieItem() {
-        Movie clip = Movie.fromLibraryAsset("Javier", RAW_METADATA, MediaKind.VIDEO);
+        CatalogItem clip = CatalogItem.fromLibraryAsset("Javier", RAW_METADATA, MediaKind.VIDEO);
 
         assertThatThrownBy(() -> clip.linkProviderMetadata(PROVIDER_METADATA))
-                .isInstanceOf(MovieConflictException.class);
+                .isInstanceOf(CatalogItemConflictException.class);
     }
 
     @Test
     void rejectsProviderMetadataWithoutStableId() {
-        Movie movie = Movie.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
+        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
 
         assertThatThrownBy(() -> movie.linkProviderMetadata(RAW_METADATA))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -46,10 +46,10 @@ class MovieProviderLinkTest {
 
     @Test
     void unlinksProviderAndPreservesManualMetadata() {
-        Movie linked = Movie.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE)
+        CatalogItem linked = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE)
                 .linkProviderMetadata(PROVIDER_METADATA);
 
-        Movie unlinked = linked.unlinkProvider();
+        CatalogItem unlinked = linked.unlinkProvider();
 
         assertThat(unlinked.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(unlinked.getMetadata().tmdbId()).isNull();
@@ -61,14 +61,14 @@ class MovieProviderLinkTest {
 
     @Test
     void reclassifiesMovieAsOtherAndDropsProviderIdentity() {
-        Movie linked = Movie.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE)
+        CatalogItem linked = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE)
                 .linkProviderMetadata(PROVIDER_METADATA);
         MovieMetadata manualMetadata = new MovieMetadata(
                 "Grabación familiar", null, null, List.of(), null, null, null,
                 List.of(), "Metadata manual", "/provider-poster.jpg", null, null,
                 null, List.of(), 438631L);
 
-        Movie reclassified = linked.reclassifyAsVideo(manualMetadata);
+        CatalogItem reclassified = linked.reclassifyAsVideo(manualMetadata);
 
         assertThat(reclassified.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
@@ -81,7 +81,7 @@ class MovieProviderLinkTest {
 
     @Test
     void rejectsReclassificationWithoutTitle() {
-        Movie movie = Movie.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
+        CatalogItem movie = CatalogItem.createDraft("Javier", RAW_METADATA, MediaKind.MOVIE);
         MovieMetadata missingTitle = new MovieMetadata(
                 null, null, null, List.of(), null, null, null, List.of(), null,
                 null, null, null, null, List.of(), null);
@@ -96,10 +96,10 @@ class MovieProviderLinkTest {
         MovieMetadata inconsistentProviderMetadata = new MovieMetadata(
                 "Imported clip", null, null, List.of(), 8.0, null, null,
                 List.of(), null, "/poster.jpg", null, null, null, List.of(), 99L);
-        Movie clip = Movie.fromLibraryAsset(
+        CatalogItem clip = CatalogItem.fromLibraryAsset(
                 "Javier", inconsistentProviderMetadata, MediaKind.VIDEO);
 
-        Movie reclassified = clip.reclassifyAsMovie();
+        CatalogItem reclassified = clip.reclassifyAsMovie();
 
         assertThat(reclassified.getKind()).isEqualTo(MediaKind.MOVIE);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);

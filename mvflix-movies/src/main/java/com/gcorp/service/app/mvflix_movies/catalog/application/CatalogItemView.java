@@ -5,7 +5,7 @@ import java.util.List;
 /**
  * Fila de la proyección de administración del catálogo. Es un READ MODEL:
  * combina movies + media + media_assets + movie_shares sin meter esa
- * composición en el agregado {@code Movie}.
+ * composición en el agregado {@code CatalogItem}.
  *
  * <p>Dos claves estables según el tipo de fila:
  * <ul>

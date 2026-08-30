@@ -7,13 +7,12 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.library.application.CatalogItemKind;
-import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,17 +27,17 @@ import reactor.test.StepVerifier;
 @ExtendWith(MockitoExtension.class)
 class LibraryCatalogItemCreatorTest {
 
-    @Mock private MovieRepository movieRepository;
+    @Mock private CatalogItemRepository movieRepository;
 
     @InjectMocks private LibraryCatalogItemCreator creator;
 
     @Test
     void catalogOwnsHowALibraryItemIsCreated() {
-        when(this.movieRepository.save(any(Movie.class)))
+        when(this.movieRepository.save(any(CatalogItem.class)))
                 .thenAnswer(invocation -> {
-                    Movie movie = invocation.getArgument(0);
-                    return Mono.just(new Movie(
-                            MovieId.of(50L),
+                    CatalogItem movie = invocation.getArgument(0);
+                    return Mono.just(new CatalogItem(
+                            CatalogItemId.of(50L),
                             movie.getOwnerUsername(),
                             movie.getTitle(),
                             movie.getStatus(),
@@ -52,28 +51,28 @@ class LibraryCatalogItemCreatorTest {
 
         StepVerifier.create(this.creator.createFromLibrary(
                         "Javier", "Dune", CatalogItemKind.MOVIE))
-                .expectNext(CatalogItemId.of(50L))
+                 .expectNext(com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(50L))
                 .verifyComplete();
 
-        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).save(captor.capture());
-        Movie newMovie = captor.getValue();
+        CatalogItem newMovie = captor.getValue();
         assertThat(newMovie.getOwnerUsername()).isEqualTo("Javier");
         assertThat(newMovie.getTitle()).isEqualTo("Dune");
-        assertThat(newMovie.getStatus()).isEqualTo(MovieStatus.READY);
+        assertThat(newMovie.getStatus()).isEqualTo(CatalogItemStatus.READY);
         assertThat(newMovie.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-        assertThat(newMovie.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
+        assertThat(newMovie.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
         assertThat(newMovie.getObjectId()).isNull();
         assertThat(newMovie.getKind()).isEqualTo(MediaKind.MOVIE);
     }
 
     @Test
     void translatesOtherLibraryKindToCatalogClassification() {
-        when(this.movieRepository.save(any(Movie.class)))
+        when(this.movieRepository.save(any(CatalogItem.class)))
                 .thenAnswer(invocation -> {
-                    Movie movie = invocation.getArgument(0);
-                    return Mono.just(new Movie(
-                            MovieId.of(51L),
+                    CatalogItem movie = invocation.getArgument(0);
+                    return Mono.just(new CatalogItem(
+                            CatalogItemId.of(51L),
                             movie.getOwnerUsername(),
                             movie.getTitle(),
                             movie.getStatus(),
@@ -87,10 +86,10 @@ class LibraryCatalogItemCreatorTest {
 
         StepVerifier.create(this.creator.createFromLibrary(
                         "Javier", "Live concert", CatalogItemKind.VIDEO))
-                .expectNext(CatalogItemId.of(51L))
+                 .expectNext(com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(51L))
                 .verifyComplete();
 
-        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).save(captor.capture());
         assertThat(captor.getValue().getKind()).isEqualTo(MediaKind.VIDEO);
     }

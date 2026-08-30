@@ -8,12 +8,12 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.catalog.application.ManagedMediaDeletionCoordinator;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,13 +29,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 @ExtendWith(MockitoExtension.class)
 class PendingMediaDeletionJobTest {
 
-    @Mock private MovieRepository movieRepository;
+    @Mock private CatalogItemRepository movieRepository;
     @Mock private ManagedMediaDeletionCoordinator coordinator;
 
     @Test
     void findsDeletingMoviesAndRetriesEachOne() {
-        Movie first = movie(1L);
-        Movie second = movie(2L);
+        CatalogItem first = movie(1L);
+        CatalogItem second = movie(2L);
         when(this.movieRepository.findDeleting(25)).thenReturn(Flux.just(first, second));
         when(this.coordinator.process(first.getId())).thenReturn(Mono.empty());
         when(this.coordinator.process(second.getId())).thenReturn(Mono.empty());
@@ -49,8 +49,8 @@ class PendingMediaDeletionJobTest {
 
     @Test
     void oneFailureDoesNotStopTheBatch() {
-        Movie failed = movie(1L);
-        Movie recovered = movie(2L);
+        CatalogItem failed = movie(1L);
+        CatalogItem recovered = movie(2L);
         when(this.movieRepository.findDeleting(25)).thenReturn(Flux.just(failed, recovered));
         when(this.coordinator.process(failed.getId()))
                 .thenReturn(Mono.error(new RuntimeException("Storage unavailable")));
@@ -75,7 +75,7 @@ class PendingMediaDeletionJobTest {
 
     @Test
     void concurrentInvocationsDelegateToIdempotentCoordinator() {
-        Movie pending = movie(1L);
+        CatalogItem pending = movie(1L);
         AtomicInteger attempts = new AtomicInteger();
         when(this.movieRepository.findDeleting(25)).thenReturn(Flux.just(pending));
         when(this.coordinator.process(pending.getId())).thenAnswer(invocation -> {
@@ -91,9 +91,9 @@ class PendingMediaDeletionJobTest {
         verify(this.coordinator, org.mockito.Mockito.times(2)).process(pending.getId());
     }
 
-    private static Movie movie(long id) {
-        return new Movie(
-                MovieId.of(id), "pepe", "Dune", MovieStatus.DELETING, EnrichmentStatus.ENRICHED,
-                null, (MovieMetadata) null, MovieVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
+    private static CatalogItem movie(long id) {
+        return new CatalogItem(
+                CatalogItemId.of(id), "pepe", "Dune", CatalogItemStatus.DELETING, EnrichmentStatus.ENRICHED,
+                null, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
     }
 }

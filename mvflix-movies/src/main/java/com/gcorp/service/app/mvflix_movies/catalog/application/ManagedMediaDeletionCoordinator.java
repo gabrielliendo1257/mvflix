@@ -4,9 +4,9 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjec
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedObjectReference;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,9 +29,9 @@ public class ManagedMediaDeletionCoordinator {
     private final MediaRepository mediaRepository;
     private final ManagedObjectDeletion storageDeletion;
     private final MovieDeletionTransaction deletionTransaction;
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
 
-    public Mono<Void> process(MovieId movieId) {
+    public Mono<Void> process(CatalogItemId movieId) {
         return this.movieRepository.findById(movieId)
                 .flatMap(movie -> this.mediaRepository.findByMovieId(movieId)
                         .flatMap(media -> this.storageDeletion
@@ -43,7 +43,7 @@ public class ManagedMediaDeletionCoordinator {
                         .flatMap(ignored -> this.deletionTransaction.finalizeDeletion(movieId)));
     }
 
-    private ManagedObjectReference referenceOf(Movie movie, Media media) {
+    private ManagedObjectReference referenceOf(CatalogItem movie, Media media) {
         return new ManagedObjectReference(
                 media.getObjectId(), movie.getOwnerUsername(), media.getObjectKey());
     }

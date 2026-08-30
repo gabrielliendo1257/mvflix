@@ -1,10 +1,10 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -17,7 +17,7 @@ import java.time.Duration;
 import java.util.List;
 
 @Repository
-public class SpringDataMovieRepository implements MovieRepository {
+public class SpringDataMovieRepository implements CatalogItemRepository {
 
     private static final String MEDIA_OBJECT_ID =
             """
@@ -32,7 +32,7 @@ public class SpringDataMovieRepository implements MovieRepository {
             """;
 
     /**
-     * Traducción SQL de {@code Movie.isVisibleTo(username)}: la política de acceso
+     * Traducción SQL de {@code CatalogItem.isVisibleTo(username)}: la política de acceso
      * se decide en el dominio; acá solo se filtra en el origen para no traer todo
      * el catálogo a memoria.
      */
@@ -63,7 +63,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> save(Movie movie) {
+    public Mono<CatalogItem> save(CatalogItem movie) {
         MovieRow row = this.rowMapper.toRow(movie);
         return this.databaseClient
                         .sql(
@@ -86,13 +86,13 @@ public class SpringDataMovieRepository implements MovieRepository {
 
     @Override
     @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
-    public Mono<Movie> saveDraftWithAccess(Movie movie) {
+    public Mono<CatalogItem> saveDraftWithAccess(CatalogItem movie) {
         // save() asigna el id generado (INSERT RETURNING); replaceShares
         // necesita ese id para insertar en movie_shares. Se propaga el
         // agregado guardado conservando los shares previstos del original.
         return this.save(movie)
             .flatMap(saved -> this.replaceShares(
-                new Movie(
+                new CatalogItem(
                     saved.getId(),
                     saved.getOwnerUsername(),
                     saved.getTitle(),
@@ -106,7 +106,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> findById(MovieId id) {
+    public Mono<CatalogItem> findById(CatalogItemId id) {
         return this.databaseClient
                 .sql(
                         SELECT_MOVIE_COLUMNS
@@ -121,7 +121,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Flux<Movie> findVisibleMovies(String username, int limit) {
+    public Flux<CatalogItem> findVisibleMovies(String username, int limit) {
         return this.databaseClient
                 .sql(
                         SELECT_MOVIE_COLUMNS
@@ -141,7 +141,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Flux<Movie> findByOwner(String ownerUsername, int limit) {
+    public Flux<CatalogItem> findByOwner(String ownerUsername, int limit) {
         return this.databaseClient
                 .sql(
                         SELECT_MOVIE_COLUMNS
@@ -159,7 +159,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> completeIfDraft(MovieId id) {
+    public Mono<CatalogItem> completeIfDraft(CatalogItemId id) {
         return this.databaseClient
                 .sql(
                         """
@@ -178,7 +178,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Boolean> deleteById(MovieId id) {
+    public Mono<Boolean> deleteById(CatalogItemId id) {
         return this.databaseClient
                 .sql(
                         """
@@ -192,7 +192,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> markDeleting(MovieId id) {
+    public Mono<CatalogItem> markDeleting(CatalogItemId id) {
         return this.databaseClient
                 .sql(
                         """
@@ -213,7 +213,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Boolean> deleteIfDeleting(MovieId id) {
+    public Mono<Boolean> deleteIfDeleting(CatalogItemId id) {
         return this.databaseClient
                 .sql(
                         """
@@ -227,7 +227,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Boolean> deleteIfDeletingAndStorageId(MovieId id, long storageId) {
+    public Mono<Boolean> deleteIfDeletingAndStorageId(CatalogItemId id, long storageId) {
         return this.databaseClient
                 .sql("""
                         DELETE FROM movies m
@@ -245,7 +245,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Flux<Movie> findDeleting(int limit) {
+    public Flux<CatalogItem> findDeleting(int limit) {
         return this.databaseClient
                 .sql(
                         SELECT_MOVIE_COLUMNS
@@ -262,7 +262,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Flux<Movie> findDeletingForRecovery(int limit, Duration retryCooldown) {
+    public Flux<CatalogItem> findDeletingForRecovery(int limit, Duration retryCooldown) {
         return this.databaseClient
                 .sql(SELECT_MOVIE_COLUMNS
                         + """
@@ -281,7 +281,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Void> markRecoveryAttempt(MovieId id) {
+    public Mono<Void> markRecoveryAttempt(CatalogItemId id) {
         return this.databaseClient
                 .sql("UPDATE movies SET last_recovery_attempt_at = NOW() "
                         + "WHERE id = :id AND status = 'DELETING'")
@@ -306,16 +306,16 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> updateEnrichment(Movie movie) {
+    public Mono<CatalogItem> updateEnrichment(CatalogItem movie) {
         return this.updateDetailsState(movie, false);
     }
 
     @Override
-    public Mono<Movie> updateDetails(Movie movie) {
+    public Mono<CatalogItem> updateDetails(CatalogItem movie) {
         return this.updateDetailsState(movie, true);
     }
 
-    private Mono<Movie> updateDetailsState(Movie movie, boolean updateKind) {
+    private Mono<CatalogItem> updateDetailsState(CatalogItem movie, boolean updateKind) {
         String kindAssignment = updateKind ? ", kind = :kind" : "";
         DatabaseClient.GenericExecuteSpec statement = this.databaseClient
                 .sql(
@@ -349,11 +349,11 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Flux<Movie> findByOwnerAndIds(String ownerUsername, List<MovieId> ids) {
+    public Flux<CatalogItem> findByOwnerAndIds(String ownerUsername, List<CatalogItemId> ids) {
         if (ids == null || ids.isEmpty()) {
             return Flux.empty();
         }
-        List<Long> values = ids.stream().map(MovieId::value).toList();
+        List<Long> values = ids.stream().map(CatalogItemId::value).toList();
         String in = java.util.stream.IntStream.range(0, values.size())
                 .mapToObj(i -> ":id" + i)
                 .collect(java.util.stream.Collectors.joining(", "));
@@ -380,7 +380,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Mono<Movie> updateVisibility(Movie movie) {
+    public Mono<CatalogItem> updateVisibility(CatalogItem movie) {
         return this.databaseClient
                 .sql(
                         """
@@ -408,10 +408,10 @@ public class SpringDataMovieRepository implements MovieRepository {
      */
     @Override
     @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
-    public Mono<Movie> updateAccess(Movie movie) {
+    public Mono<CatalogItem> updateAccess(CatalogItem movie) {
         return this.updateVisibility(movie)
             .flatMap(updated -> this.replaceShares(
-                new Movie(
+                new CatalogItem(
                     updated.getId(),
                     updated.getOwnerUsername(),
                     updated.getTitle(),
@@ -426,7 +426,7 @@ public class SpringDataMovieRepository implements MovieRepository {
 
     @Override
     @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
-    public Mono<Movie> replaceShares(Movie movie) {
+    public Mono<CatalogItem> replaceShares(CatalogItem movie) {
         return this.databaseClient
                 .sql(
                         """
@@ -472,7 +472,7 @@ public class SpringDataMovieRepository implements MovieRepository {
     }
 
     @Override
-    public Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit) {
+    public Flux<CatalogItem> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit) {
         return this.databaseClient
                 .sql(
                         SELECT_MOVIE_COLUMNS

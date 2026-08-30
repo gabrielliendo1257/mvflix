@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -35,7 +35,7 @@ public class SpringDataMediaRepository implements MediaRepository {
                 .bind("object_key", media.getObjectKey())
                 .map((row, metadata) -> new Media(
                         MediaId.of(row.get("id", Long.class)),
-                        MovieId.of(row.get("movie_id", Long.class)),
+                        CatalogItemId.of(row.get("movie_id", Long.class)),
                         row.get("object_id", Long.class),
                         row.get("object_key", String.class),
                         row.get("created_at", Instant.class)))
@@ -43,7 +43,7 @@ public class SpringDataMediaRepository implements MediaRepository {
     }
 
     @Override
-    public Mono<Media> findByMovieId(MovieId movieId) {
+    public Mono<Media> findByMovieId(CatalogItemId movieId) {
         return this.databaseClient
                 .sql(
                         """
@@ -56,7 +56,7 @@ public class SpringDataMediaRepository implements MediaRepository {
                 .bind("movie_id", movieId.value())
                 .map((row, metadata) -> new Media(
                         MediaId.of(row.get("id", Long.class)),
-                        MovieId.of(row.get("movie_id", Long.class)),
+                        CatalogItemId.of(row.get("movie_id", Long.class)),
                         row.get("object_id", Long.class),
                         row.get("object_key", String.class),
                         row.get("created_at", Instant.class)))

@@ -10,12 +10,12 @@ import com.gcorp.service.app.mvflix_movies.shared.application.security.Authentic
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,53 +33,53 @@ import java.util.Set;
 @ExtendWith(MockitoExtension.class)
 class UpdateSharesUseCaseTest {
 
-    @Mock private MovieRepository movieRepository;
+    @Mock private CatalogItemRepository movieRepository;
     @Mock private UserProvider userProvider;
 
     @InjectMocks private UpdateSharesUseCase useCase;
 
-    private static Movie movie(long id, String owner) {
-        return new Movie(
-                MovieId.of(id), owner, "Dune", MovieStatus.READY, EnrichmentStatus.ENRICHED,
-                null, null, MovieVisibility.SHARED, java.util.Set.of(), MediaKind.MOVIE);
+    private static CatalogItem movie(long id, String owner) {
+        return new CatalogItem(
+                CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
+                null, null, CatalogItemVisibility.SHARED, java.util.Set.of(), MediaKind.MOVIE);
     }
 
     @Test
     void ownerReplacesShares() {
-        Movie movie = movie(1L, "Javier");
+        CatalogItem movie = movie(1L, "Javier");
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.findById(MovieId.of(1L)))
+        when(this.movieRepository.findById(CatalogItemId.of(1L)))
                 .thenReturn(Mono.just(movie));
-        when(this.movieRepository.replaceShares(any(Movie.class)))
+        when(this.movieRepository.replaceShares(any(CatalogItem.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
         StepVerifier.create(this.useCase.execute(
-                        MovieId.of(1L), List.of("Maria", "Pedro", "Maria", "  ")))
+                        CatalogItemId.of(1L), List.of("Maria", "Pedro", "Maria", "  ")))
                 .expectNextCount(1)
                 .verifyComplete();
 
-        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).replaceShares(captor.capture());
-        assertThat(captor.getValue().getId()).isEqualTo(MovieId.of(1L));
+        assertThat(captor.getValue().getId()).isEqualTo(CatalogItemId.of(1L));
         assertThat(captor.getValue().getSharedWith())
                 .isEqualTo(Set.of("Maria", "Pedro"));
     }
 
     @Test
     void nonOwnerIsDenied() {
-        Movie movie = movie(1L, "Javier");
+        CatalogItem movie = movie(1L, "Javier");
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.movieRepository.findById(MovieId.of(1L)))
+        when(this.movieRepository.findById(CatalogItemId.of(1L)))
                 .thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L), List.of("Javier")))
-                .expectError(MovieAccessDeniedException.class)
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), List.of("Javier")))
+                .expectError(CatalogItemAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never()).replaceShares(any(Movie.class));
+        verify(this.movieRepository, never()).replaceShares(any(CatalogItem.class));
     }
 }

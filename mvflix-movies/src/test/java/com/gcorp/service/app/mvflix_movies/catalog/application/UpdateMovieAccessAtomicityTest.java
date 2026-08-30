@@ -3,10 +3,10 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -27,7 +27,7 @@ import reactor.test.StepVerifier;
 class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
 
     @Autowired private UpdateMovieAccessUseCase useCase;
-    @Autowired private MovieRepository movieRepository;
+    @Autowired private CatalogItemRepository movieRepository;
     @Autowired private DatabaseClient databaseClient;
 
     private long movieId;
@@ -37,7 +37,7 @@ class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
         this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
 
-        Movie movie = this.movieRepository.save(Movie.createDraft(
+        CatalogItem movie = this.movieRepository.save(CatalogItem.createDraft(
                 "pepe", MovieMetadata.onlyTitle("Dune"), MediaKind.MOVIE)).block();
         this.movieId = movie.getId().value();
         share("maria");
@@ -65,32 +65,32 @@ class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
     @Test
     void sharedToPrivateCleansSharesAndVisibilityTogether() {
         StepVerifier.create(this.useCase.execute(
-                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId),
-                        MovieVisibility.PRIVATE, java.util.List.of()))
+                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.movieId),
+                        CatalogItemVisibility.PRIVATE, java.util.List.of()))
                 .assertNext(updated -> {
-                    assertThat(updated.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
+                    assertThat(updated.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
                     assertThat(updated.getSharedWith()).isEmpty();
                 })
                 .verifyComplete();
 
         assertThat(sharesCount()).isZero();
         var persisted = this.movieRepository.findById(
-                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId)).block();
-        assertThat(persisted.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
+                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.movieId)).block();
+        assertThat(persisted.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
     }
 
     @Test
     void accessChangeReplacesShareSetInOneShot() {
         StepVerifier.create(this.useCase.execute(
-                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId),
-                        MovieVisibility.SHARED, java.util.List.of("sofia")))
+                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.movieId),
+                        CatalogItemVisibility.SHARED, java.util.List.of("sofia")))
                 .assertNext(updated ->
                         assertThat(updated.getSharedWith()).containsExactly("sofia"))
                 .verifyComplete();
 
         var persisted = this.movieRepository.findById(
-                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId)).block();
-        assertThat(persisted.getVisibility()).isEqualTo(MovieVisibility.SHARED);
+                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.movieId)).block();
+        assertThat(persisted.getVisibility()).isEqualTo(CatalogItemVisibility.SHARED);
         assertThat(sharesCount()).isEqualTo(1);
     }
 
@@ -98,8 +98,8 @@ class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
     void failedShareInsertRollsBackVisibilityToo() {
         // Punto de partida PRIVATE sin shares.
         this.useCase.execute(
-                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId),
-                        MovieVisibility.PRIVATE, java.util.List.of())
+                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.movieId),
+                        CatalogItemVisibility.PRIVATE, java.util.List.of())
                 .block();
         assertThat(sharesCount()).isZero();
 
@@ -107,15 +107,15 @@ class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
         // cambiado la visibilidad a SHARED: la transacción debe revertir AMBOS.
         String tooLong = "x".repeat(300);
         StepVerifier.create(this.useCase.execute(
-                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId),
-                        MovieVisibility.SHARED, java.util.List.of(tooLong)))
+                        com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.movieId),
+                        CatalogItemVisibility.SHARED, java.util.List.of(tooLong)))
                 .expectError()
                 .verify();
 
         // Visibilidad revertida a PRIVATE y shares sin cambios: atomicidad.
         var persisted = this.movieRepository.findById(
-                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.movieId)).block();
-        assertThat(persisted.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
+                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.movieId)).block();
+        assertThat(persisted.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
         assertThat(sharesCount()).isZero();
     }
 }

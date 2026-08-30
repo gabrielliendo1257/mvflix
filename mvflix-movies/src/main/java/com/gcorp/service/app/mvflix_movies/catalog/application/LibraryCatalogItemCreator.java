@@ -1,9 +1,9 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.library.application.CatalogItemKind;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemCreator;
 import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
@@ -19,12 +19,12 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class LibraryCatalogItemCreator implements CatalogItemCreator {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
 
     @Override
     public Mono<CatalogItemId> createFromLibrary(
             String ownerUsername, String title, CatalogItemKind kind) {
-        Movie movie = Movie.fromLibraryAsset(
+        CatalogItem movie = CatalogItem.fromLibraryAsset(
                 ownerUsername, MovieMetadata.onlyTitle(title), toMediaKind(kind));
         return this.movieRepository
                 .save(movie)

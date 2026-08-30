@@ -3,17 +3,17 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import java.util.List;
 
 public record MovieResponse(
     Long id,
-    MovieStatus status,
+    CatalogItemStatus status,
     @JsonProperty("enrichment_status") EnrichmentStatus enrichmentStatus,
     @JsonProperty("object_id") Long objectId,
-    MovieVisibility visibility,
+    CatalogItemVisibility visibility,
     MediaKind kind,
     String title,
     String originalTitle,

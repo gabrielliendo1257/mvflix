@@ -8,9 +8,9 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogReadQuery;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
@@ -32,7 +32,7 @@ import reactor.core.publisher.Mono;
 class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
 
     @Autowired private CatalogViewSqlRepository repository;
-    @Autowired private MovieRepository movieRepository;
+    @Autowired private CatalogItemRepository movieRepository;
     @Autowired private MediaRepository mediaRepository;
     @Autowired private MediaAssetRepository mediaAssetRepository;
     @Autowired private DatabaseClient databaseClient;
@@ -49,13 +49,13 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
         this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
 
         // MANAGED: READY con metadata completa, objeto en media, 2 compartidos.
-        Movie managed = this.movieRepository.save(new Movie(
-                null, "pepe", "Coraline", com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus.READY,
+        CatalogItem managed = this.movieRepository.save(new CatalogItem(
+                null, "pepe", "Coraline", com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus.READY,
                 com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus.ENRICHED,
                 null,
                 new MovieMetadata("Coraline", null, 2009, null, null, "1h 40m",
                         null, null, null, "/coraline.jpg", null, null, null, null, 57892L),
-                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility.PRIVATE,
+                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility.PRIVATE,
                 java.util.Set.of(), MediaKind.MOVIE)).block();
         this.managedId = movieRepository.findById(managed.getId()).block().getId().value();
         this.mediaRepository.save(Media.create(managed.getId(), 42L, "k")).block();
@@ -63,7 +63,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
         share(managed.getId().value(), "pedro");
 
         // LOCAL: READY de biblioteca con asset identificado.
-        Movie local = this.movieRepository.save(Movie.fromLibraryAsset(
+        CatalogItem local = this.movieRepository.save(CatalogItem.fromLibraryAsset(
                 "pepe", MovieMetadata.onlyTitle("Alien"), MediaKind.MOVIE)).block();
         this.localId = local.getId().value();
         MediaAsset discovered = this.mediaAssetRepository.save(
@@ -72,7 +72,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
                 discovered.getId(), CatalogItemId.of(this.localId)).block();
 
         // DRAFT sin contenido: needsAttention.
-        Movie draft = this.movieRepository.save(Movie.createDraft(
+        CatalogItem draft = this.movieRepository.save(CatalogItem.createDraft(
                 "pepe", MovieMetadata.onlyTitle("Beta"), MediaKind.MOVIE)).block();
         this.draftId = draft.getId().value();
     }
@@ -156,7 +156,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
     @Test
     void paginationSlicesWithoutDuplicatingJoinedRows() {
         Flux.range(0, 30)
-                .flatMap(i -> this.movieRepository.save(Movie.createDraft(
+                .flatMap(i -> this.movieRepository.save(CatalogItem.createDraft(
                         "pepe", MovieMetadata.onlyTitle("Bulk " + i), MediaKind.MOVIE)))
                 .collectList().block();
 
@@ -174,7 +174,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
 
     @Test
     void otherOwnersContentNeverAppears() {
-        this.movieRepository.save(Movie.fromLibraryAsset(
+        this.movieRepository.save(CatalogItem.fromLibraryAsset(
                 "maria", MovieMetadata.onlyTitle("Ajena"), MediaKind.MOVIE)).block();
 
         CatalogPageView view = page(null, null);
@@ -199,7 +199,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
     void multipleIdentifiedAssetsPrefersThePlayableOne() {
         // Versión vieja sin archivo (id menor) + versión presente (id mayor):
         // el asset reproducible preferido es el PRESENTE, no el primero.
-        Movie movie = this.movieRepository.save(Movie.fromLibraryAsset(
+        CatalogItem movie = this.movieRepository.save(CatalogItem.fromLibraryAsset(
                 "pepe", MovieMetadata.onlyTitle("Stalker"), MediaKind.MOVIE)).block();
         long missingId = addIdentifiedAsset(movie.getId().value(),
                 "stalker-old.mp4", false).getId().value();
@@ -218,7 +218,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
 
     @Test
     void whenNoVersionIsPresentTheOldestMissingOneIsReported() {
-        Movie movie = this.movieRepository.save(Movie.fromLibraryAsset(
+        CatalogItem movie = this.movieRepository.save(CatalogItem.fromLibraryAsset(
                 "pepe", MovieMetadata.onlyTitle("Solaris"), MediaKind.MOVIE)).block();
         var first = addIdentifiedAsset(movie.getId().value(), "solaris-a.mp4", false);
         addIdentifiedAsset(movie.getId().value(), "solaris-b.mp4", false);
@@ -236,7 +236,7 @@ class CatalogViewSqlRepositoryTest extends PostgresIntegrationTest {
     void movieWithMultipleMediaRowsAppearsExactlyOnceAndPaginationStaysConsistent() {
         // Segunda fila de media para la misma película (trailer futuro, etc.).
         this.mediaRepository.save(Media.create(
-                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId.of(this.managedId),
+                com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId.of(this.managedId),
                 43L, "k2")).block();
 
         CatalogPageView view = page("Coraline", null);

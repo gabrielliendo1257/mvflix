@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +16,7 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class DraftCleanupUseCase {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
 
     public Mono<Long> purgeDrafts(Instant cutoff) {
         return this.movieRepository

@@ -14,110 +14,110 @@ import java.util.Set;
  */
 class MovieDeletionLifecycleTest {
 
-    private static Movie movie(MovieStatus status) {
-        return new Movie(
-                MovieId.of(1L), "Javier", "Dune", status, EnrichmentStatus.ENRICHED,
-                42L, MovieMetadata.onlyTitle("Dune"), MovieVisibility.PRIVATE,
+    private static CatalogItem movie(CatalogItemStatus status) {
+        return new CatalogItem(
+                CatalogItemId.of(1L), "Javier", "Dune", status, EnrichmentStatus.ENRICHED,
+                42L, MovieMetadata.onlyTitle("Dune"), CatalogItemVisibility.PRIVATE,
                 Set.of(), MediaKind.MOVIE);
     }
 
     @Test
     void requestDeletionMovesReadyToDeleting() {
-        Movie deleting = movie(MovieStatus.READY).requestDeletion();
+        CatalogItem deleting = movie(CatalogItemStatus.READY).requestDeletion();
 
-        assertThat(deleting.getStatus()).isEqualTo(MovieStatus.DELETING);
+        assertThat(deleting.getStatus()).isEqualTo(CatalogItemStatus.DELETING);
         assertThat(deleting.isDeleting()).isTrue();
     }
 
     @Test
     void requestDeletionIsIdempotent() {
-        Movie alreadyDeleting = movie(MovieStatus.DELETING);
+        CatalogItem alreadyDeleting = movie(CatalogItemStatus.DELETING);
 
-        Movie result = alreadyDeleting.requestDeletion();
+        CatalogItem result = alreadyDeleting.requestDeletion();
 
-        assertThat(result.getStatus()).isEqualTo(MovieStatus.DELETING);
+        assertThat(result.getStatus()).isEqualTo(CatalogItemStatus.DELETING);
     }
 
     @Test
     void deletingMovieCannotComplete() {
-        Movie deleting = movie(MovieStatus.DELETING);
+        CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
         assertThatThrownBy(() -> deleting.complete(99L))
-                .isInstanceOf(MovieConflictException.class)
+                .isInstanceOf(CatalogItemConflictException.class)
                 .hasMessageContaining("DELETING");
     }
 
     @Test
     void deletingMovieCannotBeEdited() {
-        Movie deleting = movie(MovieStatus.DELETING);
+        CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
         assertThatThrownBy(() -> deleting.withMetadata(MovieMetadata.onlyTitle("Otro")))
-                .isInstanceOf(MovieConflictException.class);
+                .isInstanceOf(CatalogItemConflictException.class);
     }
 
     @Test
     void deletingMovieCannotChangeVisibility() {
-        Movie deleting = movie(MovieStatus.DELETING);
+        CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
-        assertThatThrownBy(() -> deleting.withVisibility(MovieVisibility.PUBLIC))
-                .isInstanceOf(MovieConflictException.class);
+        assertThatThrownBy(() -> deleting.withVisibility(CatalogItemVisibility.PUBLIC))
+                .isInstanceOf(CatalogItemConflictException.class);
     }
 
     @Test
     void deletingMovieCannotChangeShares() {
-        Movie deleting = movie(MovieStatus.DELETING);
+        CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
         assertThatThrownBy(() -> deleting.withSharedWith(Set.of("Maria")))
-                .isInstanceOf(MovieConflictException.class);
+                .isInstanceOf(CatalogItemConflictException.class);
     }
 
     @Test
     void deletingMovieCannotChangeAccess() {
-        Movie deleting = movie(MovieStatus.DELETING);
+        CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
-        assertThatThrownBy(() -> deleting.withAccess(MovieVisibility.PRIVATE, Set.of()))
-                .isInstanceOf(MovieConflictException.class);
+        assertThatThrownBy(() -> deleting.withAccess(CatalogItemVisibility.PRIVATE, Set.of()))
+                .isInstanceOf(CatalogItemConflictException.class);
     }
 
     @Test
     void deletingMovieCannotLinkOrUnlinkProvider() {
-        Movie deleting = movie(MovieStatus.DELETING);
+        CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
         assertThatThrownBy(() -> deleting.linkProviderMetadata(
                 new MovieMetadata("Dune", null, 2021, null, null, null,
                         null, null, null, null, null, null, null, null, 438631L)))
-                .isInstanceOf(MovieConflictException.class);
+                .isInstanceOf(CatalogItemConflictException.class);
         assertThatThrownBy(deleting::unlinkProvider)
-                .isInstanceOf(MovieConflictException.class);
+                .isInstanceOf(CatalogItemConflictException.class);
     }
 
     @Test
     void deletingMovieCannotBeReclassified() {
-        Movie deleting = movie(MovieStatus.DELETING);
+        CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
         assertThatThrownBy(() -> deleting.reclassifyAsVideo(MovieMetadata.onlyTitle("Clip")))
-                .isInstanceOf(MovieConflictException.class);
+                .isInstanceOf(CatalogItemConflictException.class);
         assertThatThrownBy(deleting::reclassifyAsMovie)
-                .isInstanceOf(MovieConflictException.class);
+                .isInstanceOf(CatalogItemConflictException.class);
     }
 
     @Test
     void deletingIsNotPlayable() {
         // El playback y el catálogo derivan la reproducibilidad del status:
         // DELETING no es READY, así que no se reproduce.
-        Movie deleting = movie(MovieStatus.DELETING);
+        CatalogItem deleting = movie(CatalogItemStatus.DELETING);
 
-        assertThat(deleting.getStatus()).isNotEqualTo(MovieStatus.READY);
+        assertThat(deleting.getStatus()).isNotEqualTo(CatalogItemStatus.READY);
         assertThat(deleting.isLibraryBacked()).isFalse();
     }
 
     @Test
     void nonDeletingMovieStillTransitionsNormally() {
-        Movie ready = movie(MovieStatus.READY);
-        Movie draft = movie(MovieStatus.DRAFT);
+        CatalogItem ready = movie(CatalogItemStatus.READY);
+        CatalogItem draft = movie(CatalogItemStatus.DRAFT);
 
-        assertThat(ready.withVisibility(MovieVisibility.PUBLIC).getVisibility())
-                .isEqualTo(MovieVisibility.PUBLIC);
-        assertThat(draft.complete(77L).getStatus()).isEqualTo(MovieStatus.READY);
+        assertThat(ready.withVisibility(CatalogItemVisibility.PUBLIC).getVisibility())
+                .isEqualTo(CatalogItemVisibility.PUBLIC);
+        assertThat(draft.complete(77L).getStatus()).isEqualTo(CatalogItemStatus.READY);
     }
 }

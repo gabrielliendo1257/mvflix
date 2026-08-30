@@ -1,10 +1,10 @@
 package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,23 +18,23 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class GetMovieUseCase {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
 
     /**
      * Detalle solo si la pelicula es visible para el usuario autenticado
-     * (la decide {@link Movie#isVisibleTo(String)}: PUBLIC, propia o compartida);
+     * (la decide {@link CatalogItem#isVisibleTo(String)}: PUBLIC, propia o compartida);
      * si no, 403 sin revelar la existencia.
      */
-    public Mono<Movie> execute(MovieId id) {
+    public Mono<CatalogItem> execute(CatalogItemId id) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
                         .findById(id)
-                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
+                        .switchIfEmpty(Mono.error(new CatalogItemAccessDeniedException(
                                 "Movie not accessible: " + id.value())))
                         .filter(movie -> movie.isVisibleTo(user.subject()))
-                        .switchIfEmpty(Mono.error(new MovieAccessDeniedException(
+                        .switchIfEmpty(Mono.error(new CatalogItemAccessDeniedException(
                                 "Movie not accessible: " + id.value()))));
     }
 }

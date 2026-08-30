@@ -11,7 +11,7 @@ import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetNotFoundException;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.application.port.CatalogItemAccess;
 
@@ -146,7 +146,7 @@ class MediaAssetQueriesTest {
                 CatalogItemId.of(10L), "admin");
         when(this.assetRepository.findById(MediaAssetId.of(1L))).thenReturn(Mono.just(asset));
         when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
-                .thenReturn(Mono.error(new MovieAccessDeniedException(
+                .thenReturn(Mono.error(new CatalogItemAccessDeniedException(
                         "Movie not accessible: 10")));
 
         // Sin revelar existencia: el mismo error que un id inexistente.
@@ -175,11 +175,11 @@ class MediaAssetQueriesTest {
     void invisibleMovieDoesNotExposeItsAsset() {
         this.requester("Maria", false);
         when(this.catalogItemAccess.requireVisible(CatalogItemId.of(10L), "Maria"))
-                .thenReturn(Mono.error(new MovieAccessDeniedException(
+                .thenReturn(Mono.error(new CatalogItemAccessDeniedException(
                         "Movie not accessible: 10")));
 
         StepVerifier.create(this.queries.findByCatalogItem(CatalogItemId.of(10L)))
-                .expectError(MovieAccessDeniedException.class)
+                .expectError(CatalogItemAccessDeniedException.class)
                 .verify();
 
         verify(this.assetRepository, never()).findByCatalogItemId(CatalogItemId.of(10L));

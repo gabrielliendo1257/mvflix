@@ -2,10 +2,10 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryMovieIds;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,14 +31,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class BulkVisibilityUseCase {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final LibraryMovieIds libraryMovieIds;
     private final UserProvider userProvider;
 
     public Mono<BulkVisibilityResult> execute(
-            List<MovieId> movieIds, List<Long> libraryIds,
-            MovieVisibility visibility, List<String> usernames) {
-        if (visibility == MovieVisibility.SHARED
+            List<CatalogItemId> movieIds, List<Long> libraryIds,
+            CatalogItemVisibility visibility, List<String> usernames) {
+        if (visibility == CatalogItemVisibility.SHARED
                 && (usernames == null
                         || usernames.stream().noneMatch(u -> u != null && !u.isBlank()))) {
             return Mono.error(new IllegalArgumentException(
@@ -82,10 +82,10 @@ public class BulkVisibilityUseCase {
                         visibility, clean, result.total(), result.updated(), result.failed()));
     }
 
-    private Mono<Movie> applyVisibility(
-            Movie movie, MovieVisibility visibility, List<String> usernames) {
-        Movie access = movie.withVisibility(visibility);
-        if (visibility == MovieVisibility.SHARED) {
+    private Mono<CatalogItem> applyVisibility(
+            CatalogItem movie, CatalogItemVisibility visibility, List<String> usernames) {
+        CatalogItem access = movie.withVisibility(visibility);
+        if (visibility == CatalogItemVisibility.SHARED) {
             access = access.withSharedWith(Set.copyOf(usernames));
         }
         return this.movieRepository.updateAccess(access);

@@ -4,10 +4,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +29,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
   private static final String ACCESS_CONSTRAINT = "test_shared_user_not_blocked";
 
-  @Autowired private MovieRepository movieRepository;
+  @Autowired private CatalogItemRepository movieRepository;
   @Autowired private DatabaseClient databaseClient;
 
   @BeforeEach
@@ -45,9 +45,9 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
   @Test
   void updateMetadataSynchronizesCatalogTitle() {
-    Movie movie = this.saveDraft("Old title");
+    CatalogItem movie = this.saveDraft("Old title");
 
-    Movie updated =
+    CatalogItem updated =
         this.movieRepository
             .updateDetails(movie.withMetadata(MovieMetadata.onlyTitle("New title")))
             .block();
@@ -59,13 +59,13 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
   @Test
   void updateDetailsPersistsReclassificationAsOneAggregateState() {
-    Movie movie = this.saveDraft("Dune")
+    CatalogItem movie = this.saveDraft("Dune")
         .linkProviderMetadata(new MovieMetadata(
             "Provider title", null, null, List.of(), null, null, null,
             List.of(), null, null, null, null, null, List.of(), 100L));
-    Movie reclassified = movie.reclassifyAsVideo(MovieMetadata.onlyTitle("Family recording"));
+    CatalogItem reclassified = movie.reclassifyAsVideo(MovieMetadata.onlyTitle("Family recording"));
 
-    Movie updated = this.movieRepository.updateDetails(reclassified).block();
+    CatalogItem updated = this.movieRepository.updateDetails(reclassified).block();
 
     assertThat(updated).isNotNull();
     assertThat(updated.getKind()).isEqualTo(MediaKind.VIDEO);
@@ -76,9 +76,9 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
   @Test
   void updateEnrichmentSynchronizesCatalogTitle() {
-    Movie movie = this.saveDraft("Local title");
+    CatalogItem movie = this.saveDraft("Local title");
 
-    Movie updated =
+    CatalogItem updated =
         this.movieRepository
             .updateEnrichment(movie.linkProviderMetadata(new MovieMetadata(
                 "Provider title", null, null, List.of(), null, null, null,
@@ -93,12 +93,12 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
   @Test
   void updateVisibilityPreservesUploadedObjectId() {
-    Movie movie = this.saveDraft("Dune");
+    CatalogItem movie = this.saveDraft("Dune");
     this.insertMedia(movie.getId().value(), 700L, "movies/visibility/video.mp4");
 
-    Movie updated =
+    CatalogItem updated =
         this.movieRepository
-            .updateVisibility(movie.withVisibility(MovieVisibility.PUBLIC))
+            .updateVisibility(movie.withVisibility(CatalogItemVisibility.PUBLIC))
             .block();
 
     assertThat(updated).isNotNull();
@@ -107,10 +107,10 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
   @Test
   void replaceSharesPreservesUploadedObjectId() {
-    Movie movie = this.saveDraft("Dune");
+    CatalogItem movie = this.saveDraft("Dune");
     this.insertMedia(movie.getId().value(), 701L, "movies/shares/video.mp4");
 
-    Movie updated =
+    CatalogItem updated =
         this.movieRepository
             .replaceShares(movie.withSharedWith(Set.of("maria")))
             .block();
@@ -122,21 +122,21 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
 
   @Test
   void updateAccessPersistsSharedVisibilityAndUsersTogether() {
-    Movie movie = this.saveDraft("Dune");
-    Movie shared = movie
-        .withVisibility(MovieVisibility.SHARED)
+    CatalogItem movie = this.saveDraft("Dune");
+    CatalogItem shared = movie
+        .withVisibility(CatalogItemVisibility.SHARED)
         .withSharedWith(Set.of("maria", "pedro"));
 
-    Movie updated = this.movieRepository.updateAccess(shared).block();
+    CatalogItem updated = this.movieRepository.updateAccess(shared).block();
 
     assertThat(updated).isNotNull();
-    assertThat(updated.getVisibility()).isEqualTo(MovieVisibility.SHARED);
+    assertThat(updated.getVisibility()).isEqualTo(CatalogItemVisibility.SHARED);
     assertThat(updated.getSharedWith()).containsExactlyInAnyOrder("maria", "pedro");
   }
 
   @Test
   void updateAccessRollsBackVisibilityWhenReplacingSharesFails() {
-    Movie movie = this.saveDraft("Dune");
+    CatalogItem movie = this.saveDraft("Dune");
     this.databaseClient
         .sql(
             "ALTER TABLE movie_shares ADD CONSTRAINT "
@@ -145,23 +145,23 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
         .fetch()
         .rowsUpdated()
         .block();
-    Movie shared = movie
-        .withVisibility(MovieVisibility.SHARED)
+    CatalogItem shared = movie
+        .withVisibility(CatalogItemVisibility.SHARED)
         .withSharedWith(Set.of("blocked"));
 
     StepVerifier.create(this.movieRepository.updateAccess(shared))
         .expectError(DataIntegrityViolationException.class)
         .verify();
 
-    Movie persisted = this.movieRepository.findById(movie.getId()).block();
+    CatalogItem persisted = this.movieRepository.findById(movie.getId()).block();
     assertThat(persisted).isNotNull();
-    assertThat(persisted.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
+    assertThat(persisted.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
     assertThat(persisted.getSharedWith()).isEmpty();
   }
 
-  private Movie saveDraft(String title) {
+  private CatalogItem saveDraft(String title) {
     return this.movieRepository
-        .save(Movie.createDraft("pepe", MovieMetadata.onlyTitle(title), MediaKind.MOVIE))
+        .save(CatalogItem.createDraft("pepe", MovieMetadata.onlyTitle(title), MediaKind.MOVIE))
         .block();
   }
 

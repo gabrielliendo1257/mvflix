@@ -6,12 +6,12 @@ import static org.mockito.Mockito.when;
 import com.gcorp.service.app.mvflix_movies.catalog.application.MovieDeletionTransaction;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import org.junit.jupiter.api.Test;
 
@@ -23,13 +23,13 @@ import java.time.Duration;
 
 class DeletionRecoveryJobTest {
 
-    private final MovieRepository movieRepository = org.mockito.Mockito.mock(MovieRepository.class);
+    private final CatalogItemRepository movieRepository = org.mockito.Mockito.mock(CatalogItemRepository.class);
     private final MovieDeletionTransaction transaction = org.mockito.Mockito.mock(MovieDeletionTransaction.class);
 
     @Test
     void ensuresDeletingMoviesAndReactivatesExhaustedOutbox() {
-        Movie movie = new Movie(MovieId.of(7L), "pepe", "Dune", MovieStatus.DELETING,
-                EnrichmentStatus.ENRICHED, null, (MovieMetadata) null, MovieVisibility.PRIVATE,
+        CatalogItem movie = new CatalogItem(CatalogItemId.of(7L), "pepe", "Dune", CatalogItemStatus.DELETING,
+                EnrichmentStatus.ENRICHED, null, (MovieMetadata) null, CatalogItemVisibility.PRIVATE,
                 Set.of(), MediaKind.MOVIE);
         when(movieRepository.findDeletingForRecovery(25, Duration.ofMinutes(1))).thenReturn(Flux.just(movie));
         when(movieRepository.markRecoveryAttempt(movie.getId())).thenReturn(Mono.empty());

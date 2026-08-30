@@ -2,28 +2,28 @@ package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
 
 import java.util.Set;
 
-public class Movie {
+public class CatalogItem {
 
-    private final MovieId id;
+    private final CatalogItemId id;
     private final String ownerUsername;
     private final String title;
-    private final MovieStatus status;
+    private final CatalogItemStatus status;
     private final EnrichmentStatus enrichmentStatus;
     private final Long objectId;
     private final MovieMetadata metadata;
-    private final MovieVisibility visibility;
+    private final CatalogItemVisibility visibility;
     private final Set<String> sharedWith;
     private final MediaKind kind;
 
-    public Movie(
-        MovieId id,
+    public CatalogItem(
+        CatalogItemId id,
         String ownerUsername,
         String title,
-        MovieStatus status,
+        CatalogItemStatus status,
         EnrichmentStatus enrichmentStatus,
         Long objectId,
         MovieMetadata metadata,
-        MovieVisibility visibility,
+        CatalogItemVisibility visibility,
         Set<String> sharedWith,
         MediaKind kind) {
         this.id = id;
@@ -42,18 +42,18 @@ public class Movie {
      * Nacimiento de un item en DRAFT (flujo de upload): el dueño aporta la
      * metadata mínima y el objeto se asocia después con {@link #complete(Long)}.
      */
-    public static Movie createDraft(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
+    public static CatalogItem createDraft(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
         requireOwner(ownerUsername);
         requireTitle(metadata);
-        return new Movie(
+        return new CatalogItem(
                 null,
                 ownerUsername,
                 metadata.title(),
-                MovieStatus.DRAFT,
+                CatalogItemStatus.DRAFT,
                 EnrichmentStatus.RAW,
                 null,
                 metadata,
-                MovieVisibility.PRIVATE,
+                CatalogItemVisibility.PRIVATE,
                 Set.of(),
                 kind);
     }
@@ -63,18 +63,18 @@ public class Movie {
      * existe en el filesystem, por eso nace READY sin objeto subido (objectId
      * null). Es la otra clase de READY, complementaria a {@link #complete(Long)}.
      */
-    public static Movie fromLibraryAsset(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
+    public static CatalogItem fromLibraryAsset(String ownerUsername, MovieMetadata metadata, MediaKind kind) {
         requireOwner(ownerUsername);
         requireTitle(metadata);
-        return new Movie(
+        return new CatalogItem(
                 null,
                 ownerUsername,
                 metadata.title(),
-                MovieStatus.READY,
+                CatalogItemStatus.READY,
                 EnrichmentStatus.RAW,
                 null,
                 metadata,
-                MovieVisibility.PRIVATE,
+                CatalogItemVisibility.PRIVATE,
                 Set.of(),
                 kind);
     }
@@ -91,7 +91,7 @@ public class Movie {
         }
     }
 
-    public MovieId getId() {
+    public CatalogItemId getId() {
         return this.id;
     }
 
@@ -109,7 +109,7 @@ public class Movie {
                 : this.title;
     }
 
-    public MovieStatus getStatus() {
+    public CatalogItemStatus getStatus() {
         return this.status;
     }
 
@@ -121,7 +121,7 @@ public class Movie {
         return this.metadata;
     }
 
-    public MovieVisibility getVisibility() {
+    public CatalogItemVisibility getVisibility() {
         return this.visibility;
     }
 
@@ -149,15 +149,15 @@ public class Movie {
      */
     public boolean isVisibleTo(String username) {
         return isOwnedBy(username)
-                || this.visibility == MovieVisibility.PUBLIC
-                || (this.visibility == MovieVisibility.SHARED
+                || this.visibility == CatalogItemVisibility.PUBLIC
+                || (this.visibility == CatalogItemVisibility.SHARED
                         && this.sharedWith.contains(username));
     }
 
     /** Transición de dominio: cambia la visibilidad del catálogo (solo el dueño). */
-    public Movie withVisibility(MovieVisibility visibility) {
+    public CatalogItem withVisibility(CatalogItemVisibility visibility) {
         requireNotDeleting("change visibility");
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 this.title,
@@ -171,9 +171,9 @@ public class Movie {
     }
 
     /** Transición de dominio: reemplaza la lista de compartidos (solo el dueño). */
-    public Movie withSharedWith(Set<String> sharedWith) {
+    public CatalogItem withSharedWith(Set<String> sharedWith) {
         requireNotDeleting("change shares");
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 this.title,
@@ -198,15 +198,15 @@ public class Movie {
      * Existe para que el cambio se persista como unidad y nunca quede una
      * película SHARED sin sus shares, ni PRIVATE/PUBLIC con residuos.
      */
-    public Movie withAccess(MovieVisibility visibility, Set<String> sharedWith) {
+    public CatalogItem withAccess(CatalogItemVisibility visibility, Set<String> sharedWith) {
         requireNotDeleting("change access");
         Set<String> shares = sharedWith == null ? Set.of() : Set.copyOf(sharedWith);
-        if (visibility == MovieVisibility.SHARED && shares.isEmpty()) {
-            throw new InvalidMovieAccessException("SHARED requires at least one user");
+        if (visibility == CatalogItemVisibility.SHARED && shares.isEmpty()) {
+            throw new InvalidCatalogItemAccessException("SHARED requires at least one user");
         }
         // Solo SHARED retiene los compartidos; el resto los limpia.
-        Set<String> effective = visibility == MovieVisibility.SHARED ? shares : Set.of();
-        return new Movie(
+        Set<String> effective = visibility == CatalogItemVisibility.SHARED ? shares : Set.of();
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 this.title,
@@ -220,10 +220,10 @@ public class Movie {
     }
 
     /** Transición de dominio: reemplaza la metadata (edición manual del dueño). */
-    public Movie withMetadata(MovieMetadata metadata) {
+    public CatalogItem withMetadata(MovieMetadata metadata) {
         requireNotDeleting("edit");
         requireTitle(metadata);
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 metadata.title(),
@@ -241,11 +241,11 @@ public class Movie {
      * proveedor deja de ser válido y el item deja de estar identificado como
      * película.
      */
-    public Movie reclassifyAsVideo(MovieMetadata manualMetadata) {
+    public CatalogItem reclassifyAsVideo(MovieMetadata manualMetadata) {
         requireNotDeleting("reclassify");
         requireTitle(manualMetadata);
         MovieMetadata unlinkedMetadata = manualMetadata.withoutProvider();
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 unlinkedMetadata.title(),
@@ -263,11 +263,11 @@ public class Movie {
      * Un proveedor solo puede vincularse después mediante
      * {@link #linkProviderMetadata(MovieMetadata)}.
      */
-    public Movie reclassifyAsMovie() {
+    public CatalogItem reclassifyAsMovie() {
         requireNotDeleting("reclassify");
         requireTitle(this.metadata);
         MovieMetadata unlinkedMetadata = this.metadata.withoutProvider();
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 unlinkedMetadata.title(),
@@ -281,12 +281,12 @@ public class Movie {
     }
 
     public boolean isDraft() {
-        return this.status == MovieStatus.DRAFT;
+        return this.status == CatalogItemStatus.DRAFT;
     }
 
     /** {@code true} si la media está en borrado durable (no reproducible ni editable). */
     public boolean isDeleting() {
-        return this.status == MovieStatus.DELETING;
+        return this.status == CatalogItemStatus.DELETING;
     }
 
     /**
@@ -294,15 +294,15 @@ public class Movie {
      * si ya estaba DELETING devuelve {@code this}; en cualquier otro estado pasa
      * a DELETING. A partir de aquí ninguna mutación es válida.
      */
-    public Movie requestDeletion() {
-        if (this.status == MovieStatus.DELETING) {
+    public CatalogItem requestDeletion() {
+        if (this.status == CatalogItemStatus.DELETING) {
             return this;
         }
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 this.title,
-                MovieStatus.DELETING,
+                CatalogItemStatus.DELETING,
                 this.enrichmentStatus,
                 this.objectId,
                 this.metadata,
@@ -313,8 +313,8 @@ public class Movie {
 
     /** Una media DELETING es un estado terminal operativo: rechaza toda mutación. */
     private void requireNotDeleting(String transition) {
-        if (this.status == MovieStatus.DELETING) {
-            throw new MovieConflictException(
+        if (this.status == CatalogItemStatus.DELETING) {
+            throw new CatalogItemConflictException(
                     "Cannot " + transition + " a movie in DELETING state");
         }
     }
@@ -325,7 +325,7 @@ public class Movie {
      * playback se resuelve por {@code MediaAsset}, no por el storage del upload.
      */
     public boolean isLibraryBacked() {
-        return this.status == MovieStatus.READY && this.objectId == null;
+        return this.status == CatalogItemStatus.READY && this.objectId == null;
     }
 
     /** READY con objeto subido al storage (flujo de upload). */
@@ -342,16 +342,16 @@ public class Movie {
      * representan películas pueden tener ese vínculo y la metadata debe incluir
      * el identificador estable del proveedor.
      */
-    public Movie linkProviderMetadata(MovieMetadata providerMetadata) {
+    public CatalogItem linkProviderMetadata(MovieMetadata providerMetadata) {
         requireNotDeleting("link provider");
         if (!isMovie()) {
-            throw new MovieConflictException("Only movie items can link provider metadata");
+            throw new CatalogItemConflictException("Only movie items can link provider metadata");
         }
         if (providerMetadata == null || providerMetadata.tmdbId() == null) {
             throw new IllegalArgumentException("provider metadata id is required");
         }
         requireTitle(providerMetadata);
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 providerMetadata.title(),
@@ -365,10 +365,10 @@ public class Movie {
     }
 
     /** Desvincula el proveedor y devuelve el item a RAW conservando metadata manual. */
-    public Movie unlinkProvider() {
+    public CatalogItem unlinkProvider() {
         requireNotDeleting("unlink provider");
         MovieMetadata unlinkedMetadata = this.metadata.withoutProvider();
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 unlinkedMetadata.title(),
@@ -384,15 +384,15 @@ public class Movie {
     /**
      * Transición de dominio: un item en borrador pasa a lista cuando se le asigna su objeto.
      * Solo el {@code objectId} (referencia publica) vive en el agregado; la key del objeto
-     * es un secreto interno que queda en {@code Media}, nunca en Movie.
+     * es un secreto interno que queda en {@code Media}, nunca en CatalogItem.
      */
-    public Movie complete(Long objectId) {
+    public CatalogItem complete(Long objectId) {
         requireNotDeleting("complete");
-        return new Movie(
+        return new CatalogItem(
                 this.id,
                 this.ownerUsername,
                 this.title,
-                MovieStatus.READY,
+                CatalogItemStatus.READY,
                 this.enrichmentStatus,
                 objectId,
                 this.metadata,

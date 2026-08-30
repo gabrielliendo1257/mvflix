@@ -3,12 +3,12 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieConflictException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemConflictException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,12 +22,12 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class CompleteMovieUseCase {
 
-  private final MovieRepository movieRepository;
+  private final CatalogItemRepository movieRepository;
   private final MediaRepository mediaRepository;
   private final UserProvider userProvider;
 
   @Transactional(transactionManager = "connectionFactoryTransactionManager")
-  public Mono<Movie> execute(MovieId id, Long objectId, String objectKey) {
+  public Mono<CatalogItem> execute(CatalogItemId id, Long objectId, String objectKey) {
     return this.userProvider
         .getAuthenticatedUser()
         .flatMap(
@@ -35,10 +35,10 @@ public class CompleteMovieUseCase {
                 this.movieRepository
                     .findById(id)
                     .switchIfEmpty(
-                        Mono.error(new MovieNotFoundException("Movie not found: " + id.value())))
+                        Mono.error(new CatalogItemNotFoundException("Movie not found: " + id.value())))
                     .filter(movie -> movie.isOwnedBy(user.subject()))
                     .switchIfEmpty(
-                        Mono.error(new MovieNotFoundException("Movie not found: " + id.value())))
+                        Mono.error(new CatalogItemNotFoundException("Movie not found: " + id.value())))
                     .flatMap(
                         movie ->
                             this.movieRepository
@@ -65,17 +65,17 @@ public class CompleteMovieUseCase {
    * Reconciliación cuando el CAS no transicionó (la película ya no está en DRAFT): distingue el
    * no-op idempotente (ya READY con el mismo object_key) del 409 (estado no completable).
    */
-  private Mono<Movie> resolveConflict(MovieId id, String objectKey) {
+  private Mono<CatalogItem> resolveConflict(CatalogItemId id, String objectKey) {
     return this.movieRepository
         .findById(id)
         .switchIfEmpty(
-            Mono.error(new MovieNotFoundException("Movie not found: " + id.value())))
+            Mono.error(new CatalogItemNotFoundException("Movie not found: " + id.value())))
         .flatMap(
             movie -> {
-              if (movie.getStatus() != MovieStatus.READY) {
+              if (movie.getStatus() != CatalogItemStatus.READY) {
                 log.warn("Pelicula {} no completable: status={}", id.value(), movie.getStatus());
                 return Mono.error(
-                    new MovieConflictException("Movie is not in DRAFT state: " + id.value()));
+                    new CatalogItemConflictException("CatalogItem is not in DRAFT state: " + id.value()));
               }
               return this.mediaRepository
                   .findByMovieId(id)
@@ -92,8 +92,8 @@ public class CompleteMovieUseCase {
                             media.getObjectKey(),
                             objectKey);
                         return Mono.error(
-                            new MovieConflictException(
-                                "Movie is not in DRAFT state: " + id.value()));
+                            new CatalogItemConflictException(
+                                "CatalogItem is not in DRAFT state: " + id.value()));
                       })
                   .switchIfEmpty(
                       Mono.defer(
@@ -102,8 +102,8 @@ public class CompleteMovieUseCase {
                                 "Pelicula {} no completable: no tiene media de upload",
                                 id.value());
                             return Mono.error(
-                                new MovieConflictException(
-                                    "Movie is not in DRAFT state: " + id.value()));
+                                new CatalogItemConflictException(
+                                    "CatalogItem is not in DRAFT state: " + id.value()));
                           }));
             });
   }

@@ -11,7 +11,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
  *       nuevo {@code requestDeletion} es idempotente.</li>
  * </ul>
  */
-public enum MovieStatus {
+public enum CatalogItemStatus {
     DRAFT,
     READY,
     DELETING

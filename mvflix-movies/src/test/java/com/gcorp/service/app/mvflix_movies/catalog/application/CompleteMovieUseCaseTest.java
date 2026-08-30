@@ -8,14 +8,14 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieConflictException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemConflictException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieNotFoundException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemNotFoundException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayDeque;
@@ -32,7 +32,7 @@ import reactor.test.StepVerifier;
 
 class CompleteMovieUseCaseTest {
 
-  private static final MovieId MOVIE_ID = MovieId.of(10L);
+  private static final CatalogItemId MOVIE_ID = CatalogItemId.of(10L);
   private static final String OWNER = "owner-subject";
   private static final Long OBJECT_ID = 99L;
   private static final String OBJECT_KEY = "movies/10/video.mp4";
@@ -61,7 +61,7 @@ class CompleteMovieUseCaseTest {
         .assertNext(
             movie -> {
               assertThat(movie.getId()).isEqualTo(MOVIE_ID);
-              assertThat(movie.getStatus()).isEqualTo(MovieStatus.READY);
+              assertThat(movie.getStatus()).isEqualTo(CatalogItemStatus.READY);
               assertThat(movie.getObjectId()).isEqualTo(OBJECT_ID);
             })
         .verifyComplete();
@@ -83,7 +83,7 @@ class CompleteMovieUseCaseTest {
     this.movieRepository.findByIdReturnsEmpty();
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
-        .expectError(MovieNotFoundException.class)
+        .expectError(CatalogItemNotFoundException.class)
         .verify();
 
     assertThat(this.movieRepository.completeIfDraftIds).isEmpty();
@@ -92,10 +92,10 @@ class CompleteMovieUseCaseTest {
 
   @Test
   void hidesMovieFromNonOwnerAsNotFound() {
-    this.movieRepository.findByIdReturns(movieOwnedBy("another-owner", MovieStatus.DRAFT, null));
+    this.movieRepository.findByIdReturns(movieOwnedBy("another-owner", CatalogItemStatus.DRAFT, null));
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
-        .expectError(MovieNotFoundException.class)
+        .expectError(CatalogItemNotFoundException.class)
         .verify();
 
     assertThat(this.movieRepository.completeIfDraftIds).isEmpty();
@@ -111,7 +111,7 @@ class CompleteMovieUseCaseTest {
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
         .assertNext(
             movie -> {
-              assertThat(movie.getStatus()).isEqualTo(MovieStatus.READY);
+              assertThat(movie.getStatus()).isEqualTo(CatalogItemStatus.READY);
               assertThat(movie.getObjectId()).isEqualTo(123L);
             })
         .verifyComplete();
@@ -130,7 +130,7 @@ class CompleteMovieUseCaseTest {
         Media.create(MOVIE_ID, 123L, "movies/10/another.mp4"));
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
-        .expectError(MovieConflictException.class)
+        .expectError(CatalogItemConflictException.class)
         .verify();
 
     assertThat(this.mediaRepository.savedMedia).isEmpty();
@@ -142,7 +142,7 @@ class CompleteMovieUseCaseTest {
     this.movieRepository.completeIfDraftReturnsEmpty();
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
-        .expectError(MovieConflictException.class)
+        .expectError(CatalogItemConflictException.class)
         .verify();
 
     assertThat(this.mediaRepository.findByMovieIdIds).isEmpty();
@@ -156,7 +156,7 @@ class CompleteMovieUseCaseTest {
     this.movieRepository.completeIfDraftReturnsEmpty();
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
-        .expectError(MovieNotFoundException.class)
+        .expectError(CatalogItemNotFoundException.class)
         .verify();
 
     assertThat(this.mediaRepository.savedMedia).isEmpty();
@@ -169,7 +169,7 @@ class CompleteMovieUseCaseTest {
     this.mediaRepository.findByMovieIdReturnsEmpty();
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
-        .expectError(MovieConflictException.class)
+        .expectError(CatalogItemConflictException.class)
         .verify();
 
     assertThat(this.mediaRepository.savedMedia).isEmpty();
@@ -232,16 +232,16 @@ class CompleteMovieUseCaseTest {
     assertThat(this.mediaRepository.savedMedia).isEmpty();
   }
 
-  private static Movie draftMovie() {
-    return movieOwnedBy(OWNER, MovieStatus.DRAFT, null);
+  private static CatalogItem draftMovie() {
+    return movieOwnedBy(OWNER, CatalogItemStatus.DRAFT, null);
   }
 
-  private static Movie readyMovie(Long objectId) {
-    return movieOwnedBy(OWNER, MovieStatus.READY, objectId);
+  private static CatalogItem readyMovie(Long objectId) {
+    return movieOwnedBy(OWNER, CatalogItemStatus.READY, objectId);
   }
 
-  private static Movie movieOwnedBy(String owner, MovieStatus status, Long objectId) {
-    return new Movie(
+  private static CatalogItem movieOwnedBy(String owner, CatalogItemStatus status, Long objectId) {
+    return new CatalogItem(
         MOVIE_ID,
         owner,
         "Dune",
@@ -249,7 +249,7 @@ class CompleteMovieUseCaseTest {
         EnrichmentStatus.RAW,
         objectId,
         MovieMetadata.onlyTitle("Dune"),
-        MovieVisibility.PRIVATE,
+        CatalogItemVisibility.PRIVATE,
         Set.of(),
         MediaKind.MOVIE);
   }
@@ -271,7 +271,7 @@ class CompleteMovieUseCaseTest {
   private static final class RecordingMediaRepository implements MediaRepository {
 
     private final List<Media> savedMedia = new ArrayList<>();
-    private final List<MovieId> findByMovieIdIds = new ArrayList<>();
+    private final List<CatalogItemId> findByMovieIdIds = new ArrayList<>();
     private Function<Media, Mono<Media>> saveResult = Mono::just;
     private Mono<Media> findByMovieIdResult = unexpectedMono("findByMovieId");
 
@@ -282,7 +282,7 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
-    public Mono<Media> findByMovieId(MovieId movieId) {
+    public Mono<Media> findByMovieId(CatalogItemId movieId) {
       this.findByMovieIdIds.add(movieId);
       return this.findByMovieIdResult;
     }
@@ -296,25 +296,25 @@ class CompleteMovieUseCaseTest {
     }
   }
 
-  private static final class RecordingMovieRepository implements MovieRepository {
+  private static final class RecordingMovieRepository implements CatalogItemRepository {
 
-    private final Deque<Mono<Movie>> findByIdResults = new ArrayDeque<>();
-    private final List<MovieId> findByIdIds = new ArrayList<>();
-    private final List<MovieId> completeIfDraftIds = new ArrayList<>();
-    private Mono<Movie> completeIfDraftResult = unexpectedMono("completeIfDraft");
+    private final Deque<Mono<CatalogItem>> findByIdResults = new ArrayDeque<>();
+    private final List<CatalogItemId> findByIdIds = new ArrayList<>();
+    private final List<CatalogItemId> completeIfDraftIds = new ArrayList<>();
+    private Mono<CatalogItem> completeIfDraftResult = unexpectedMono("completeIfDraft");
 
     @Override
-    public Mono<Movie> saveDraftWithAccess(Movie movie) {
+    public Mono<CatalogItem> saveDraftWithAccess(CatalogItem movie) {
       return unexpectedMono("saveDraftWithAccess");
     }
 
     @Override
-    public Mono<Movie> save(Movie movie) {
+    public Mono<CatalogItem> save(CatalogItem movie) {
       return unexpectedMono("save");
     }
 
     @Override
-    public Mono<Movie> findById(MovieId id) {
+    public Mono<CatalogItem> findById(CatalogItemId id) {
       this.findByIdIds.add(id);
       if (this.findByIdResults.isEmpty()) {
         return unexpectedMono("findById");
@@ -323,88 +323,88 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
-    public Flux<Movie> findVisibleMovies(String username, int limit) {
+    public Flux<CatalogItem> findVisibleMovies(String username, int limit) {
       return unexpectedFlux("findVisibleMovies");
     }
 
     @Override
-    public Flux<Movie> findByOwner(String ownerUsername, int limit) {
+    public Flux<CatalogItem> findByOwner(String ownerUsername, int limit) {
       return unexpectedFlux("findByOwner");
     }
 
     @Override
-    public Flux<Movie> findByOwnerAndIds(String ownerUsername, List<MovieId> ids) {
+    public Flux<CatalogItem> findByOwnerAndIds(String ownerUsername, List<CatalogItemId> ids) {
       return unexpectedFlux("findByOwnerAndIds");
     }
 
     @Override
-    public Mono<Movie> completeIfDraft(MovieId id) {
+    public Mono<CatalogItem> completeIfDraft(CatalogItemId id) {
       this.completeIfDraftIds.add(id);
       return this.completeIfDraftResult;
     }
 
     @Override
-    public Mono<Boolean> deleteById(MovieId id) {
+    public Mono<Boolean> deleteById(CatalogItemId id) {
       return unexpectedMono("deleteById");
     }
 
     @Override
-    public Mono<Movie> markDeleting(MovieId id) {
+    public Mono<CatalogItem> markDeleting(CatalogItemId id) {
       return unexpectedMono("markDeleting");
     }
 
     @Override
-    public Mono<Boolean> deleteIfDeleting(MovieId id) {
+    public Mono<Boolean> deleteIfDeleting(CatalogItemId id) {
       return unexpectedMono("deleteIfDeleting");
     }
 
     @Override
-    public Mono<Boolean> deleteIfDeletingAndStorageId(MovieId id, long storageId) {
+    public Mono<Boolean> deleteIfDeletingAndStorageId(CatalogItemId id, long storageId) {
       return unexpectedMono("deleteIfDeletingAndStorageId");
     }
 
     @Override
-    public Flux<Movie> findDeleting(int limit) {
+    public Flux<CatalogItem> findDeleting(int limit) {
       return unexpectedFlux("findDeleting");
     }
 
     @Override
-    public Flux<Movie> findDeletingForRecovery(int limit, Duration retryCooldown) {
+    public Flux<CatalogItem> findDeletingForRecovery(int limit, Duration retryCooldown) {
       return unexpectedFlux("findDeletingForRecovery");
     }
 
     @Override
-    public Mono<Void> markRecoveryAttempt(MovieId id) {
+    public Mono<Void> markRecoveryAttempt(CatalogItemId id) {
       return unexpectedMono("markRecoveryAttempt");
     }
 
     @Override
-    public Mono<Movie> updateEnrichment(Movie movie) {
+    public Mono<CatalogItem> updateEnrichment(CatalogItem movie) {
       return unexpectedMono("updateEnrichment");
     }
 
     @Override
-    public Mono<Movie> updateDetails(Movie movie) {
+    public Mono<CatalogItem> updateDetails(CatalogItem movie) {
       return unexpectedMono("updateDetails");
     }
 
     @Override
-    public Mono<Movie> updateVisibility(Movie movie) {
+    public Mono<CatalogItem> updateVisibility(CatalogItem movie) {
       return unexpectedMono("updateVisibility");
     }
 
     @Override
-    public Mono<Movie> replaceShares(Movie movie) {
+    public Mono<CatalogItem> replaceShares(CatalogItem movie) {
       return unexpectedMono("replaceShares");
     }
 
     @Override
-    public Mono<Movie> updateAccess(Movie movie) {
+    public Mono<CatalogItem> updateAccess(CatalogItem movie) {
       return unexpectedMono("updateAccess");
     }
 
     @Override
-    public Flux<Movie> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit) {
+    public Flux<CatalogItem> findByEnrichmentStatus(EnrichmentStatus enrichmentStatus, int limit) {
       return unexpectedFlux("findByEnrichmentStatus");
     }
 
@@ -413,8 +413,8 @@ class CompleteMovieUseCaseTest {
       return unexpectedMono("deleteDraftsCreatedBefore");
     }
 
-    private void findByIdReturns(Movie... movies) {
-      for (Movie movie : movies) {
+    private void findByIdReturns(CatalogItem... movies) {
+      for (CatalogItem movie : movies) {
         this.findByIdResults.addLast(Mono.just(movie));
       }
     }
@@ -423,7 +423,7 @@ class CompleteMovieUseCaseTest {
       this.findByIdResults.addLast(Mono.empty());
     }
 
-    private void completeIfDraftReturns(Movie movie) {
+    private void completeIfDraftReturns(CatalogItem movie) {
       this.completeIfDraftResult = Mono.just(movie);
     }
 

@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.domain.movie;
 
 /**
- * Estado de enriquecimiento del catalogo, ortogonal a {@link MovieStatus}:
+ * Estado de enriquecimiento del catalogo, ortogonal a {@link CatalogItemStatus}:
  * una pelicula puede estar READY (lista para reproducir) y aun RAW (sin
  * metadatos externos), o ENRICHED en DRAFT (metadata importada antes del media).
  */

@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.never;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,13 +26,13 @@ class StoredObjectDeletedConsumerTest {
     @Test
     void finalizesTheReferencedManagedMovie() {
         UUID eventId = UUID.randomUUID();
-        when(this.deletionTransaction.finalizeManagedDeletion(MovieId.of(42L), 7L))
+        when(this.deletionTransaction.finalizeManagedDeletion(CatalogItemId.of(42L), 7L))
                 .thenReturn(Mono.empty());
 
         StepVerifier.create(this.consumer.consume(event(eventId)))
                 .verifyComplete();
 
-        verify(this.deletionTransaction).finalizeManagedDeletion(eq(MovieId.of(42L)), eq(7L));
+        verify(this.deletionTransaction).finalizeManagedDeletion(eq(CatalogItemId.of(42L)), eq(7L));
     }
 
     @Test

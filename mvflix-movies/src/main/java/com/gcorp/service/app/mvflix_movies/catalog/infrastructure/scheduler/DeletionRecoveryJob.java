@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.scheduler;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.MovieDeletionTransaction;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,13 +20,13 @@ import java.time.Duration;
 @ConditionalOnProperty(name = "mvflix.messaging.kafka.enabled", havingValue = "true")
 public class DeletionRecoveryJob {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final MovieDeletionTransaction deletionTransaction;
     private final int batchSize;
     private final Duration retryCooldown;
 
     public DeletionRecoveryJob(
-            MovieRepository movieRepository,
+            CatalogItemRepository movieRepository,
             MovieDeletionTransaction deletionTransaction,
             @Value("${movies.deletion.recovery-batch-size:25}") int batchSize,
             @Value("${movies.deletion.recovery-cooldown:PT1M}") Duration retryCooldown) {

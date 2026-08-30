@@ -5,8 +5,8 @@ import static org.mockito.Mockito.when;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.AuthenticatedUser;
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,7 +20,7 @@ import reactor.core.publisher.Mono;
 @ExtendWith(MockitoExtension.class)
 class ListMoviesUseCaseTest {
 
-    @Mock private MovieRepository movieRepository;
+    @Mock private CatalogItemRepository movieRepository;
     @Mock private UserProvider userProvider;
 
     @InjectMocks private ListMoviesUseCase useCase;

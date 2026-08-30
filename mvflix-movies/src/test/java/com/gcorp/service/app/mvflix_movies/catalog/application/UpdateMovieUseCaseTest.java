@@ -10,13 +10,13 @@ import com.gcorp.service.app.mvflix_movies.shared.application.security.Authentic
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieAccessDeniedException;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,7 +33,7 @@ import java.util.List;
 @ExtendWith(MockitoExtension.class)
 class UpdateMovieUseCaseTest {
 
-    @Mock private MovieRepository movieRepository;
+    @Mock private CatalogItemRepository movieRepository;
     @Mock private UserProvider userProvider;
 
     @InjectMocks private UpdateMovieUseCase useCase;
@@ -43,16 +43,16 @@ class UpdateMovieUseCaseTest {
             List.of("Timothée Chalamet"), "Overview", "/poster.jpg", "2021-10-22",
             "USA", "English", List.of("Oscar"), 438631L);
 
-    private static Movie movie(long id, String owner, MovieMetadata metadata) {
-        return new Movie(
-                MovieId.of(id), owner, "Dune", MovieStatus.READY, EnrichmentStatus.ENRICHED,
-                null, metadata, MovieVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
+    private static CatalogItem movie(long id, String owner, MovieMetadata metadata) {
+        return new CatalogItem(
+                CatalogItemId.of(id), owner, "Dune", CatalogItemStatus.READY, EnrichmentStatus.ENRICHED,
+                null, metadata, CatalogItemVisibility.PRIVATE, java.util.Set.of(), MediaKind.MOVIE);
     }
 
     @Test
     void ownerUpdatesProvidedFieldsAndKeepsOthers() {
-        Movie movie = movie(1L, "Javier", METADATA);
-        Movie updated = movie(1L, "Javier", new MovieMetadata(
+        CatalogItem movie = movie(1L, "Javier", METADATA);
+        CatalogItem updated = movie(1L, "Javier", new MovieMetadata(
                 "Dune: Part Two", "Dune: Part Two", 2024, List.of("Sci-Fi", "Adventure"),
                 7.9, "2h 35m", "Denis Villeneuve", List.of("Timothée Chalamet"),
                 "Overview", "/poster.jpg", "2024-03-01", "USA", "English",
@@ -60,21 +60,21 @@ class UpdateMovieUseCaseTest {
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.movieRepository.updateDetails(any(Movie.class)))
+        when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.movieRepository.updateDetails(any(CatalogItem.class)))
                 .thenReturn(Mono.just(updated));
 
         var command = new UpdateMovieCommand(
                 "Dune: Part Two", "Dune: Part Two", 2024, List.of("Sci-Fi", "Adventure"),
                 null, null, null, null, null, "2024-03-01", null, null, null, null, null);
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L), command))
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), command))
                 .expectNext(updated)
                 .verifyComplete();
 
-        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).updateDetails(captor.capture());
-        assertThat(captor.getValue().getId()).isEqualTo(MovieId.of(1L));
+        assertThat(captor.getValue().getId()).isEqualTo(CatalogItemId.of(1L));
         assertThat(captor.getValue().getMetadata().title()).isEqualTo("Dune: Part Two");
         assertThat(captor.getValue().getMetadata().year()).isEqualTo(2024);
         assertThat(captor.getValue().getMetadata().genres())
@@ -114,23 +114,23 @@ class UpdateMovieUseCaseTest {
 
     @Test
     void switchingToOtherClearsProviderMetadata() {
-        Movie movie = movie(1L, "Javier", METADATA);
+        CatalogItem movie = movie(1L, "Javier", METADATA);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.movieRepository.updateDetails(any(Movie.class)))
+        when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.movieRepository.updateDetails(any(CatalogItem.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
                         "Mi grabacion", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, MediaKind.VIDEO)))
                 .expectNextCount(1)
                 .verifyComplete();
 
-        ArgumentCaptor<Movie> captor = ArgumentCaptor.forClass(Movie.class);
+        ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).updateDetails(captor.capture());
-        Movie reclassified = captor.getValue();
+        CatalogItem reclassified = captor.getValue();
         assertThat(reclassified.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(reclassified.getMetadata().title()).isEqualTo("Mi grabacion");
@@ -143,18 +143,18 @@ class UpdateMovieUseCaseTest {
 
     @Test
     void switchingFromOtherCreatesRawUnlinkedMovie() {
-        Movie other = new Movie(
-                MovieId.of(1L), "Javier", "Imported clip", MovieStatus.READY,
+        CatalogItem other = new CatalogItem(
+                CatalogItemId.of(1L), "Javier", "Imported clip", CatalogItemStatus.READY,
                 EnrichmentStatus.RAW, null, MovieMetadata.onlyTitle("Imported clip"),
-                MovieVisibility.PRIVATE, java.util.Set.of(), MediaKind.VIDEO);
+                CatalogItemVisibility.PRIVATE, java.util.Set.of(), MediaKind.VIDEO);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(other));
-        when(this.movieRepository.updateDetails(any(Movie.class)))
+        when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(other));
+        when(this.movieRepository.updateDetails(any(CatalogItem.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
                         "Identifiable movie", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, MediaKind.MOVIE)))
                 .assertNext(updated -> {
@@ -165,59 +165,59 @@ class UpdateMovieUseCaseTest {
                 })
                 .verifyComplete();
 
-        verify(this.movieRepository).updateDetails(any(Movie.class));
+        verify(this.movieRepository).updateDetails(any(CatalogItem.class));
     }
 
     @Test
     void nonOwnerIsDenied() {
-        Movie movie = movie(1L, "Javier", METADATA);
+        CatalogItem movie = movie(1L, "Javier", METADATA);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
-        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
                         "Otro", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null)))
-                .expectError(MovieAccessDeniedException.class)
+                .expectError(CatalogItemAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never()).updateDetails(any(Movie.class));
+        verify(this.movieRepository, never()).updateDetails(any(CatalogItem.class));
     }
 
     @Test
     void adminCanModerateMoviesOfOthers() {
-        Movie movie = movie(1L, "Javier", METADATA);
+        CatalogItem movie = movie(1L, "Javier", METADATA);
 
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Admin", "a@m.com",
                         java.util.Set.of(AuthenticatedUser.ADMIN_ROLE))));
-        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.movieRepository.updateDetails(any(Movie.class)))
+        when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.movieRepository.updateDetails(any(CatalogItem.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
                         "Moderado", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null)))
                 .expectNextCount(1)
                 .verifyComplete();
 
-        verify(this.movieRepository).updateDetails(any(Movie.class));
+        verify(this.movieRepository).updateDetails(any(CatalogItem.class));
     }
 
     @Test
     void adminWithoutRoleAuthorityIsJustAnotherNonOwner() {
-        Movie movie = movie(1L, "Javier", METADATA);
+        CatalogItem movie = movie(1L, "Javier", METADATA);
 
         // Username "Admin" sin el rol: la política la decide el token, no el nombre.
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Admin", "a@m.com")));
-        when(this.movieRepository.findById(MovieId.of(1L))).thenReturn(Mono.just(movie));
+        when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
                         "X", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null)))
-                .expectError(MovieAccessDeniedException.class)
+                .expectError(CatalogItemAccessDeniedException.class)
                 .verify();
     }
 
@@ -225,14 +225,14 @@ class UpdateMovieUseCaseTest {
     void missingMovieIsDeniedWithoutRevealingExistence() {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
-        when(this.movieRepository.findById(MovieId.of(99L))).thenReturn(Mono.empty());
+        when(this.movieRepository.findById(CatalogItemId.of(99L))).thenReturn(Mono.empty());
 
-        StepVerifier.create(this.useCase.execute(MovieId.of(99L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(99L), new UpdateMovieCommand(
                         "X", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null)))
-                .expectError(MovieAccessDeniedException.class)
+                .expectError(CatalogItemAccessDeniedException.class)
                 .verify();
 
-        verify(this.movieRepository, never()).updateDetails(any(Movie.class));
+        verify(this.movieRepository, never()).updateDetails(any(CatalogItem.class));
     }
 }

@@ -2,10 +2,10 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 
 import com.gcorp.service.app.mvflix_movies.shared.application.security.UserProvider;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,12 +21,12 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class DeleteMovieUseCase {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final MediaRepository mediaRepository;
     private final UserProvider userProvider;
     private final MovieDeletionTransaction deletionTransaction;
 
-    public Mono<DeletionOutcome> execute(MovieId id) {
+    public Mono<DeletionOutcome> execute(CatalogItemId id) {
         return this.userProvider.getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository.findById(id)
                         // Missing and foreign are deliberately indistinguishable.
@@ -35,8 +35,8 @@ public class DeleteMovieUseCase {
                         .defaultIfEmpty(new DeletionOutcome.Completed()));
     }
 
-    private Mono<DeletionOutcome> deleteOwnedMovie(MovieId id, Movie movie) {
-        if (movie.getStatus() == MovieStatus.DELETING) {
+    private Mono<DeletionOutcome> deleteOwnedMovie(CatalogItemId id, CatalogItem movie) {
+        if (movie.getStatus() == CatalogItemStatus.DELETING) {
             return this.deletionTransaction.ensureDeletionRequested(id)
                     .thenReturn(new DeletionOutcome.Pending());
         }
@@ -48,12 +48,12 @@ public class DeleteMovieUseCase {
                 .switchIfEmpty(Mono.defer(() -> this.deleteImmediately(id)));
     }
 
-    private Mono<DeletionOutcome> beginManagedDeletion(MovieId id) {
+    private Mono<DeletionOutcome> beginManagedDeletion(CatalogItemId id) {
         return this.deletionTransaction.requestDeletion(id)
                 .thenReturn(new DeletionOutcome.Pending());
     }
 
-    private Mono<DeletionOutcome> deleteImmediately(MovieId id) {
+    private Mono<DeletionOutcome> deleteImmediately(CatalogItemId id) {
         return this.deletionTransaction.deleteImmediately(id)
                 .<DeletionOutcome>thenReturn(new DeletionOutcome.Completed());
     }

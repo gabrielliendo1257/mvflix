@@ -3,9 +3,9 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.library.application.MediaAssetQueries;
 import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
@@ -33,7 +33,7 @@ import reactor.test.StepVerifier;
 @SpringBootTest
 class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegrationTest {
 
-    @Autowired private MovieRepository movieRepository;
+    @Autowired private CatalogItemRepository movieRepository;
     @Autowired private MediaAssetRepository mediaAssetRepository;
     @Autowired private CatalogViewSqlRepository catalogViewRepository;
     @Autowired private MediaAssetQueries mediaAssetQueries;
@@ -49,7 +49,7 @@ class PlaybackAndCatalogAssetSelectionConsistencyTest extends PostgresIntegratio
         this.databaseClient.sql("DELETE FROM movie_shares").fetch().rowsUpdated().block();
         this.databaseClient.sql("DELETE FROM movies").fetch().rowsUpdated().block();
 
-        Movie movie = this.movieRepository.save(Movie.fromLibraryAsset(
+        CatalogItem movie = this.movieRepository.save(CatalogItem.fromLibraryAsset(
                 "pepe", MovieMetadata.onlyTitle("Stalker"), MediaKind.MOVIE)).block();
         this.catalogMovieId = movie.getId().value();
 

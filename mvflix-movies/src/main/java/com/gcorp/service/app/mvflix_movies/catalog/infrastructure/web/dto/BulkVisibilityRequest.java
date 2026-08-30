@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto;
 
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -14,6 +14,6 @@ import java.util.List;
 public record BulkVisibilityRequest(
         List<@Positive Long> movieIds,
         List<@Positive Long> libraryIds,
-        @NotNull MovieVisibility visibility,
+        @NotNull CatalogItemVisibility visibility,
         List<String> usernames) {
 }

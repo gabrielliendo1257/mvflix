@@ -5,11 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.Media;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAsset;
 import com.gcorp.service.app.mvflix_movies.library.domain.MediaAssetRepository;
 import com.gcorp.service.app.mvflix_movies.library.domain.ScannedFile;
@@ -34,7 +33,7 @@ import reactor.test.StepVerifier;
 @SpringBootTest
 class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
 
-    @Autowired private MovieRepository movieRepository;
+    @Autowired private CatalogItemRepository movieRepository;
     @Autowired private MediaRepository mediaRepository;
     @Autowired private MediaAssetRepository mediaAssetRepository;
     @Autowired private DatabaseClient databaseClient;
@@ -49,7 +48,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
 
     @Test
     void managedUploadIsRepresentedByAMediaRowWithObject() {
-        Movie movie = this.movieRepository.save(Movie.createDraft(
+        CatalogItem movie = this.movieRepository.save(CatalogItem.createDraft(
                 "pepe", MovieMetadata.onlyTitle("Coraline"), MediaKind.MOVIE)).block();
 
         this.mediaRepository.save(Media.create(movie.getId(), 42L, "pepe/coraline.mp4"))
@@ -64,7 +63,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
 
     @Test
     void localLibraryMovieLinksAnIdentifiedPresentAsset() {
-        Movie movie = this.movieRepository.save(Movie.fromLibraryAsset(
+        CatalogItem movie = this.movieRepository.save(CatalogItem.fromLibraryAsset(
                 "admin", MovieMetadata.onlyTitle("Dune"), MediaKind.MOVIE)).block();
 
         // Flujo real: el insert nace UNIDENTIFIED y la transacción de
@@ -75,23 +74,23 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
                 .block();
         this.mediaAssetRepository
                 .identifyIfUnidentified(discovered.getId(),
-                        CatalogItemId.of(movie.getId().value()))
+                        com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(movie.getId().value()))
                 .block();
 
         StepVerifier.create(this.mediaAssetRepository.findByCatalogItemId(
-                        CatalogItemId.of(movie.getId().value())))
+                        com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(movie.getId().value())))
                 .assertNext(asset -> {
                     assertThat(asset.isIdentified()).isTrue();
                     assertThat(asset.getPresent()).isTrue();
                     assertThat(asset.getCatalogItemId()).isEqualTo(
-                            CatalogItemId.of(movie.getId().value()));
+                             com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(movie.getId().value()));
                 })
                 .verifyComplete();
     }
 
     @Test
     void sharesTableHoldsOneRowPerSharedUser() {
-        Movie movie = this.movieRepository.save(Movie.createDraft(
+        CatalogItem movie = this.movieRepository.save(CatalogItem.createDraft(
                 "pepe", MovieMetadata.onlyTitle("Alien"), MediaKind.MOVIE)).block();
         Long movieDbId = movie.getId().value();
 
@@ -115,7 +114,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
 
     @Test
     void metadataJsonbCarriesTheDisplayFieldsTheGridNeeds() {
-        this.movieRepository.save(Movie.createDraft(
+        this.movieRepository.save(CatalogItem.createDraft(
                 "pepe",
                 new MovieMetadata("Coraline", null, 2009, null, null,
                         "1h 40m", null, null, null, "/coraline.jpg", null,

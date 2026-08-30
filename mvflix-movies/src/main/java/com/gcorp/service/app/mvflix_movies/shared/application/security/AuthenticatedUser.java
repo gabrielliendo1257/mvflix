@@ -6,7 +6,7 @@ import java.util.Set;
  * Usuario autenticado según el token. Los roles viajan en el claim {@code roles}
  * del JWT emitido por el IdP (desde su tabla roles); son la base de políticas de
  * producto como la moderación del catálogo. La pertenencia al catálogo sigue
- * decidiéndola {@code Movie.isOwnedBy}.
+ * decidiéndola {@code CatalogItem.isOwnedBy}.
  */
 public record AuthenticatedUser(String subject, String email, Set<String> roles) {
 

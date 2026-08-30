@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +34,7 @@ class CompleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
     Long draftMovie = this.insertMovie("DRAFT");
 
     StepVerifier.create(
-            this.useCase.execute(MovieId.of(draftMovie), 701L, DUPLICATE_OBJECT_KEY))
+            this.useCase.execute(CatalogItemId.of(draftMovie), 701L, DUPLICATE_OBJECT_KEY))
         .expectErrorSatisfies(
             error -> assertThat(error).isInstanceOf(DataIntegrityViolationException.class))
         .verify();

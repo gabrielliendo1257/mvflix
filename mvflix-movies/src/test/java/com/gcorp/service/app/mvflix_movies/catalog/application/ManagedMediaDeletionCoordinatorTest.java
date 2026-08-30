@@ -14,12 +14,12 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieStatus;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,18 +37,18 @@ import java.util.Set;
 @ExtendWith(MockitoExtension.class)
 class ManagedMediaDeletionCoordinatorTest {
 
-    private static final MovieId MOVIE_ID = MovieId.of(7L);
+    private static final CatalogItemId MOVIE_ID = CatalogItemId.of(7L);
 
     @Mock private MediaRepository mediaRepository;
     @Mock private ManagedObjectDeletion storageDeletion;
     @Mock private MovieDeletionTransaction deletionTransaction;
-    @Mock private MovieRepository movieRepository;
+    @Mock private CatalogItemRepository movieRepository;
 
     @InjectMocks private ManagedMediaDeletionCoordinator coordinator;
 
     @Test
     void deletesManagedObjectBeforeFinalizingCatalog() {
-        Movie movie = movie();
+        CatalogItem movie = movie();
         Media media = managedMedia();
         when(this.movieRepository.findById(MOVIE_ID)).thenReturn(Mono.just(movie));
         when(this.mediaRepository.findByMovieId(MOVIE_ID)).thenReturn(Mono.just(media));
@@ -99,10 +99,10 @@ class ManagedMediaDeletionCoordinatorTest {
         verify(this.deletionTransaction, never()).finalizeDeletion(any());
     }
 
-    private static Movie movie() {
-        return new Movie(
-                MOVIE_ID, "Javier", "Dune", MovieStatus.DELETING, EnrichmentStatus.ENRICHED,
-                42L, (MovieMetadata) null, MovieVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
+    private static CatalogItem movie() {
+        return new CatalogItem(
+                MOVIE_ID, "Javier", "Dune", CatalogItemStatus.DELETING, EnrichmentStatus.ENRICHED,
+                42L, (MovieMetadata) null, CatalogItemVisibility.PRIVATE, Set.of(), MediaKind.MOVIE);
     }
 
     private static Media managedMedia() {

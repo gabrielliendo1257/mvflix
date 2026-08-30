@@ -1,7 +1,7 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.scheduler;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.ManagedMediaDeletionCoordinator;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -26,13 +26,13 @@ import reactor.core.publisher.Mono;
         matchIfMissing = true)
 public class PendingMediaDeletionJob {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final ManagedMediaDeletionCoordinator coordinator;
     private final int batchSize;
     private final int concurrency;
 
     public PendingMediaDeletionJob(
-            MovieRepository movieRepository,
+            CatalogItemRepository movieRepository,
             ManagedMediaDeletionCoordinator coordinator,
             @Value("${movies.deletion.batch-size:25}") int batchSize,
             @Value("${movies.deletion.concurrency:4}") int concurrency) {

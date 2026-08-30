@@ -3,9 +3,9 @@ package com.gcorp.service.app.mvflix_movies.catalog.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -24,7 +24,7 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
   private static final String TEST_CONSTRAINT = "test_movie_kind_must_remain_movie";
 
   @Autowired private UpdateMovieUseCase useCase;
-  @Autowired private MovieRepository movieRepository;
+  @Autowired private CatalogItemRepository movieRepository;
   @Autowired private DatabaseClient databaseClient;
 
   @BeforeEach
@@ -40,10 +40,10 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   @Test
   void doesNotPersistPartialDetailsWhenReclassificationFails() {
-    Movie movie =
+    CatalogItem movie =
         this.movieRepository
             .save(
-                Movie.createDraft(
+                CatalogItem.createDraft(
                     "pepe", MovieMetadata.onlyTitle("Original title"), MediaKind.MOVIE))
             .block();
     this.databaseClient
@@ -59,7 +59,7 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
         .expectError(DataIntegrityViolationException.class)
         .verify();
 
-    Movie persisted = this.movieRepository.findById(movie.getId()).block();
+    CatalogItem persisted = this.movieRepository.findById(movie.getId()).block();
     assertThat(persisted).isNotNull();
     assertThat(persisted.getKind()).isEqualTo(MediaKind.MOVIE);
     assertThat(persisted.getTitle()).isEqualTo("Original title");

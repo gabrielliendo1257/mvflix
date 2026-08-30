@@ -18,11 +18,11 @@ class MovieFactoryTest {
 
     @Test
     void createDraftNacePrivadaYEnDraftSinObjeto() {
-        Movie draft = Movie.createDraft("Javier", TITLE, MediaKind.MOVIE);
+        CatalogItem draft = CatalogItem.createDraft("Javier", TITLE, MediaKind.MOVIE);
 
-        assertThat(draft.getStatus()).isEqualTo(MovieStatus.DRAFT);
+        assertThat(draft.getStatus()).isEqualTo(CatalogItemStatus.DRAFT);
         assertThat(draft.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-        assertThat(draft.getVisibility()).isEqualTo(MovieVisibility.PRIVATE);
+        assertThat(draft.getVisibility()).isEqualTo(CatalogItemVisibility.PRIVATE);
         assertThat(draft.getObjectId()).isNull();
         assertThat(draft.getSharedWith()).isEmpty();
         assertThat(draft.getTitle()).isEqualTo("Dune");
@@ -34,9 +34,9 @@ class MovieFactoryTest {
 
     @Test
     void fromLibraryAssetNaceReadyRespaldadaPorArchivoLocal() {
-        Movie movie = Movie.fromLibraryAsset("Javier", TITLE, MediaKind.MOVIE);
+        CatalogItem movie = CatalogItem.fromLibraryAsset("Javier", TITLE, MediaKind.MOVIE);
 
-        assertThat(movie.getStatus()).isEqualTo(MovieStatus.READY);
+        assertThat(movie.getStatus()).isEqualTo(CatalogItemStatus.READY);
         assertThat(movie.getObjectId()).isNull();
         assertThat(movie.isLibraryBacked()).isTrue();
         assertThat(movie.isUploaded()).isFalse();
@@ -44,9 +44,9 @@ class MovieFactoryTest {
 
     @Test
     void completeProduceReadySubidoAlStorage() {
-        Movie uploaded = Movie.createDraft("Javier", TITLE, MediaKind.MOVIE).complete(42L);
+        CatalogItem uploaded = CatalogItem.createDraft("Javier", TITLE, MediaKind.MOVIE).complete(42L);
 
-        assertThat(uploaded.getStatus()).isEqualTo(MovieStatus.READY);
+        assertThat(uploaded.getStatus()).isEqualTo(CatalogItemStatus.READY);
         assertThat(uploaded.getObjectId()).isEqualTo(42L);
         assertThat(uploaded.isUploaded()).isTrue();
         assertThat(uploaded.isLibraryBacked()).isFalse();
@@ -54,18 +54,18 @@ class MovieFactoryTest {
 
     @Test
     void otherNaceConSoloTituloYSinProveedor() {
-        Movie clip = Movie.fromLibraryAsset("Javier", TITLE, MediaKind.VIDEO);
+        CatalogItem clip = CatalogItem.fromLibraryAsset("Javier", TITLE, MediaKind.VIDEO);
 
         assertThat(clip.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(clip.isMovie()).isFalse();
         assertThat(clip.getMetadata().tmdbId()).isNull();
         assertThat(clip.getMetadata().posterPath()).isNull();
-        assertThat(clip.getStatus()).isEqualTo(MovieStatus.READY);
+        assertThat(clip.getStatus()).isEqualTo(CatalogItemStatus.READY);
     }
 
     @Test
     void kindNullSeResuelveAMovie() {
-        Movie draft = Movie.createDraft("Javier", TITLE, null);
+        CatalogItem draft = CatalogItem.createDraft("Javier", TITLE, null);
 
         assertThat(draft.getKind()).isEqualTo(MediaKind.MOVIE);
         assertThat(draft.isMovie()).isTrue();
@@ -74,18 +74,18 @@ class MovieFactoryTest {
     @Test
     void tituloEnBlancoSeRechaza() {
         assertThatThrownBy(() ->
-                Movie.createDraft("Javier", MovieMetadata.onlyTitle(" "), MediaKind.MOVIE))
+                CatalogItem.createDraft("Javier", MovieMetadata.onlyTitle(" "), MediaKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() ->
-                Movie.fromLibraryAsset("Javier", MovieMetadata.onlyTitle(""), MediaKind.MOVIE))
+                CatalogItem.fromLibraryAsset("Javier", MovieMetadata.onlyTitle(""), MediaKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void duenoEnBlancoSeRechaza() {
-        assertThatThrownBy(() -> Movie.createDraft(" ", TITLE, MediaKind.MOVIE))
+        assertThatThrownBy(() -> CatalogItem.createDraft(" ", TITLE, MediaKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> Movie.fromLibraryAsset(null, TITLE, MediaKind.MOVIE))
+        assertThatThrownBy(() -> CatalogItem.fromLibraryAsset(null, TITLE, MediaKind.MOVIE))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

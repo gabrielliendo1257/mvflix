@@ -4,9 +4,9 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.port.LibraryAsset
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedDeletionOutbox;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedMediaDeletionRequested;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.media.MediaRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.Movie;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieRepository;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,18 +33,18 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class MovieDeletionTransaction {
 
-    private final MovieRepository movieRepository;
+    private final CatalogItemRepository movieRepository;
     private final LibraryAssetLinks libraryAssetLinks;
     private final MediaRepository mediaRepository;
     private final ManagedDeletionOutbox managedDeletionOutbox;
 
     /** CAS READY → DELETING; vacío si la media no estaba READY. */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<Movie> requestDeletion(MovieId id) {
+    public Mono<CatalogItem> requestDeletion(CatalogItemId id) {
         return this.requestDeletionDurably(id);
     }
 
-    private Mono<Movie> requestDeletionDurably(MovieId id) {
+    private Mono<CatalogItem> requestDeletionDurably(CatalogItemId id) {
         return this.movieRepository.markDeleting(id)
                 .flatMap(movie -> this.mediaRepository.findByMovieId(id)
                         .switchIfEmpty(Mono.error(new IllegalStateException(
@@ -58,7 +58,7 @@ public class MovieDeletionTransaction {
 
     /** Desvincula assets LOCALES y borra la media DELETING (cascada media/shares). */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<Void> finalizeDeletion(MovieId id) {
+    public Mono<Void> finalizeDeletion(CatalogItemId id) {
         return this.libraryAssetLinks.unlinkByMovieId(id)
                 .then(this.movieRepository.deleteIfDeleting(id))
                 .then();
@@ -66,7 +66,7 @@ public class MovieDeletionTransaction {
 
     /** Finaliza una solicitud de Storage; repetirla es un no-op si la fila ya no existe. */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<Void> finalizeManagedDeletion(MovieId movieId, long storageId) {
+    public Mono<Void> finalizeManagedDeletion(CatalogItemId movieId, long storageId) {
         return this.movieRepository.findById(movieId)
                 .flatMap(movie -> {
                     if (!movie.isDeleting()) {
@@ -84,14 +84,14 @@ public class MovieDeletionTransaction {
                             .flatMap(deleted -> deleted
                                     ? Mono.empty()
                                     : Mono.error(new IllegalStateException(
-                                            "Movie changed while finalizing movie=" + movieId.value())));
+                                            "CatalogItem changed while finalizing movie=" + movieId.value())));
                 })
                 .then();
     }
 
     /** Borrado atómico de DRAFT/NONE/LOCAL; no elimina archivos de Library. */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<Void> deleteImmediately(MovieId id) {
+    public Mono<Void> deleteImmediately(CatalogItemId id) {
         return this.libraryAssetLinks.unlinkByMovieId(id)
                 .then(this.movieRepository.deleteById(id))
                 .then();
@@ -102,7 +102,7 @@ public class MovieDeletionTransaction {
      * Es el puente de migración para películas iniciadas antes de habilitar Kafka.
      */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<Void> ensureDeletionRequested(MovieId id) {
+    public Mono<Void> ensureDeletionRequested(CatalogItemId id) {
         return this.movieRepository.findById(id)
                 .flatMap(movie -> {
                     if (!movie.isDeleting()) {

@@ -16,8 +16,8 @@ import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieAccess
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieVisibility;
-import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieId;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityRequest;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.BulkVisibilityResponse;
 import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.CatalogPageResponse;
@@ -137,20 +137,20 @@ public class MovieController {
         return new CreateIdentifiedDraftCommand(
                 metadata,
                 request.draft().kind(),
-                request.visibility() == null ? null : MovieVisibility.valueOf(request.visibility()),
+                request.visibility() == null ? null : CatalogItemVisibility.valueOf(request.visibility()),
                 request.sharedWith() == null ? java.util.List.of() : java.util.List.copyOf(request.sharedWith()));
     }
 
     @GetMapping("/{id}")
     public Mono<MovieResponse> findById(@PathVariable Long id) {
-        return this.getMovieUseCase.execute(MovieId.of(id)).map(this.mapper::toResponse);
+        return this.getMovieUseCase.execute(CatalogItemId.of(id)).map(this.mapper::toResponse);
     }
 
     @PostMapping("/{id}/visibility")
     public Mono<MovieResponse> updateVisibility(
             @PathVariable Long id, @Valid @RequestBody UpdateVisibilityRequest request) {
         return this.updateVisibilityUseCase
-                .execute(MovieId.of(id), request.visibility())
+                .execute(CatalogItemId.of(id), request.visibility())
                 .map(this.mapper::toResponse);
     }
 
@@ -158,16 +158,16 @@ public class MovieController {
     public Mono<MovieResponse> updateShares(
             @PathVariable Long id, @Valid @RequestBody UpdateSharesRequest request) {
         return this.updateSharesUseCase
-                .execute(MovieId.of(id), request.usernames())
+                .execute(CatalogItemId.of(id), request.usernames())
                 .map(this.mapper::toResponse);
     }
 
     @PostMapping(value = "/visibility/bulk", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Mono<BulkVisibilityResponse> bulkVisibility(
             @Valid @RequestBody BulkVisibilityRequest request) {
-        List<MovieId> movieIds = request.movieIds() == null
+        List<CatalogItemId> movieIds = request.movieIds() == null
                 ? List.of()
-                : request.movieIds().stream().map(MovieId::of).toList();
+                : request.movieIds().stream().map(CatalogItemId::of).toList();
         List<Long> libraryIds = request.libraryIds() == null
                 ? List.of()
                 : request.libraryIds();
@@ -186,7 +186,7 @@ public class MovieController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateMovieAccessRequest request) {
         return this.updateMovieAccessUseCase
-                .execute(MovieId.of(id), request.visibility(), request.sharedWith())
+                .execute(CatalogItemId.of(id), request.visibility(), request.sharedWith())
                 .map(this.mapper::toResponse);
     }
 
@@ -215,7 +215,7 @@ public class MovieController {
     public Mono<MovieResponse> complete(
             @PathVariable Long id, @Valid @RequestBody CompleteMovieRequest request) {
         return this.completeMovieUseCase
-                .execute(MovieId.of(id), request.objectId(), request.objectKey())
+                .execute(CatalogItemId.of(id), request.objectId(), request.objectKey())
                 .map(this.mapper::toResponse);
     }
 
@@ -224,13 +224,13 @@ public class MovieController {
     public Mono<MovieResponse> update(
             @PathVariable Long id, @Valid @RequestBody UpdateMovieRequest request) {
         return this.updateMovieUseCase
-                .execute(MovieId.of(id), this.mapper.toCommand(request))
+                .execute(CatalogItemId.of(id), this.mapper.toCommand(request))
                 .map(this.mapper::toResponse);
     }
 
     @DeleteMapping("/{id}")
     public Mono<ResponseEntity<Void>> delete(@PathVariable Long id) {
-        return this.deleteMovieUseCase.execute(MovieId.of(id))
+        return this.deleteMovieUseCase.execute(CatalogItemId.of(id))
                 .map(outcome -> outcome instanceof DeletionOutcome.Pending
                         ? ResponseEntity.accepted().build()
                         : ResponseEntity.noContent().build());
@@ -242,14 +242,14 @@ public class MovieController {
             @Valid @RequestBody(required = false) EnrichMovieRequest request) {
         return this.enrichMovieUseCase
                 .enrichCurrentUser(
-                        MovieId.of(id), request == null ? null : request.tmdbId())
+                        CatalogItemId.of(id), request == null ? null : request.tmdbId())
                 .map(this.mapper::toResponse);
     }
 
     @DeleteMapping("/{id}/enrich")
     public Mono<MovieResponse> unlinkEnrichment(@PathVariable Long id) {
         return this.enrichMovieUseCase
-                .unlinkCurrentUser(MovieId.of(id))
+                .unlinkCurrentUser(CatalogItemId.of(id))
                 .map(this.mapper::toResponse);
     }
 
