@@ -32,12 +32,12 @@ import reactor.test.StepVerifier;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
-class UpdateMovieUseCaseTest {
+class UpdateCatalogItemUseCaseTest {
 
     @Mock private CatalogItemRepository movieRepository;
     @Mock private UserProvider userProvider;
 
-    @InjectMocks private UpdateMovieUseCase useCase;
+    @InjectMocks private UpdateCatalogItemUseCase useCase;
 
     private static final MovieMetadata METADATA = new MovieMetadata(
             "Dune", "Dune", 2021, List.of("Sci-Fi"), 7.9, "2h 35m", "Denis Villeneuve",
@@ -65,7 +65,7 @@ class UpdateMovieUseCaseTest {
         when(this.movieRepository.updateDetails(any(CatalogItem.class)))
                 .thenReturn(Mono.just(updated));
 
-        var command = new UpdateMovieCommand(
+        var command = new UpdateCatalogItemCommand(
                 "Dune: Part Two", "Dune: Part Two", 2024, List.of("Sci-Fi", "Adventure"),
                 null, null, null, null, null, "2024-03-01", null, null, null, null, null);
 
@@ -88,7 +88,7 @@ class UpdateMovieUseCaseTest {
 
     @Test
     void mergeKeepsNullFieldsAndNonEditableIdentity() {
-        MovieMetadata merged = UpdateMovieUseCase.merge(METADATA, new UpdateMovieCommand(
+        MovieMetadata merged = UpdateCatalogItemUseCase.merge(METADATA, new UpdateCatalogItemCommand(
                 "Dune: Part Two", null, null, List.of(), null, null, null, "Nueva sinopsis",
                 null, null, null, null, null, null, null));
 
@@ -103,7 +103,7 @@ class UpdateMovieUseCaseTest {
 
     @Test
     void mergeUpdatesPosterAndPopularity() {
-        MovieMetadata merged = UpdateMovieUseCase.merge(METADATA, new UpdateMovieCommand(
+        MovieMetadata merged = UpdateCatalogItemUseCase.merge(METADATA, new UpdateCatalogItemCommand(
                 null, null, null, null, null, null, null, null,
                 "/nuevo-poster.jpg", null, null, null, null, 9.1, null));
 
@@ -123,7 +123,7 @@ class UpdateMovieUseCaseTest {
         when(this.movieRepository.updateDetails(any(CatalogItem.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateCatalogItemCommand(
                         "Mi grabacion", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, MediaKind.VIDEO)))
                 .expectNextCount(1)
@@ -151,7 +151,7 @@ class UpdateMovieUseCaseTest {
         when(this.movieRepository.updateDetails(any(CatalogItem.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateCatalogItemCommand(
                         "Identifiable movie", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, MediaKind.MOVIE)))
                 .assertNext(updated -> {
@@ -173,7 +173,7 @@ class UpdateMovieUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Maria", "m@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateCatalogItemCommand(
                         "Otro", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null)))
                 .expectError(CatalogItemAccessDeniedException.class)
@@ -193,7 +193,7 @@ class UpdateMovieUseCaseTest {
         when(this.movieRepository.updateDetails(any(CatalogItem.class)))
                 .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateCatalogItemCommand(
                         "Moderado", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null)))
                 .expectNextCount(1)
@@ -211,7 +211,7 @@ class UpdateMovieUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Admin", "a@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L), new UpdateCatalogItemCommand(
                         "X", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null)))
                 .expectError(CatalogItemAccessDeniedException.class)
@@ -224,7 +224,7 @@ class UpdateMovieUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(99L))).thenReturn(Mono.empty());
 
-        StepVerifier.create(this.useCase.execute(CatalogItemId.of(99L), new UpdateMovieCommand(
+        StepVerifier.create(this.useCase.execute(CatalogItemId.of(99L), new UpdateCatalogItemCommand(
                         "X", null, null, null, null, null, null, null,
                         null, null, null, null, null, null, null)))
                 .expectError(CatalogItemAccessDeniedException.class)

@@ -31,12 +31,12 @@ import reactor.test.StepVerifier;
 import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
-class UpdateMovieAccessUseCaseTest {
+class UpdateCatalogItemAccessUseCaseTest {
 
     @Mock private CatalogItemRepository movieRepository;
     @Mock private UserProvider userProvider;
 
-    @InjectMocks private UpdateMovieAccessUseCase useCase;
+    @InjectMocks private UpdateCatalogItemAccessUseCase useCase;
 
     private CatalogItem movie;
 

@@ -30,7 +30,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-class CompleteMovieUseCaseTest {
+class CompleteCatalogItemUseCaseTest {
 
   private static final CatalogItemId MOVIE_ID = CatalogItemId.of(10L);
   private static final String OWNER = "owner-subject";
@@ -40,7 +40,7 @@ class CompleteMovieUseCaseTest {
   private RecordingMovieRepository movieRepository;
   private RecordingMediaRepository mediaRepository;
   private StubUserProvider userProvider;
-  private CompleteMovieUseCase useCase;
+  private CompleteCatalogItemUseCase useCase;
 
   @BeforeEach
   void setUp() {
@@ -49,7 +49,7 @@ class CompleteMovieUseCaseTest {
     this.userProvider =
         new StubUserProvider(Mono.just(new AuthenticatedUser(OWNER, "owner@mvflix.test")));
     this.useCase =
-        new CompleteMovieUseCase(this.movieRepository, this.mediaRepository, this.userProvider);
+        new CompleteCatalogItemUseCase(this.movieRepository, this.mediaRepository, this.userProvider);
   }
 
   @Test
@@ -74,7 +74,7 @@ class CompleteMovieUseCaseTest {
               assertThat(media.getObjectId()).isEqualTo(OBJECT_ID);
               assertThat(media.getObjectKey()).isEqualTo(OBJECT_KEY);
             });
-    assertThat(this.mediaRepository.findByMovieIdIds).isEmpty();
+    assertThat(this.mediaRepository.findByCatalogItemIdIds).isEmpty();
   }
 
   @Test
@@ -105,7 +105,7 @@ class CompleteMovieUseCaseTest {
   void repeatedCompletionWithSameObjectKeyIsIdempotent() {
     this.movieRepository.findByIdReturns(readyMovie(null), readyMovie(null));
     this.movieRepository.completeIfDraftReturnsEmpty();
-    this.mediaRepository.findByMovieIdReturns(ManagedMediaAsset.create(MOVIE_ID, 123L, OBJECT_KEY));
+    this.mediaRepository.findByCatalogItemIdReturns(ManagedMediaAsset.create(MOVIE_ID, 123L, OBJECT_KEY));
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
         .assertNext(
@@ -117,14 +117,14 @@ class CompleteMovieUseCaseTest {
     assertThat(this.movieRepository.findByIdIds).containsExactly(MOVIE_ID, MOVIE_ID);
     assertThat(this.movieRepository.completeIfDraftIds).containsExactly(MOVIE_ID);
     assertThat(this.mediaRepository.savedMedia).isEmpty();
-    assertThat(this.mediaRepository.findByMovieIdIds).containsExactly(MOVIE_ID);
+    assertThat(this.mediaRepository.findByCatalogItemIdIds).containsExactly(MOVIE_ID);
   }
 
   @Test
   void rejectsRepeatedCompletionWithDifferentObjectKey() {
     this.movieRepository.findByIdReturns(readyMovie(null), readyMovie(null));
     this.movieRepository.completeIfDraftReturnsEmpty();
-    this.mediaRepository.findByMovieIdReturns(
+    this.mediaRepository.findByCatalogItemIdReturns(
         ManagedMediaAsset.create(MOVIE_ID, 123L, "movies/10/another.mp4"));
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
@@ -143,7 +143,7 @@ class CompleteMovieUseCaseTest {
         .expectError(CatalogItemConflictException.class)
         .verify();
 
-    assertThat(this.mediaRepository.findByMovieIdIds).isEmpty();
+    assertThat(this.mediaRepository.findByCatalogItemIdIds).isEmpty();
     assertThat(this.mediaRepository.savedMedia).isEmpty();
   }
 
@@ -164,7 +164,7 @@ class CompleteMovieUseCaseTest {
   void rejectsReadyMovieWithoutUploadMediaAsConflict() {
     this.movieRepository.findByIdReturns(readyMovie(null), readyMovie(null));
     this.movieRepository.completeIfDraftReturnsEmpty();
-    this.mediaRepository.findByMovieIdReturnsEmpty();
+    this.mediaRepository.findByCatalogItemIdReturnsEmpty();
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
         .expectError(CatalogItemConflictException.class)
@@ -221,7 +221,7 @@ class CompleteMovieUseCaseTest {
     IllegalStateException failure = new IllegalStateException("media query failed");
     this.movieRepository.findByIdReturns(readyMovie(null), readyMovie(null));
     this.movieRepository.completeIfDraftReturnsEmpty();
-    this.mediaRepository.findByMovieIdResult = Mono.error(failure);
+    this.mediaRepository.findByCatalogItemIdResult = Mono.error(failure);
 
     StepVerifier.create(this.useCase.execute(MOVIE_ID, OBJECT_ID, OBJECT_KEY))
         .expectErrorSatisfies(error -> assertThat(error).isSameAs(failure))
@@ -269,9 +269,9 @@ class CompleteMovieUseCaseTest {
   private static final class RecordingMediaRepository implements MediaRepository {
 
     private final List<ManagedMediaAsset> savedMedia = new ArrayList<>();
-    private final List<CatalogItemId> findByMovieIdIds = new ArrayList<>();
+    private final List<CatalogItemId> findByCatalogItemIdIds = new ArrayList<>();
     private Function<ManagedMediaAsset, Mono<ManagedMediaAsset>> saveResult = Mono::just;
-    private Mono<ManagedMediaAsset> findByMovieIdResult = unexpectedMono("findByMovieId");
+    private Mono<ManagedMediaAsset> findByCatalogItemIdResult = unexpectedMono("findByCatalogItemId");
 
     @Override
     public Mono<ManagedMediaAsset> save(ManagedMediaAsset media) {
@@ -280,17 +280,17 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
-    public Mono<ManagedMediaAsset> findByMovieId(CatalogItemId movieId) {
-      this.findByMovieIdIds.add(movieId);
-      return this.findByMovieIdResult;
+    public Mono<ManagedMediaAsset> findByCatalogItemId(CatalogItemId catalogItemId) {
+      this.findByCatalogItemIdIds.add(catalogItemId);
+      return this.findByCatalogItemIdResult;
     }
 
-    private void findByMovieIdReturns(ManagedMediaAsset media) {
-      this.findByMovieIdResult = Mono.just(media);
+    private void findByCatalogItemIdReturns(ManagedMediaAsset media) {
+      this.findByCatalogItemIdResult = Mono.just(media);
     }
 
-    private void findByMovieIdReturnsEmpty() {
-      this.findByMovieIdResult = Mono.empty();
+    private void findByCatalogItemIdReturnsEmpty() {
+      this.findByCatalogItemIdResult = Mono.empty();
     }
   }
 
@@ -321,8 +321,8 @@ class CompleteMovieUseCaseTest {
     }
 
     @Override
-    public Flux<CatalogItem> findVisibleMovies(String username, int limit) {
-      return unexpectedFlux("findVisibleMovies");
+    public Flux<CatalogItem> findVisibleCatalogItems(String username, int limit) {
+      return unexpectedFlux("findVisibleCatalogItems");
     }
 
     @Override

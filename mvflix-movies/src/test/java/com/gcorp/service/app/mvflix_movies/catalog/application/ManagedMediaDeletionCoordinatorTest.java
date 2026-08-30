@@ -41,7 +41,7 @@ class ManagedMediaDeletionCoordinatorTest {
 
     @Mock private MediaRepository mediaRepository;
     @Mock private ManagedObjectDeletion storageDeletion;
-    @Mock private MovieDeletionTransaction deletionTransaction;
+    @Mock private CatalogItemDeletionTransaction deletionTransaction;
     @Mock private CatalogItemRepository movieRepository;
 
     @InjectMocks private ManagedMediaDeletionCoordinator coordinator;
@@ -51,7 +51,7 @@ class ManagedMediaDeletionCoordinatorTest {
         CatalogItem movie = movie();
         ManagedMediaAsset media = managedMedia();
         when(this.movieRepository.findById(MOVIE_ID)).thenReturn(Mono.just(movie));
-        when(this.mediaRepository.findByMovieId(MOVIE_ID)).thenReturn(Mono.just(media));
+        when(this.mediaRepository.findByCatalogItemId(MOVIE_ID)).thenReturn(Mono.just(media));
         when(this.storageDeletion.delete(new ManagedObjectReference(
                 42L, "Javier", "Javier/videos/dune.mp4"))).thenReturn(Mono.empty());
         when(this.deletionTransaction.finalizeDeletion(MOVIE_ID)).thenReturn(Mono.empty());
@@ -67,7 +67,7 @@ class ManagedMediaDeletionCoordinatorTest {
     void storageFailureLeavesMoviePendingAndDoesNotFinalize() {
         RuntimeException failure = new RuntimeException("storage unavailable");
         when(this.movieRepository.findById(MOVIE_ID)).thenReturn(Mono.just(movie()));
-        when(this.mediaRepository.findByMovieId(MOVIE_ID)).thenReturn(Mono.just(managedMedia()));
+        when(this.mediaRepository.findByCatalogItemId(MOVIE_ID)).thenReturn(Mono.just(managedMedia()));
         when(this.storageDeletion.delete(any())).thenReturn(Mono.error(failure));
 
         StepVerifier.create(this.coordinator.process(MOVIE_ID))
@@ -80,7 +80,7 @@ class ManagedMediaDeletionCoordinatorTest {
     @Test
     void missingManagedMediaFinalizesLocalAssociationWithoutStorageCall() {
         when(this.movieRepository.findById(MOVIE_ID)).thenReturn(Mono.just(movie()));
-        when(this.mediaRepository.findByMovieId(MOVIE_ID)).thenReturn(Mono.empty());
+        when(this.mediaRepository.findByCatalogItemId(MOVIE_ID)).thenReturn(Mono.empty());
         when(this.deletionTransaction.finalizeDeletion(MOVIE_ID)).thenReturn(Mono.empty());
 
         StepVerifier.create(this.coordinator.process(MOVIE_ID)).verifyComplete();
@@ -95,7 +95,7 @@ class ManagedMediaDeletionCoordinatorTest {
 
         StepVerifier.create(this.coordinator.process(MOVIE_ID)).verifyComplete();
 
-        verify(this.mediaRepository, never()).findByMovieId(any());
+        verify(this.mediaRepository, never()).findByCatalogItemId(any());
         verify(this.deletionTransaction, never()).finalizeDeletion(any());
     }
 

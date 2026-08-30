@@ -102,7 +102,7 @@ class LayerDependencyTest {
     @ArchTest
     static final ArchRule catalog_delete_uses_its_library_port = noClasses()
             .that()
-            .haveSimpleName("DeleteMovieUseCase")
+            .haveSimpleName("DeleteCatalogItemUseCase")
             .should()
             .dependOnClassesThat()
             .resideInAPackage("..library..")

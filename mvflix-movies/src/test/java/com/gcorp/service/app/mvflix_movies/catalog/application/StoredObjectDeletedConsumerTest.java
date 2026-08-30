@@ -18,8 +18,8 @@ import java.util.UUID;
 class StoredObjectDeletedConsumerTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
-    private final MovieDeletionTransaction deletionTransaction =
-            org.mockito.Mockito.mock(MovieDeletionTransaction.class);
+    private final CatalogItemDeletionTransaction deletionTransaction =
+            org.mockito.Mockito.mock(CatalogItemDeletionTransaction.class);
     private final StoredObjectDeletedConsumer consumer =
             new StoredObjectDeletedConsumer(objectMapper, deletionTransaction);
 

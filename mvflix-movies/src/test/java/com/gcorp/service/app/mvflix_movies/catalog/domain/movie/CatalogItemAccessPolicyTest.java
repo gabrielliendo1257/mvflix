@@ -11,7 +11,7 @@ import java.util.Set;
  * La invariante de acceso (SHARED exige ≥1 usuario; PRIVATE/PUBLIC limpian)
  * es del dominio y se decide en {@link CatalogItem#withAccess}.
  */
-class MovieAccessPolicyTest {
+class CatalogItemAccessPolicyTest {
 
     private static CatalogItem movie(CatalogItemVisibility visibility, Set<String> sharedWith) {
         return new CatalogItem(

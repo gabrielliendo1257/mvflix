@@ -7,5 +7,5 @@ import reactor.core.publisher.Mono;
 /** Capacidad de Library requerida antes de eliminar un item del Catalog. */
 public interface LibraryAssetLinks {
 
-    Mono<Long> unlinkByMovieId(CatalogItemId movieId);
+    Mono<Long> unlinkByCatalogItemId(CatalogItemId catalogItemId);
 }

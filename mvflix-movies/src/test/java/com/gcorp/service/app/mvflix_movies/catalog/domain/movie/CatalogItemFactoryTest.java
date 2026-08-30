@@ -12,7 +12,7 @@ import java.util.List;
  * vs READY de biblioteca), su tipo de contenido (MediaKind) y sus invariantes; los
  * predicados explicitan la dualidad de READY (subido vs respaldado por archivo local).
  */
-class MovieFactoryTest {
+class CatalogItemFactoryTest {
 
     private static final MovieMetadata TITLE = MovieMetadata.onlyTitle("Dune");
 

@@ -14,12 +14,12 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CreateMovieUseCase {
+public class CreateCatalogItemUseCase {
 
     private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
 
-    public Mono<CatalogItem> execute(CreateMovieCommand command) {
+    public Mono<CatalogItem> execute(CreateCatalogItemCommand command) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .doOnNext(user -> log.info("Creando pelicula en DRAFT: owner={} title={}",

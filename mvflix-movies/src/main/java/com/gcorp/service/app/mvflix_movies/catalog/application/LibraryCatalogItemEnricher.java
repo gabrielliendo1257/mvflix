@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 public class LibraryCatalogItemEnricher implements CatalogItemEnricher {
 
     private final CatalogItemRepository movieRepository;
-    private final EnrichMovieUseCase enrichMovieUseCase;
+    private final EnrichCatalogItemUseCase enrichMovieUseCase;
 
     @Override
     public Mono<Void> enrich(

@@ -18,8 +18,8 @@ public class LibraryAssetLinksAdapter implements LibraryAssetLinks {
     private final MediaAssetRepository mediaAssetRepository;
 
     @Override
-    public Mono<Long> unlinkByMovieId(CatalogItemId movieId) {
+    public Mono<Long> unlinkByCatalogItemId(CatalogItemId catalogItemId) {
         return this.mediaAssetRepository.unlinkByCatalogItemId(
-                com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(movieId.value()));
+                com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(catalogItemId.value()));
     }
 }

@@ -29,7 +29,7 @@ class LibraryAssetLinksAdapterTest {
                          com.gcorp.service.app.mvflix_movies.library.domain.CatalogItemId.of(10L)))
                 .thenReturn(Mono.just(2L));
 
-        StepVerifier.create(this.adapter.unlinkByMovieId(movieId))
+        StepVerifier.create(this.adapter.unlinkByCatalogItemId(movieId))
                 .expectNext(2L)
                 .verifyComplete();
 

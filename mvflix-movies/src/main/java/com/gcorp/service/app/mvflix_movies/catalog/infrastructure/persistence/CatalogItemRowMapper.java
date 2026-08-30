@@ -15,11 +15,11 @@ import org.mapstruct.Mapping;
  * metadata a JSON la delega en {@link JsonCodec}.
  */
 @Mapper(componentModel = "spring", uses = JsonCodec.class)
-public interface MovieRowMapper {
+public interface CatalogItemRowMapper {
 
     @Mapping(target = "id", expression = "java(movie.getId() == null ? null : movie.getId().value())")
     @Mapping(target = "sharedWith", expression = "java(movie.getSharedWith().toArray(String[]::new))")
-    MovieRow toRow(CatalogItem movie);
+    CatalogItemRow toRow(CatalogItem movie);
 
     @Mapping(target = "id", expression = "java(row.id() == null ? null : CatalogItemId.of(row.id()))")
     @Mapping(target = "status", expression = "java(CatalogItemStatus.valueOf(row.status()))")
@@ -28,5 +28,5 @@ public interface MovieRowMapper {
     @Mapping(target = "kind", expression = "java(MediaKind.valueOf(row.kind()))")
     @Mapping(target = "metadata", expression = "java(jsonCodec.decode(row.metadata(), MediaKind.valueOf(row.kind())))")
     @Mapping(target = "sharedWith", expression = "java(row.sharedWith() == null ? java.util.Set.of() : java.util.Set.of(row.sharedWith()))")
-    CatalogItem toDomain(MovieRow row);
+    CatalogItem toDomain(CatalogItemRow row);
 }

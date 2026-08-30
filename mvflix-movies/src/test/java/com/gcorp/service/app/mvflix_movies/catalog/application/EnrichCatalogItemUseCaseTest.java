@@ -33,13 +33,13 @@ import reactor.test.StepVerifier;
 
 import java.util.List;
 
-class EnrichMovieUseCaseTest {
+class EnrichCatalogItemUseCaseTest {
 
     private final CatalogItemRepository movieRepository = mock(CatalogItemRepository.class);
     private final MetadataSource metadataSource = mock(MetadataSource.class);
     private final UserProvider userProvider = mock(UserProvider.class);
-    private final EnrichMovieUseCase useCase =
-            new EnrichMovieUseCase(movieRepository, metadataSource, userProvider);
+    private final EnrichCatalogItemUseCase useCase =
+            new EnrichCatalogItemUseCase(movieRepository, metadataSource, userProvider);
 
     private static final MovieMetadata RAW_METADATA =
             new MovieMetadata(

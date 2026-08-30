@@ -26,7 +26,7 @@ public interface CatalogItemRepository {
      * Traducción SQL de {@link CatalogItem#isVisibleTo(String)}: la regla de negocio
      * vive en el dominio; acá solo se filtra para no traer todo a memoria.
      */
-    Flux<CatalogItem> findVisibleMovies(String username, int limit);
+    Flux<CatalogItem> findVisibleCatalogItems(String username, int limit);
 
     Flux<CatalogItem> findByOwner(String ownerUsername, int limit);
 

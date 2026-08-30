@@ -29,13 +29,13 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UpdateMovieUseCase {
+public class UpdateCatalogItemUseCase {
 
     private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
 
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
-    public Mono<CatalogItem> execute(CatalogItemId id, UpdateMovieCommand command) {
+    public Mono<CatalogItem> execute(CatalogItemId id, UpdateCatalogItemCommand command) {
         return this.userProvider
                 .getAuthenticatedUser()
                 .flatMap(user -> this.movieRepository
@@ -57,7 +57,7 @@ public class UpdateMovieUseCase {
      * (solo queda lo que el usuario manda, sin proveedor) y revierte a RAW, todo en
      * una sola llamada. El resto de casos hace merge normal.
      */
-    private Mono<CatalogItem> update(CatalogItem movie, UpdateMovieCommand command) {
+    private Mono<CatalogItem> update(CatalogItem movie, UpdateCatalogItemCommand command) {
         boolean switchedToVideo = command.kind() == MediaKind.VIDEO
                 && movie.getKind() == MediaKind.MOVIE;
         boolean switchedToMovie = command.kind() == MediaKind.MOVIE
@@ -78,7 +78,7 @@ public class UpdateMovieUseCase {
     }
 
     /** Metadata solo con lo que manda el usuario (sin proveedor): para el paso a VIDEO. */
-    private static CatalogMetadata fromCommand(UpdateMovieCommand command) {
+    private static CatalogMetadata fromCommand(UpdateCatalogItemCommand command) {
         if (command.kind() == MediaKind.VIDEO) {
             return new VideoMetadata(command.title(), command.overview(), null);
         }
@@ -101,7 +101,7 @@ public class UpdateMovieUseCase {
     }
 
     /** Merge: cada campo del command que no venga {@code null} reemplaza al actual. */
-    static MovieMetadata merge(MovieMetadata current, UpdateMovieCommand command) {
+    static MovieMetadata merge(MovieMetadata current, UpdateCatalogItemCommand command) {
         return new MovieMetadata(
                 command.title() != null ? command.title() : current.title(),
                 command.originalTitle() != null ? command.originalTitle() : current.originalTitle(),

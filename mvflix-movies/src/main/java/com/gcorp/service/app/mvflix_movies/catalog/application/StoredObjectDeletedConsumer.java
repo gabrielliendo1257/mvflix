@@ -20,7 +20,7 @@ import java.util.UUID;
 public class StoredObjectDeletedConsumer {
 
     private final ObjectMapper objectMapper;
-    private final MovieDeletionTransaction deletionTransaction;
+    private final CatalogItemDeletionTransaction deletionTransaction;
 
     public Mono<Void> consume(String rawEvent) {
         return Mono.defer(() -> this.parse(rawEvent))

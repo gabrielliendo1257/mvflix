@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.scheduler;
 
-import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
@@ -26,7 +26,7 @@ public class EnrichmentJob {
     private static final int BATCH_SIZE = 10;
 
     private final CatalogItemRepository movieRepository;
-    private final EnrichMovieUseCase enrichMovieUseCase;
+    private final EnrichCatalogItemUseCase enrichMovieUseCase;
 
     @Scheduled(fixedDelayString = "${movies.enrich.check-ms:3600000}")
     public void enrichPending() {

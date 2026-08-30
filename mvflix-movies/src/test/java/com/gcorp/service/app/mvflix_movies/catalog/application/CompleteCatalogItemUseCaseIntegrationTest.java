@@ -15,11 +15,11 @@ import reactor.test.StepVerifier;
 
 @ActiveProfiles("sandbox")
 @SpringBootTest
-class CompleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
+class CompleteCatalogItemUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   private static final String DUPLICATE_OBJECT_KEY = "movies/shared/video.mp4";
 
-  @Autowired private CompleteMovieUseCase useCase;
+  @Autowired private CompleteCatalogItemUseCase useCase;
   @Autowired private DatabaseClient databaseClient;
 
   @BeforeEach

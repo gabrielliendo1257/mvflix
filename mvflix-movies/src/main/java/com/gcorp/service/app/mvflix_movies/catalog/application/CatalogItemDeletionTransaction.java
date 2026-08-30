@@ -31,7 +31,7 @@ import java.util.Objects;
  */
 @Service
 @RequiredArgsConstructor
-public class MovieDeletionTransaction {
+public class CatalogItemDeletionTransaction {
 
     private final CatalogItemRepository movieRepository;
     private final LibraryAssetLinks libraryAssetLinks;
@@ -46,7 +46,7 @@ public class MovieDeletionTransaction {
 
     private Mono<CatalogItem> requestDeletionDurably(CatalogItemId id) {
         return this.movieRepository.markDeleting(id)
-                .flatMap(movie -> this.mediaRepository.findByMovieId(id)
+                .flatMap(movie -> this.mediaRepository.findByCatalogItemId(id)
                         .switchIfEmpty(Mono.error(new IllegalStateException(
                                 "Managed deletion requires media for movie=" + id.value())))
                         .flatMap(media -> this.managedDeletionOutbox
@@ -59,7 +59,7 @@ public class MovieDeletionTransaction {
     /** Desvincula assets LOCALES y borra la media DELETING (cascada media/shares). */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
     public Mono<Void> finalizeDeletion(CatalogItemId id) {
-        return this.libraryAssetLinks.unlinkByMovieId(id)
+        return this.libraryAssetLinks.unlinkByCatalogItemId(id)
                 .then(this.movieRepository.deleteIfDeleting(id))
                 .then();
     }
@@ -74,7 +74,7 @@ public class MovieDeletionTransaction {
                                 "Cannot finalize movie=" + movieId.value()
                                         + ": status=" + movie.getStatus()));
                     }
-                     return this.mediaRepository.findByMovieId(movieId)
+                     return this.mediaRepository.findByCatalogItemId(movieId)
                          .switchIfEmpty(Mono.error(new IllegalStateException(
                                  "Managed media missing for movie=" + movieId.value())))
                          .flatMap(media -> {
@@ -83,7 +83,7 @@ public class MovieDeletionTransaction {
                                      "Cannot finalize movie=" + movieId.value()
                                              + ": storageId mismatch"));
                            }
-                           return this.libraryAssetLinks.unlinkByMovieId(movieId)
+                           return this.libraryAssetLinks.unlinkByCatalogItemId(movieId)
                              .then(this.movieRepository.deleteIfDeletingAndStorageId(movieId, storageId))
                              .flatMap(deleted -> deleted
                                      ? Mono.empty()
@@ -97,7 +97,7 @@ public class MovieDeletionTransaction {
     /** Borrado atómico de DRAFT/NONE/LOCAL; no elimina archivos de Library. */
     @Transactional(transactionManager = "connectionFactoryTransactionManager")
     public Mono<Void> deleteImmediately(CatalogItemId id) {
-        return this.libraryAssetLinks.unlinkByMovieId(id)
+        return this.libraryAssetLinks.unlinkByCatalogItemId(id)
                 .then(this.movieRepository.deleteById(id))
                 .then();
     }
@@ -114,7 +114,7 @@ public class MovieDeletionTransaction {
                         return Mono.error(new IllegalStateException(
                                 "Managed deletion requires DELETING movie=" + id.value()));
                     }
-                    return this.mediaRepository.findByMovieId(id)
+                    return this.mediaRepository.findByCatalogItemId(id)
                             .switchIfEmpty(Mono.error(new IllegalStateException(
                                     "Managed deletion requires media for movie=" + id.value())))
                             .flatMap(media -> this.managedDeletionOutbox.append(

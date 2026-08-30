@@ -20,7 +20,7 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CompleteMovieUseCase {
+public class CompleteCatalogItemUseCase {
 
   private final CatalogItemRepository movieRepository;
   private final MediaRepository mediaRepository;
@@ -78,7 +78,7 @@ public class CompleteMovieUseCase {
                     new CatalogItemConflictException("CatalogItem is not in DRAFT state: " + id.value()));
               }
               return this.mediaRepository
-                  .findByMovieId(id)
+                  .findByCatalogItemId(id)
                   .flatMap(
                       media -> {
                         if (Objects.equals(objectKey, media.getObjectKey())) {

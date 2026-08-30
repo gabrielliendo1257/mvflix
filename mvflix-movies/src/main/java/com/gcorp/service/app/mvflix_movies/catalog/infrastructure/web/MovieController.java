@@ -2,19 +2,19 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
 import com.gcorp.service.app.mvflix_movies.catalog.application.BulkVisibilityUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogQueryUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.CompleteMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.CreateMovieCommand;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CompleteCatalogItemUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CreateCatalogItemCommand;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedDraftCommand;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedDraftUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
-import com.gcorp.service.app.mvflix_movies.catalog.application.CreateMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CreateCatalogItemUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.DeletionOutcome;
-import com.gcorp.service.app.mvflix_movies.catalog.application.GetMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.ListMoviesUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieAccessUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.GetCatalogItemUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.ListCatalogItemsUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemAccessUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
@@ -64,37 +64,37 @@ import java.util.List;
     produces = MediaType.APPLICATION_JSON_VALUE)
 public class MovieController {
 
-    private final CreateMovieUseCase createMovieUseCase;
+    private final CreateCatalogItemUseCase createMovieUseCase;
     private final CreateIdentifiedDraftUseCase createIdentifiedDraftUseCase;
-    private final GetMovieUseCase getMovieUseCase;
-    private final ListMoviesUseCase listMoviesUseCase;
+    private final GetCatalogItemUseCase getMovieUseCase;
+    private final ListCatalogItemsUseCase listMoviesUseCase;
     private final CatalogQueryUseCase catalogQueryUseCase;
     private final UpdateVisibilityUseCase updateVisibilityUseCase;
     private final UpdateSharesUseCase updateSharesUseCase;
-    private final com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieAccessUseCase updateMovieAccessUseCase;
+    private final UpdateCatalogItemAccessUseCase updateMovieAccessUseCase;
     private final BulkVisibilityUseCase bulkVisibilityUseCase;
-    private final UpdateMovieUseCase updateMovieUseCase;
-    private final CompleteMovieUseCase completeMovieUseCase;
-    private final DeleteMovieUseCase deleteMovieUseCase;
-    private final EnrichMovieUseCase enrichMovieUseCase;
+    private final UpdateCatalogItemUseCase updateMovieUseCase;
+    private final CompleteCatalogItemUseCase completeMovieUseCase;
+    private final DeleteCatalogItemUseCase deleteMovieUseCase;
+    private final EnrichCatalogItemUseCase enrichMovieUseCase;
     private final MovieApiMapper mapper;
     private final ManagedObjectIdLookup objectIdLookup;
 
     @org.springframework.beans.factory.annotation.Autowired
     public MovieController(
-            CreateMovieUseCase createMovieUseCase,
+            CreateCatalogItemUseCase createMovieUseCase,
             CreateIdentifiedDraftUseCase createIdentifiedDraftUseCase,
-            GetMovieUseCase getMovieUseCase,
-            ListMoviesUseCase listMoviesUseCase,
+            GetCatalogItemUseCase getMovieUseCase,
+            ListCatalogItemsUseCase listMoviesUseCase,
             CatalogQueryUseCase catalogQueryUseCase,
             UpdateVisibilityUseCase updateVisibilityUseCase,
-            UpdateMovieAccessUseCase updateMovieAccessUseCase,
+            UpdateCatalogItemAccessUseCase updateMovieAccessUseCase,
             UpdateSharesUseCase updateSharesUseCase,
             BulkVisibilityUseCase bulkVisibilityUseCase,
-            UpdateMovieUseCase updateMovieUseCase,
-            CompleteMovieUseCase completeMovieUseCase,
-            DeleteMovieUseCase deleteMovieUseCase,
-            EnrichMovieUseCase enrichMovieUseCase,
+            UpdateCatalogItemUseCase updateMovieUseCase,
+            CompleteCatalogItemUseCase completeMovieUseCase,
+            DeleteCatalogItemUseCase deleteMovieUseCase,
+            EnrichCatalogItemUseCase enrichMovieUseCase,
             MovieApiMapper mapper,
             ManagedObjectIdLookup objectIdLookup) {
         this.createMovieUseCase = createMovieUseCase;
@@ -115,19 +115,19 @@ public class MovieController {
     }
 
     public MovieController(
-            CreateMovieUseCase createMovieUseCase,
+            CreateCatalogItemUseCase createMovieUseCase,
             CreateIdentifiedDraftUseCase createIdentifiedDraftUseCase,
-            GetMovieUseCase getMovieUseCase,
-            ListMoviesUseCase listMoviesUseCase,
+            GetCatalogItemUseCase getMovieUseCase,
+            ListCatalogItemsUseCase listMoviesUseCase,
             CatalogQueryUseCase catalogQueryUseCase,
             UpdateVisibilityUseCase updateVisibilityUseCase,
-            UpdateMovieAccessUseCase updateMovieAccessUseCase,
+            UpdateCatalogItemAccessUseCase updateMovieAccessUseCase,
             UpdateSharesUseCase updateSharesUseCase,
             BulkVisibilityUseCase bulkVisibilityUseCase,
-            UpdateMovieUseCase updateMovieUseCase,
-            CompleteMovieUseCase completeMovieUseCase,
-            DeleteMovieUseCase deleteMovieUseCase,
-            EnrichMovieUseCase enrichMovieUseCase,
+            UpdateCatalogItemUseCase updateMovieUseCase,
+            CompleteCatalogItemUseCase completeMovieUseCase,
+            DeleteCatalogItemUseCase deleteMovieUseCase,
+            EnrichCatalogItemUseCase enrichMovieUseCase,
             MovieApiMapper mapper) {
         this(createMovieUseCase, createIdentifiedDraftUseCase, getMovieUseCase, listMoviesUseCase,
                 catalogQueryUseCase, updateVisibilityUseCase, updateMovieAccessUseCase,
@@ -148,7 +148,7 @@ public class MovieController {
     public Mono<MovieResponse> create(@Valid @RequestBody CreateMovieRequest request) {
         MediaKind kind = request.kind() == null ? MediaKind.MOVIE : request.kind();
         return this.createMovieUseCase
-                .execute(new CreateMovieCommand(this.mapper.toMetadata(request), kind))
+                .execute(new CreateCatalogItemCommand(this.mapper.toMetadata(request), kind))
                 .flatMap(this::response);
     }
 

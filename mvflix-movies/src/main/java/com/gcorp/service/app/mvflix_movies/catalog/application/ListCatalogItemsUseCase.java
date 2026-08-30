@@ -25,7 +25,7 @@ import reactor.core.publisher.Flux;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ListMoviesUseCase {
+public class ListCatalogItemsUseCase {
 
     static final int MAX_LIMIT = 50;
 
@@ -38,6 +38,6 @@ public class ListMoviesUseCase {
                 .getAuthenticatedUser()
                 .flatMapMany(user -> "owned".equalsIgnoreCase(scope)
                         ? this.movieRepository.findByOwner(user.subject(), capped)
-                        : this.movieRepository.findVisibleMovies(user.subject(), capped));
+                        : this.movieRepository.findVisibleCatalogItems(user.subject(), capped));
     }
 }

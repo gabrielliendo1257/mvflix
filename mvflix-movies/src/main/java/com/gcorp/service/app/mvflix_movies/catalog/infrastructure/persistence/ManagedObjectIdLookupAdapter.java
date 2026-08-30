@@ -14,6 +14,6 @@ public class ManagedObjectIdLookupAdapter implements ManagedObjectIdLookup {
 
     @Override
     public Mono<Long> findObjectId(CatalogItemId movieId) {
-        return this.mediaRepository.findByMovieId(movieId).map(media -> media.getObjectId());
+        return this.mediaRepository.findByCatalogItemId(movieId).map(media -> media.getObjectId());
     }
 }

@@ -20,11 +20,11 @@ import reactor.test.StepVerifier;
 
 @ActiveProfiles("sandbox")
 @SpringBootTest
-class MovieDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
+class CatalogItemDeletionTransactionIntegrationTest extends PostgresIntegrationTest {
 
-    @Autowired private MovieDeletionTransaction transaction;
+    @Autowired private CatalogItemDeletionTransaction transaction;
     @Autowired private CatalogItemRepository movieRepository;
-    @Autowired private CompleteMovieUseCase completeMovieUseCase;
+    @Autowired private CompleteCatalogItemUseCase completeMovieUseCase;
     @Autowired private DatabaseClient databaseClient;
 
     @BeforeEach

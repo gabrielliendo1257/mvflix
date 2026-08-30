@@ -15,16 +15,16 @@ import reactor.core.publisher.Mono;
 /**
  * Entrada única al borrado del catálogo. La eliminación MANAGED se solicita de
  * forma durable mediante la outbox; las
- * escrituras locales viven en {@link MovieDeletionTransaction}.
+ * escrituras locales viven en {@link CatalogItemDeletionTransaction}.
  */
 @Service
 @RequiredArgsConstructor
-public class DeleteMovieUseCase {
+public class DeleteCatalogItemUseCase {
 
     private final CatalogItemRepository movieRepository;
     private final MediaRepository mediaRepository;
     private final UserProvider userProvider;
-    private final MovieDeletionTransaction deletionTransaction;
+    private final CatalogItemDeletionTransaction deletionTransaction;
 
     public Mono<DeletionOutcome> execute(CatalogItemId id) {
         return this.userProvider.getAuthenticatedUser()
@@ -41,7 +41,7 @@ public class DeleteMovieUseCase {
                     .thenReturn(new DeletionOutcome.Pending());
         }
 
-        return this.mediaRepository.findByMovieId(id)
+        return this.mediaRepository.findByCatalogItemId(id)
                 .flatMap(media -> this.beginManagedDeletion(id))
                 // No media row means DRAFT/NONE or LOCAL. LibraryAssetLinks only
                 // unlinks the catalog association and never deletes the file.

@@ -12,7 +12,7 @@ import java.util.Set;
  * estado terminal operativo — no se completa, edita, cambia de acceso ni
  * reproduce. requestDeletion es idempotente. Test puro, sin Spring.
  */
-class MovieDeletionLifecycleTest {
+class CatalogItemDeletionLifecycleTest {
 
     private static CatalogItem movie(CatalogItemStatus status) {
         return new CatalogItem(

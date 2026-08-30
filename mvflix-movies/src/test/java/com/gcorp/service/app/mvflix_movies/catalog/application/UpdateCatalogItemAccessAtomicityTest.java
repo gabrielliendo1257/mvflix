@@ -24,9 +24,9 @@ import reactor.test.StepVerifier;
  */
 @ActiveProfiles("sandbox")
 @SpringBootTest
-class UpdateMovieAccessAtomicityTest extends PostgresIntegrationTest {
+class UpdateCatalogItemAccessAtomicityTest extends PostgresIntegrationTest {
 
-    @Autowired private UpdateMovieAccessUseCase useCase;
+    @Autowired private UpdateCatalogItemAccessUseCase useCase;
     @Autowired private CatalogItemRepository movieRepository;
     @Autowired private DatabaseClient databaseClient;
 

@@ -8,5 +8,5 @@ public interface MediaRepository {
 
     Mono<ManagedMediaAsset> save(ManagedMediaAsset media);
 
-    Mono<ManagedMediaAsset> findByMovieId(CatalogItemId movieId);
+    Mono<ManagedMediaAsset> findByCatalogItemId(CatalogItemId catalogItemId);
 }

@@ -23,7 +23,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class EnrichMovieUseCase {
+public class EnrichCatalogItemUseCase {
 
     private final CatalogItemRepository movieRepository;
     private final MetadataSource metadataSource;
@@ -81,7 +81,7 @@ public class EnrichMovieUseCase {
     public Mono<MovieMetadata> preview(long tmdbId) {
         return this.metadataSource
                 .findById(tmdbId)
-                .map(EnrichMovieUseCase::fromDetail);
+                .map(EnrichCatalogItemUseCase::fromDetail);
     }
 
     /** Metadata fresca solo desde el detalle externo (sin conservar la actual). */

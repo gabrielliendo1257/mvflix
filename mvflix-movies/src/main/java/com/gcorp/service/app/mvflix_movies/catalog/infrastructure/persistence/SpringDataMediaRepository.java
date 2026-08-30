@@ -43,7 +43,7 @@ public class SpringDataMediaRepository implements MediaRepository {
     }
 
     @Override
-    public Mono<ManagedMediaAsset> findByMovieId(CatalogItemId movieId) {
+    public Mono<ManagedMediaAsset> findByCatalogItemId(CatalogItemId catalogItemId) {
         return this.databaseClient
                 .sql(
                         """
@@ -53,7 +53,7 @@ public class SpringDataMediaRepository implements MediaRepository {
                         ORDER BY id
                         LIMIT 1
                         """)
-                .bind("catalog_item_id", movieId.value())
+                .bind("catalog_item_id", catalogItemId.value())
                 .map((row, metadata) -> new ManagedMediaAsset(
                         MediaId.of(row.get("id", Long.class)),
                         CatalogItemId.of(row.get("catalog_item_id", Long.class)),

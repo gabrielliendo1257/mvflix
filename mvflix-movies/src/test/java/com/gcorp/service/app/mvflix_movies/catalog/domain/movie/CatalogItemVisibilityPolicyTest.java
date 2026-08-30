@@ -8,10 +8,10 @@ import java.util.Set;
 
 /**
  * Matriz de la política de acceso del catálogo. {@link CatalogItem#isVisibleTo(String)}
- * es la fuente de verdad del dominio; {@code findVisibleMovies} del repositorio
+ * es la fuente de verdad del dominio; {@code findVisibleCatalogItems} del repositorio
  * es su traducción SQL.
  */
-class MovieVisibilityPolicyTest {
+class CatalogItemVisibilityPolicyTest {
 
     private static CatalogItem movie(CatalogItemVisibility visibility, Set<String> sharedWith) {
         return new CatalogItem(

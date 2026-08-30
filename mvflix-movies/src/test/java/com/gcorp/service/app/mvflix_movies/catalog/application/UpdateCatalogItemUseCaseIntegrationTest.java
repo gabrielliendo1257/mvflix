@@ -19,11 +19,11 @@ import reactor.test.StepVerifier;
 
 @ActiveProfiles("sandbox")
 @SpringBootTest
-class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
+class UpdateCatalogItemUseCaseIntegrationTest extends PostgresIntegrationTest {
 
   private static final String TEST_CONSTRAINT = "test_movie_kind_must_remain_movie";
 
-  @Autowired private UpdateMovieUseCase useCase;
+  @Autowired private UpdateCatalogItemUseCase useCase;
   @Autowired private CatalogItemRepository movieRepository;
   @Autowired private DatabaseClient databaseClient;
 
@@ -66,8 +66,8 @@ class UpdateMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
     assertThat(persisted.getMetadata().title()).isEqualTo("Original title");
   }
 
-  private static UpdateMovieCommand switchToOther(String title) {
-    return new UpdateMovieCommand(
+  private static UpdateCatalogItemCommand switchToOther(String title) {
+    return new UpdateCatalogItemCommand(
         title,
         null,
         null,

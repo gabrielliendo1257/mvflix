@@ -1,6 +1,6 @@
 package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web;
 
-import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieCommand;
+import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemCommand;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ExternalMovieSearch;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
@@ -18,7 +18,7 @@ public interface MovieApiMapper {
 
     MovieMetadata toMetadata(CreateMovieRequest request);
 
-    UpdateMovieCommand toCommand(UpdateMovieRequest request);
+    UpdateCatalogItemCommand toCommand(UpdateMovieRequest request);
 
     EnrichMovieSearchResponse toSearchResponse(ExternalMovieSearch search);
 

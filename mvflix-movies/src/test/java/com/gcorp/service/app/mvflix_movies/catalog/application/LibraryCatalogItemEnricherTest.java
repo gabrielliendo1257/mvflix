@@ -27,7 +27,7 @@ import java.util.Set;
 class LibraryCatalogItemEnricherTest {
 
     @Mock private CatalogItemRepository movieRepository;
-    @Mock private EnrichMovieUseCase enrichMovieUseCase;
+    @Mock private EnrichCatalogItemUseCase enrichMovieUseCase;
 
     @InjectMocks private LibraryCatalogItemEnricher enricher;
 

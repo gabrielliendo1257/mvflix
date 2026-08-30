@@ -26,7 +26,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class UpdateMovieAccessUseCase {
+public class UpdateCatalogItemAccessUseCase {
 
     private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;

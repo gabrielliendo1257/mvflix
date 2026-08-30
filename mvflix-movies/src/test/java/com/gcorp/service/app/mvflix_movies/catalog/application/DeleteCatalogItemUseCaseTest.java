@@ -32,14 +32,14 @@ import reactor.test.StepVerifier;
 import java.time.Instant;
 
 @ExtendWith(MockitoExtension.class)
-class DeleteMovieUseCaseTest {
+class DeleteCatalogItemUseCaseTest {
 
     @Mock private CatalogItemRepository movieRepository;
     @Mock private MediaRepository mediaRepository;
     @Mock private UserProvider userProvider;
-    @Mock private MovieDeletionTransaction deletionTransaction;
+    @Mock private CatalogItemDeletionTransaction deletionTransaction;
 
-    @InjectMocks private DeleteMovieUseCase useCase;
+    @InjectMocks private DeleteCatalogItemUseCase useCase;
 
     private static CatalogItem movie(long id, String owner) {
         return new CatalogItem(
@@ -52,7 +52,7 @@ class DeleteMovieUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie(1L, "Javier")));
-        when(this.mediaRepository.findByMovieId(CatalogItemId.of(1L))).thenReturn(Mono.empty());
+        when(this.mediaRepository.findByCatalogItemId(CatalogItemId.of(1L))).thenReturn(Mono.empty());
         when(this.deletionTransaction.deleteImmediately(CatalogItemId.of(1L))).thenReturn(Mono.empty());
 
         StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L)))
@@ -68,7 +68,7 @@ class DeleteMovieUseCaseTest {
                 .thenReturn(Mono.just(new AuthenticatedUser("Admin", "a@m.com",
                         java.util.Set.of(AuthenticatedUser.ADMIN_ROLE))));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie(1L, "Javier")));
-        when(this.mediaRepository.findByMovieId(CatalogItemId.of(1L))).thenReturn(Mono.empty());
+        when(this.mediaRepository.findByCatalogItemId(CatalogItemId.of(1L))).thenReturn(Mono.empty());
         when(this.deletionTransaction.deleteImmediately(CatalogItemId.of(1L))).thenReturn(Mono.empty());
 
         StepVerifier.create(this.useCase.execute(CatalogItemId.of(1L)))
@@ -95,7 +95,7 @@ class DeleteMovieUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.mediaRepository.findByMovieId(CatalogItemId.of(1L)))
+        when(this.mediaRepository.findByCatalogItemId(CatalogItemId.of(1L)))
                 .thenReturn(Mono.just(new ManagedMediaAsset(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
         when(this.deletionTransaction.requestDeletion(CatalogItemId.of(1L)))
                 .thenReturn(Mono.just(movie));
@@ -113,7 +113,7 @@ class DeleteMovieUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.mediaRepository.findByMovieId(CatalogItemId.of(1L)))
+        when(this.mediaRepository.findByCatalogItemId(CatalogItemId.of(1L)))
                 .thenReturn(Mono.just(new ManagedMediaAsset(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
         RuntimeException failure = new RuntimeException("outbox unavailable");
         when(this.deletionTransaction.requestDeletion(CatalogItemId.of(1L)))
@@ -130,7 +130,7 @@ class DeleteMovieUseCaseTest {
         when(this.userProvider.getAuthenticatedUser())
                 .thenReturn(Mono.just(new AuthenticatedUser("Javier", "j@m.com")));
         when(this.movieRepository.findById(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
-        when(this.mediaRepository.findByMovieId(CatalogItemId.of(1L)))
+        when(this.mediaRepository.findByCatalogItemId(CatalogItemId.of(1L)))
                 .thenReturn(Mono.just(new ManagedMediaAsset(MediaId.of(9L), CatalogItemId.of(1L), 77L, "k", Instant.now())));
         when(this.deletionTransaction.requestDeletion(CatalogItemId.of(1L))).thenReturn(Mono.just(movie));
 

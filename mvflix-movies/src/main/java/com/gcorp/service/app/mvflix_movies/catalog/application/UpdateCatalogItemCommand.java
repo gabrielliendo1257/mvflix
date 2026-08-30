@@ -10,7 +10,7 @@ import java.util.List;
  * las listas {@code null} se conservan y las listas vacías limpian el valor.
  * tmdbId no se edita (se gestiona con enrich/re-enrich/unlink).
  */
-public record UpdateMovieCommand(
+public record UpdateCatalogItemCommand(
     String title,
     String originalTitle,
     Integer year,

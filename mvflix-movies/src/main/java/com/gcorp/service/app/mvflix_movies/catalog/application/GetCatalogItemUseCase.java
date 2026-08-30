@@ -16,7 +16,7 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class GetMovieUseCase {
+public class GetCatalogItemUseCase {
 
     private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;

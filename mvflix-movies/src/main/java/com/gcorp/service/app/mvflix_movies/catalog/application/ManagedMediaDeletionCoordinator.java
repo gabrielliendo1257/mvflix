@@ -17,7 +17,7 @@ import reactor.core.publisher.Mono;
 /**
  * Coordina el borrado durable sin extender una transacción local sobre Storage.
  *
- * <p>La llamada remota ocurre antes de {@link MovieDeletionTransaction}, que
+ * <p>La llamada remota ocurre antes de {@link CatalogItemDeletionTransaction}, que
  * solo contiene las escrituras locales atómicas. Si Storage falla, la cadena
  * termina y la película permanece en {@code DELETING}; una ejecución posterior
  * puede reanudarla.
@@ -28,12 +28,12 @@ public class ManagedMediaDeletionCoordinator {
 
     private final MediaRepository mediaRepository;
     private final ManagedObjectDeletion storageDeletion;
-    private final MovieDeletionTransaction deletionTransaction;
+    private final CatalogItemDeletionTransaction deletionTransaction;
     private final CatalogItemRepository movieRepository;
 
     public Mono<Void> process(CatalogItemId movieId) {
         return this.movieRepository.findById(movieId)
-                .flatMap(movie -> this.mediaRepository.findByMovieId(movieId)
+                .flatMap(movie -> this.mediaRepository.findByCatalogItemId(movieId)
                         .flatMap(media -> this.storageDeletion
                                 .delete(referenceOf(movie, media))
                                 .thenReturn(true))

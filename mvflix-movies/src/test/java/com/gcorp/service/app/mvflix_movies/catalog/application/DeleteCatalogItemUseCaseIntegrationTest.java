@@ -22,9 +22,9 @@ import reactor.test.StepVerifier;
 
 @ActiveProfiles("sandbox")
 @SpringBootTest
-class DeleteMovieUseCaseIntegrationTest extends PostgresIntegrationTest {
+class DeleteCatalogItemUseCaseIntegrationTest extends PostgresIntegrationTest {
 
-  @Autowired private DeleteMovieUseCase useCase;
+  @Autowired private DeleteCatalogItemUseCase useCase;
   @Autowired private CatalogItemRepository movieRepository;
   @Autowired private MediaAssetRepository mediaAssetRepository;
   @Autowired private DatabaseClient databaseClient;

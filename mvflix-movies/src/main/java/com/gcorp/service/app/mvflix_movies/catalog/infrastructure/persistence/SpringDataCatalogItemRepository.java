@@ -17,7 +17,7 @@ import java.time.Duration;
 import java.util.List;
 
 @Repository
-public class SpringDataMovieRepository implements CatalogItemRepository {
+public class SpringDataCatalogItemRepository implements CatalogItemRepository {
 
     private static final String MEDIA_OBJECT_ID =
             """
@@ -52,11 +52,11 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
             """ + MEDIA_OBJECT_ID + ", " + SHARED_WITH;
 
     private final DatabaseClient databaseClient;
-    private final MovieRowMapper rowMapper;
+    private final CatalogItemRowMapper rowMapper;
     private final JsonCodec jsonCodec;
 
-    public SpringDataMovieRepository(
-            DatabaseClient databaseClient, MovieRowMapper rowMapper, JsonCodec jsonCodec) {
+    public SpringDataCatalogItemRepository(
+            DatabaseClient databaseClient, CatalogItemRowMapper rowMapper, JsonCodec jsonCodec) {
         this.databaseClient = databaseClient;
         this.rowMapper = rowMapper;
         this.jsonCodec = jsonCodec;
@@ -64,7 +64,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
 
     @Override
     public Mono<CatalogItem> save(CatalogItem movie) {
-        MovieRow row = this.rowMapper.toRow(movie);
+        CatalogItemRow row = this.rowMapper.toRow(movie);
         return this.databaseClient
                         .sql(
                                 """
@@ -120,7 +120,7 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
     }
 
     @Override
-    public Flux<CatalogItem> findVisibleMovies(String username, int limit) {
+    public Flux<CatalogItem> findVisibleCatalogItems(String username, int limit) {
         return this.databaseClient
                 .sql(
                         SELECT_MOVIE_COLUMNS
@@ -487,8 +487,8 @@ public class SpringDataMovieRepository implements CatalogItemRepository {
                 .map(this.rowMapper::toDomain);
     }
 
-    private MovieRow toRow(io.r2dbc.spi.Row row, io.r2dbc.spi.RowMetadata metadata) {
-        return new MovieRow(
+    private CatalogItemRow toRow(io.r2dbc.spi.Row row, io.r2dbc.spi.RowMetadata metadata) {
+        return new CatalogItemRow(
             row.get("id", Long.class),
             row.get("owner_username", String.class),
             row.get("title", String.class),

@@ -6,14 +6,14 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.gcorp.service.app.mvflix_movies.catalog.application.BulkVisibilityUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogQueryUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogViewRepository;
-import com.gcorp.service.app.mvflix_movies.catalog.application.CompleteMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CompleteCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.CreateIdentifiedDraftUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.CreateMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.GetMovieUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.ListMoviesUseCase;
-import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CreateCatalogItemUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.DeleteCatalogItemUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.EnrichCatalogItemUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.GetCatalogItemUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.ListCatalogItemsUseCase;
+import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateSharesUseCase;
 import com.gcorp.service.app.mvflix_movies.catalog.application.UpdateVisibilityUseCase;
 import com.gcorp.service.app.mvflix_movies.infrastructure.web.error.GlobalExceptionHandler;
@@ -29,19 +29,19 @@ class CatalogControllerErrorContractTest {
 
     private final WebTestClient client = WebTestClient
             .bindToController(new MovieController(
-                    mock(CreateMovieUseCase.class),
+                    mock(CreateCatalogItemUseCase.class),
                     mock(CreateIdentifiedDraftUseCase.class),
-                    mock(GetMovieUseCase.class),
-                    mock(ListMoviesUseCase.class),
+                    mock(GetCatalogItemUseCase.class),
+                    mock(ListCatalogItemsUseCase.class),
                     new CatalogQueryUseCase(this.viewRepository, this.userProvider),
                     mock(UpdateVisibilityUseCase.class),
-                    mock(com.gcorp.service.app.mvflix_movies.catalog.application.UpdateMovieAccessUseCase.class),
+                    mock(com.gcorp.service.app.mvflix_movies.catalog.application.UpdateCatalogItemAccessUseCase.class),
                     mock(UpdateSharesUseCase.class),
                     mock(BulkVisibilityUseCase.class),
-                    mock(UpdateMovieUseCase.class),
-                    mock(CompleteMovieUseCase.class),
-                    mock(DeleteMovieUseCase.class),
-                    mock(EnrichMovieUseCase.class),
+                    mock(UpdateCatalogItemUseCase.class),
+                    mock(CompleteCatalogItemUseCase.class),
+                    mock(DeleteCatalogItemUseCase.class),
+                    mock(EnrichCatalogItemUseCase.class),
                     mock(MovieApiMapper.class)))
             .controllerAdvice(new GlobalExceptionHandler())
             .build();

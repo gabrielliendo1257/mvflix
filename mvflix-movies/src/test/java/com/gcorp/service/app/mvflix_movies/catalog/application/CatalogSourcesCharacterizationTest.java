@@ -56,7 +56,7 @@ class CatalogSourcesCharacterizationTest extends PostgresIntegrationTest {
                 .expectNextCount(1)
                 .verifyComplete();
 
-        StepVerifier.create(this.mediaRepository.findByMovieId(movie.getId()))
+        StepVerifier.create(this.mediaRepository.findByCatalogItemId(movie.getId()))
                 .assertNext(media -> assertThat(media.getObjectId()).isEqualTo(42L))
                 .verifyComplete();
     }

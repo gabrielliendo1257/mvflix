@@ -3,7 +3,7 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.scheduler;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.gcorp.service.app.mvflix_movies.catalog.application.MovieDeletionTransaction;
+import com.gcorp.service.app.mvflix_movies.catalog.application.CatalogItemDeletionTransaction;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
@@ -24,7 +24,7 @@ import java.time.Duration;
 class DeletionRecoveryJobTest {
 
     private final CatalogItemRepository movieRepository = org.mockito.Mockito.mock(CatalogItemRepository.class);
-    private final MovieDeletionTransaction transaction = org.mockito.Mockito.mock(MovieDeletionTransaction.class);
+    private final CatalogItemDeletionTransaction transaction = org.mockito.Mockito.mock(CatalogItemDeletionTransaction.class);
 
     @Test
     void ensuresDeletingMoviesAndReactivatesExhaustedOutbox() {
