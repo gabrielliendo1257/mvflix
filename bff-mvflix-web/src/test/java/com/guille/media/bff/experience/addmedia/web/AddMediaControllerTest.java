@@ -103,6 +103,25 @@ class AddMediaControllerTest {
   }
 
   @Test
+  void startRejectsAnOversizedIdempotencyHeader() {
+    String startBody = "{"
+        + "\"file\": {\"filename\": \"alien.mp4\", \"sizeBytes\": 1024, "
+        + "\"mimeType\": \"video/mp4\"},"
+        + "\"movie\": {\"providerId\": 348, \"draft\": {\"title\": \"Alien\"}},"
+        + "\"idempotencyKey\": \"k-123\"}";
+
+    this.client
+        .post()
+        .uri("/web/add-media")
+        .header("Idempotency-Key", "x".repeat(129))
+        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+        .bodyValue(startBody)
+        .exchange()
+        .expectStatus()
+        .isBadRequest();
+  }
+
+  @Test
   void statusRestoresFreshUploadInstructionsWhileWaiting() {
     // Preparar proceso WAITING_FOR_UPLOAD directamente en el repo.
     com.guille.media.bff.experience.addmedia.model.AddMediaId pid =

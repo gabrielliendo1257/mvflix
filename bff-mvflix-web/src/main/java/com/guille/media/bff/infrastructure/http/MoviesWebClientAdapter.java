@@ -82,14 +82,14 @@ public class MoviesWebClientAdapter implements MoviesWebClient {
     if (sharedWith != null && !sharedWith.isEmpty()) {
       payload.put("sharedWith", sharedWith);
     }
-    return this.moviesWebClient
+    var request = this.moviesWebClient
         .post()
         .uri(API + "/identified-drafts")
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Idempotency-Key", idempotencyKey == null ? "" : idempotencyKey)
-        .bodyValue(payload)
-        .retrieve()
-        .bodyToMono(MovieDto.class);
+        .contentType(MediaType.APPLICATION_JSON);
+    if (idempotencyKey != null && !idempotencyKey.isBlank()) {
+      request.header("Idempotency-Key", idempotencyKey);
+    }
+    return request.bodyValue(payload).retrieve().bodyToMono(MovieDto.class);
   }
 
   @Override

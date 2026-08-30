@@ -40,6 +40,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.infrastructure.web.dto.Update
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -55,6 +56,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -63,6 +66,7 @@ import reactor.core.publisher.Mono;
     description =
         "Catálogo: drafts (incl. identificados), READY, visibilidad, shares, enriquecimiento TMDB")
 @RestController
+@Validated
 @RequestMapping(path = "/api/v1/movies", produces = MediaType.APPLICATION_JSON_VALUE)
 public class MovieController {
 
@@ -177,8 +181,12 @@ public class MovieController {
   @Operation(summary = "Draft identificado con acceso inicial, aplicado atómicamente")
   public Mono<MovieResponse> createIdentifiedDraft(
       @Valid @RequestBody CreateIdentifiedDraftRequest request,
-      @RequestHeader(name = "Idempotency-Key", required = false) String idempotencyKey,
+      @RequestHeader(name = "Idempotency-Key", required = false) @Size(max = 128) String idempotencyKey,
       @RequestHeader(name = "X-Correlation-Id", required = false) UUID correlationId) {
+    if (idempotencyKey != null && idempotencyKey.length() > 128) {
+      return Mono.error(new ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST,
+          "Idempotency-Key must be at most 128 characters"));
+    }
     return this.createIdentifiedDraftUseCase
         .execute(this.toCommand(request, idempotencyKey, correlationId))
         .flatMap(this::response);

@@ -9,10 +9,13 @@ import java.util.*;
 import org.springframework.http.*;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
 
 @RestController
+@Validated
 @RequestMapping(value = "/api/v1/ingestions", produces = MediaType.APPLICATION_JSON_VALUE)
 public class MediaIngestionController {
   private final MediaIngestionService service;
@@ -23,9 +26,13 @@ public class MediaIngestionController {
 
   @PostMapping
   public Mono<ResponseEntity<MediaIngestion>> create(
-      @RequestHeader("Idempotency-Key") @NotBlank String key,
+      @RequestHeader("Idempotency-Key") @NotBlank @Size(max = 128) String key,
       @Valid @RequestBody Create r,
       @AuthenticationPrincipal Jwt jwt) {
+    if (key == null || key.isBlank() || key.length() > 128) {
+      return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          "Idempotency-Key must be non-blank and at most 128 characters"));
+    }
     return service
         .create(
             actor(jwt),

@@ -12,6 +12,7 @@ import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,6 +29,8 @@ import com.guille.media.bff.app.dto.MovieEnrichmentPreviewDto;
 import com.guille.media.bff.app.dto.MovieEnrichmentSearchDto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
+import org.springframework.validation.annotation.Validated;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -38,6 +41,7 @@ import reactor.core.publisher.Mono;
  */
 @Tag(name = "Add Media", description = "Alta guiada de contenido: candidatos, proceso con idempotencia, subida directa y cierre")
 @RestController
+@Validated
 @RequestMapping(value = "/web/add-media", produces = MediaType.APPLICATION_JSON_VALUE)
 public class AddMediaController {
 
@@ -83,8 +87,12 @@ public class AddMediaController {
   @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<AddMediaResponse>> start(
       @Valid @RequestBody StartAddMediaRequest request,
-      @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyHeader,
+      @RequestHeader(value = "Idempotency-Key", required = false) @Size(max = 128) String idempotencyHeader,
       @RequestHeader(value = "X-Correlation-ID", required = false) String correlationId) {
+    if (idempotencyHeader != null && idempotencyHeader.length() > 128) {
+      return Mono.error(new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          "Idempotency-Key must be at most 128 characters"));
+    }
     String idempotencyKey = idempotencyHeader == null || idempotencyHeader.isBlank()
         ? request.idempotencyKey() : idempotencyHeader;
     return this.ownerSubject()
