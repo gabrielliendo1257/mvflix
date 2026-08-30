@@ -12,6 +12,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.stereotype.Component;
 
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaCompensationRepository;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaCompensationRepository.Kind;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Adaptador EN MEMORIA del estado de proceso Add Media. Mismo compromiso que
@@ -20,11 +24,14 @@ import reactor.core.publisher.Mono;
  * adapter - el port ya está en su sitio.
  */
 @Component
-public class InMemoryAddMediaProcessRepository implements AddMediaProcessRepository {
+@org.springframework.context.annotation.Profile("local")
+public class InMemoryAddMediaProcessRepository implements AddMediaProcessRepository, AddMediaCompensationRepository {
 
   private final Map<AddMediaId, AddMediaProcess> processes = new ConcurrentHashMap<>();
   private final Map<String, AddMediaId> idempotencyIndex = new ConcurrentHashMap<>();
   private final Map<String, String> fingerprints = new ConcurrentHashMap<>();
+  private final Map<Long, Task> compensationTasks = new ConcurrentHashMap<>();
+  private final AtomicLong compensationSequence = new AtomicLong();
 
   @Override
   public Mono<AddMediaProcess> createIfAbsent(
@@ -110,6 +117,26 @@ public class InMemoryAddMediaProcessRepository implements AddMediaProcessReposit
   }
 
   @Override
+  public Mono<Boolean> tryCompleteCancellation(AddMediaId id) {
+    return Mono.defer(() -> {
+      AtomicReference<Boolean> completed = new AtomicReference<>(false);
+      this.processes.compute(id, (key, existing) -> {
+        boolean pending = this.compensationTasks.values().stream()
+            .anyMatch(task -> task.processId().equals(id));
+        if (existing == null || existing.phase() !=
+            com.guille.media.bff.experience.addmedia.model.AddMediaPhase.CANCELLING || pending) {
+          return existing;
+        }
+        completed.set(true);
+        return new AddMediaProcess(existing.id(), existing.ownerSubject(), existing.movieId(),
+            existing.uploadId(), com.guille.media.bff.experience.addmedia.model.AddMediaPhase.CANCELLED,
+            null, existing.version() + 1);
+      });
+      return Mono.just(completed.get());
+    });
+  }
+
+  @Override
   public Mono<AddMediaProcess> releaseClaim(AddMediaId id) {
     return Mono.defer(() -> Mono.justOrEmpty(this.releaseInPlace(id)));
   }
@@ -140,5 +167,39 @@ public class InMemoryAddMediaProcessRepository implements AddMediaProcessReposit
       });
       return Mono.justOrEmpty(saved.get());
     });
+  }
+
+  @Override
+  public Mono<Void> enqueue(AddMediaId processId, Kind kind, Long resourceId, Throwable error) {
+    return Mono.fromRunnable(() -> compensationTasks.computeIfAbsent(
+        processId.value().hashCode() * 31L + kind.hashCode() * 17L + resourceId,
+        ignored -> new Task(compensationSequence.incrementAndGet(), processId, kind, resourceId, 0,
+            error == null ? null : error.getMessage())));
+  }
+
+  @Override
+  public Flux<Task> claimPending(int limit) {
+    return Flux.fromIterable(compensationTasks.values()).take(limit)
+        .map(task -> new Task(task.id(), task.processId(), task.kind(), task.resourceId(),
+            task.attempts() + 1, task.lastError()));
+  }
+
+  @Override
+  public Mono<Void> markCompleted(long taskId) {
+    return Mono.fromRunnable(() -> compensationTasks.values().stream()
+        .filter(task -> task.id() == taskId).findFirst()
+        .ifPresent(task -> compensationTasks.remove(taskKey(task))));
+  }
+
+  @Override
+  public Mono<Void> markFailed(long taskId, int attempts, Throwable error) {
+    return Mono.fromRunnable(() -> compensationTasks.values().stream()
+        .filter(task -> task.id() == taskId).findFirst()
+        .ifPresent(task -> compensationTasks.put(taskKey(task), new Task(task.id(), task.processId(),
+            task.kind(), task.resourceId(), attempts, error.getMessage()))));
+  }
+
+  private static long taskKey(Task task) {
+    return task.processId().value().hashCode() * 31L + task.kind().hashCode() * 17L + task.resourceId();
   }
 }

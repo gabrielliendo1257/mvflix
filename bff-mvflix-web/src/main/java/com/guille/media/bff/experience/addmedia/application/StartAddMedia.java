@@ -8,6 +8,8 @@ import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies.IdentifiedDraft;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcessRepository;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaCompensationRepository;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaCompensationRepository.Kind;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
@@ -36,16 +38,29 @@ public class StartAddMedia {
   private final AddMediaStorage storage;
   private final AddMediaProcessRepository processes;
   private final UsersWebPort users;
+  private final AddMediaCompensationRepository compensations;
 
   public StartAddMedia(
       AddMediaMovies movies,
       AddMediaStorage storage,
       AddMediaProcessRepository processes,
       UsersWebPort users) {
+    this(movies, storage, processes, users,
+        processes instanceof AddMediaCompensationRepository repository ? repository : null);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public StartAddMedia(
+      AddMediaMovies movies,
+      AddMediaStorage storage,
+      AddMediaProcessRepository processes,
+      UsersWebPort users,
+      AddMediaCompensationRepository compensations) {
     this.movies = movies;
     this.storage = storage;
     this.processes = processes;
     this.users = users;
+    this.compensations = compensations;
   }
 
   public Mono<AddMediaResult> handle(String ownerSubject, StartAddMediaCommand command) {
@@ -132,11 +147,16 @@ public class StartAddMedia {
         .createIdentifiedDraft(identified)
         .flatMap(
             draft ->
-                this.prepareUpload(process, draft.id(), command)
+                this.persistDraftReference(process, draft.id())
+                    .flatMap(prepared -> this.prepareUpload(prepared, draft.id(), command))
                     // El upload ya se compensó dentro de prepareUpload (si
                     // llegó a existir); aquí solo queda el draft.
                     .onErrorResume(
-                        error -> this.compensateDraft(draft.id()).then(Mono.error(error))));
+                        error -> this.compensateDraft(process.id(), draft.id(), error).then(Mono.error(error))));
+   }
+
+  private Mono<AddMediaProcess> persistDraftReference(AddMediaProcess process, Long movieId) {
+    return this.processes.savePreparing(process.withMovieId(movieId));
   }
 
   private Mono<AddMediaResult> prepareUpload(
@@ -154,7 +174,7 @@ public class StartAddMedia {
           AddMediaProcess prepared = process.uploadPrepared(movieId, uploadId);
           return this.persistPrepared(prepared, session)
               .onErrorResume(err ->
-                  this.compensateUpload(uploadId).then(Mono.error(err)))
+                  this.compensateUpload(process.id(), uploadId, err).then(Mono.error(err)))
               .doOnNext(view -> log.info("add-media started: process={} movie={} upload={}",
                   view.addMediaId(), view.movieId(), view.uploadId()));
         });
@@ -180,16 +200,13 @@ public class StartAddMedia {
     }
   }
 
-  /** Compensación best-effort: libera la cuota reservada por la sesión. */
-  private Mono<Void> compensateUpload(Long uploadId) {
-    log.warn("add-media: fallo tras crear el upload {}; cancelando sesión", uploadId);
+  private Mono<Void> compensateUpload(com.guille.media.bff.experience.addmedia.model.AddMediaId processId,
+      Long uploadId, Throwable cause) {
+    log.warn("add-media compensation process={} kind={} resource={}", processId.value(),
+        Kind.CANCEL_UPLOAD, uploadId, cause);
     return this.storage
         .cancelUpload(uploadId)
-        .onErrorResume(err -> {
-          log.error("add-media: compensación PENDIENTE - upload {} no pudo cancelarse: {}",
-              uploadId, err.getMessage());
-          return Mono.empty();
-        });
+        .onErrorResume(err -> enqueue(processId, Kind.CANCEL_UPLOAD, uploadId, err));
   }
 
   /** Huella canónica del intento; pública para que los tests usen la MISMA. */
@@ -208,16 +225,23 @@ public class StartAddMedia {
         : command.access();
   }
 
-  /** Compensación best-effort: si el discard falla queda pendiente en el log. */
-  private Mono<Void> compensateDraft(Long movieId) {
-    log.warn("add-media: storage falló tras crear el draft {}; descartando draft", movieId);
+  private Mono<Void> compensateDraft(com.guille.media.bff.experience.addmedia.model.AddMediaId processId,
+      Long movieId, Throwable cause) {
+    log.warn("add-media compensation process={} kind={} resource={}", processId.value(),
+        Kind.DISCARD_DRAFT, movieId, cause);
     return this.movies
         .discardDraft(movieId)
-        .onErrorResume(err -> {
-          log.error("add-media: compensación PENDIENTE - draft {} no pudo descartarse: {}",
-              movieId, err.getMessage());
-          return Mono.empty();
-        });
+        .onErrorResume(err -> enqueue(processId, Kind.DISCARD_DRAFT, movieId, err));
+  }
+
+  private Mono<Void> enqueue(com.guille.media.bff.experience.addmedia.model.AddMediaId processId,
+      Kind kind, Long resourceId, Throwable error) {
+    if (this.compensations == null) {
+      return Mono.error(error);
+    }
+    return this.compensations.enqueue(processId, kind, resourceId, error)
+        .doOnSuccess(ignored -> log.error("add-media compensation persisted process={} kind={} resource={}",
+            processId.value(), kind, resourceId, error));
   }
 
 }

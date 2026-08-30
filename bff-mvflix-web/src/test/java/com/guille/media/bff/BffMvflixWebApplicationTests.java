@@ -21,7 +21,8 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
     properties = {
-    "spring.profiles.active=dev",
+     "spring.profiles.active=dev,local",
+     "spring.flyway.enabled=false",
     "security.oauth2.jwk-set-uri=http://localhost:0/oauth2/jwks"
 })
 @org.springframework.boot.test.autoconfigure.web.reactive.AutoConfigureWebTestClient

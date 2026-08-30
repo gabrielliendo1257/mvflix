@@ -19,6 +19,7 @@ import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
 import com.guille.media.bff.infrastructure.persistence.InMemoryAddMediaProcessRepository;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaCompensationRepository;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,6 +81,38 @@ class CancelAddMediaTest {
 
     verify(this.storage).cancelUpload(42L);
     verify(this.movies).discardDraft(7L);
+  }
+
+  @Test
+  void failedImmediateCompensationLeavesProcessCancelling() {
+    String id = this.processInPhase(AddMediaPhase.WAITING_FOR_UPLOAD);
+    when(this.storage.cancelUpload(42L)).thenReturn(Mono.error(new RuntimeException("storage down")));
+    when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
+
+    StepVerifier.create(this.useCase.handle("pepe", id))
+        .assertNext(view -> assertThat(view.phase()).isEqualTo(AddMediaPhase.CANCELLING))
+        .verifyComplete();
+
+    assertThat(this.processes.findById(AddMediaId.parse(id)).block().phase())
+        .isEqualTo(AddMediaPhase.CANCELLING);
+  }
+
+  @Test
+  void enqueueFailurePropagatesAndDoesNotMarkCancelled() {
+    String id = this.processInPhase(AddMediaPhase.WAITING_FOR_UPLOAD);
+    AddMediaCompensationRepository compensations = mock(AddMediaCompensationRepository.class);
+    this.useCase = new CancelAddMedia(this.processes, this.storage, this.movies, compensations);
+    when(this.storage.cancelUpload(42L)).thenReturn(Mono.error(new RuntimeException("storage down")));
+    when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());
+    when(compensations.enqueue(any(), any(), anyLong(), any()))
+        .thenReturn(Mono.error(new RuntimeException("database down")));
+
+    StepVerifier.create(this.useCase.handle("pepe", id))
+        .expectErrorMessage("database down")
+        .verify();
+
+    assertThat(this.processes.findById(AddMediaId.parse(id)).block().phase())
+        .isEqualTo(AddMediaPhase.CANCELLING);
   }
 
   /**

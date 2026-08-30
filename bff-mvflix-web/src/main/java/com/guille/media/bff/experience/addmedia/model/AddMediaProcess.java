@@ -66,6 +66,15 @@ public record AddMediaProcess(
         AddMediaPhase.WAITING_FOR_UPLOAD, null, this.version + 1);
   }
 
+  /** Conserva el draft mientras PREPARING para que una caída no pierda su referencia. */
+  public AddMediaProcess withMovieId(Long movieId) {
+    if (this.phase != AddMediaPhase.PREPARING) {
+      throw new InvalidAddMediaTransition(this.phase, AddMediaPhase.PREPARING);
+    }
+    return new AddMediaProcess(this.id, this.ownerSubject, movieId, null,
+        this.phase, null, this.version + 1);
+  }
+
   /**
    * Pasa a verificación. Idempotente en la MISMA fase: reintentar complete
    * mientras storage verifica es legítimo y no genera nueva versión.

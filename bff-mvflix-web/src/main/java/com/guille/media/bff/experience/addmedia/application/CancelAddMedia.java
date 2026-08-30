@@ -4,13 +4,14 @@ import com.guille.media.bff.experience.addmedia.application.port.AddMediaProcess
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaMovies;
 import com.guille.media.bff.experience.addmedia.model.AddMediaProcess;
 import com.guille.media.bff.experience.addmedia.application.port.AddMediaStorage;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaCompensationRepository;
+import com.guille.media.bff.experience.addmedia.application.port.AddMediaCompensationRepository.Kind;
 import com.guille.media.bff.experience.addmedia.model.AddMediaId;
 import com.guille.media.bff.experience.addmedia.model.AddMediaPhase;
 import com.guille.media.bff.experience.addmedia.model.InvalidAddMediaTransition;
 import com.guille.media.bff.experience.addmedia.application.AddMediaResult;
 import com.guille.media.bff.shared.error.EntityNotFound;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.stereotype.Service;
@@ -24,13 +25,28 @@ import reactor.core.publisher.Mono;
  * en VERIFYING el contenido ya fue verificado por storage.
  */
 @Slf4j
-@RequiredArgsConstructor
 @Service
 public class CancelAddMedia {
 
   private final AddMediaProcessRepository processes;
   private final AddMediaStorage storage;
   private final AddMediaMovies movies;
+  private final AddMediaCompensationRepository compensations;
+
+  public CancelAddMedia(AddMediaProcessRepository processes, AddMediaStorage storage,
+      AddMediaMovies movies) {
+    this(processes, storage, movies,
+        processes instanceof AddMediaCompensationRepository repository ? repository : null);
+  }
+
+  @org.springframework.beans.factory.annotation.Autowired
+  public CancelAddMedia(AddMediaProcessRepository processes, AddMediaStorage storage,
+      AddMediaMovies movies, AddMediaCompensationRepository compensations) {
+    this.processes = processes;
+    this.storage = storage;
+    this.movies = movies;
+    this.compensations = compensations;
+  }
 
   public Mono<AddMediaResult> handle(String ownerSubject, String addMediaId) {
     return this.processes
@@ -57,9 +73,11 @@ public class CancelAddMedia {
             return Mono.error(new InvalidAddMediaTransition(
                 process.phase(), AddMediaPhase.CANCELLING));
           }
+          AddMediaProcess cancelling = process.cancelling();
           return this.compensate(process)
-              .then(this.processes.save(process.cancelling().cancelled()))
-              .map(AddMediaResult::from);
+              .flatMap(compensation -> compensation.pending()
+                  ? Mono.just(AddMediaResult.from(cancelling))
+                  : this.processes.save(cancelling.cancelled()).map(AddMediaResult::from));
         });
   }
 
@@ -69,23 +87,30 @@ public class CancelAddMedia {
    * FINALIZING se compensa completo (upload + draft). Los fallos quedan
    * registrados como compensaciones pendientes.
    */
-  private Mono<Void> compensate(AddMediaProcess process) {
-    Mono<Void> cancelUpload = process.uploadId() == null
-        ? Mono.empty()
-        : this.storage.cancelUpload(process.uploadId())
-            .onErrorResume(err -> {
-              log.error("add-media cancel: PENDIENTE liberar upload {}: {}",
-                  process.uploadId(), err.getMessage());
-              return Mono.empty();
-            });
-    Mono<Void> discardDraft = process.movieId() == null
-        ? Mono.empty()
-        : this.movies.discardDraft(process.movieId())
-            .onErrorResume(err -> {
-              log.error("add-media cancel: PENDIENTE descartar draft {}: {}",
-                  process.movieId(), err.getMessage());
-              return Mono.empty();
-            });
-    return cancelUpload.then(discardDraft);
+  private Mono<CompensationResult> compensate(AddMediaProcess process) {
+    Mono<Boolean> cancelUpload = process.uploadId() == null
+        ? Mono.just(false)
+        : this.storage.cancelUpload(process.uploadId()).thenReturn(false)
+            .onErrorResume(err -> enqueue(process, Kind.CANCEL_UPLOAD, process.uploadId(), err)
+                .thenReturn(true));
+    Mono<Boolean> discardDraft = process.movieId() == null
+        ? Mono.just(false)
+        : this.movies.discardDraft(process.movieId()).thenReturn(false)
+            .onErrorResume(err -> enqueue(process, Kind.DISCARD_DRAFT, process.movieId(), err)
+                .thenReturn(true));
+    return cancelUpload
+        .zipWith(discardDraft)
+        .map(result -> new CompensationResult(result.getT1() || result.getT2()));
+  }
+
+  private record CompensationResult(boolean pending) {}
+
+  private Mono<Void> enqueue(AddMediaProcess process, Kind kind, Long resourceId, Throwable error) {
+    if (compensations == null) {
+      return Mono.error(error);
+    }
+    log.error("add-media compensation pending process={} kind={} resource={}",
+        process.id().value(), kind, resourceId, error);
+    return compensations.enqueue(process.id(), kind, resourceId, error);
   }
 }

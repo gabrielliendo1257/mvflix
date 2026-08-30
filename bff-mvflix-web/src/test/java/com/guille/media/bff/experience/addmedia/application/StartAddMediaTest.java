@@ -205,6 +205,23 @@ class StartAddMediaTest {
   }
 
   @Test
+  void failedDraftCompensationIsDurableAndIdempotent() {
+    when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
+    when(this.storage.prepareUpload(any(UploadCreateRequest.class)))
+        .thenReturn(Mono.error(new RuntimeException("storage unavailable")));
+    when(this.movies.discardDraft(7L)).thenReturn(Mono.error(new RuntimeException("movies unavailable")));
+
+    StepVerifier.create(start()).expectErrorMessage("storage unavailable").verify();
+
+    var task = this.processes.claimPending(10).blockFirst();
+    assertThat(task.kind()).isEqualTo(
+        com.guille.media.bff.experience.addmedia.application.port.AddMediaCompensationRepository.Kind.DISCARD_DRAFT);
+    assertThat(task.resourceId()).isEqualTo(7L);
+    this.processes.enqueue(task.processId(), task.kind(), task.resourceId(), new RuntimeException("again")).block();
+    assertThat(this.processes.claimPending(10).count().block()).isEqualTo(1L);
+  }
+
+  @Test
   void invalidStorageUploadIdAbortsWithoutPersisting() {
     when(this.movies.createIdentifiedDraft(any(IdentifiedDraft.class))).thenReturn(Mono.just(draft()));
     when(this.movies.discardDraft(7L)).thenReturn(Mono.empty());

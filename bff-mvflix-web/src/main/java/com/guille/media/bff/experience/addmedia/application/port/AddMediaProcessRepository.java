@@ -48,6 +48,14 @@ public interface AddMediaProcessRepository {
    */
   Mono<Boolean> tryCancelClaim(AddMediaId id);
 
+  /** Completa CANCELLING solo cuando no quedan compensaciones PENDING. */
+  Mono<Boolean> tryCompleteCancellation(AddMediaId id);
+
   /** Devuelve un reclamo fallido a STARTING para habilitar el reintento. */
   Mono<AddMediaProcess> releaseClaim(AddMediaId id);
+
+  /** Claim PREPARING stale conserva referencias ya persistidas, si existen. */
+  default Mono<AddMediaProcess> savePreparing(AddMediaProcess process) {
+    return save(process);
+  }
 }
