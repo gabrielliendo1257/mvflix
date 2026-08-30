@@ -53,6 +53,8 @@ services:
       - |
         for topic in \
           mvflix.managed-media-deletion-requested.v1 \
+          mvflix.catalog-item-added.v1 \
+          mvflix.catalog-item-deleted.v1 \
           mvflix.managed-media-deletion-requested.v1.retry-0 \
           mvflix.managed-media-deletion-requested.v1.retry-1 \
           mvflix.managed-media-deletion-requested.v1.retry-2 \

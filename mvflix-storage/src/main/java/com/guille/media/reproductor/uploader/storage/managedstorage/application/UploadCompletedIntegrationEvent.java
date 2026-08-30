@@ -7,6 +7,8 @@ public record UploadCompletedIntegrationEvent(
     UUID eventId,
     int eventVersion,
     Instant occurredAt,
+    String actorId,
+    UUID correlationId,
     String aggregateId,
     UploadCompletedPayload payload)
     implements StorageIntegrationEvent<UploadCompletedIntegrationEvent.UploadCompletedPayload> {

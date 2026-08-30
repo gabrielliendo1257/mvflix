@@ -15,7 +15,9 @@ import java.util.Map;
 public class KafkaOutboxMessagePublisher implements OutboxMessagePublisher {
 
     private static final Map<String, String> TOPICS = Map.of(
-            "ManagedMediaDeletionRequested", "mvflix.managed-media-deletion-requested.v1");
+            "ManagedMediaDeletionRequested", "mvflix.managed-media-deletion-requested.v1",
+            "CatalogItemAdded", "mvflix.catalog-item-added.v1",
+            "CatalogItemDeleted", "mvflix.catalog-item-deleted.v1");
 
     private final KafkaTemplate<String, String> kafkaTemplate;
 

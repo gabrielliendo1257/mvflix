@@ -38,10 +38,12 @@ public class UploadCompletionTransaction {
     UUID eventId = UUID.nameUUIDFromBytes(
         ("UploadCompleted:" + object.getStorageId()).getBytes(StandardCharsets.UTF_8));
     return new UploadCompletedIntegrationEvent(
-        eventId,
-        1,
-        Instant.now(),
-        String.valueOf(object.getStorageId()),
+                eventId,
+                1,
+                Instant.now(),
+                "system",
+                eventId,
+                String.valueOf(object.getStorageId()),
         new UploadCompletedIntegrationEvent.UploadCompletedPayload(
             object.getStorageId(),
             object.getOwnerUsername(),

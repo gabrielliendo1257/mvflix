@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedDeletionOutbox;
 import com.gcorp.service.app.mvflix_movies.catalog.application.port.ManagedMediaDeletionRequested;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.CatalogSemanticEvent;
 
 import org.springframework.r2dbc.core.DatabaseClient;
 import org.springframework.stereotype.Repository;
@@ -26,25 +27,32 @@ public class SpringDataManagedDeletionOutbox implements ManagedDeletionOutbox {
 
     @Override
     public Mono<Void> append(ManagedMediaDeletionRequested event) {
+        return append((CatalogSemanticEvent) event);
+    }
+
+    @Override
+    public Mono<Void> append(CatalogSemanticEvent event) {
         final String payload;
         try {
-            Map<String, Object> eventPayload = Map.of(
-                    "movieId", event.movieId(),
-                    "storageId", event.storageId(),
-                    "ownerUsername", event.ownerUsername(),
-                    "objectKey", event.objectKey());
+            Map<String, Object> eventPayload = event.payload() instanceof Map<?, ?> map
+                    ? (Map<String, Object>) map : Map.of("value", event.payload());
             payload = this.objectMapper.writeValueAsString(Map.of(
                     "eventId", event.eventId(),
-                    "eventType", "ManagedMediaDeletionRequested",
-                    "eventVersion", 1,
+                    "eventType", event.eventType(),
+                    "eventVersion", event.eventVersion(),
                     "occurredAt", event.occurredAt(),
+                    "actorId", event.actorId(),
+                    "correlationId", event.correlationId(),
                     "producer", "mvflix-movies",
-                    "aggregate", Map.of("type", "Movie", "id", String.valueOf(event.movieId())),
+                    "aggregate", Map.of("type", event.aggregateType(), "id", event.aggregateId()),
                     "payload", eventPayload));
         } catch (JsonProcessingException error) {
             return Mono.error(new IllegalArgumentException("Cannot encode deletion event", error));
         }
 
+        String conflict = "ManagedMediaDeletionRequested".equals(event.eventType())
+                ? "ON CONFLICT (event_type, aggregate_id) WHERE event_type = 'ManagedMediaDeletionRequested' DO NOTHING"
+                : "ON CONFLICT (event_id) DO NOTHING";
         return this.databaseClient
                 .sql(
                         """
@@ -53,15 +61,13 @@ public class SpringDataManagedDeletionOutbox implements ManagedDeletionOutbox {
                             aggregate_id, occurred_at, payload)
                         VALUES (:event_id, :event_type, :event_version, :aggregate_type,
                                 :aggregate_id, :occurred_at, CAST(:payload AS jsonb))
-                        ON CONFLICT (event_type, aggregate_id)
-                        WHERE event_type = 'ManagedMediaDeletionRequested' DO NOTHING
-                        """)
+                         """ + conflict)
                 .bind("event_id", event.eventId())
-                .bind("event_type", "ManagedMediaDeletionRequested")
-                .bind("event_version", 1)
-                 .bind("aggregate_type", "Movie")
-                .bind("aggregate_id", String.valueOf(event.movieId()))
-                .bind("occurred_at", event.occurredAt())
+                 .bind("event_type", event.eventType())
+                 .bind("event_version", event.eventVersion())
+                  .bind("aggregate_type", event.aggregateType())
+                 .bind("aggregate_id", event.aggregateId())
+                 .bind("occurred_at", event.occurredAt())
                 .bind("payload", payload)
                 .fetch()
                 .rowsUpdated()

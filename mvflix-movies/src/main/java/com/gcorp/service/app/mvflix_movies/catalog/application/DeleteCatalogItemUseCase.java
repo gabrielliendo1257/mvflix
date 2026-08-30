@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
+import java.util.UUID;
 
 /**
  * Entrada única al borrado del catálogo. La eliminación MANAGED se solicita de
@@ -31,30 +32,37 @@ public class DeleteCatalogItemUseCase {
                 .flatMap(user -> this.movieRepository.findById(id)
                         // Missing and foreign are deliberately indistinguishable.
                         .filter(movie -> movie.isOwnedBy(user.subject()) || user.isAdmin())
-                        .flatMap(movie -> this.deleteOwnedMovie(id, movie))
+                         .flatMap(movie -> this.deleteOwnedMovie(id, movie, user.subject(), UUID.randomUUID()))
                         .defaultIfEmpty(new DeletionOutcome.Completed()));
     }
 
-    private Mono<DeletionOutcome> deleteOwnedMovie(CatalogItemId id, CatalogItem movie) {
+    private Mono<DeletionOutcome> deleteOwnedMovie(CatalogItemId id, CatalogItem movie, String actorId, UUID correlationId) {
         if (movie.getStatus() == CatalogItemStatus.DELETING) {
+            UUID eventId = UUID.randomUUID();
             return this.deletionTransaction.ensureDeletionRequested(id)
+                    .contextWrite(context -> context.put("actorId", actorId).put("correlationId", correlationId)
+                            .put("eventId", eventId))
                     .thenReturn(new DeletionOutcome.Pending());
         }
 
         return this.mediaRepository.findByCatalogItemId(id)
-                .flatMap(media -> this.beginManagedDeletion(id))
+                .flatMap(media -> this.beginManagedDeletion(id, actorId, correlationId, UUID.randomUUID()))
                 // No media row means DRAFT/NONE or LOCAL. LibraryAssetLinks only
                 // unlinks the catalog association and never deletes the file.
-                .switchIfEmpty(Mono.defer(() -> this.deleteImmediately(id)));
+                .switchIfEmpty(Mono.defer(() -> this.deleteImmediately(id, actorId, correlationId, UUID.randomUUID())));
     }
 
-    private Mono<DeletionOutcome> beginManagedDeletion(CatalogItemId id) {
+    private Mono<DeletionOutcome> beginManagedDeletion(CatalogItemId id, String actorId, UUID correlationId, UUID eventId) {
         return this.deletionTransaction.requestDeletion(id)
+                .contextWrite(context -> context.put("actorId", actorId).put("correlationId", correlationId)
+                        .put("eventId", eventId))
                 .thenReturn(new DeletionOutcome.Pending());
     }
 
-    private Mono<DeletionOutcome> deleteImmediately(CatalogItemId id) {
+    private Mono<DeletionOutcome> deleteImmediately(CatalogItemId id, String actorId, UUID correlationId, UUID eventId) {
         return this.deletionTransaction.deleteImmediately(id)
+                .contextWrite(context -> context.put("actorId", actorId).put("correlationId", correlationId)
+                        .put("eventId", eventId))
                 .<DeletionOutcome>thenReturn(new DeletionOutcome.Completed());
     }
 }

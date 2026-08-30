@@ -12,4 +12,8 @@ public sealed interface StorageIntegrationEvent<T>
   String aggregateId();
   String aggregateType();
   T payload();
+
+  /** Storage no recibe identidad de usuario en los caminos internos; se conserva explícitamente. */
+  default String actorId() { return "system"; }
+  default UUID correlationId() { return eventId(); }
 }

@@ -37,8 +37,10 @@ public class SpringDataStorageOutbox implements StorageOutbox {
           "eventId", event.eventId(),
           "eventType", event.eventType(),
           "eventVersion", event.eventVersion(),
-          "occurredAt", event.occurredAt(),
-          "producer", "mvflix-storage",
+           "occurredAt", event.occurredAt(),
+           "actorId", event.actorId(),
+           "correlationId", event.correlationId(),
+           "producer", "mvflix-storage",
           "aggregate", Map.of("type", event.aggregateType(), "id", event.aggregateId()),
           "payload", event.payload()));
     } catch (JsonProcessingException error) {

@@ -13,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import reactor.core.publisher.Mono;
+import java.util.UUID;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.CatalogItemAdded;
+import com.gcorp.service.app.mvflix_movies.catalog.application.port.CatalogSemanticOutbox;
 
 import java.util.List;
 
@@ -24,13 +27,21 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CreateIdentifiedDraftUseCase {
 
     private final CatalogItemRepository movieRepository;
     private final UserProvider userProvider;
+    private final CatalogSemanticOutbox outbox;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    public CreateIdentifiedDraftUseCase(CatalogItemRepository repository, UserProvider userProvider, CatalogSemanticOutbox outbox) { this.movieRepository = repository; this.userProvider = userProvider; this.outbox = outbox == null ? event -> Mono.empty() : outbox; }
+    @Deprecated
+    public CreateIdentifiedDraftUseCase(CatalogItemRepository repository, UserProvider userProvider) { this(repository, userProvider, event -> Mono.empty()); }
+
+    @org.springframework.transaction.annotation.Transactional("connectionFactoryTransactionManager")
     public Mono<CatalogItem> execute(CreateIdentifiedDraftCommand command) {
+        UUID correlationId = UUID.randomUUID();
+        UUID eventId = UUID.randomUUID();
         Visibility visibility = command.visibility() == null
                 ? Visibility.PRIVATE
                 : command.visibility();
@@ -44,7 +55,8 @@ public class CreateIdentifiedDraftUseCase {
                 .flatMap(user -> {
                     CatalogItem draft = buildIdentifiedDraft(user.subject(), command)
                             .withAccess(visibility, java.util.Set.copyOf(cleanShared));
-                    return this.movieRepository.saveDraftWithAccess(draft);
+                    return this.movieRepository.saveDraftWithAccess(draft)
+                            .flatMap(saved -> this.outbox.append(new CatalogItemAdded(eventId, java.time.Instant.now(), user.subject(), correlationId, saved.getId().value(), saved.getOwnerUsername(), saved.getKind().name(), saved.getStatus().name())).thenReturn(saved));
                 })
                 .doOnNext(saved -> log.info(
                         "Identified draft creado: id={} tmdb={} visibility={} shared={}",
