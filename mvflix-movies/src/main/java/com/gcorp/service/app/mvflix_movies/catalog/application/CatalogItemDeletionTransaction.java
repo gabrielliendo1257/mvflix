@@ -51,7 +51,7 @@ public class CatalogItemDeletionTransaction {
                                 "Managed deletion requires media for movie=" + id.value())))
                         .flatMap(media -> this.managedDeletionOutbox
                                 .append(ManagedMediaDeletionRequested.create(
-                                        id.value(), media.getObjectId(), movie.getOwnerUsername(),
+                                         id.value(), media.getStorageObjectId().value(), movie.getOwnerUsername(),
                                         media.getObjectKey()))
                                 .thenReturn(movie)));
     }
@@ -78,7 +78,7 @@ public class CatalogItemDeletionTransaction {
                          .switchIfEmpty(Mono.error(new IllegalStateException(
                                  "Managed media missing for movie=" + movieId.value())))
                          .flatMap(media -> {
-                           if (!Objects.equals(media.getObjectId(), storageId)) {
+                            if (!Objects.equals(media.getStorageObjectId().value(), storageId)) {
                              return Mono.error(new IllegalStateException(
                                      "Cannot finalize movie=" + movieId.value()
                                              + ": storageId mismatch"));
@@ -119,7 +119,7 @@ public class CatalogItemDeletionTransaction {
                                     "Managed deletion requires media for movie=" + id.value())))
                             .flatMap(media -> this.managedDeletionOutbox.append(
                                     ManagedMediaDeletionRequested.create(
-                                            id.value(), media.getObjectId(), movie.getOwnerUsername(),
+                                             id.value(), media.getStorageObjectId().value(), movie.getOwnerUsername(),
                                             media.getObjectKey())));
                 })
                 .then();

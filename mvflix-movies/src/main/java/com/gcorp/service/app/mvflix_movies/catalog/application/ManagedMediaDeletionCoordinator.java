@@ -45,6 +45,6 @@ public class ManagedMediaDeletionCoordinator {
 
     private ManagedObjectReference referenceOf(CatalogItem movie, ManagedMediaAsset media) {
         return new ManagedObjectReference(
-                media.getObjectId(), movie.getOwnerUsername(), media.getObjectKey());
+                media.getStorageObjectId().value(), movie.getOwnerUsername(), media.getObjectKey());
     }
 }

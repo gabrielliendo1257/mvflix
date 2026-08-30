@@ -20,7 +20,8 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
     private static final String ASSET_COLUMNS =
             """
             id, library_id, relative_path, size, mime_type, status, present,
-            catalog_item_id, created_at, updated_at, discovered_by
+            catalog_item_id, created_at, updated_at, discovered_by, filename, duration,
+            container, video_codec, resolution, storage_reference
             """;
 
     private final DatabaseClient databaseClient;
@@ -37,8 +38,10 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                             .sql(
                                     """
                                     INSERT INTO media_assets
-                                        (library_id, relative_path, size, mime_type, status, present, catalog_item_id, discovered_by)
-                                    VALUES (:library_id, :relative_path, :size, :mime_type, :status, :present, :catalog_item_id, :discovered_by)
+                                        (library_id, relative_path, size, mime_type, status, present, catalog_item_id, discovered_by,
+                                         filename, duration, container, video_codec, resolution, storage_reference)
+                                    VALUES (:library_id, :relative_path, :size, :mime_type, :status, :present, :catalog_item_id, :discovered_by,
+                                            NULL, NULL, NULL, NULL, NULL, NULL)
                                     RETURNING
                                     """ + ASSET_COLUMNS)
                             .bind("library_id", asset.getLibraryId())
@@ -230,6 +233,9 @@ public class SpringDataMediaAssetRepository implements MediaAssetRepository {
                 present == null || present,
                 row.get("created_at", Instant.class),
                 row.get("updated_at", Instant.class),
-                row.get("discovered_by", String.class));
+                row.get("discovered_by", String.class),
+                row.get("filename", String.class), row.get("duration", Long.class),
+                row.get("container", String.class), row.get("video_codec", String.class),
+                row.get("resolution", String.class), row.get("storage_reference", String.class));
     }
 }

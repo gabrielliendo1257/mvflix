@@ -13,16 +13,35 @@ public class ManagedMediaAsset implements com.gcorp.service.app.mvflix_movies.sh
 
     private final MediaId id;
     private final CatalogItemId movieId;
-    private final Long objectId;
+    private final StorageObjectId storageObjectId;
     private final String objectKey;
+    private final String filename;
+    private final Long duration;
+    private final String container;
+    private final String videoCodec;
+    private final String resolution;
+    private final String storageReference;
     private final Instant createdAt;
 
     public ManagedMediaAsset(MediaId id, CatalogItemId movieId, Long objectId, String objectKey,
             Instant createdAt) {
+        this(id, movieId, StorageObjectId.of(objectId), objectKey, null, null, null, null, null,
+                objectKey, createdAt);
+    }
+
+    public ManagedMediaAsset(MediaId id, CatalogItemId movieId, StorageObjectId storageObjectId,
+            String objectKey, String filename, Long duration, String container, String videoCodec,
+            String resolution, String storageReference, Instant createdAt) {
         this.id = id;
         this.movieId = movieId;
-        this.objectId = objectId;
+        this.storageObjectId = storageObjectId;
         this.objectKey = objectKey;
+        this.filename = filename;
+        this.duration = duration;
+        this.container = container;
+        this.videoCodec = videoCodec;
+        this.resolution = resolution;
+        this.storageReference = storageReference;
         this.createdAt = createdAt;
     }
 
@@ -39,12 +58,34 @@ public class ManagedMediaAsset implements com.gcorp.service.app.mvflix_movies.sh
     }
 
     public Long getObjectId() {
-        return this.objectId;
+        return this.storageObjectId.value();
+    }
+
+    public StorageObjectId getStorageObjectId() {
+        return this.storageObjectId;
     }
 
     public String getObjectKey() {
         return this.objectKey;
     }
+
+    @Override
+    public String getFilename() { return this.filename; }
+
+    @Override
+    public Long getDuration() { return this.duration; }
+
+    @Override
+    public String getContainer() { return this.container; }
+
+    @Override
+    public String getVideoCodec() { return this.videoCodec; }
+
+    @Override
+    public String getResolution() { return this.resolution; }
+
+    @Override
+    public String getStorageReference() { return this.storageReference; }
 
     public Instant getCreatedAt() {
         return this.createdAt;

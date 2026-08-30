@@ -33,6 +33,12 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.shared.do
     private final Instant createdAt;
     private final Instant updatedAt;
     private final String discoveredBy;
+    private final String filename;
+    private final Long duration;
+    private final String container;
+    private final String videoCodec;
+    private final String resolution;
+    private final String storageReference;
 
     public MediaAsset(
             MediaAssetId id,
@@ -46,6 +52,15 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.shared.do
             Instant createdAt,
             Instant updatedAt,
             String discoveredBy) {
+        this(id, libraryId, relativePath, size, mimeType, status, catalogItemId, present, createdAt,
+                updatedAt, discoveredBy, null, null, null, null, null, null);
+    }
+
+    public MediaAsset(
+            MediaAssetId id, Long libraryId, String relativePath, long size, String mimeType,
+            MediaAssetStatus status, CatalogItemId catalogItemId, boolean present, Instant createdAt,
+            Instant updatedAt, String discoveredBy, String filename, Long duration, String container,
+            String videoCodec, String resolution, String storageReference) {
         this.id = id;
         this.libraryId = libraryId;
         this.relativePath = relativePath;
@@ -57,6 +72,12 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.shared.do
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.discoveredBy = discoveredBy;
+        this.filename = filename;
+        this.duration = duration;
+        this.container = container;
+        this.videoCodec = videoCodec;
+        this.resolution = resolution;
+        this.storageReference = storageReference;
     }
 
     public static MediaAsset create(Long libraryId, ScannedFile file, String discoveredBy) {
@@ -225,6 +246,24 @@ public class MediaAsset implements com.gcorp.service.app.mvflix_movies.shared.do
     public String getDiscoveredBy() {
         return this.discoveredBy;
     }
+
+    @Override
+    public String getFilename() { return this.filename; }
+
+    @Override
+    public Long getDuration() { return this.duration; }
+
+    @Override
+    public String getContainer() { return this.container; }
+
+    @Override
+    public String getVideoCodec() { return this.videoCodec; }
+
+    @Override
+    public String getResolution() { return this.resolution; }
+
+    @Override
+    public String getStorageReference() { return this.storageReference; }
 
     @Override
     public MediaAssetReference playbackReference() {
