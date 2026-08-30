@@ -14,6 +14,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
@@ -75,14 +76,14 @@ class UpdateMovieUseCaseTest {
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).updateDetails(captor.capture());
         assertThat(captor.getValue().getId()).isEqualTo(CatalogItemId.of(1L));
-        assertThat(captor.getValue().getMetadata().title()).isEqualTo("Dune: Part Two");
-        assertThat(captor.getValue().getMetadata().year()).isEqualTo(2024);
-        assertThat(captor.getValue().getMetadata().genres())
+         assertThat(captor.getValue().getMovieMetadata().title()).isEqualTo("Dune: Part Two");
+         assertThat(captor.getValue().getMovieMetadata().year()).isEqualTo(2024);
+         assertThat(captor.getValue().getMovieMetadata().genres())
                 .containsExactly("Sci-Fi", "Adventure");
-        assertThat(captor.getValue().getMetadata().releaseDate()).isEqualTo("2024-03-01");
-        assertThat(captor.getValue().getMetadata().duration()).isEqualTo("2h 35m");
-        assertThat(captor.getValue().getMetadata().posterPath()).isEqualTo("/poster.jpg");
-        assertThat(captor.getValue().getMetadata().tmdbId()).isEqualTo(438631L);
+         assertThat(captor.getValue().getMovieMetadata().releaseDate()).isEqualTo("2024-03-01");
+         assertThat(captor.getValue().getMovieMetadata().duration()).isEqualTo("2h 35m");
+         assertThat(captor.getValue().getMovieMetadata().posterPath()).isEqualTo("/poster.jpg");
+         assertThat(captor.getValue().getMovieMetadata().tmdbId()).isEqualTo(438631L);
     }
 
     @Test
@@ -133,19 +134,15 @@ class UpdateMovieUseCaseTest {
         CatalogItem reclassified = captor.getValue();
         assertThat(reclassified.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-        assertThat(reclassified.getMetadata().title()).isEqualTo("Mi grabacion");
-        assertThat(reclassified.getMetadata().tmdbId()).isNull();
-        assertThat(reclassified.getMetadata().posterPath()).isNull();
-        assertThat(reclassified.getMetadata().popularity()).isNull();
-        assertThat(reclassified.getMetadata().year()).isNull();
-        assertThat(reclassified.getMetadata().overview()).isNull();
+         assertThat(reclassified.getMetadata().title()).isEqualTo("Mi grabacion");
+         assertThat(reclassified.getMetadata()).isInstanceOf(VideoMetadata.class);
     }
 
     @Test
     void switchingFromOtherCreatesRawUnlinkedMovie() {
         CatalogItem other = new CatalogItem(
                 CatalogItemId.of(1L), "Javier", "Imported clip", CatalogItemStatus.READY,
-                EnrichmentStatus.RAW, null, MovieMetadata.onlyTitle("Imported clip"),
+                 EnrichmentStatus.RAW, null, new VideoMetadata("Imported clip", null, null),
                 CatalogItemVisibility.PRIVATE, java.util.Set.of(), MediaKind.VIDEO);
 
         when(this.userProvider.getAuthenticatedUser())
@@ -161,7 +158,7 @@ class UpdateMovieUseCaseTest {
                     assertThat(updated.getKind()).isEqualTo(MediaKind.MOVIE);
                     assertThat(updated.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
                     assertThat(updated.getMetadata().title()).isEqualTo("Identifiable movie");
-                    assertThat(updated.getMetadata().tmdbId()).isNull();
+                     assertThat(updated.getMovieMetadata().tmdbId()).isNull();
                 })
                 .verifyComplete();
 

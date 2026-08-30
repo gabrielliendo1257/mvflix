@@ -3,6 +3,9 @@ package com.gcorp.service.app.mvflix_movies.catalog.infrastructure.persistence;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
 
 import org.springframework.stereotype.Component;
 
@@ -14,9 +17,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class JsonCodec {
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
-    public String encode(MovieMetadata metadata) {
+    public String encode(CatalogMetadata metadata) {
         try {
             return this.objectMapper.writeValueAsString(metadata);
         } catch (JsonProcessingException e) {
@@ -29,6 +32,18 @@ public class JsonCodec {
             return this.objectMapper.readValue(json, MovieMetadata.class);
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("Cannot decode movie metadata", e);
+        }
+    }
+
+    public CatalogMetadata decode(String json, MediaKind kind) {
+        try {
+            if (kind == MediaKind.VIDEO) {
+                VideoMetadata video = this.objectMapper.readValue(json, VideoMetadata.class);
+                return video;
+            }
+            return this.objectMapper.readValue(json, MovieMetadata.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Cannot decode catalog metadata", e);
         }
     }
 }

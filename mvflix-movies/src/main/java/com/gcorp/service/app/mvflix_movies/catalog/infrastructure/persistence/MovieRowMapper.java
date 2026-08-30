@@ -6,6 +6,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemStatus;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -25,6 +26,7 @@ public interface MovieRowMapper {
     @Mapping(target = "enrichmentStatus", expression = "java(EnrichmentStatus.valueOf(row.enrichmentStatus()))")
     @Mapping(target = "visibility", expression = "java(CatalogItemVisibility.valueOf(row.visibility()))")
     @Mapping(target = "kind", expression = "java(MediaKind.valueOf(row.kind()))")
+    @Mapping(target = "metadata", expression = "java(jsonCodec.decode(row.metadata(), MediaKind.valueOf(row.kind())))")
     @Mapping(target = "sharedWith", expression = "java(row.sharedWith() == null ? java.util.Set.of() : java.util.Set.of(row.sharedWith()))")
     CatalogItem toDomain(MovieRow row);
 }

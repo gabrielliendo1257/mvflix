@@ -17,7 +17,7 @@ public record MovieMetadata(
     String country,
     String language,
     List<String> awards,
-    Long tmdbId) {
+    Long tmdbId) implements CatalogMetadata {
 
     /**
      * Metadata minima del flujo de biblioteca: solo se conoce el titulo

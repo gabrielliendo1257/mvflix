@@ -131,24 +131,24 @@ public class EnrichMovieUseCase {
 
         Long tmdbId = explicitTmdbId != null
                 ? explicitTmdbId
-                : movie.getMetadata().tmdbId();
+                : movie.getMovieMetadata().tmdbId();
         Mono<ExternalMovieDetail> detail = Mono.defer(() -> tmdbId != null
                 ? this.metadataSource.findById(tmdbId)
                 : this.metadataSource
-                        .search(movie.getTitle(), movie.getMetadata().year())
+                        .search(movie.getTitle(), movie.getMovieMetadata().year())
                         .flatMap(search -> this.metadataSource.findById(search.tmdbId())));
 
         return detail
                 .flatMap(d -> {
                     MovieMetadata metadata = isReMatch(movie, explicitTmdbId)
                             ? fromDetail(d)
-                            : merge(movie.getMetadata(), d);
+                             : merge(movie.getMovieMetadata(), d);
                     CatalogItem linked = movie.linkProviderMetadata(metadata);
                     return this.movieRepository.updateEnrichment(linked);
                 })
                 .doOnNext(enriched -> log.info(
                         "Pelicula {} enriquecida: tmdb_id={}",
-                        movie.getId().value(), enriched.getMetadata().tmdbId()))
+                        movie.getId().value(), enriched.getMovieMetadata().tmdbId()))
                 .switchIfEmpty(Mono.defer(() -> {
                     log.warn("Pelicula {} sin match en la fuente externa: queda RAW",
                             movie.getId().value());
@@ -163,8 +163,8 @@ public class EnrichMovieUseCase {
      */
     private static boolean isReMatch(CatalogItem movie, Long explicitTmdbId) {
         return explicitTmdbId != null
-                && movie.getMetadata().tmdbId() != null
-                && !explicitTmdbId.equals(movie.getMetadata().tmdbId());
+                && movie.getMovieMetadata().tmdbId() != null
+                && !explicitTmdbId.equals(movie.getMovieMetadata().tmdbId());
     }
 
     /** Funde la metadata externa con la actual: la fuente externa gana, los huecos se respetan. */

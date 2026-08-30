@@ -49,7 +49,7 @@ public class CreateIdentifiedDraftUseCase {
                 })
                 .doOnNext(saved -> log.info(
                         "Identified draft creado: id={} tmdb={} visibility={} shared={}",
-                        saved.getId().value(), saved.getMetadata().tmdbId(),
+                        saved.getId().value(), saved.isMovie() ? saved.getMovieMetadata().tmdbId() : null,
                         saved.getVisibility(), saved.getSharedWith().size()));
     }
 

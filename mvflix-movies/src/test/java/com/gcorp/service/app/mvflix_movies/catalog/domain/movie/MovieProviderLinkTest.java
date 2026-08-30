@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.time.Instant;
 
 class MovieProviderLinkTest {
 
@@ -30,9 +31,27 @@ class MovieProviderLinkTest {
 
     @Test
     void rejectsProviderLinkForNonMovieItem() {
-        CatalogItem clip = CatalogItem.fromLibraryAsset("Javier", RAW_METADATA, MediaKind.VIDEO);
+        CatalogItem clip = CatalogItem.fromLibraryAsset(
+                "Javier", new VideoMetadata("Family clip", "Home video", Instant.parse("2024-01-01T00:00:00Z")), MediaKind.VIDEO);
 
         assertThatThrownBy(() -> clip.linkProviderMetadata(PROVIDER_METADATA))
+                .isInstanceOf(CatalogItemConflictException.class);
+    }
+
+    @Test
+    void videoMetadataCannotBeStoredAsMovie() {
+        assertThatThrownBy(() -> CatalogItem.createDraft(
+                "Javier", new VideoMetadata("Clip", "Description", null), MediaKind.MOVIE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("metadata does not match catalog kind");
+    }
+
+    @Test
+    void videoCannotUnlinkProvider() {
+        CatalogItem clip = CatalogItem.fromLibraryAsset(
+                "Javier", new VideoMetadata("Family clip", "Home video", null), MediaKind.VIDEO);
+
+        assertThatThrownBy(clip::unlinkProvider)
                 .isInstanceOf(CatalogItemConflictException.class);
     }
 
@@ -52,10 +71,10 @@ class MovieProviderLinkTest {
         CatalogItem unlinked = linked.unlinkProvider();
 
         assertThat(unlinked.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-        assertThat(unlinked.getMetadata().tmdbId()).isNull();
-        assertThat(unlinked.getMetadata().posterPath()).isNull();
-        assertThat(unlinked.getMetadata().popularity()).isNull();
-        assertThat(unlinked.getMetadata().overview()).isEqualTo("Overview");
+        assertThat(unlinked.getMovieMetadata().tmdbId()).isNull();
+        assertThat(unlinked.getMovieMetadata().posterPath()).isNull();
+        assertThat(unlinked.getMovieMetadata().popularity()).isNull();
+        assertThat(unlinked.getMovieMetadata().overview()).isEqualTo("Overview");
         assertThat(unlinked.getTitle()).isEqualTo("Dune");
     }
 
@@ -73,10 +92,7 @@ class MovieProviderLinkTest {
         assertThat(reclassified.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
         assertThat(reclassified.getTitle()).isEqualTo("Grabación familiar");
-        assertThat(reclassified.getMetadata().overview()).isEqualTo("Metadata manual");
-        assertThat(reclassified.getMetadata().tmdbId()).isNull();
-        assertThat(reclassified.getMetadata().posterPath()).isNull();
-        assertThat(reclassified.getMetadata().popularity()).isNull();
+        assertThat(reclassified.getMetadata()).isEqualTo(new VideoMetadata("Grabación familiar", "Metadata manual", null));
     }
 
     @Test
@@ -103,8 +119,8 @@ class MovieProviderLinkTest {
 
         assertThat(reclassified.getKind()).isEqualTo(MediaKind.MOVIE);
         assertThat(reclassified.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-        assertThat(reclassified.getMetadata().tmdbId()).isNull();
-        assertThat(reclassified.getMetadata().posterPath()).isNull();
-        assertThat(reclassified.getMetadata().popularity()).isNull();
+        assertThat(reclassified.getMovieMetadata().tmdbId()).isNull();
+        assertThat(reclassified.getMovieMetadata().posterPath()).isNull();
+        assertThat(reclassified.getMovieMetadata().popularity()).isNull();
     }
 }

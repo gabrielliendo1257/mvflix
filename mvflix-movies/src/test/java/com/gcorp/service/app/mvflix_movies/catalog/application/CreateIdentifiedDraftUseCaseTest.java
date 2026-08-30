@@ -79,7 +79,7 @@ class CreateIdentifiedDraftUseCaseTest {
         .assertNext(movie -> {
           assertThat(movie.isDraft()).isTrue();
           assertThat(movie.getEnrichmentStatus().name()).isEqualTo("ENRICHED");
-          assertThat(movie.getMetadata().tmdbId()).isEqualTo(348L);
+          assertThat(movie.getMovieMetadata().tmdbId()).isEqualTo(348L);
           assertThat(movie.getVisibility().name()).isEqualTo("PRIVATE");
           assertThat(movie.getSharedWith()).isEmpty();
         })

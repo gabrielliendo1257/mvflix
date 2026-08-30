@@ -43,21 +43,21 @@ public interface MovieApiMapper {
     @Mappings({
         @Mapping(target = "id", expression = "java(movie.getId().value())"),
         @Mapping(target = "kind", source = "kind"),
-        @Mapping(target = "title", source = "metadata.title"),
-        @Mapping(target = "originalTitle", source = "metadata.originalTitle"),
-        @Mapping(target = "year", source = "metadata.year"),
-        @Mapping(target = "genres", source = "metadata.genres"),
-        @Mapping(target = "popularity", source = "metadata.popularity"),
-        @Mapping(target = "duration", source = "metadata.duration"),
-        @Mapping(target = "director", source = "metadata.director"),
-        @Mapping(target = "cast", source = "metadata.cast"),
-        @Mapping(target = "overview", source = "metadata.overview"),
-        @Mapping(target = "posterPath", source = "metadata.posterPath"),
-        @Mapping(target = "releaseDate", source = "metadata.releaseDate"),
-        @Mapping(target = "country", source = "metadata.country"),
-        @Mapping(target = "language", source = "metadata.language"),
-        @Mapping(target = "awards", source = "metadata.awards"),
-        @Mapping(target = "tmdbId", source = "metadata.tmdbId")
+         @Mapping(target = "title", source = "movieMetadataOrNull.title"),
+         @Mapping(target = "originalTitle", source = "movieMetadataOrNull.originalTitle"),
+         @Mapping(target = "year", source = "movieMetadataOrNull.year"),
+         @Mapping(target = "genres", source = "movieMetadataOrNull.genres"),
+         @Mapping(target = "popularity", source = "movieMetadataOrNull.popularity"),
+         @Mapping(target = "duration", source = "movieMetadataOrNull.duration"),
+         @Mapping(target = "director", source = "movieMetadataOrNull.director"),
+         @Mapping(target = "cast", source = "movieMetadataOrNull.cast"),
+         @Mapping(target = "overview", source = "movieMetadataOrNull.overview"),
+         @Mapping(target = "posterPath", source = "movieMetadataOrNull.posterPath"),
+         @Mapping(target = "releaseDate", source = "movieMetadataOrNull.releaseDate"),
+         @Mapping(target = "country", source = "movieMetadataOrNull.country"),
+         @Mapping(target = "language", source = "movieMetadataOrNull.language"),
+         @Mapping(target = "awards", source = "movieMetadataOrNull.awards"),
+         @Mapping(target = "tmdbId", source = "movieMetadataOrNull.tmdbId")
     })
     MovieResponse toResponse(CatalogItem movie);
 }

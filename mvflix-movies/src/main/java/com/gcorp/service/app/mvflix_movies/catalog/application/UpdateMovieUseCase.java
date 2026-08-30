@@ -6,6 +6,8 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemAccessDeniedException;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemId;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -58,25 +60,28 @@ public class UpdateMovieUseCase {
     private Mono<CatalogItem> update(CatalogItem movie, UpdateMovieCommand command) {
         boolean switchedToVideo = command.kind() == MediaKind.VIDEO
                 && movie.getKind() == MediaKind.MOVIE;
+        boolean switchedToMovie = command.kind() == MediaKind.MOVIE
+                && movie.getKind() == MediaKind.VIDEO;
 
-        MovieMetadata merged = switchedToVideo
+        CatalogMetadata merged = switchedToVideo
                 ? fromCommand(command)
-                : merge(movie.getMetadata(), command);
+                : switchedToMovie
+                        ? fromCommand(command)
+                : merge(movie.getMovieMetadata(), command);
 
         CatalogItem edited = switchedToVideo
                 ? movie.reclassifyAsVideo(merged)
-                : movie.withMetadata(merged);
-
-        if (!switchedToVideo
-                && command.kind() == MediaKind.MOVIE
-                && movie.getKind() == MediaKind.VIDEO) {
-            edited = edited.reclassifyAsMovie();
-        }
+                : switchedToMovie
+                        ? movie.reclassifyAsMovie(merged)
+                        : movie.withMetadata(merged);
         return this.movieRepository.updateDetails(edited);
     }
 
     /** Metadata solo con lo que manda el usuario (sin proveedor): para el paso a VIDEO. */
-    private static MovieMetadata fromCommand(UpdateMovieCommand command) {
+    private static CatalogMetadata fromCommand(UpdateMovieCommand command) {
+        if (command.kind() == MediaKind.VIDEO) {
+            return new VideoMetadata(command.title(), command.overview(), null);
+        }
         return new MovieMetadata(
                 command.title(),
                 command.originalTitle(),

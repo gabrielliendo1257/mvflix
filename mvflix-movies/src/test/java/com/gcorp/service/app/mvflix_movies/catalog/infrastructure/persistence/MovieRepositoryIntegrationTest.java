@@ -6,6 +6,7 @@ import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.EnrichmentStatus
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MediaKind;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItem;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.MovieMetadata;
+import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.VideoMetadata;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemRepository;
 import com.gcorp.service.app.mvflix_movies.catalog.domain.movie.CatalogItemVisibility;
 import com.gcorp.service.app.mvflix_movies.support.PostgresIntegrationTest;
@@ -70,7 +71,7 @@ class MovieRepositoryIntegrationTest extends PostgresIntegrationTest {
     assertThat(updated).isNotNull();
     assertThat(updated.getKind()).isEqualTo(MediaKind.VIDEO);
     assertThat(updated.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-    assertThat(updated.getMetadata().tmdbId()).isNull();
+     assertThat(updated.getMetadata()).isInstanceOf(VideoMetadata.class);
     this.assertPersistedTitles(movie.getId().value(), "Family recording");
   }
 

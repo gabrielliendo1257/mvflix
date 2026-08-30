@@ -58,8 +58,7 @@ class MovieFactoryTest {
 
         assertThat(clip.getKind()).isEqualTo(MediaKind.VIDEO);
         assertThat(clip.isMovie()).isFalse();
-        assertThat(clip.getMetadata().tmdbId()).isNull();
-        assertThat(clip.getMetadata().posterPath()).isNull();
+        assertThat(clip.getMetadata()).isInstanceOf(VideoMetadata.class);
         assertThat(clip.getStatus()).isEqualTo(CatalogItemStatus.READY);
     }
 

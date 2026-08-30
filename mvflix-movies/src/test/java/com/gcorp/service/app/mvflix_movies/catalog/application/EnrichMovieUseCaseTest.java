@@ -125,7 +125,7 @@ class EnrichMovieUseCaseTest {
         StepVerifier.create(this.useCase.enrich(DRAFT_RAW))
                 .assertNext(movie -> {
                     assertThat(movie.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-                    assertThat(movie.getMetadata().tmdbId()).isNull();
+                    assertThat(movie.getMovieMetadata().tmdbId()).isNull();
                 })
                 .verifyComplete();
 
@@ -157,8 +157,8 @@ class EnrichMovieUseCaseTest {
         StepVerifier.create(this.useCase.unlinkCurrentUser(CatalogItemId.of(1L)))
                 .assertNext(movie -> {
                     assertThat(movie.getEnrichmentStatus()).isEqualTo(EnrichmentStatus.RAW);
-                    assertThat(movie.getMetadata().tmdbId()).isNull();
-                    assertThat(movie.getMetadata().posterPath()).isNull();
+                    assertThat(movie.getMovieMetadata().tmdbId()).isNull();
+                    assertThat(movie.getMovieMetadata().posterPath()).isNull();
                 })
                 .verifyComplete();
 
@@ -205,7 +205,7 @@ class EnrichMovieUseCaseTest {
 
         ArgumentCaptor<CatalogItem> captor = ArgumentCaptor.forClass(CatalogItem.class);
         verify(this.movieRepository).updateEnrichment(captor.capture());
-        MovieMetadata result = captor.getValue().getMetadata();
+        MovieMetadata result = captor.getValue().getMovieMetadata();
         assertThat(result.tmdbId()).isEqualTo(43020L);
         assertThat(result.title()).isEqualTo("New");
         assertThat(result.director()).isNull();
