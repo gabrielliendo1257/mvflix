@@ -2,6 +2,7 @@ package com.gcorp.service.app.mvflix_media_ingestion.application;
 
 import com.gcorp.service.app.mvflix_media_ingestion.domain.MediaIngestion;
 import com.gcorp.service.app.mvflix_media_ingestion.domain.MediaIngestion.Phase;
+import java.time.Instant;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.reactive.TransactionalOperator;
 import reactor.core.publisher.Mono;
@@ -95,18 +96,43 @@ public class RecoveryService {
                         mark(
                             i, Phase.FAILED, "cannot resume " + i.phase() + "; upload is pending"));
               }
-              if ("COMPLETED".equalsIgnoreCase(state.status())) {
-                return reschedule(
-                    i, "cannot resume " + i.phase() + "; upload is already completed");
-              }
+               if ("COMPLETED".equalsIgnoreCase(state.status())) {
+                 return finishCompletedUpload(i, state);
+               }
               return mark(
                   i,
                   Phase.FAILED,
                   "cannot resume " + i.phase() + "; original draft is not persisted");
             })
-        .onErrorResume(
-            error -> reschedule(i, "authoritative storage status unavailable: " + error));
-  }
+         .onErrorResume(
+             error -> reschedule(i, "authoritative storage status unavailable: " + error));
+   }
+
+   private Mono<MediaIngestion> finishCompletedUpload(
+       MediaIngestion i, DownstreamClients.StorageStatus storage) {
+     if (i.catalogItemId() == null) {
+       return mark(i, Phase.FAILED, "upload is completed but catalog identity is unavailable");
+     }
+     Long objectId = i.storageId() != null ? i.storageId() : storage.objectId();
+     String objectKey = i.storageKey() != null ? i.storageKey() : storage.objectKey();
+     if (objectId == null || objectKey == null) {
+       return mark(i, Phase.FAILED, "upload is completed but object identity is unavailable");
+     }
+     var finalizing = new MediaIngestion(
+         i.ingestionId(), i.actorId(), i.catalogItemId(), i.uploadId(),
+         Phase.FINALIZING_CATALOG, null, i.version() + 1, i.retryCount(),
+         i.createdAt(), Instant.now(), i.nextAttemptAt(), i.idempotencyKey(),
+         i.fileName(), i.fileSize(), i.mimeType(), i.uploadUrl(), objectId,
+         objectKey, i.requestFingerprint(), i.causationId());
+     return transactions
+         .transactional(repository.compareAndSet(i, finalizing))
+         .flatMap(ok -> ok
+             ? clients.completeCatalog(i.catalogItemId(), objectKey, objectId, i.actorId())
+                 .then(complete(finalizing))
+             : Mono.error(new IllegalStateException("recovery CAS failed")))
+         .onErrorResume(error -> mark(
+             finalizing, Phase.FAILED, "completed upload finalization failed: " + error));
+   }
 
   private Mono<MediaIngestion> complete(MediaIngestion i) {
     var next = i.transition(Phase.COMPLETED, null, null, null);
