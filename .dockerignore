@@ -40,4 +40,9 @@
 !mvflix-activity/src/
 !mvflix-activity/src/**
 
+!mvflix-media-ingestion/
+!mvflix-media-ingestion/pom.xml
+!mvflix-media-ingestion/src/
+!mvflix-media-ingestion/src/**
+
 **/target/
