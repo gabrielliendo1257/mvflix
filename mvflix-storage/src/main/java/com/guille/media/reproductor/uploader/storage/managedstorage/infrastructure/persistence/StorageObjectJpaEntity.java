@@ -16,7 +16,7 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class StoreObjectJpaEntity {
+public class StorageObjectJpaEntity {
 
     @Id private Long storageId;
 

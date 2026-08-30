@@ -28,8 +28,8 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.excep
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageKeyGenerator;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageUsage;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UploadConfiguration;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UserStorage;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
@@ -104,8 +104,8 @@ class UploadServiceImplTest {
         .thenReturn(new UploadConfiguration(Duration.ofMinutes(15)));
   }
 
-  private StoreObject pendingObject(long storageId) {
-    return new StoreObject(
+  private StorageObject pendingObject(long storageId) {
+    return new StorageObject(
         "pepe",
         new StorageKeyGenerator().generate("pepe", com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageFolder.from(MimeType.of("video/mp4"))),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -114,8 +114,8 @@ class UploadServiceImplTest {
         StorageSessionStatus.PENDING);
   }
 
-  private StoreObject completedObject(long storageId) {
-    return new StoreObject(
+  private StorageObject completedObject(long storageId) {
+    return new StorageObject(
         "pepe",
         new StorageKeyGenerator().generate("pepe", com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageFolder.from(MimeType.of("video/mp4"))),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -126,7 +126,7 @@ class UploadServiceImplTest {
 
   @Test
   void createUploadSessionReservesQuotaAndReturnsPresignedUrl() {
-    StoreObject saved = this.pendingObject(1L);
+    StorageObject saved = this.pendingObject(1L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
@@ -134,7 +134,7 @@ class UploadServiceImplTest {
     when(this.objectStoragePort.createUploadUrl(any(PresignedUploadRequest.class), any(StorageLocation.class)))
         .thenReturn(Mono.just(new PermissionUrl("http://minio/upload", "PUT", Map.of())));
     when(this.userStorageRepository.consumeStorage(any(String.class), anyLong())).thenReturn(Mono.just(1L));
-    when(this.storageRepository.save(any(StoreObject.class))).thenReturn(Mono.just(saved));
+    when(this.storageRepository.save(any(StorageObject.class))).thenReturn(Mono.just(saved));
 
     StepVerifier.create(
             this.service.createUploadSession(new CreateUploadCommand("a.mp4", 1024, MimeType.of("video/mp4"))))
@@ -170,7 +170,7 @@ class UploadServiceImplTest {
     when(this.objectStoragePort.createUploadUrl(any(PresignedUploadRequest.class), any(StorageLocation.class)))
         .thenReturn(Mono.just(new PermissionUrl("http://minio/upload", "PUT", Map.of())));
     when(this.userStorageRepository.consumeStorage(any(String.class), anyLong())).thenReturn(Mono.just(0L));
-    when(this.storageRepository.save(any(StoreObject.class)))
+    when(this.storageRepository.save(any(StorageObject.class)))
         .thenReturn(Mono.just(this.pendingObject(1L)));
 
     StepVerifier.create(
@@ -181,7 +181,7 @@ class UploadServiceImplTest {
 
   @Test
   void completeUploadTransitionsToCompletedAndPublishesEvent() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
@@ -210,8 +210,8 @@ class UploadServiceImplTest {
 
   @Test
   void completeUploadTreatsRaceAgainstWebhookAsSuccess() {
-    StoreObject pending = this.pendingObject(7L);
-    StoreObject completed = this.completedObject(7L);
+    StorageObject pending = this.pendingObject(7L);
+    StorageObject completed = this.completedObject(7L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
@@ -235,7 +235,7 @@ class UploadServiceImplTest {
 
   @Test
   void completeUploadReleasesQuotaWhenObjectSizeMismatch() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
@@ -245,7 +245,7 @@ class UploadServiceImplTest {
         .thenReturn(Mono.just(new StorageMetadata("video/mp4", 42, null, Instant.now())));
     when(this.userStorageRepository.releaseStorage(any(String.class), anyLong()))
         .thenReturn(Mono.just(1L));
-    when(this.storageRepository.updateStatus(any(StoreObject.class), any(StorageSessionStatus.class)))
+    when(this.storageRepository.updateStatus(any(StorageObject.class), any(StorageSessionStatus.class)))
         .thenReturn(Mono.just(pending));
 
     StepVerifier.create(this.service.completeUpload(7L))
@@ -255,14 +255,14 @@ class UploadServiceImplTest {
     verify(this.objectStoragePort)
         .delete(new StorageLocation(BucketName.of("movies"), pending.getStorageKey()));
     verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
-    verify(this.storageRepository).updateStatus(any(StoreObject.class), any(StorageSessionStatus.class));
+    verify(this.storageRepository).updateStatus(any(StorageObject.class), any(StorageSessionStatus.class));
     verify(this.eventPublisher).publish(any(UploadFailedEvent.class));
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
   }
 
   @Test
   void completeUploadByKeyTransitionsAndPublishesEvent() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.storageRepository.findByObjectKey("pepe/videos/a.mp4")).thenReturn(Mono.just(pending));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
@@ -280,7 +280,7 @@ class UploadServiceImplTest {
 
   @Test
   void completeUploadByKeyDoesNotPublishWhenAlreadyCompleted() {
-    StoreObject completed = this.completedObject(7L);
+    StorageObject completed = this.completedObject(7L);
 
     when(this.storageRepository.findByObjectKey("pepe/videos/a.mp4"))
         .thenReturn(Mono.just(completed));
@@ -292,13 +292,13 @@ class UploadServiceImplTest {
     StepVerifier.create(this.service.completeUploadByKey("pepe/videos/a.mp4")).verifyComplete();
 
     assertThat(completed.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.COMPLETED);
-    verify(this.storageRepository, never()).updateStatus(any(StoreObject.class), any());
+    verify(this.storageRepository, never()).updateStatus(any(StorageObject.class), any());
     verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
   }
 
   @Test
   void completeUploadByKeyReportsFailureAndReleasesQuotaWithoutNotifying() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.storageRepository.findByObjectKey("pepe/videos/a.mp4"))
         .thenReturn(Mono.just(pending));
@@ -310,7 +310,7 @@ class UploadServiceImplTest {
         .thenReturn(Mono.just(new StorageMetadata("video/mp4", 42, null, Instant.now())));
     when(this.userStorageRepository.releaseStorage(any(String.class), anyLong()))
         .thenReturn(Mono.just(1L));
-    when(this.storageRepository.updateStatus(any(StoreObject.class), any(StorageSessionStatus.class)))
+    when(this.storageRepository.updateStatus(any(StorageObject.class), any(StorageSessionStatus.class)))
         .thenReturn(Mono.just(pending));
 
     StepVerifier.create(this.service.completeUploadByKey("pepe/videos/a.mp4")).verifyComplete();
@@ -320,14 +320,14 @@ class UploadServiceImplTest {
         .delete(new StorageLocation(BucketName.of("movies"), pending.getStorageKey()));
     verify(this.userStorageRepository).releaseStorage("pepe", 1024L);
     verify(this.storageRepository).updateStatus(
-        any(StoreObject.class), any(StorageSessionStatus.class));
+        any(StorageObject.class), any(StorageSessionStatus.class));
     verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
   }
 
   @Test
   void completeUploadByKeyDeletesOrphanObjectWhenSessionExpiredOrFailed() {
-    StoreObject expired =
-        new StoreObject(
+    StorageObject expired =
+        new StorageObject(
             "pepe",
             new StorageKey("pepe/videos/late.mp4"),
             new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -344,7 +344,7 @@ class UploadServiceImplTest {
 
     verify(this.objectStoragePort)
         .delete(new StorageLocation(BucketName.of("movies"), new StorageKey("pepe/videos/late.mp4")));
-    verify(this.storageRepository, never()).updateStatus(any(StoreObject.class), any());
+    verify(this.storageRepository, never()).updateStatus(any(StorageObject.class), any());
     verify(this.eventPublisher, never()).publish(any());
   }
 
@@ -360,7 +360,7 @@ class UploadServiceImplTest {
 
   @Test
   void completeUploadDefersCompletionWhenObjectIsNotYetInObjectStore() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
@@ -374,11 +374,11 @@ class UploadServiceImplTest {
     assertThat(pending.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.PENDING);
     verify(this.eventPublisher, never()).publish(any(UploadCompletedEvent.class));
     verify(this.storageRepository, never())
-        .updateStatus(any(StoreObject.class), any(StorageSessionStatus.class));
+        .updateStatus(any(StorageObject.class), any(StorageSessionStatus.class));
   }
   @Test
   void cancelUploadReleasesQuotaDeletesObjectAndMarksFailed() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
@@ -399,7 +399,7 @@ class UploadServiceImplTest {
 
   @Test
   void cancelUploadIsNoOpWhenSessionIsNoLongerPending() {
-    StoreObject completed = this.completedObject(7L);
+    StorageObject completed = this.completedObject(7L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(completed));
@@ -411,8 +411,8 @@ class UploadServiceImplTest {
     verify(this.eventPublisher, never()).publish(any());
   }
 
-  private StoreObject objectOwnedBy(long storageId, StorageSessionStatus status, String owner) {
-    return new StoreObject(
+  private StorageObject objectOwnedBy(long storageId, StorageSessionStatus status, String owner) {
+    return new StorageObject(
         owner,
         new StorageKeyGenerator().generate(owner, com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageFolder.from(MimeType.of("video/mp4"))),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -423,7 +423,7 @@ class UploadServiceImplTest {
 
   @Test
   void renewInstructionsReturnsFreshUrlForOwnPendingSession() {
-    StoreObject pending = this.pendingObject(9L);
+    StorageObject pending = this.pendingObject(9L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(9L)).thenReturn(Mono.just(pending));
@@ -446,12 +446,12 @@ class UploadServiceImplTest {
     // Renovar NO toca cuota ni estado: la reserva original sigue vigente.
     verify(this.userStorageRepository, never()).consumeStorage(anyString(), anyLong());
     verify(this.storageRepository, never())
-        .updateStatus(any(StoreObject.class), any(StorageSessionStatus.class));
+        .updateStatus(any(StorageObject.class), any(StorageSessionStatus.class));
   }
 
   @Test
   void renewInstructionsRejectsNonOwner() {
-    StoreObject anasPending = this.objectOwnedBy(9L, StorageSessionStatus.PENDING, "ana");
+    StorageObject anasPending = this.objectOwnedBy(9L, StorageSessionStatus.PENDING, "ana");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(9L)).thenReturn(Mono.just(anasPending));
@@ -467,7 +467,7 @@ class UploadServiceImplTest {
 
   @Test
   void renewInstructionsRejectsNonPendingSession() {
-    StoreObject completed = this.completedObject(9L);
+    StorageObject completed = this.completedObject(9L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(9L)).thenReturn(Mono.just(completed));
@@ -483,7 +483,7 @@ class UploadServiceImplTest {
 
   @Test
   void cancelUploadRejectsNonOwnerWithoutLeakingExistence() {
-    StoreObject anasPendingUpload = this.objectOwnedBy(7L, StorageSessionStatus.PENDING, "ana");
+    StorageObject anasPendingUpload = this.objectOwnedBy(7L, StorageSessionStatus.PENDING, "ana");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(anasPendingUpload));
@@ -502,7 +502,7 @@ class UploadServiceImplTest {
 
   @Test
   void completeUploadRejectsNonOwnerWithoutLeakingExistence() {
-    StoreObject anasPendingUpload = this.objectOwnedBy(7L, StorageSessionStatus.PENDING, "ana");
+    StorageObject anasPendingUpload = this.objectOwnedBy(7L, StorageSessionStatus.PENDING, "ana");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(anasPendingUpload));
@@ -529,7 +529,7 @@ class UploadServiceImplTest {
 
   @Test
   void handleObjectRemovedMarksPendingAsFailedAndReleasesQuota() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.storageRepository.findByObjectKey(anyString())).thenReturn(Mono.just(pending));
     when(this.userStorageRepository.releaseStorage("pepe", 1024L)).thenReturn(Mono.just(1L));
@@ -548,7 +548,7 @@ class UploadServiceImplTest {
 
   @Test
   void handleObjectRemovedDoesNotReleaseQuotaWhenItLosesTheRace() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.storageRepository.findByObjectKey(anyString())).thenReturn(Mono.just(pending));
     when(this.storageRepository.updateStatus(pending, StorageSessionStatus.PENDING))
@@ -563,7 +563,7 @@ class UploadServiceImplTest {
 
   @Test
   void handleObjectRemovedIgnoresCompletedObjects() {
-    StoreObject completed = this.completedObject(7L);
+    StorageObject completed = this.completedObject(7L);
 
     when(this.storageRepository.findByObjectKey(anyString())).thenReturn(Mono.just(completed));
 
@@ -576,7 +576,7 @@ class UploadServiceImplTest {
 
   @Test
   void listUploadsReturnsRecentSessionsOfAuthenticatedUser() {
-    StoreObject pending = this.pendingObject(7L);
+    StorageObject pending = this.pendingObject(7L);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findRecentByOwner("pepe", 20)).thenReturn(Flux.just(pending));

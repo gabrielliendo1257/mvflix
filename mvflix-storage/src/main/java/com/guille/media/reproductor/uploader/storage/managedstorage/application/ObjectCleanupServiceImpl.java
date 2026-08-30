@@ -6,8 +6,8 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.excep
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.BucketName;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageLocation;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.OrphanCleanupQueue;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
@@ -86,7 +86,7 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
    * cuota son atómicas: si la liberación falla la tx revierte el CAS, la sesión sigue PENDING y
    * el scheduler la reintentará. El blob se borra después de confirmar la tx (best effort).
    */
-  private Mono<StoreObject> expireStaleSession(StoreObject object) {
+  private Mono<StorageObject> expireStaleSession(StorageObject object) {
     if (!object.expire()) {
       return Mono.empty();
     }
@@ -115,7 +115,7 @@ public class ObjectCleanupServiceImpl implements ObjectCleanupService {
    * DELETE best-effort: si falla, la tarea queda DURABLE en la cola de
    * huérfanos y el scheduler la reintenta. Nunca se pierde un blob.
    */
-  private Mono<Void> deleteObjectBestEffort(StoreObject object, BucketName bucket) {
+  private Mono<Void> deleteObjectBestEffort(StorageObject object, BucketName bucket) {
     return Mono.<Void>fromRunnable(
             () ->
                 this.objectStoragePort.delete(

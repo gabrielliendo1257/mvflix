@@ -2,7 +2,7 @@ package com.guille.media.reproductor.uploader.storage.managedstorage.infrastruct
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.ExpectedObjectData;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 
 public record UploadResponse(
 		@JsonProperty(value = "uploadId") String uploadId,

@@ -1,8 +1,8 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.persistence;
 
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.IllegalStateTransitionException;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -23,8 +23,8 @@ public class SpringDataStorageRepository implements StorageRepository {
     private final StorageMapper storageMapper;
 
     @Override
-    public Mono<StoreObject> save(StoreObject storageObject) {
-        StoreObjectJpaEntity entity = this.storageMapper.toEntity(storageObject);
+    public Mono<StorageObject> save(StorageObject storageObject) {
+        StorageObjectJpaEntity entity = this.storageMapper.toEntity(storageObject);
         var spec =
                 this.databaseClient
                         .sql(
@@ -65,26 +65,26 @@ public class SpringDataStorageRepository implements StorageRepository {
             spec = spec.bind("checksum", entity.getChecksum());
         }
 
-        return spec.mapProperties(StoreObjectJpaEntity.class)
+        return spec.mapProperties(StorageObjectJpaEntity.class)
                 .one()
                 .map(this.storageMapper::toDomain);
     }
 
     @Override
-    public Mono<StoreObject> findById(Long storageId) {
+    public Mono<StorageObject> findById(Long storageId) {
 		return this.databaseClient
 			.sql(
 				"""
 		SELECT * FROM store_objects WHERE storage_id = :storage_id
 		""")
 			.bind("storage_id", storageId)
-			.mapProperties(StoreObjectJpaEntity.class)
+			.mapProperties(StorageObjectJpaEntity.class)
 			.one()
 			.map(this.storageMapper::toDomain);
     }
 
     @Override
-    public Mono<StoreObject> findByObjectKey(String objectKey) {
+    public Mono<StorageObject> findByObjectKey(String objectKey) {
         return this.databaseClient
                 .sql(
                         """
@@ -92,14 +92,14 @@ public class SpringDataStorageRepository implements StorageRepository {
 		WHERE object_key = :object_key
 		""")
                 .bind("object_key", objectKey)
-                .mapProperties(StoreObjectJpaEntity.class)
+                .mapProperties(StorageObjectJpaEntity.class)
                 .one()
                 .map(this.storageMapper::toDomain);
     }
 
     @Override
-    public Mono<StoreObject> updateStatus(
-        StoreObject storageObject, StorageSessionStatus expectedStatus) {
+    public Mono<StorageObject> updateStatus(
+        StorageObject storageObject, StorageSessionStatus expectedStatus) {
         return this.databaseClient
                 .sql(
                         """
@@ -112,7 +112,7 @@ public class SpringDataStorageRepository implements StorageRepository {
                 .bind("status", storageObject.getStorageObjectStatus().name())
                 .bind("storage_id", storageObject.getStorageId())
                 .bind("expected_status", expectedStatus.name())
-                .mapProperties(StoreObjectJpaEntity.class)
+                .mapProperties(StorageObjectJpaEntity.class)
                 .one()
                 .switchIfEmpty(
                         Mono.error(
@@ -125,7 +125,7 @@ public class SpringDataStorageRepository implements StorageRepository {
     }
 
     @Override
-    public Flux<StoreObject> findPendingCreatedBefore(Instant cutoff) {
+    public Flux<StorageObject> findPendingCreatedBefore(Instant cutoff) {
         return this.databaseClient
                 .sql(
                         """
@@ -134,13 +134,13 @@ public class SpringDataStorageRepository implements StorageRepository {
 		  AND created_at < :cutoff
 		""")
                 .bind("cutoff", cutoff)
-                .mapProperties(StoreObjectJpaEntity.class)
+                .mapProperties(StorageObjectJpaEntity.class)
                 .all()
                 .map(this.storageMapper::toDomain);
     }
 
     @Override
-    public Flux<StoreObject> findRecentByOwner(String ownerUsername, int limit) {
+    public Flux<StorageObject> findRecentByOwner(String ownerUsername, int limit) {
         return this.databaseClient
                 .sql(
                         """
@@ -151,7 +151,7 @@ public class SpringDataStorageRepository implements StorageRepository {
 		""")
                 .bind("owner_username", ownerUsername)
                 .bind("limit", limit)
-                .mapProperties(StoreObjectJpaEntity.class)
+                .mapProperties(StorageObjectJpaEntity.class)
                 .all()
                 .map(this.storageMapper::toDomain);
     }

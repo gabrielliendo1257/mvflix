@@ -7,8 +7,8 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.excep
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.UserStorageNotFoundException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.BucketName;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageLocation;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UserStorage;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
@@ -89,7 +89,7 @@ public class DeleteStoredObject {
     }
 
     private Mono<DeletionResult> deleteObject(
-            StoreObject object,
+            StorageObject object,
             String expectedOwner,
             String expectedObjectKey,
             Function<DeletionResult, Mono<Void>> afterDeletion) {
@@ -107,7 +107,7 @@ public class DeleteStoredObject {
     }
 
     private Mono<DeletionResult> deleteOwnedObject(
-            StoreObject object,
+            StorageObject object,
             UserStorage userStorage,
             Function<DeletionResult, Mono<Void>> afterDeletion) {
         if (!object.markDeleted()) {
@@ -125,16 +125,16 @@ public class DeleteStoredObject {
                 .thenReturn(new DeletionResult(object.sizeInBytes(), "DELETED"));
     }
 
-    private Mono<Void> deleteBlob(StoreObject object, BucketName bucket) {
+    private Mono<Void> deleteBlob(StorageObject object, BucketName bucket) {
         return Mono.<Void>fromRunnable(() -> this.objectStoragePort.delete(
                 new StorageLocation(bucket, object.getStorageKey())));
     }
 
     private Mono<Void> transitionToDeleted(
-            StoreObject object,
+            StorageObject object,
             DeletionResult result,
             Function<DeletionResult, Mono<Void>> afterDeletion) {
-        Mono<StoreObject> transition = afterDeletion == null
+        Mono<StorageObject> transition = afterDeletion == null
                 ? this.terminalTransition.transitionAndRelease(object, StorageSessionStatus.COMPLETED)
                 : this.terminalTransition.transitionAndRelease(object, StorageSessionStatus.COMPLETED,
                         ignored -> afterDeletion.apply(result));

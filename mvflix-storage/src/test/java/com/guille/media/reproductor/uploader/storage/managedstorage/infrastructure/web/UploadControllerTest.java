@@ -9,7 +9,7 @@ import com.guille.media.reproductor.uploader.advisors.GlobalExceptionHandler;
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.command.response.UploadSession;
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.command.response.UploadSummary;
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.command.response.UploadCompletionResult;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.UploadService;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageKey;
 import com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.web.UploadResponse;

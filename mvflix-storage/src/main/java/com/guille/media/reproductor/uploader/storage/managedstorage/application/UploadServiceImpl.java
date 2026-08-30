@@ -18,8 +18,8 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.excep
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.ExpectedObjectData;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.MimeType;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageKeyGenerator;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UploadConfiguration;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UserStorage;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
@@ -174,8 +174,8 @@ public class UploadServiceImpl implements UploadService {
 
     StorageMetadata metadata =
         new StorageMetadata(command.mimeType().value(), command.size(), null, Instant.now());
-    StoreObject object =
-        new StoreObject(
+    StorageObject object =
+        new StorageObject(
             userStorage.getOwnerUsername(),
             key,
             metadata,
@@ -227,7 +227,7 @@ public class UploadServiceImpl implements UploadService {
                     "Object removed but session is not PENDING, skipping: key={}, status={}",
                     objectKey,
                     object.getStorageObjectStatus());
-                return Mono.<StoreObject>empty();
+                return Mono.<StorageObject>empty();
               }
               object.markFailed();
               // El segundo parámetro de updateStatus es el estado ANTERIOR
@@ -291,7 +291,7 @@ public class UploadServiceImpl implements UploadService {
                     "Upload is no longer cancellable (not PENDING), skipping: uploadId={}, status={}",
                     uploadId,
                     object.getStorageObjectStatus());
-                return Mono.<StoreObject>empty();
+                return Mono.<StorageObject>empty();
               }
                           object.markFailed();
                           return this.userStorageRepository
@@ -454,7 +454,7 @@ public class UploadServiceImpl implements UploadService {
         .then();
   }
 
-  private void publishCompleted(StoreObject completed) {
+  private void publishCompleted(StorageObject completed) {
     this.eventPublisher.publish(
         new UploadCompletedEvent(
             completed.getStorageId(),
@@ -470,7 +470,7 @@ public class UploadServiceImpl implements UploadService {
    * que llegó después de la expiración es basura y se borra del bucket (la fila se conserva
    * como historial; su cuota ya fue liberada).
    */
-  private Mono<Void> cleanupOrphanObject(StoreObject object) {
+  private Mono<Void> cleanupOrphanObject(StorageObject object) {
     return this.userStorageRepository
         .findByOwnerUsername(object.getOwnerUsername())
         .flatMap(
@@ -487,7 +487,7 @@ public class UploadServiceImpl implements UploadService {
   }
 
   private Mono<Completion> completeUploadedObject(
-      StoreObject object, BucketName bucket, boolean clientConfirmation) {
+      StorageObject object, BucketName bucket, boolean clientConfirmation) {
     StorageLocation location = new StorageLocation(bucket, object.getStorageKey());
 
     return this.objectStoragePort
@@ -509,7 +509,7 @@ public class UploadServiceImpl implements UploadService {
   }
 
   private Mono<Completion> verifyMetadataAndComplete(
-      StoreObject object, BucketName bucket, StorageLocation location) {
+      StorageObject object, BucketName bucket, StorageLocation location) {
     return this.objectStoragePort
         .getMetadata(location)
         .flatMap(
@@ -540,7 +540,7 @@ public class UploadServiceImpl implements UploadService {
    * confirmación del cliente). Si el objeto ya quedó COMPLETED, es el mismo resultado esperado
    * (idempotente); si quedó en otro estado (p.ej. FAILED por cancelación), se propaga el error.
    */
-  private Mono<Completion> raceLostToAnotherCompletion(StoreObject object) {
+  private Mono<Completion> raceLostToAnotherCompletion(StorageObject object) {
     return this.storageRepository
         .findById(object.getStorageId())
         .flatMap(
@@ -561,7 +561,7 @@ public class UploadServiceImpl implements UploadService {
   }
 
   private <T> Mono<T> releaseAndFail(
-      StoreObject object, BucketName bucket, RuntimeException error) {
+      StorageObject object, BucketName bucket, RuntimeException error) {
     return Mono.defer(
         () -> {
           if (!object.markFailed()) {
@@ -586,7 +586,7 @@ public class UploadServiceImpl implements UploadService {
         });
   }
 
-  private void publishFailed(StoreObject failed, RuntimeException error) {
+  private void publishFailed(StorageObject failed, RuntimeException error) {
     this.eventPublisher.publish(
         new UploadFailedEvent(
             failed.getStorageId(),
@@ -600,7 +600,7 @@ public class UploadServiceImpl implements UploadService {
    * Borra el objeto del bucket sin romper el flujo (el DELETE de S3 es idempotente). Se usa
    * para limpiar objetos huérfanos de sesiones EXPIRED/FAILED/canceladas.
    */
-  private Mono<Void> deleteObjectBestEffort(StoreObject object, BucketName bucket) {
+  private Mono<Void> deleteObjectBestEffort(StorageObject object, BucketName bucket) {
     return Mono.<Void>fromRunnable(
             () ->
                 this.objectStoragePort.delete(
@@ -616,5 +616,5 @@ public class UploadServiceImpl implements UploadService {
   }
 
   private record Completion(
-      StoreObject object, boolean transitioned, boolean pendingVerification) {}
+      StorageObject object, boolean transitioned, boolean pendingVerification) {}
 }

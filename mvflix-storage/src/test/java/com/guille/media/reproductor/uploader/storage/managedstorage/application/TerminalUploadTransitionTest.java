@@ -8,8 +8,8 @@ import static org.mockito.Mockito.when;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageKey;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageMetadata;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.UserStorageRepository;
 
@@ -39,8 +39,8 @@ class TerminalUploadTransitionTest {
         .thenAnswer(inv -> inv.getArgument(0));
   }
 
-  private StoreObject pending(Long id, long size) {
-    return new StoreObject(
+  private StorageObject pending(Long id, long size) {
+    return new StorageObject(
         "pepe",
         new StorageKey("pepe/videos/a.mp4"),
         new StorageMetadata("video/mp4", size, null, Instant.now()),
@@ -51,7 +51,7 @@ class TerminalUploadTransitionTest {
 
   @Test
   void releasesQuotaWhenExactlyOneRowWasUpdated() {
-    StoreObject object = this.pending(7L, 1024L);
+    StorageObject object = this.pending(7L, 1024L);
     object.markFailed();
 
     when(this.storageRepository.updateStatus(object, StorageSessionStatus.PENDING))
@@ -68,7 +68,7 @@ class TerminalUploadTransitionTest {
 
   @Test
   void zeroRowsOnReleaseFailsTheWholeTransition() {
-    StoreObject object = this.pending(7L, 1024L);
+    StorageObject object = this.pending(7L, 1024L);
     object.markFailed();
 
     when(this.storageRepository.updateStatus(object, StorageSessionStatus.PENDING))

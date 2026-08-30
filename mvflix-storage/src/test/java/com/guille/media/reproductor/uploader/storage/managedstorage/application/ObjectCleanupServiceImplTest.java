@@ -20,8 +20,8 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.excep
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageUsage;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UserStorage;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
@@ -89,8 +89,8 @@ class ObjectCleanupServiceImplTest {
       new UserStorage(
           1L, BucketName.of("movies"), "pepe", StorageQuota.ofGigabytes(10), new StorageUsage(10));
 
-  private static StoreObject completedObject(long storageId, String owner) {
-    return new StoreObject(
+  private static StorageObject completedObject(long storageId, String owner) {
+    return new StorageObject(
         owner,
         new StorageKey("k" + storageId),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -101,7 +101,7 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void deleteObjectDeletesBlobReleasesQuotaAndMarksDeletedWhenOwner() {
-    StoreObject object = completedObject(7L, "pepe");
+    StorageObject object = completedObject(7L, "pepe");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
@@ -121,7 +121,7 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void deleteObjectRejectsWhenNotOwner() {
-    StoreObject object = completedObject(7L, "otra");
+    StorageObject object = completedObject(7L, "otra");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
@@ -146,7 +146,7 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void deleteObjectRemovesBlobFirstAndKeepsAccountingWhenTransitionIsRejected() {
-    StoreObject object = completedObject(7L, "pepe");
+    StorageObject object = completedObject(7L, "pepe");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
@@ -166,8 +166,8 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void failedBestEffortDeleteEnqueuesDurableOrphanTask() {
-    StoreObject pending =
-        new StoreObject(
+    StorageObject pending =
+        new StorageObject(
             "pepe",
             new StorageKey("k1"),
             new StorageMetadata("video/mp4", 1024L, null, Instant.now()),
@@ -195,7 +195,7 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void deleteObjectFailsFastWithoutTouchingDatabaseWhenObjectStoreUnavailable() {
-    StoreObject object = completedObject(7L, "pepe");
+    StorageObject object = completedObject(7L, "pepe");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
@@ -204,7 +204,7 @@ class ObjectCleanupServiceImplTest {
         .when(this.objectStoragePort)
         .delete(any(StorageLocation.class));
     // Si la tx llegara a SUSCRIBIRSE, el test fallaría con esta aserción.
-    when(this.storageRepository.updateStatus(any(StoreObject.class), any()))
+    when(this.storageRepository.updateStatus(any(StorageObject.class), any()))
         .thenReturn(Mono.error(new AssertionError("DB must not be touched when MinIO fails")));
     when(this.userStorageRepository.releaseStorage(anyString(), anyLong()))
         .thenReturn(Mono.error(new AssertionError("quota must not be released when MinIO fails")));
@@ -216,7 +216,7 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void deleteObjectKeepsAccountingWhenTransitionIsRejected() {
-    StoreObject object = completedObject(7L, "pepe");
+    StorageObject object = completedObject(7L, "pepe");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
@@ -246,7 +246,7 @@ class ObjectCleanupServiceImplTest {
     when(this.userStorageRepository.releaseStorage(anyString(), anyLong()))
         .thenReturn(Mono.error(new RuntimeException("db connection lost")), Mono.just(1L));
     when(this.storageRepository.updateStatus(
-            any(StoreObject.class), eq(StorageSessionStatus.COMPLETED)))
+            any(StorageObject.class), eq(StorageSessionStatus.COMPLETED)))
         .thenAnswer(invocation -> Mono.just(invocation.getArgument(0)));
 
     StepVerifier.create(this.service.deleteObject(7L))
@@ -263,7 +263,7 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void concurrentDeleteLoserSucceedsWhenRowAlreadyDeleted() {
-    StoreObject object = completedObject(7L, "pepe");
+    StorageObject object = completedObject(7L, "pepe");
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
@@ -282,8 +282,8 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void expireStaleSessionsDeletesOrphanObjectReleasesQuotaAndExpiresPendingObjects() {
-    StoreObject pending =
-        new StoreObject(
+    StorageObject pending =
+        new StorageObject(
             "pepe",
             new StorageKey("k1"),
             new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -309,8 +309,8 @@ class ObjectCleanupServiceImplTest {
 
   @Test
   void expireStillReleasesQuotaWhenObjectDoesNotExistInBucket() {
-    StoreObject pending =
-        new StoreObject(
+    StorageObject pending =
+        new StorageObject(
             "pepe",
             new StorageKey("k1"),
             new StorageMetadata("video/mp4", 1024, null, Instant.now()),

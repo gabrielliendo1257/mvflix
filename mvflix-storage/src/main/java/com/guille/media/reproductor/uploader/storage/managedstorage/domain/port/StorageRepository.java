@@ -1,7 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.domain.port;
 
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 
 import java.time.Instant;
 
@@ -9,15 +9,15 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface StorageRepository {
-  Mono<StoreObject> save(StoreObject storageObject);
+  Mono<StorageObject> save(StorageObject storageObject);
 
-  Mono<StoreObject> findById(Long storageId);
+  Mono<StorageObject> findById(Long storageId);
 
   /** Busca por la clave lógica del objeto en el object store (camino de eventos de MinIO). */
-  Mono<StoreObject> findByObjectKey(String objectKey);
+  Mono<StorageObject> findByObjectKey(String objectKey);
 
   /**
-   * Persiste la transición de estado aplicada por el dominio ({@link StoreObject}).
+   * Persiste la transición de estado aplicada por el dominio ({@link StorageObject}).
    *
    * <p>Optimistic lock: la fila solo se actualiza si su estado actual en BD coincide con {@code
    * expectedStatus}. Si otro flujo concurrente la transicionó antes, no hay fila afectada y la
@@ -27,12 +27,12 @@ public interface StorageRepository {
    * @param storageObject objeto ya transicionado por el dominio.
    * @param expectedStatus estado previo esperado en BD.
    */
-  Mono<StoreObject> updateStatus(StoreObject storageObject, StorageSessionStatus expectedStatus);
+  Mono<StorageObject> updateStatus(StorageObject storageObject, StorageSessionStatus expectedStatus);
 
-  Flux<StoreObject> findPendingCreatedBefore(Instant cutoff);
+  Flux<StorageObject> findPendingCreatedBefore(Instant cutoff);
 
   /** Últimas sesiones de subida de un usuario, más recientes primero. */
-  Flux<StoreObject> findRecentByOwner(String ownerUsername, int limit);
+  Flux<StorageObject> findRecentByOwner(String ownerUsername, int limit);
 
   /**
    * Actualiza {@code last_modified_at} como historial de "última actividad"

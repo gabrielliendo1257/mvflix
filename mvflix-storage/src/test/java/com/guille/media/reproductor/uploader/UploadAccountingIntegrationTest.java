@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.TerminalUploadTransition;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.IllegalStateTransitionException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageKey;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UserStorage;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.UserStorageRepository;
@@ -114,8 +114,8 @@ class UploadAccountingIntegrationTest {
         .block();
   }
 
-  private StoreObject pendingObject(Long id, String objectKey, long size) {
-    return new StoreObject(
+  private StorageObject pendingObject(Long id, String objectKey, long size) {
+    return new StorageObject(
         USERNAME,
         new StorageKey(objectKey),
         new StorageMetadata("video/mp4", size, null, Instant.now()),
@@ -130,10 +130,10 @@ class UploadAccountingIntegrationTest {
 
     // Fila preexistente con la misma object_key: fuerza una violación UNIQUE en
     // el INSERT del save, DESPUÉS de haber reservado cuota dentro de la tx.
-    StoreObject existing = this.pendingObject(null, "dup/videos/conflict.mp4", RESERVE_BYTES);
+    StorageObject existing = this.pendingObject(null, "dup/videos/conflict.mp4", RESERVE_BYTES);
     this.storageRepository.save(existing).block();
 
-    StoreObject conflicting = this.pendingObject(null, "dup/videos/conflict.mp4", RESERVE_BYTES);
+    StorageObject conflicting = this.pendingObject(null, "dup/videos/conflict.mp4", RESERVE_BYTES);
 
     StepVerifier.create(
             this.transactionalOperator.transactional(
@@ -156,8 +156,8 @@ class UploadAccountingIntegrationTest {
   void reconcileTransitionWithRealCasReleasesQuotaExactlyOnce() {
     this.provisionUser(USERNAME);
 
-    StoreObject pending = this.pendingObject(null, "cas/videos/a.mp4", RESERVE_BYTES);
-    StoreObject persisted = this.storageRepository.save(pending).block();
+    StorageObject pending = this.pendingObject(null, "cas/videos/a.mp4", RESERVE_BYTES);
+    StorageObject persisted = this.storageRepository.save(pending).block();
     // Simulamos la reserva hecha al crear la sesión (consumeStorage).
     this.databaseClient
         .sql("UPDATE user_storage SET storage_usage = :u WHERE owner_username = :o")
@@ -179,7 +179,7 @@ class UploadAccountingIntegrationTest {
 
     assertThat(this.usageOf(USERNAME)).isZero();
 
-    StoreObject reread = this.storageRepository.findById(persisted.getStorageId()).block();
+    StorageObject reread = this.storageRepository.findById(persisted.getStorageId()).block();
     assertThat(reread.getStorageObjectStatus()).isEqualTo(StorageSessionStatus.FAILED);
 
     // Segundo intento sobre la misma fila: el CAS pierde y NO vuelve a liberar.

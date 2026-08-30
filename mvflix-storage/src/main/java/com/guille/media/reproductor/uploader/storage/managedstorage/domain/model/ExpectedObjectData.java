@@ -2,6 +2,6 @@ package com.guille.media.reproductor.uploader.storage.managedstorage.domain.mode
 
 import java.time.Instant;
 
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 
 public record ExpectedObjectData(long expectedSize, String expectedMime) {}

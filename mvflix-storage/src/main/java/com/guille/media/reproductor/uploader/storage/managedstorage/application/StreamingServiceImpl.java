@@ -12,7 +12,7 @@ import com.guille.media.reproductor.uploader.storage.shared.security.UserProvide
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.command.response.StreamingSession;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.UserStorageNotFoundException;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.UserStorageRepository;
@@ -101,7 +101,7 @@ public class StreamingServiceImpl implements StreamingService {
                 log.info("Catalog streaming session created: uploadId={}", session.uploadId()));
   }
 
-  private Mono<StreamingSession> createStreamingSession(StoreObject object) {
+  private Mono<StreamingSession> createStreamingSession(StorageObject object) {
     object.ensureAvailable();
 
     return this.userStorageRepository

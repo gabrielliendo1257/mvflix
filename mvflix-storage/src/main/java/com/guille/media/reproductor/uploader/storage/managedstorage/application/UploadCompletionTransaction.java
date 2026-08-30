@@ -1,7 +1,7 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.application;
 
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 
 import org.springframework.stereotype.Component;
@@ -28,13 +28,13 @@ public class UploadCompletionTransaction {
     this.transactionalOperator = transactionalOperator;
   }
 
-  public Mono<StoreObject> complete(StoreObject object) {
+  public Mono<StorageObject> complete(StorageObject object) {
     return this.transactionalOperator.transactional(
         this.storageRepository.updateStatus(object, StorageSessionStatus.PENDING)
             .flatMap(saved -> this.storageOutbox.append(eventFor(saved)).thenReturn(saved)));
   }
 
-  private UploadCompletedIntegrationEvent eventFor(StoreObject object) {
+  private UploadCompletedIntegrationEvent eventFor(StorageObject object) {
     UUID eventId = UUID.nameUUIDFromBytes(
         ("UploadCompleted:" + object.getStorageId()).getBytes(StandardCharsets.UTF_8));
     return new UploadCompletedIntegrationEvent(

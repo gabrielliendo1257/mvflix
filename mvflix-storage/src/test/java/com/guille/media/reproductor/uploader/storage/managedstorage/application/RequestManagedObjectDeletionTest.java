@@ -11,8 +11,8 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.excep
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageKey;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageMetadata;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 
 import org.junit.jupiter.api.Test;
@@ -37,8 +37,8 @@ class RequestManagedObjectDeletionTest {
   private static final String OWNER = "Admin";
   private static final String KEY = "Admin/videos/abc.mp4";
 
-  private static StoreObject object(long storageId, String owner, String key) {
-    return new StoreObject(
+  private static StorageObject object(long storageId, String owner, String key) {
+    return new StorageObject(
         owner,
         new StorageKey(key),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -49,7 +49,7 @@ class RequestManagedObjectDeletionTest {
 
   @Test
   void correctOwnerAndKeyDelegatesToDeletion() {
-    StoreObject object = object(7L, OWNER, KEY);
+    StorageObject object = object(7L, OWNER, KEY);
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
     when(this.deleteStoredObject.execute(any(DeleteStoredObjectCommand.class)))
         .thenReturn(Mono.empty());
@@ -61,7 +61,7 @@ class RequestManagedObjectDeletionTest {
 
   @Test
   void wrongOwnerIsRejected() {
-    StoreObject object = object(7L, "Otro", KEY);
+    StorageObject object = object(7L, "Otro", KEY);
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
 
     StepVerifier.create(this.useCase.execute(7L, OWNER, KEY))
@@ -73,7 +73,7 @@ class RequestManagedObjectDeletionTest {
 
   @Test
   void wrongObjectKeyIsRejected() {
-    StoreObject object = object(7L, OWNER, "otro/key.mp4");
+    StorageObject object = object(7L, OWNER, "otro/key.mp4");
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
 
     StepVerifier.create(this.useCase.execute(7L, OWNER, KEY))
@@ -96,7 +96,7 @@ class RequestManagedObjectDeletionTest {
   void repeatOnAlreadyDeletedObjectStillPassesGuardAndIsIdempotent() {
     // El objeto ya está DELETED pero la asociación sigue siendo válida: el
     // guard pasa y la idempotencia real (no-op) vive en DeleteStoredObject.
-    StoreObject object = object(7L, OWNER, KEY);
+    StorageObject object = object(7L, OWNER, KEY);
     object.markDeleted();
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
     when(this.deleteStoredObject.execute(any(DeleteStoredObjectCommand.class)))

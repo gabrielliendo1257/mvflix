@@ -1,6 +1,6 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.infrastructure.web;
 
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 
 import java.time.Instant;
 

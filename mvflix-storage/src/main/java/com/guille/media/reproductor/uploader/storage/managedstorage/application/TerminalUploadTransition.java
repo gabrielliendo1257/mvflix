@@ -1,8 +1,8 @@
 package com.guille.media.reproductor.uploader.storage.managedstorage.application;
 
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageException;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.UserStorageRepository;
 
@@ -44,15 +44,15 @@ public class TerminalUploadTransition {
    * {@code IllegalStateTransitionException} si otro hilo ganó la carrera; en
    * ese caso no toca la cuota.
    */
-  public Mono<StoreObject> transitionAndRelease(
-      StoreObject object, StorageSessionStatus expectedStatus) {
+  public Mono<StorageObject> transitionAndRelease(
+      StorageObject object, StorageSessionStatus expectedStatus) {
     return this.transitionAndRelease(object, expectedStatus, ignored -> Mono.empty());
   }
 
-  Mono<StoreObject> transitionAndRelease(
-      StoreObject object,
+  Mono<StorageObject> transitionAndRelease(
+      StorageObject object,
       StorageSessionStatus expectedStatus,
-      Function<StoreObject, Mono<Void>> afterRelease) {
+      Function<StorageObject, Mono<Void>> afterRelease) {
     return this.transactionalOperator.transactional(
         this.storageRepository
             .updateStatus(object, expectedStatus)

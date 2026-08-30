@@ -13,8 +13,8 @@ import com.guille.media.reproductor.uploader.storage.shared.security.UserProvide
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageUsage;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UserStorage;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
@@ -56,8 +56,8 @@ class StreamingServiceImplTest {
       new UserStorage(
           1L, BucketName.of("movies"), "pepe", StorageQuota.ofGigabytes(10), new StorageUsage(10));
 
-  private StoreObject object(long storageId, StorageSessionStatus status) {
-    return new StoreObject(
+  private StorageObject object(long storageId, StorageSessionStatus status) {
+    return new StorageObject(
         "pepe",
         new StorageKey("pepe/movies/movie.mp4"),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -68,7 +68,7 @@ class StreamingServiceImplTest {
 
   @Test
   void generateStreamingSessionReturnsPresignedUrlAndTouchesLastSeen() {
-    StoreObject completed = this.object(7L, StorageSessionStatus.COMPLETED);
+    StorageObject completed = this.object(7L, StorageSessionStatus.COMPLETED);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(completed));
@@ -92,7 +92,7 @@ class StreamingServiceImplTest {
 
   @Test
   void generateStreamingSessionUsesConfiguredTtl() {
-    StoreObject completed = this.object(7L, StorageSessionStatus.COMPLETED);
+    StorageObject completed = this.object(7L, StorageSessionStatus.COMPLETED);
     Duration configuredTtl = Duration.ofMinutes(2);
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     StreamingServiceImpl customService =
@@ -122,7 +122,7 @@ class StreamingServiceImplTest {
 
   @Test
   void generateStreamingSessionRejectsObjectNotAvailable() {
-    StoreObject pending = this.object(7L, StorageSessionStatus.PENDING);
+    StorageObject pending = this.object(7L, StorageSessionStatus.PENDING);
 
     when(this.userProvider.getAuthenticatedUser()).thenReturn(Mono.just(PEPE));
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(pending));
@@ -137,7 +137,7 @@ class StreamingServiceImplTest {
 
   @Test
   void previewStreamingRejectsNonOwner() {
-    StoreObject anasObject = new StoreObject(
+    StorageObject anasObject = new StorageObject(
         "ana",
         new StorageKey("ana/videos/movie.mp4"),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -158,7 +158,7 @@ class StreamingServiceImplTest {
 
   @Test
   void catalogStreamingAllowsNonOwnerObjectForAuthorizedService() {
-    StoreObject anasObject = new StoreObject(
+    StorageObject anasObject = new StorageObject(
         "ana",
         new StorageKey("ana/videos/movie.mp4"),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),

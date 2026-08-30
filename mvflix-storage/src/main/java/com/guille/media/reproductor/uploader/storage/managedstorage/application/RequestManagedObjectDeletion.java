@@ -3,7 +3,7 @@ package com.guille.media.reproductor.uploader.storage.managedstorage.application
 import com.guille.media.reproductor.uploader.storage.managedstorage.application.command.request.DeleteStoredObjectCommand;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectMismatchException;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.exception.StorageObjectNotAvailable;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -37,7 +37,7 @@ public class RequestManagedObjectDeletion {
     }
 
     private Mono<Void> guardAndDelete(
-            Long storageId, StoreObject object, String expectedOwner, String expectedObjectKey) {
+            Long storageId, StorageObject object, String expectedOwner, String expectedObjectKey) {
         if (!object.getOwnerUsername().equals(expectedOwner)) {
             return Mono.error(new StorageObjectMismatchException("owner", storageId));
         }

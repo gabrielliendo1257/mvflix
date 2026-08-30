@@ -34,7 +34,7 @@ import java.util.Objects;
  * <p>El dominio trabaja con esta entidad sin depender del proveedor concreto de almacenamiento.
  */
 @Getter
-public final class StoreObject {
+public final class StorageObject {
 
   private final Long storageId;
   private final String ownerUsername;
@@ -43,7 +43,7 @@ public final class StoreObject {
   private final Instant createdAt;
   private StorageSessionStatus storageObjectStatus;
 
-  public StoreObject(
+  public StorageObject(
       String ownerUsername,
       StorageKey storageKey,
       StorageMetadata metadata,

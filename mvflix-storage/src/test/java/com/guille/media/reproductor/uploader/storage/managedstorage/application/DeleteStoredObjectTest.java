@@ -19,8 +19,8 @@ import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageMetadata;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageQuota;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageUsage;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject;
-import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StoreObject.StorageSessionStatus;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject;
+import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.StorageObject.StorageSessionStatus;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.model.UserStorage;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.ObjectStorageService;
 import com.guille.media.reproductor.uploader.storage.managedstorage.domain.port.StorageRepository;
@@ -51,8 +51,8 @@ class DeleteStoredObjectTest {
       new UserStorage(
           1L, BucketName.of("movies"), "pepe", StorageQuota.ofGigabytes(10), new StorageUsage(10));
 
-  private static StoreObject completed(long storageId) {
-    return new StoreObject(
+  private static StorageObject completed(long storageId) {
+    return new StorageObject(
         "pepe",
         new StorageKey("k" + storageId),
         new StorageMetadata("video/mp4", 1024, null, Instant.now()),
@@ -63,7 +63,7 @@ class DeleteStoredObjectTest {
 
   @Test
   void deletesBlobThenTransitionsToDeleted() {
-    StoreObject object = completed(7L);
+    StorageObject object = completed(7L);
 
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
@@ -83,7 +83,7 @@ class DeleteStoredObjectTest {
 
   @Test
   void alreadyDeletedIsIdempotentNoOp() {
-    StoreObject object = completed(7L);
+    StorageObject object = completed(7L);
     object.markDeleted(); // ya DELETED
 
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
@@ -99,7 +99,7 @@ class DeleteStoredObjectTest {
 
   @Test
   void alreadyDeletedIsIdempotent() {
-    StoreObject object = completed(7L);
+    StorageObject object = completed(7L);
     object.markDeleted();
 
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
@@ -116,7 +116,7 @@ class DeleteStoredObjectTest {
 
   @Test
   void s3DownFailsFastWithoutTouchingDb() {
-    StoreObject object = completed(7L);
+    StorageObject object = completed(7L);
 
     when(this.storageRepository.findById(7L)).thenReturn(Mono.just(object));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
@@ -134,13 +134,13 @@ class DeleteStoredObjectTest {
 
   @Test
   void retryAfterTransitionFailureCompletes() {
-    StoreObject first = completed(7L);
-    StoreObject retry = completed(7L);
+    StorageObject first = completed(7L);
+    StorageObject retry = completed(7L);
 
     when(this.storageRepository.findById(7L))
         .thenReturn(Mono.just(first), Mono.just(retry));
     when(this.userStorageRepository.findByOwnerUsername("pepe")).thenReturn(Mono.just(PEPE_STORAGE));
-    when(this.terminalTransition.transitionAndRelease(any(StoreObject.class), any()))
+    when(this.terminalTransition.transitionAndRelease(any(StorageObject.class), any()))
         .thenReturn(
             Mono.error(new RuntimeException("db connection lost")),
             Mono.just(retry));
