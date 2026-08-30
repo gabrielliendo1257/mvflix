@@ -31,6 +31,7 @@ public class SpringDataStorageRepository implements StorageRepository {
                                 """
 		 INSERT INTO store_objects (
 				owner_username,
+				idempotency_key,
 				object_key,
 				status,
 				content_type,
@@ -41,6 +42,7 @@ public class SpringDataStorageRepository implements StorageRepository {
 			)
 			VALUES (
 				:ownerUsername,
+				:idempotencyKey,
 				:objectKey,
 				:status,
 				:contentType,
@@ -65,9 +67,22 @@ public class SpringDataStorageRepository implements StorageRepository {
             spec = spec.bind("checksum", entity.getChecksum());
         }
 
+        if (entity.getIdempotencyKey() != null) {
+            spec = spec.bind("idempotencyKey", entity.getIdempotencyKey());
+        } else {
+            spec = spec.bindNull("idempotencyKey", String.class);
+        }
         return spec.mapProperties(StorageObjectJpaEntity.class)
                 .one()
                 .map(this.storageMapper::toDomain);
+    }
+
+    @Override
+    public Mono<StorageObject> findByOwnerAndIdempotencyKey(String ownerUsername, String idempotencyKey) {
+        return this.databaseClient.sql("SELECT * FROM store_objects WHERE owner_username = :owner "
+                + "AND idempotency_key = :key")
+            .bind("owner", ownerUsername).bind("key", idempotencyKey)
+            .mapProperties(StorageObjectJpaEntity.class).one().map(this.storageMapper::toDomain);
     }
 
     @Override

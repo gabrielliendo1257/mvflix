@@ -64,6 +64,16 @@ public class UploadController {
         .map(ResponseEntity::ok);
   }
 
+  @Operation(summary = "Recupera una sesión por idempotency key del usuario autenticado")
+  @GetMapping(value = "/uploads/by-idempotency/{idempotencyKey}")
+  public Mono<ResponseEntity<UploadResponse>> uploadByIdempotencyKey(
+      @PathVariable String idempotencyKey) {
+    return this.uploadService.findUploadByIdempotencyKey(idempotencyKey)
+        .map(this.uploadMapper::toUploadResponse)
+        .map(ResponseEntity::ok)
+        .defaultIfEmpty(ResponseEntity.notFound().build());
+  }
+
   /** Regenera instrucciones de subida para una sesión PENDING propia. */
   @Operation(summary = "Regenera instrucciones presigned para una sesión PENDING propia")
   @PostMapping(

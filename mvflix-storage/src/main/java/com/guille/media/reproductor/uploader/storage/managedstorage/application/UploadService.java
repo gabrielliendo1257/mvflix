@@ -12,6 +12,9 @@ import reactor.core.publisher.Mono;
 public interface UploadService {
   Mono<UploadSession> createUploadSession(CreateUploadCommand command);
 
+  /** Busca una sesión por clave, limitada al usuario autenticado. */
+  Mono<UploadSession> findUploadByIdempotencyKey(String idempotencyKey);
+
   /**
    * Regenera las instrucciones de subida (presigned PUT fresco) para una
    * sesión PENDING propia. Permite que un cliente que perdió la respuesta

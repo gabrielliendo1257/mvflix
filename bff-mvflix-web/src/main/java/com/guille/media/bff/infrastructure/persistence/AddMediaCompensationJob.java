@@ -37,7 +37,8 @@ public class AddMediaCompensationJob {
     return tasks.claimPending(20)
         .flatMap(task -> execute(task)
             .then(Mono.defer(() -> tasks.markCompleted(task.id())))
-            .then(Mono.defer(() -> processes.tryCompleteCancellation(task.processId()).then()))
+            .then(Mono.defer(() -> processes.tryCompleteCancellation(task.processId())
+                .then(completePreparingRecovery(task.processId()))))
             .onErrorResume(error -> {
               log.error("add-media compensation failed process={} kind={} resource={} attempt={}",
                   task.processId().value(), task.kind(), task.resourceId(), task.attempts(), error);
@@ -49,6 +50,10 @@ public class AddMediaCompensationJob {
                   });
             }), 1)
         .then();
+  }
+
+  private Mono<Void> completePreparingRecovery(com.guille.media.bff.experience.addmedia.model.AddMediaId id) {
+    return Mono.defer(() -> Mono.justOrEmpty(processes.completePreparingRecovery(id)).then());
   }
 
   private Mono<Void> execute(AddMediaCompensationRepository.Task task) {

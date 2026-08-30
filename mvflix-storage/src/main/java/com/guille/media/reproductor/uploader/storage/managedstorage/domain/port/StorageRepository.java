@@ -13,6 +13,11 @@ public interface StorageRepository {
 
   Mono<StorageObject> findById(Long storageId);
 
+  /** Optional for legacy callers that do not use idempotency. */
+  default Mono<StorageObject> findByOwnerAndIdempotencyKey(String ownerUsername, String idempotencyKey) {
+    return Mono.empty();
+  }
+
   /** Busca por la clave lógica del objeto en el object store (camino de eventos de MinIO). */
   Mono<StorageObject> findByObjectKey(String objectKey);
 

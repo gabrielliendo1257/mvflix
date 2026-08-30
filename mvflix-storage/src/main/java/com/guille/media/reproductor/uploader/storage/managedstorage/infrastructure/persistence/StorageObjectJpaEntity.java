@@ -22,6 +22,8 @@ public class StorageObjectJpaEntity {
 
     private String ownerUsername;
 
+    private String idempotencyKey;
+
     private String objectKey;
 
     private String status;

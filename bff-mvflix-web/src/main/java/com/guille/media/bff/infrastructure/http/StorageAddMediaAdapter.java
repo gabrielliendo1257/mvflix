@@ -25,6 +25,16 @@ public class StorageAddMediaAdapter implements AddMediaStorage {
   }
 
   @Override
+  public Mono<UploadSessionDto> recoverUpload(String ownerSubject, String idempotencyKey) {
+    // Storage derives the owner from the authenticated principal. The durable owner is
+    // correlation data only and is deliberately not sent as a trusted client parameter.
+    return this.translate(this.delegate.findUploadByIdempotencyKey(idempotencyKey))
+        .onErrorResume(com.guille.media.bff.experience.addmedia.application.
+            DownstreamRejectionException.class, error ->
+            error.status() == 404 ? Mono.empty() : Mono.error(error));
+  }
+
+  @Override
   public Mono<Void> requestCompletion(Long uploadId) {
     return this.translate(this.delegate.completeUpload(uploadId)).then();
   }

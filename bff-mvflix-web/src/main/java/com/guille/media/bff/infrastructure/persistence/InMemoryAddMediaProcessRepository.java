@@ -137,6 +137,70 @@ public class InMemoryAddMediaProcessRepository implements AddMediaProcessReposit
   }
 
   @Override
+  public Mono<Boolean> completePreparingRecovery(AddMediaId id) {
+    return Mono.defer(() -> {
+      AtomicReference<Boolean> completed = new AtomicReference<>(false);
+      this.processes.compute(id, (key, existing) -> {
+        boolean pending = this.compensationTasks.values().stream()
+            .anyMatch(task -> task.processId().equals(id));
+        if (existing == null || existing.phase() !=
+            com.guille.media.bff.experience.addmedia.model.AddMediaPhase.PREPARING || pending) {
+          return existing;
+        }
+        if (existing.uploadId() != null || existing.movieId() != null) {
+          return existing;
+        }
+        completed.set(true);
+        var next = existing.movieId() == null && existing.uploadId() == null
+            ? com.guille.media.bff.experience.addmedia.model.AddMediaPhase.STARTING
+            : existing.phase();
+        return new AddMediaProcess(existing.id(), existing.ownerSubject(), existing.movieId(),
+            existing.uploadId(), next, null, existing.version() + 1);
+      });
+      return Mono.just(completed.get());
+    });
+  }
+
+  @Override
+  public Mono<Boolean> completePreparingRecovery(AddMediaId id, boolean uploadConfirmedAbsent) {
+    if (!uploadConfirmedAbsent) return Mono.just(false);
+    return Mono.defer(() -> {
+      AtomicReference<Boolean> completed = new AtomicReference<>(false);
+      this.processes.compute(id, (key, existing) -> {
+        boolean pending = this.compensationTasks.values().stream()
+            .anyMatch(task -> task.processId().equals(id));
+        if (existing == null || pending || existing.phase() !=
+            com.guille.media.bff.experience.addmedia.model.AddMediaPhase.PREPARING
+            || existing.movieId() == null || existing.uploadId() != null) return existing;
+        completed.set(true);
+        return new AddMediaProcess(existing.id(), existing.ownerSubject(), existing.movieId(), null,
+            com.guille.media.bff.experience.addmedia.model.AddMediaPhase.CANCELLED,
+            null, existing.version() + 1);
+      });
+      return Mono.just(completed.get());
+    });
+  }
+
+  @Override
+  public Mono<Boolean> claimRecoveredCancellation(AddMediaId id, long version, Long uploadId) {
+    return Mono.defer(() -> {
+      AtomicReference<Boolean> claimed = new AtomicReference<>(false);
+      this.processes.compute(id, (key, existing) -> {
+        if (existing == null || existing.version() != version
+            || existing.phase() != com.guille.media.bff.experience.addmedia.model.AddMediaPhase.PREPARING
+            || existing.movieId() == null || existing.uploadId() != null) {
+          return existing;
+        }
+        claimed.set(true);
+        return new AddMediaProcess(existing.id(), existing.ownerSubject(), existing.movieId(), uploadId,
+            com.guille.media.bff.experience.addmedia.model.AddMediaPhase.CANCELLING,
+            null, existing.version() + 1);
+      });
+      return Mono.just(claimed.get());
+    });
+  }
+
+  @Override
   public Mono<AddMediaProcess> releaseClaim(AddMediaId id) {
     return Mono.defer(() -> Mono.justOrEmpty(this.releaseInPlace(id)));
   }

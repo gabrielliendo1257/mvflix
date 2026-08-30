@@ -70,6 +70,38 @@ public class R2dbcAddMediaProcessRepository implements AddMediaProcessRepository
         .bind("id", id.value()).fetch().rowsUpdated().map(rows -> rows == 1);
   }
 
+  @Override
+  public Mono<Boolean> completePreparingRecovery(AddMediaId id) {
+    return database.sql("UPDATE add_media_processes SET phase = CASE "
+         + "WHEN movie_id IS NULL AND upload_id IS NULL THEN 'STARTING' "
+         + "WHEN movie_id IS NOT NULL AND upload_id IS NULL THEN 'STARTING' "
+        + "ELSE phase END, "
+        + "version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id "
+         + "AND phase = 'PREPARING' AND (movie_id IS NULL AND upload_id IS NULL OR "
+         + "movie_id IS NOT NULL AND upload_id IS NULL) AND NOT EXISTS (SELECT 1 FROM add_media_compensations "
+         + "WHERE process_id = :id AND status = 'PENDING')")
+        .bind("id", id.value()).fetch().rowsUpdated().map(rows -> rows == 1);
+  }
+
+  @Override
+  public Mono<Boolean> completePreparingRecovery(AddMediaId id, boolean uploadConfirmedAbsent) {
+    if (!uploadConfirmedAbsent) return Mono.just(false);
+    return database.sql("UPDATE add_media_processes SET phase = 'CANCELLED', version = version + 1, "
+        + "updated_at = CURRENT_TIMESTAMP WHERE id = :id AND phase = 'PREPARING' "
+        + "AND movie_id IS NOT NULL AND upload_id IS NULL AND NOT EXISTS (SELECT 1 FROM "
+        + "add_media_compensations WHERE process_id = :id AND status = 'PENDING')")
+        .bind("id", id.value()).fetch().rowsUpdated().map(rows -> rows == 1);
+  }
+
+  @Override
+  public Mono<Boolean> claimRecoveredCancellation(AddMediaId id, long version, Long uploadId) {
+    return database.sql("UPDATE add_media_processes SET upload_id = :upload, phase = 'CANCELLING', "
+        + "version = version + 1, updated_at = CURRENT_TIMESTAMP WHERE id = :id "
+        + "AND version = :version AND phase = 'PREPARING' AND movie_id IS NOT NULL AND upload_id IS NULL")
+        .bind("id", id.value()).bind("version", version).bind("upload", uploadId)
+        .fetch().rowsUpdated().map(rows -> rows == 1);
+  }
+
   private Mono<Boolean> claim(AddMediaId id, Set<String> phases, String next) {
     return database.sql("UPDATE add_media_processes SET phase = :next, version = version + 1, "
         + "updated_at = CURRENT_TIMESTAMP WHERE id = :id AND phase IN (:phases)")
@@ -114,12 +146,14 @@ public class R2dbcAddMediaProcessRepository implements AddMediaProcessRepository
 
   /** Observability-only query. The original command is not in the current domain model. */
   public Flux<StaleProcess> findStaleClaims(Duration age) {
-    return database.sql("SELECT id, phase, movie_id, upload_id FROM add_media_processes WHERE phase IN "
+     return database.sql("SELECT id, owner_subject, idempotency_key, phase, movie_id, upload_id, version "
+         + "FROM add_media_processes WHERE phase IN "
         + "('PREPARING','CANCELLING','FINALIZING') AND updated_at < CURRENT_TIMESTAMP "
         + "- (:age * INTERVAL '1 millisecond')").bind("age", age.toMillis())
-        .map((row, metadata) -> new StaleProcess(AddMediaId.parse(row.get("id", String.class)),
-            AddMediaPhase.valueOf(row.get("phase", String.class)), row.get("movie_id", Long.class),
-            row.get("upload_id", Long.class))).all();
+         .map((row, metadata) -> new StaleProcess(AddMediaId.parse(row.get("id", String.class)),
+             row.get("owner_subject", String.class), row.get("idempotency_key", String.class),
+             AddMediaPhase.valueOf(row.get("phase", String.class)), row.get("movie_id", Long.class),
+             row.get("upload_id", Long.class), row.get("version", Long.class))).all();
   }
 
   private static DatabaseClient.GenericExecuteSpec nullable(DatabaseClient.GenericExecuteSpec statement,
@@ -134,5 +168,6 @@ public class R2dbcAddMediaProcessRepository implements AddMediaProcessRepository
         row.get("failure_code", String.class), row.get("version", Long.class));
   }
 
-  public record StaleProcess(AddMediaId id, AddMediaPhase phase, Long movieId, Long uploadId) {}
+  public record StaleProcess(AddMediaId id, String ownerSubject, String idempotencyKey,
+      AddMediaPhase phase, Long movieId, Long uploadId, long version) {}
 }

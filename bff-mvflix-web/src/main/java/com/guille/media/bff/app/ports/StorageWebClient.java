@@ -25,6 +25,8 @@ public interface StorageWebClient {
 
   Mono<UploadSessionDto> createUpload(UploadCreateRequest request);
 
+  Mono<UploadSessionDto> findUploadByIdempotencyKey(String idempotencyKey);
+
   Mono<UploadStatusDto> uploadStatus(Long uploadId);
 
   /** Regenera instrucciones de subida para una sesión PENDING propia. */

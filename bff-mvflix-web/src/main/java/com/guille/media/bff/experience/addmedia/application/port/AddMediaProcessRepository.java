@@ -51,6 +51,21 @@ public interface AddMediaProcessRepository {
   /** Completa CANCELLING solo cuando no quedan compensaciones PENDING. */
   Mono<Boolean> tryCompleteCancellation(AddMediaId id);
 
+  /**
+   * Cierra de forma CAS un PREPARING recuperado: CANCELLED solo si hubo
+   * recursos y ya no quedan compensaciones PENDING; sin recursos vuelve a
+   * STARTING para permitir un nuevo intento.
+   */
+  Mono<Boolean> completePreparingRecovery(AddMediaId id);
+
+  /** Cierra un PREPARING con draft solo tras confirmar que Storage no tiene upload. */
+  default Mono<Boolean> completePreparingRecovery(AddMediaId id, boolean uploadConfirmedAbsent) {
+    return uploadConfirmedAbsent ? completePreparingRecovery(id) : Mono.just(false);
+  }
+
+  /** Reclama atómicamente un upload encontrado durante la recuperación. */
+  Mono<Boolean> claimRecoveredCancellation(AddMediaId id, long version, Long uploadId);
+
   /** Devuelve un reclamo fallido a STARTING para habilitar el reintento. */
   Mono<AddMediaProcess> releaseClaim(AddMediaId id);
 

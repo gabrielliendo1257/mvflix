@@ -112,8 +112,9 @@ public class SecurityConfiguration {
                     .pathMatchers(
                         HttpMethod.GET,
                         this.apiPathBase + "/storage/uploads",
-                        this.apiPathBase + "/storage/upload/*",
-                        this.apiPathBase + "/storage/quota")
+                         this.apiPathBase + "/storage/upload/*",
+                         this.apiPathBase + "/storage/uploads/by-idempotency/*",
+                         this.apiPathBase + "/storage/quota")
                     .authenticated()
                     .pathMatchers(
                         HttpMethod.GET,

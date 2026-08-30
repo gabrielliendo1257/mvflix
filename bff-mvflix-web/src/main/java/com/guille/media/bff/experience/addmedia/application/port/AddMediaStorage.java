@@ -16,6 +16,9 @@ public interface AddMediaStorage {
   /** Crea la sesión y devuelve instrucciones para el PUT directo del navegador. */
   Mono<UploadSessionDto> prepareUpload(UploadCreateRequest file);
 
+  /** Recupera una sesión creada por la misma identidad e idempotency key. */
+  Mono<UploadSessionDto> recoverUpload(String ownerSubject, String idempotencyKey);
+
   /**
    * Pide a Storage verificar AHORA (chequeo directo contra MinIO y
    * reconciliación del webhook perdido o retrasado). Puede responder "aún no

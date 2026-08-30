@@ -165,7 +165,8 @@ public class StartAddMedia {
         new UploadCreateRequest(
             command.file().filename(),
             command.file().sizeBytes(),
-            command.file().mimeType());
+            command.file().mimeType(),
+            process.id().value());
     return this.storage
         .prepareUpload(uploadRequest)
         .flatMap(session -> {

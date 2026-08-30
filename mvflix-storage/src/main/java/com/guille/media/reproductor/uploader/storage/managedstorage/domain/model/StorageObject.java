@@ -38,6 +38,7 @@ public final class StorageObject {
 
   private final Long storageId;
   private final String ownerUsername;
+  private final String idempotencyKey;
   private final StorageKey storageKey;
   private final StorageMetadata metadata;
   private final Instant createdAt;
@@ -50,7 +51,19 @@ public final class StorageObject {
       Instant createdAt,
       Long storageId,
       StorageSessionStatus storageSessionStatus) {
+    this(ownerUsername, null, storageKey, metadata, createdAt, storageId, storageSessionStatus);
+  }
+
+  public StorageObject(
+      String ownerUsername,
+      String idempotencyKey,
+      StorageKey storageKey,
+      StorageMetadata metadata,
+      Instant createdAt,
+      Long storageId,
+      StorageSessionStatus storageSessionStatus) {
     this.ownerUsername = Objects.requireNonNull(ownerUsername);
+    this.idempotencyKey = idempotencyKey;
     this.storageKey = Objects.requireNonNull(storageKey);
     this.metadata = Objects.requireNonNull(metadata);
     this.createdAt = Objects.requireNonNull(createdAt);

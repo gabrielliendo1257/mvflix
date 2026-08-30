@@ -109,9 +109,28 @@ public class UploadServiceImpl implements UploadService {
                                 new BucketNotFoundException(
                                     "Bucket not found: " + userStorage.getBucketName()));
                           }
-                          return this.createSession(userStorage, command);
+                           return Mono.justOrEmpty(command.idempotencyKey())
+                               .flatMap(key -> Mono.defer(() -> {
+                                 Mono<StorageObject> found = this.storageRepository
+                                     .findByOwnerAndIdempotencyKey(userStorage.getOwnerUsername(), key);
+                                 return found == null ? Mono.empty() : found;
+                               }))
+                               .flatMap(existing -> this.renewInstructions(existing.getStorageId()))
+                               .switchIfEmpty(this.createSession(userStorage, command));
                         }))
         .doOnNext(session -> log.info("Upload session created: uploadId={}", session.uploadId()));
+  }
+
+  @Override
+  public Mono<UploadSession> findUploadByIdempotencyKey(String idempotencyKey) {
+    return this.userProvider.getAuthenticatedUser()
+        .switchIfEmpty(Mono.error(new AuthenticationCredentialsNotFoundException(
+            "No authenticated user")))
+        .flatMap(user -> this.storageRepository
+            .findByOwnerAndIdempotencyKey(user.subject(), idempotencyKey))
+        .map(object -> new UploadSession(String.valueOf(object.getStorageId()), null,
+            object.getStorageKey(), null, null, object.getStorageObjectStatus(),
+            new ExpectedObjectData(object.sizeInBytes(), object.contentType())));
   }
 
   @Override
@@ -177,6 +196,7 @@ public class UploadServiceImpl implements UploadService {
     StorageObject object =
         new StorageObject(
             userStorage.getOwnerUsername(),
+            command.idempotencyKey(),
             key,
             metadata,
             Instant.now(),

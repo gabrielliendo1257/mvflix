@@ -48,3 +48,13 @@ BFF ni una llamada frágil movies→storage.
 - Cualquier implementación futura de borrado debe respetar este orden y la
   idempotencia; una llamada directa BFF→storage o movies→storage queda
   descartada por esta decisión.
+
+## Recuperación de altas interrumpidas
+
+El recovery de Add Media consulta Storage por `(principal, idempotencyKey)` cuando
+el draft existe pero el `uploadId` no llegó a persistirse. Storage deriva el
+principal del token y nunca acepta un owner enviado por el cliente. Un `404` del
+lookup es una ausencia confirmada de sesión y permite compensar el draft; un
+error de red, `5xx` o cualquier respuesta ambigua deja el proceso en `PREPARING`.
+Si la sesión existe, el proceso se reclama con CAS, se encolan ambas
+compensaciones y solo después de completarlas pasa a `CANCELLED`.

@@ -11,6 +11,7 @@ import org.mapstruct.Mapping;
 public interface StorageMapper {
 
     @Mapping(target = "objectKey", source = "storageKey.key")
+    @Mapping(target = "idempotencyKey", source = "idempotencyKey")
     @Mapping(target = "contentType", source = "metadata.contentType")
     @Mapping(target = "contentLength", source = "metadata.contentLength")
     @Mapping(target = "checksum", source = "metadata.checksum")
@@ -19,8 +20,11 @@ public interface StorageMapper {
     @Mapping(target = "status", source = "storageObjectStatus")
     StorageObjectJpaEntity toEntity(StorageObject storageObject);
 
-    @Mapping(target = "storageKey", expression = "java(new StorageKey(entity.getObjectKey()))")
-    @Mapping(target = "metadata", expression = "java(new StorageMetadata(entity.getContentType(), entity.getContentLength(), entity.getChecksum(), entity.getLastModifiedAt()))")
-    @Mapping(target = "storageSessionStatus", source = "status")
-    StorageObject toDomain(StorageObjectJpaEntity entity);
+    default StorageObject toDomain(StorageObjectJpaEntity entity) {
+        return new StorageObject(entity.getOwnerUsername(), entity.getIdempotencyKey(),
+            new StorageKey(entity.getObjectKey()),
+            new StorageMetadata(entity.getContentType(), entity.getContentLength(),
+                entity.getChecksum(), entity.getLastModifiedAt()), entity.getCreatedAt(),
+            entity.getStorageId(), StorageObject.StorageSessionStatus.valueOf(entity.getStatus()));
+    }
 }

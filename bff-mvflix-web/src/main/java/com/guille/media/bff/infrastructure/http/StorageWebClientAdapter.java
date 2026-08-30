@@ -60,6 +60,14 @@ public class StorageWebClientAdapter implements StorageWebClient {
   }
 
   @Override
+  public Mono<UploadSessionDto> findUploadByIdempotencyKey(String idempotencyKey) {
+    return this.storageWebClient.get()
+        .uri(API + "/uploads/by-idempotency/" + idempotencyKey)
+        .retrieve()
+        .bodyToMono(UploadSessionDto.class);
+  }
+
+  @Override
   public Mono<UploadStatusDto> uploadStatus(Long uploadId) {
     return this.get(API + "/upload/" + uploadId, UploadStatusDto.class);
   }

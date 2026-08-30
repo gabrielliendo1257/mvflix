@@ -78,4 +78,43 @@ class AddMediaCompensationJobTest {
     assertThat(repository.findById(id).block().phase()).isEqualTo(
         com.guille.media.bff.experience.addmedia.model.AddMediaPhase.CANCELLED);
   }
+
+  @Test
+  void preparingWithoutResourcesIsReturnedToStarting() {
+    var repository = new InMemoryAddMediaProcessRepository();
+    var id = AddMediaId.newId();
+    repository.save(com.guille.media.bff.experience.addmedia.model.AddMediaProcess
+        .starting(id, "pepe").preparing()).block();
+
+    assertThat(repository.completePreparingRecovery(id).block()).isTrue();
+    assertThat(repository.findById(id).block().phase()).isEqualTo(
+        com.guille.media.bff.experience.addmedia.model.AddMediaPhase.STARTING);
+  }
+
+  @Test
+  void preparingWithMovieAndUnknownUploadIsNotCancelledByRepositoryAlone() {
+    var repository = new InMemoryAddMediaProcessRepository();
+    var id = AddMediaId.newId();
+    repository.save(com.guille.media.bff.experience.addmedia.model.AddMediaProcess
+        .starting(id, "pepe").preparing().withMovieId(7L)).block();
+
+    assertThat(repository.completePreparingRecovery(id).block()).isFalse();
+    assertThat(repository.findById(id).block().phase()).isEqualTo(
+        com.guille.media.bff.experience.addmedia.model.AddMediaPhase.PREPARING);
+  }
+
+  @Test
+  void recoveredUploadCanBeClaimedAndIsNotLost() {
+    var repository = new InMemoryAddMediaProcessRepository();
+    var id = AddMediaId.newId();
+    var preparing = com.guille.media.bff.experience.addmedia.model.AddMediaProcess
+        .starting(id, "pepe").preparing().withMovieId(7L);
+    repository.save(preparing).block();
+
+    assertThat(repository.claimRecoveredCancellation(id, preparing.version(), 42L).block())
+        .isTrue();
+    assertThat(repository.findById(id).block().uploadId()).isEqualTo(42L);
+    assertThat(repository.findById(id).block().phase()).isEqualTo(
+        com.guille.media.bff.experience.addmedia.model.AddMediaPhase.CANCELLING);
+  }
 }
