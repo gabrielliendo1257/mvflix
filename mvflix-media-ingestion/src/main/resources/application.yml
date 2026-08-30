@@ -1,6 +1,25 @@
 server.port: ${MEDIA_INGESTION_PORT_INTERNAL:8080}
 spring:
   application.name: mvflix-media-ingestion
+  security:
+    oauth2:
+      client:
+        provider:
+          internal:
+            token-uri: ${MVFLIX_INTERNAL_TOKEN_URI:http://localhost:8081/oauth2/token}
+        registration:
+          movies:
+            provider: internal
+            authorization-grant-type: client_credentials
+            client-id: ${MVFLIX_MOVIES_CLIENT_ID:mvflix-media-ingestion}
+            client-secret: ${MVFLIX_MOVIES_CLIENT_SECRET:}
+            scope: ${MVFLIX_MOVIES_CLIENT_SCOPES:media-ingestion}
+          storage:
+            provider: internal
+            authorization-grant-type: client_credentials
+            client-id: ${MVFLIX_STORAGE_CLIENT_ID:mvflix-media-ingestion}
+            client-secret: ${MVFLIX_STORAGE_CLIENT_SECRET:}
+            scope: ${MVFLIX_STORAGE_CLIENT_SCOPES:media-ingestion}
   r2dbc.url: r2dbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:mvflix_media_ingestion_db}
   r2dbc.username: ${DB_USERNAME:db_rw}
   r2dbc.password: ${DB_RW_PASSWORD:12345678}

@@ -21,6 +21,7 @@ import org.springframework.security.core.userdetails.MapReactiveUserDetailsServi
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
+import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
 @Configuration
@@ -48,6 +49,13 @@ public class SecurityConfig {
             .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
             .anyExchange().hasRole("METRICS"))
         .build();
+  }
+
+  @Bean
+  WebFilter serverWebExchangeContextFilter() {
+    return (exchange, chain) ->
+        chain.filter(exchange)
+            .contextWrite(context -> context.put(InternalActorUserProvider.EXCHANGE_CONTEXT_KEY, exchange));
   }
 
   @Bean

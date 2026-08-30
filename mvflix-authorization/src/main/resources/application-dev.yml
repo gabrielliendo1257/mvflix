@@ -45,6 +45,8 @@ authorization:
       client-password: super-secret
       # Secret dedicado del machine-client movies-catalog (Movies → Storage).
       movies-catalog-password: ${MOVIES_CATALOG_SECRET:super-secret}
+      # Secret dedicado del machine-client media-ingestion (Ingestion → Movies/Storage).
+      media-ingestion-password: ${MEDIA_INGESTION_SECRET:super-secret}
       redirect: ${BFF_ADDRESS:http://127.0.0.1:9091}${BFF_PATH_REDIRECT:/login/oauth2/code/movie-app}
       logout-redirect: ${FRONTEND_ADDRESS:http://127.0.0.1:9090}${PATH_LOGOUT_REDIRECT:/}
     # jwk:

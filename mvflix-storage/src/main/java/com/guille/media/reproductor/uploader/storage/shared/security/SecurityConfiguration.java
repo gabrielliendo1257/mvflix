@@ -22,6 +22,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
+import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
 
 /**
@@ -60,6 +61,13 @@ public class SecurityConfiguration {
             .pathMatchers("/actuator/health", "/actuator/health/**").permitAll()
             .anyExchange().hasRole("METRICS"))
         .build();
+  }
+
+  @Bean
+  WebFilter serverWebExchangeContextFilter() {
+    return (exchange, chain) ->
+        chain.filter(exchange)
+            .contextWrite(context -> context.put(InternalActorUserProvider.EXCHANGE_CONTEXT_KEY, exchange));
   }
 
   /**
