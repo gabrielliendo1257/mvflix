@@ -126,15 +126,16 @@ public class RecoveryService {
          i.createdAt(), Instant.now(), i.nextAttemptAt(), i.idempotencyKey(),
          i.fileName(), i.fileSize(), i.mimeType(), i.uploadUrl(), objectId,
          objectKey, i.requestFingerprint(), i.causationId());
-     return transactions
-         .transactional(repository.compareAndSet(i, finalizing))
-         .flatMap(ok -> ok
-             ? clients.completeCatalog(i.catalogItemId(), objectKey, objectId, i.actorId())
-                 .then(complete(finalizing))
-             : Mono.error(new IllegalStateException("recovery CAS failed")))
-          .onErrorResume(error -> mark(
-              finalizing, Phase.RECONCILIATION_REQUIRED,
-              "completed upload finalization requires reconciliation: " + error));
+      return transactions
+          .transactional(repository.compareAndSet(i, finalizing))
+          .flatMap(ok -> {
+            if (!ok) return reload(i);
+            return clients.completeCatalog(i.catalogItemId(), objectKey, objectId, i.actorId())
+                .then(complete(finalizing))
+                .onErrorResume(error -> mark(
+                    finalizing, Phase.RECONCILIATION_REQUIRED,
+                    "completed upload finalization requires reconciliation: " + error));
+          });
    }
 
   private Mono<MediaIngestion> complete(MediaIngestion i) {
@@ -146,8 +147,14 @@ public class RecoveryService {
                 ok ->
                     ok
                         ? outbox.completed(next).thenReturn(next)
-                        : Mono.error(new IllegalStateException("recovery CAS failed"))));
-  }
+                        : reload(i)));
+    }
+
+   private Mono<MediaIngestion> reload(MediaIngestion expected) {
+     return repository.find(expected.ingestionId())
+         .switchIfEmpty(Mono.error(new IllegalStateException(
+             "recovery CAS lost but persisted ingestion was not found")));
+   }
 
   private Mono<MediaIngestion> reschedule(MediaIngestion i, String reason) {
     return mark(

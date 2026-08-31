@@ -67,6 +67,42 @@ class RecoveryServiceTest {
   }
 
   @Test
+  void reloadsPersistedStateWhenClaimCasLoses() {
+    var f = fixture(MediaIngestion.Phase.PREPARING_UPLOAD);
+    var completed = completed(f.ingestion);
+    when(f.clients.storageStatus("9", "actor"))
+        .thenReturn(Mono.just(new DownstreamClients.StorageStatus("COMPLETED", 9L, "object")));
+    when(f.repository.compareAndSet(eq(f.ingestion), any())).thenReturn(Mono.just(false));
+    when(f.repository.find(f.ingestion.ingestionId())).thenReturn(Mono.just(completed));
+
+    var result = f.service.recover(f.ingestion).block();
+
+    org.assertj.core.api.Assertions.assertThat(result.phase())
+        .isEqualTo(MediaIngestion.Phase.COMPLETED);
+    verify(f.repository).find(f.ingestion.ingestionId());
+    verifyNoInteractions(f.compensations, f.outbox);
+  }
+
+  @Test
+  void reloadsPersistedStateWhenFinalCasLoses() {
+    var f = fixture(MediaIngestion.Phase.PREPARING_UPLOAD);
+    var completed = completed(f.ingestion);
+    when(f.clients.storageStatus("9", "actor"))
+        .thenReturn(Mono.just(new DownstreamClients.StorageStatus("COMPLETED", 9L, "object")));
+    when(f.repository.compareAndSet(any(), any()))
+        .thenReturn(Mono.just(true), Mono.just(false));
+    when(f.repository.find(f.ingestion.ingestionId())).thenReturn(Mono.just(completed));
+    when(f.clients.completeCatalog(3L, "object", 9L, "actor")).thenReturn(Mono.empty());
+
+    var result = f.service.recover(f.ingestion).block();
+
+    org.assertj.core.api.Assertions.assertThat(result.phase())
+        .isEqualTo(MediaIngestion.Phase.COMPLETED);
+    verify(f.repository).find(f.ingestion.ingestionId());
+    verifyNoInteractions(f.compensations);
+  }
+
+  @Test
   void earlyPhaseIsFailedWithoutRecreatingDraft() {
     var f = fixture(MediaIngestion.Phase.PREPARING_CATALOG);
     when(f.repository.compareAndSet(eq(f.ingestion), any())).thenReturn(Mono.just(true));
@@ -116,6 +152,15 @@ class RecoveryServiceTest {
         compensations,
         new RecoveryService(repository, clients, outbox, compensations, transactions),
         ingestion);
+  }
+
+  private static MediaIngestion completed(MediaIngestion source) {
+    return new MediaIngestion(
+        source.ingestionId(), source.actorId(), source.catalogItemId(), source.uploadId(),
+        MediaIngestion.Phase.COMPLETED, null, source.version() + 2, source.retryCount(),
+        source.createdAt(), Instant.now(), source.nextAttemptAt(), source.idempotencyKey(),
+        source.fileName(), source.fileSize(), source.mimeType(), source.uploadUrl(),
+        9L, "object", source.requestFingerprint(), source.causationId());
   }
 
   private record Fixture(

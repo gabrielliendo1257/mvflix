@@ -89,21 +89,25 @@ public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
     var s =
         db.sql(
             "INSERT INTO"
-                + " media_ingestions(ingestion_id,actor_id,phase,version,retry_count,created_at,updated_at,next_attempt_at,idempotency_key,file_name,file_size,mime_type,correlation_id,storage_id,request_fingerprint,causation_id)"
-                + " VALUES(:id,:a,:p,:v,0,:c,:u,:n,:k,:f,:s,:m,:id,:sid,:fp,:cause) RETURNING *");
+                + " media_ingestions(ingestion_id,actor_id,catalog_item_id,upload_id,upload_url,phase,version,retry_count,created_at,updated_at,next_attempt_at,idempotency_key,file_name,file_size,mime_type,correlation_id,storage_id,storage_key,request_fingerprint,causation_id)"
+                + " VALUES(:id,:a,:c,:u,:url,:p,:v,0,:created,:updated,:n,:k,:f,:s,:m,:correlation,:sid,:skey,:fp,:cause) RETURNING *");
     s = bind(s, "id", i.ingestionId(), UUID.class);
     s = bind(s, "a", i.actorId(), String.class);
+    s = bind(s, "c", i.catalogItemId(), Long.class);
+    s = bind(s, "u", i.uploadId(), String.class);
+    s = bind(s, "url", i.uploadUrl(), String.class);
     s = bind(s, "p", i.phase().name(), String.class);
     s = bind(s, "v", i.version(), Long.class);
-    s = bind(s, "c", i.createdAt(), Instant.class);
-    s = bind(s, "u", i.updatedAt(), Instant.class);
+    s = bind(s, "created", i.createdAt(), Instant.class);
+    s = bind(s, "updated", i.updatedAt(), Instant.class);
     s = bind(s, "n", i.nextAttemptAt(), Instant.class);
     s = bind(s, "k", i.idempotencyKey(), String.class);
     s = bind(s, "f", i.fileName(), String.class);
     s = bind(s, "s", i.fileSize(), Long.class);
     s = bind(s, "m", i.mimeType(), String.class);
-    s = bind(s, "id", i.ingestionId(), UUID.class);
+    s = bind(s, "correlation", i.ingestionId(), UUID.class);
     s = bind(s, "sid", i.storageId(), Long.class);
+    s = bind(s, "skey", i.storageKey(), String.class);
     s = bind(s, "fp", i.requestFingerprint(), String.class);
     s = bind(s, "cause", i.causationId(), UUID.class);
     return s.map((r, m) -> map(r)).one();
@@ -137,7 +141,10 @@ public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
 
   public Flux<MediaIngestion> claimDueRecoverable(int limit, Duration lease) {
     return db.sql(
-            "WITH due AS (SELECT ingestion_id FROM media_ingestions WHERE phase IN"
+            "UPDATE media_ingestions i SET recovery_claimed_until=now() +"
+                + " (:lease * interval '1 second'), retry_count=i.retry_count+1,"
+                + " version=i.version+1, updated_at=now() WHERE i.ingestion_id IN ("
+                + "SELECT ingestion_id FROM media_ingestions WHERE phase IN"
                 + " ('STARTING','PREPARING_CATALOG','PREPARING_UPLOAD','FINALIZING_CATALOG','RECONCILIATION_REQUIRED')"
                 + " AND ((phase IN ('STARTING','PREPARING_CATALOG','PREPARING_UPLOAD')"
                 + " AND updated_at<=now() - (:stale * interval '1 second'))"
@@ -145,10 +152,7 @@ public class R2dbcMediaIngestionRepository implements MediaIngestionRepository {
                 + " AND next_attempt_at<=now()))"
                 + " AND (recovery_claimed_until IS NULL OR"
                 + " recovery_claimed_until<now()) ORDER BY next_attempt_at FOR UPDATE SKIP LOCKED"
-                + " LIMIT :limit) UPDATE media_ingestions i SET recovery_claimed_until=now() +"
-                + " (:lease * interval '1 second'), retry_count=i.retry_count+1,"
-                + " version=i.version+1, updated_at=now() FROM due WHERE"
-                + " i.ingestion_id=due.ingestion_id RETURNING i.*")
+                + " LIMIT :limit) RETURNING i.*")
         .bind("limit", limit)
         .bind("stale", recoveryStaleAfterSeconds)
         .bind("lease", lease.toSeconds())
