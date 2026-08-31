@@ -1,0 +1,196 @@
+package com.gcorp.mvflix.e2e;
+
+import static org.awaitility.Awaitility.await;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.minio.MinioClient;
+import io.minio.PutObjectArgs;
+import java.io.ByteArrayInputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyFactory;
+import java.security.PrivateKey;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.time.Duration;
+import java.util.Base64;
+import java.util.UUID;
+import org.jose4j.jwa.AlgorithmConstraints;
+import org.jose4j.jws.AlgorithmIdentifiers;
+import org.jose4j.jws.JsonWebSignature;
+import org.jose4j.jwk.JsonWebKey;
+import org.jose4j.jwk.RsaJsonWebKey;
+import org.jose4j.jwt.JwtClaims;
+import org.junit.jupiter.api.Test;
+
+class AddMediaE2ETest {
+  private static final String BFF = env("BFF_URL", "http://localhost:19091");
+  private static final String USER = "e2e-add-media";
+  private static final ObjectMapper JSON = new ObjectMapper();
+  private static final HttpClient HTTP = HttpClient.newHttpClient();
+
+  @Test
+  void completesAddMediaThroughBffAndKeepsReplayIdempotent() throws Exception {
+    String key = "e2e-add-media-" + UUID.randomUUID();
+    String body = request("e2e-flow.mp4", 4, "e2e movie");
+    String token = token(USER, "media-ingestion");
+    provisionStorage(token(USER, "storage.write"));
+
+    JsonNode first = start(token, key, body, 201);
+    assertNotNull(first.get("addMediaId"));
+    assertNotNull(first.get("upload").get("storageKey"), first.toString());
+    put(first.get("upload").get("storageKey").asText());
+    complete(token, first.get("addMediaId").asText(), 202, 200);
+     JsonNode completed = awaitStatus(token, first.get("addMediaId").asText(), "READY");
+
+     JsonNode replay = start(token, key, body, 200);
+    assertEquals(first.get("addMediaId"), replay.get("addMediaId"));
+    assertEquals(first.get("movieId"), replay.get("movieId"));
+    assertEquals(first.get("uploadId"), replay.get("uploadId"));
+    assertEquals(completed.get("phase"), replay.get("phase"));
+  }
+
+  @Test
+  void rejectsSameKeyWithDifferentPayload() throws Exception {
+    String key = "e2e-add-media-conflict-" + UUID.randomUUID();
+    String token = token(USER, "media-ingestion");
+    provisionStorage(token(USER, "storage.write"));
+    start(token, key, request("conflict.mp4", 4, "conflict movie"), 201);
+
+    HttpResponse<String> response = request(
+        "POST", BFF + "/web/add-media", token, key,
+        request("conflict-renamed.mp4", 4, "conflict movie"));
+    assertEquals(409, response.statusCode(), response.body());
+  }
+
+  @Test
+  void recoversWhenIngestionRestartsAfterUploadCompletion() throws Exception {
+    String key = "e2e-add-media-restart-" + UUID.randomUUID();
+    String token = token(USER, "media-ingestion");
+    provisionStorage(token(USER, "storage.write"));
+    JsonNode started = start(token, key, request("restart.mp4", 4, "restart movie"), 201);
+    String id = started.get("addMediaId").asText();
+    put(started.get("upload").get("storageKey").asText());
+    complete(token, id, 202, 200);
+
+    restartIngestion();
+     awaitStatus(token, id, "READY");
+  }
+
+  private static JsonNode start(String token, String key, String body, int expected) throws Exception {
+    return JSON.readTree(request("POST", BFF + "/web/add-media", token, key, body, expected).body());
+  }
+
+  private static void complete(String token, String id, int... expected) throws Exception {
+    request("POST", BFF + "/web/add-media/" + id + "/complete", token, null,
+        "{\"sizeBytes\":4}", expected);
+  }
+
+  private static JsonNode awaitStatus(String token, String id, String phase) {
+    return await().atMost(Duration.ofSeconds(90)).pollInterval(Duration.ofSeconds(2)).until(
+        () -> {
+          HttpResponse<String> response = request("GET", BFF + "/web/add-media/" + id, token, null, null);
+          if (response.statusCode() != 200) return null;
+          JsonNode value = JSON.readTree(response.body());
+          return phase.equals(value.path("phase").asText()) ? value : null;
+        }, value -> value != null);
+  }
+
+  private static void put(String storageKey) throws Exception {
+    byte[] bytes = {1, 2, 3, 4};
+    MinioClient.builder().endpoint(env("MINIO_URL", "http://localhost:19000"))
+        .credentials("admin", "admin123").build()
+        .putObject(PutObjectArgs.builder().bucket("uploads").object(storageKey)
+            .contentType("video/mp4")
+            .stream(new ByteArrayInputStream(bytes), bytes.length, -1).build());
+  }
+
+  private static void provisionStorage(String token) {
+    request("POST", env("STORAGE_URL", "http://localhost:16060")
+        + "/api/v1/movie/storage/users/" + USER + "/provision", token, null,
+        "{\"quota_bytes\":1048576}", 200);
+  }
+
+  private static void restartIngestion() throws Exception {
+    Path root = Path.of("../..").toAbsolutePath().normalize();
+    Process process = new ProcessBuilder("docker", "compose", "--env-file",
+        root.resolve("infra/docker/container-versions.env").toString(), "-f",
+        root.resolve("e2e/docker-compose-e2e.yml").toString(), "-p",
+        env("E2E_COMPOSE_PROJECT", "mvflix-e2e"), "restart", "media-ingestion")
+        .directory(root.toFile())
+        .redirectErrorStream(true).start();
+    boolean finished = process.waitFor(90, java.util.concurrent.TimeUnit.SECONDS);
+    String output = new String(process.getInputStream().readAllBytes());
+    if (!finished || process.exitValue() != 0) {
+      throw new AssertionError("media-ingestion restart failed with exit "
+          + (finished ? process.exitValue() : "timeout") + ": " + output);
+    }
+  }
+
+  private static HttpResponse<String> request(String method, String url, String token,
+      String key, String body, int... expected) {
+    try {
+      HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
+          .header("Authorization", "Bearer " + token)
+          .header("Content-Type", "application/json");
+      if (key != null) builder.header("Idempotency-Key", key);
+      HttpRequest.BodyPublisher payload = body == null
+          ? HttpRequest.BodyPublishers.noBody() : HttpRequest.BodyPublishers.ofString(body);
+      HttpResponse<String> response = HTTP.send(builder.method(method, payload).build(),
+          HttpResponse.BodyHandlers.ofString());
+      if (expected.length > 0) {
+        for (int code : expected) if (code == response.statusCode()) return response;
+        throw new AssertionError("Expected " + java.util.Arrays.toString(expected) + ", got "
+            + response.statusCode() + ": " + response.body());
+      }
+      return response;
+    } catch (Exception error) {
+      throw new RuntimeException(error);
+    }
+  }
+
+  private static String request(String file, long size, String title) {
+    return "{\"file\":{\"filename\":\"" + file + "\",\"sizeBytes\":" + size
+        + ",\"mimeType\":\"video/mp4\"},\"movie\":{\"providerId\":123,\"draft\":{"
+        + "\"title\":\"" + title + "\",\"kind\":\"MOVIE\"}},\"access\":{"
+        + "\"visibility\":\"PRIVATE\",\"sharedWith\":[]},\"idempotencyKey\":\"body-key\"}";
+  }
+
+  private static String token(String subject, String scope) throws Exception {
+    JsonNode jwk = JSON.readTree(Files.readString(Path.of("../oidc-stub/jwks/jwks.json")))
+        .get("keys").get(0);
+    RsaJsonWebKey key = (RsaJsonWebKey) JsonWebKey.Factory.newJwk(jwk.toString());
+    key.setPrivateKey(privateKey(Files.readString(Path.of("../oidc-stub/test-private-key.pem"))));
+    JwtClaims claims = new JwtClaims();
+    claims.setSubject(subject);
+    claims.setClaim("scope", scope);
+    claims.setIssuer("http://jwks-stub:8080");
+    claims.setExpirationTimeMinutesInTheFuture(5);
+    claims.setGeneratedJwtId();
+    JsonWebSignature signature = new JsonWebSignature();
+    signature.setAlgorithmHeaderValue(AlgorithmIdentifiers.RSA_USING_SHA256);
+    signature.setKeyIdHeaderValue("mvflix-e2e-2026-01");
+    signature.setKey(key.getPrivateKey());
+    signature.setPayload(claims.toJson());
+    signature.setAlgorithmConstraints(new AlgorithmConstraints(AlgorithmConstraints.ConstraintType.PERMIT,
+        AlgorithmIdentifiers.RSA_USING_SHA256));
+    return signature.getCompactSerialization();
+  }
+
+  private static PrivateKey privateKey(String pem) throws Exception {
+    String encoded = pem.replace("-----BEGIN PRIVATE KEY-----", "")
+        .replace("-----END PRIVATE KEY-----", "").replaceAll("\\s", "");
+    return KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(
+        Base64.getDecoder().decode(encoded)));
+  }
+
+  private static String env(String name, String fallback) {
+    return System.getenv().getOrDefault(name, fallback);
+  }
+}

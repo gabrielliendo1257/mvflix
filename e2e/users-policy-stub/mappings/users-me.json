@@ -1,0 +1,22 @@
+{
+  "request": {
+    "method": "GET",
+    "urlPath": "/api/v1/users/me"
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "jsonBody": {
+      "id": "e2e-user",
+      "username": "e2e-add-media",
+      "displayName": "E2E Add Media",
+      "email": "e2e-add-media@example.test",
+      "plan": "PREMIUM",
+      "enabled": true,
+      "violations": 0,
+      "blocked": false
+    }
+  }
+}

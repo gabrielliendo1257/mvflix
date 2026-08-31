@@ -1,8 +1,11 @@
-# Distributed managed-deletion E2E
+# Distributed E2E
 
-This stack runs Movies, Storage, Kafka, PostgreSQL, MinIO, and a WireMock OIDC
-stub as separate containers. The runner is a black-box Maven test and does not
-start Spring application contexts in its JVM.
+This stack runs Movies, Storage, Kafka, PostgreSQL, MinIO, BFF, and a WireMock
+OIDC stub as separate containers. Add Media uses the deliberately bounded
+`users-policy-stub` for `/api/v1/users/me` and
+`/api/v1/users/{username}/policy`; it is not a replacement for the Users
+service in production. The runner is a black-box Maven test and does not start
+Spring application contexts in its JVM.
 
 ## Run
 
@@ -17,10 +20,11 @@ runner with the repository Maven wrapper, and always removes the stack with a
 cleanup trap. To run against an already-started stack, invoke
 `./mvnw -f e2e/runner/pom.xml test` directly.
 
-The test creates a user and upload through the public APIs, uploads four real
-bytes to MinIO using the presigned URL, completes the upload, creates and
-completes a movie, sends DELETE twice, and polls until the movie and managed
-object are gone. It also checks the Storage inbox and database state.
+The managed-deletion test creates a user and upload through the public APIs,
+while the Add Media tests start through BFF, upload four real bytes to MinIO,
+complete the ingestion, verify replay idempotency, reject a same-key payload
+conflict, and restart Ingestion after completion has entered its finalization
+path.
 
 The RSA key in `oidc-stub/test-private-key.pem` is test-only material used by
 the runner and the static Movies M2M token mapping. It must never be reused by

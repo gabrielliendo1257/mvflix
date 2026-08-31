@@ -4,6 +4,7 @@ import com.gcorp.service.app.mvflix_media_ingestion.application.DownstreamClient
 import java.util.Map;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientManager;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
@@ -19,6 +20,7 @@ public class WebClientDownstreamClients implements DownstreamClients {
   private final WebClient storage;
   private final WebClient users;
 
+  @Autowired
   public WebClientDownstreamClients(
       @Value("${mvflix.downstream.movies-url:http://localhost:4040}") String moviesUrl,
       @Value("${mvflix.downstream.storage-url:http://localhost:6060}") String storageUrl,
@@ -59,6 +61,9 @@ public class WebClientDownstreamClients implements DownstreamClients {
   @Override
   public Mono<Long> createCatalogDraft(
       Map<String, Object> draft, String actor, String key, String correlationId) {
+    Map<String, Object> payload = draft.containsKey("draft")
+        ? draft
+        : Map.of("draft", draft);
     return movies
         .post()
         .uri("/api/v1/movies/identified-drafts")
@@ -66,7 +71,7 @@ public class WebClientDownstreamClients implements DownstreamClients {
         .header("X-Actor-Id", actor)
         .header("Idempotency-Key", key)
         .header("X-Correlation-Id", correlationId)
-        .bodyValue(draft)
+        .bodyValue(payload)
         .retrieve()
         .bodyToMono(Map.class)
         .map(response -> ((Number) response.get("id")).longValue());
