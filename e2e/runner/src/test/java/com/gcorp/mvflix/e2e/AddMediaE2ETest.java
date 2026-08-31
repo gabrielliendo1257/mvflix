@@ -19,6 +19,7 @@ import java.security.PrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Set;
 import java.util.UUID;
 import org.jose4j.jwa.AlgorithmConstraints;
 import org.jose4j.jws.AlgorithmIdentifiers;
@@ -77,10 +78,13 @@ class AddMediaE2ETest {
     JsonNode started = start(token, key, request("restart.mp4", 4, "restart movie"), 201);
     String id = started.get("addMediaId").asText();
     upload(started.get("upload"));
+    compose("stop", "movies");
     complete(token, id, 202, 200);
 
     restartIngestion();
-     awaitStatus(token, id, "READY");
+    awaitIngestionPhase(token, id, Set.of("RECONCILIATION_REQUIRED", "FINALIZING_CATALOG"));
+    compose("up", "-d", "--wait", "movies");
+    awaitIngestionPhase(token, id, Set.of("COMPLETED"));
   }
 
   private static JsonNode start(String token, String key, String body, int expected) throws Exception {
@@ -99,6 +103,22 @@ class AddMediaE2ETest {
           if (response.statusCode() != 200) return null;
           JsonNode value = JSON.readTree(response.body());
           return phase.equals(value.path("phase").asText()) ? value : null;
+        }, value -> value != null);
+  }
+
+  private static JsonNode awaitIngestionPhase(String token, String id, Set<String> phases) {
+    return await().atMost(Duration.ofSeconds(90)).pollInterval(Duration.ofSeconds(2)).until(
+        () -> {
+          try {
+            HttpResponse<String> response = request("GET",
+                env("MEDIA_INGESTION_URL", "http://localhost:17080") + "/api/v1/ingestions/" + id,
+                token, null, null);
+            if (response.statusCode() != 200) return null;
+            JsonNode value = JSON.readTree(response.body());
+            return phases.contains(value.path("phase").asText()) ? value : null;
+          } catch (RuntimeException transientFailure) {
+            return null;
+          }
         }, value -> value != null);
   }
 
@@ -137,11 +157,22 @@ class AddMediaE2ETest {
   }
 
   private static void restartIngestion() throws Exception {
+    compose("restart", "media-ingestion");
+  }
+
+  private static void compose(String... arguments) throws Exception {
     Path root = Path.of("../..").toAbsolutePath().normalize();
-    Process process = new ProcessBuilder("docker", "compose", "--env-file",
-        root.resolve("infra/docker/container-versions.env").toString(), "-f",
-        root.resolve("e2e/docker-compose-e2e.yml").toString(), "-p",
-        env("E2E_COMPOSE_PROJECT", "mvflix-e2e"), "restart", "media-ingestion")
+    var command = new java.util.ArrayList<String>();
+    command.add("docker");
+    command.add("compose");
+    command.add("--env-file");
+    command.add(root.resolve("infra/docker/container-versions.env").toString());
+    command.add("-f");
+    command.add(root.resolve("e2e/docker-compose-e2e.yml").toString());
+    command.add("-p");
+    command.add(env("E2E_COMPOSE_PROJECT", "mvflix-e2e"));
+    command.addAll(java.util.List.of(arguments));
+    Process process = new ProcessBuilder(command)
         .directory(root.toFile())
         .redirectErrorStream(true).start();
     boolean finished = process.waitFor(90, java.util.concurrent.TimeUnit.SECONDS);
