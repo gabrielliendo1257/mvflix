@@ -51,9 +51,10 @@ class AddMediaE2ETest {
 
      JsonNode replay = start(token, key, body, 201);
     assertEquals(first.get("addMediaId"), replay.get("addMediaId"));
-    assertEquals(first.get("movieId"), replay.get("movieId"));
-    assertEquals(first.get("uploadId"), replay.get("uploadId"));
-    assertEquals(completed.get("phase"), replay.get("phase"));
+     assertEquals(first.get("movieId"), replay.get("movieId"));
+     assertEquals(first.get("uploadId"), replay.get("uploadId"));
+     assertEquals(completed.get("phase"), replay.get("phase"));
+     assertEquals("READY", replay.path("phase").asText());
   }
 
   @Test
