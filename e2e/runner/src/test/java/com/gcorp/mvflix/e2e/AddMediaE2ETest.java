@@ -49,7 +49,7 @@ class AddMediaE2ETest {
     complete(token, first.get("addMediaId").asText(), 202, 200);
      JsonNode completed = awaitStatus(token, first.get("addMediaId").asText(), "READY");
 
-     JsonNode replay = start(token, key, body, 200);
+     JsonNode replay = start(token, key, body, 201);
     assertEquals(first.get("addMediaId"), replay.get("addMediaId"));
     assertEquals(first.get("movieId"), replay.get("movieId"));
     assertEquals(first.get("uploadId"), replay.get("uploadId"));
@@ -156,8 +156,9 @@ class AddMediaE2ETest {
   }
 
   private static String request(String file, long size, String title) {
+    long providerId = Math.abs((long) title.hashCode()) + 1;
     return "{\"file\":{\"filename\":\"" + file + "\",\"sizeBytes\":" + size
-        + ",\"mimeType\":\"video/mp4\"},\"movie\":{\"providerId\":123,\"draft\":{"
+        + ",\"mimeType\":\"video/mp4\"},\"movie\":{\"providerId\":" + providerId + ",\"draft\":{"
         + "\"title\":\"" + title + "\",\"kind\":\"MOVIE\"}},\"access\":{"
         + "\"visibility\":\"PRIVATE\",\"sharedWith\":[]},\"idempotencyKey\":\"body-key\"}";
   }

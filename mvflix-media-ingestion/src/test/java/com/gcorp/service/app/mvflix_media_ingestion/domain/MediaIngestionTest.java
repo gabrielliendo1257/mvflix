@@ -6,6 +6,21 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class MediaIngestionTest {
+  @Test
+  void awaitUploadPreservesIngestionIdentity() {
+    var causation = UUID.randomUUID();
+    var ingestion = new MediaIngestion(
+        UUID.randomUUID(), "actor", 3L, null, MediaIngestion.Phase.PREPARING_UPLOAD,
+        null, 2, 1, Instant.now(), Instant.now(), Instant.now(), "key", "video.mp4", 4,
+        "video/mp4", null, null, null, "fingerprint", causation);
+
+    var awaited = ingestion.awaitUpload("7", "https://upload", "uploads/video.mp4");
+
+    assertEquals(MediaIngestion.Phase.AWAITING_UPLOAD, awaited.phase());
+    assertEquals("fingerprint", awaited.requestFingerprint());
+    assertEquals(causation, awaited.causationId());
+    assertEquals("uploads/video.mp4", awaited.storageKey());
+  }
   @Test void transitionUsesOptimisticVersionAndRejectsTerminalState() {
     var now=Instant.now(); var i=new MediaIngestion(UUID.randomUUID(),"actor",null,null,MediaIngestion.Phase.STARTING,null,4,0,now,now,now,"key","x.mp4",10,"video/mp4",null);
     var next=i.transition(MediaIngestion.Phase.PREPARING_CATALOG,12L,null,null);

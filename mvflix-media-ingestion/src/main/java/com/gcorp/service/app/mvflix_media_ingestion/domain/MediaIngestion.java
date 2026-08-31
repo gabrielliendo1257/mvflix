@@ -127,6 +127,32 @@ public record MediaIngestion(
         causationId);
   }
 
+  public MediaIngestion awaitUpload(String upload, String url, String objectKey) {
+    if (phase != Phase.PREPARING_UPLOAD)
+      throw new IllegalStateException("upload can only be prepared from PREPARING_UPLOAD");
+    return new MediaIngestion(
+        ingestionId,
+        actorId,
+        catalogItemId,
+        upload,
+        Phase.AWAITING_UPLOAD,
+        null,
+        version + 1,
+        retryCount,
+        createdAt,
+        Instant.now(),
+        nextAttemptAt,
+        idempotencyKey,
+        fileName,
+        fileSize,
+        mimeType,
+        url,
+        storageId,
+        objectKey,
+        requestFingerprint,
+        causationId);
+  }
+
   private static boolean allowed(Phase current, Phase next) {
     return switch (current) {
       case STARTING -> next == Phase.PREPARING_CATALOG || next == Phase.CANCELLING;

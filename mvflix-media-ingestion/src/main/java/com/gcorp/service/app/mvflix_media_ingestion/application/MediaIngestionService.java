@@ -85,10 +85,12 @@ public class MediaIngestionService {
                           key,
                           fileName,
                           size,
-                          mime,
+                           mime,
                            null,
                            null,
-                           fingerprint);
+                           null,
+                            fingerprint,
+                           null);
                    return repository
                        .insert(i)
                       .flatMap(
@@ -169,26 +171,7 @@ public class MediaIngestionService {
         .prepareUpload(name, size, mime, i.actorId(), i.ingestionId() + ":prepare-upload")
         .flatMap(
             u -> {
-              var n =
-                  new MediaIngestion(
-                      i.ingestionId(),
-                      i.actorId(),
-                      i.catalogItemId(),
-                      u.uploadId(),
-                      Phase.AWAITING_UPLOAD,
-                      null,
-                      i.version() + 1,
-                      i.retryCount(),
-                      i.createdAt(),
-                      Instant.now(),
-                      i.nextAttemptAt(),
-                      i.idempotencyKey(),
-                      i.fileName(),
-                      i.fileSize(),
-                      i.mimeType(),
-                      u.uploadUrl(),
-                      null,
-                      u.storageKey());
+              var n = i.awaitUpload(u.uploadId(), u.uploadUrl(), u.storageKey());
               return inTransaction(
                   repository
                       .compareAndSet(i, n)
