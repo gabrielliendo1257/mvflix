@@ -70,8 +70,8 @@ public class MediaIngestionWebClientAdapter implements MediaIngestionClient {
         ex.getStatusCode().is5xxServerError()
             ? Mono.error(new com.guille.media.bff.experience.addmedia.application.DownstreamUnavailableException(
                 ex.getStatusCode().value(), "DOWNSTREAM_UNAVAILABLE", ex.getMessage()))
-            : Mono.error(new com.guille.media.bff.experience.addmedia.application.DownstreamRejectionException(
-                ex.getStatusCode().value(), ex.getMessage())))
+             : Mono.error(new com.guille.media.bff.experience.addmedia.application.DownstreamRejectionException(
+                 ex.getStatusCode().value(), ex.getMessage() + " body=" + ex.getResponseBodyAsString())))
         .onErrorResume(org.springframework.web.reactive.function.client.WebClientRequestException.class, ex ->
             Mono.error(new com.guille.media.bff.experience.addmedia.application.DownstreamUnavailableException(
                 503, "DOWNSTREAM_UNREACHABLE", ex.getMessage())));
