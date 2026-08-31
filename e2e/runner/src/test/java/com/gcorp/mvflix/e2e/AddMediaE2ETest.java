@@ -7,8 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.MinioClient;
-import io.minio.PutObjectArgs;
-import java.io.ByteArrayInputStream;
+import io.minio.StatObjectArgs;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -45,7 +44,7 @@ class AddMediaE2ETest {
     JsonNode first = start(token, key, body, 201);
     assertNotNull(first.get("addMediaId"));
     assertNotNull(first.get("upload").get("storageKey"), first.toString());
-    put(first.get("upload").get("storageKey").asText());
+    upload(first.get("upload"));
     complete(token, first.get("addMediaId").asText(), 202, 200);
      JsonNode completed = awaitStatus(token, first.get("addMediaId").asText(), "READY");
 
@@ -77,7 +76,7 @@ class AddMediaE2ETest {
     provisionStorage(token(USER, "storage.write"));
     JsonNode started = start(token, key, request("restart.mp4", 4, "restart movie"), 201);
     String id = started.get("addMediaId").asText();
-    put(started.get("upload").get("storageKey").asText());
+    upload(started.get("upload"));
     complete(token, id, 202, 200);
 
     restartIngestion();
@@ -103,13 +102,32 @@ class AddMediaE2ETest {
         }, value -> value != null);
   }
 
-  private static void put(String storageKey) throws Exception {
+  private static void upload(JsonNode upload) throws Exception {
     byte[] bytes = {1, 2, 3, 4};
-    MinioClient.builder().endpoint(env("MINIO_URL", "http://localhost:19000"))
+    Path payload = Files.createTempFile("mvflix-e2e-upload-", ".mp4");
+    Files.write(payload, bytes);
+    payload.toFile().setReadable(true, false);
+    try {
+      Process process = new ProcessBuilder(
+          "docker", "run", "--rm", "--network", env("E2E_COMPOSE_PROJECT", "mvflix-e2e") + "_default",
+          "-v", payload + ":/payload:ro", "curlimages/curl:8.11.1", "--fail", "--silent",
+          "--show-error", "--output", "/dev/null", "--write-out", "%{http_code}",
+          "-H", "Content-Type: video/mp4", "-X", "PUT", "--data-binary", "@/payload",
+          upload.get("url").asText()).redirectErrorStream(true).start();
+      String status = new String(process.getInputStream().readAllBytes()).trim();
+      assertEquals(0, process.waitFor(), status);
+      assertEquals("200", status);
+    } finally {
+      Files.deleteIfExists(payload);
+    }
+    assertStored(upload.get("storageKey").asText());
+  }
+
+  private static void assertStored(String storageKey) throws Exception {
+    var object = MinioClient.builder().endpoint(env("MINIO_URL", "http://localhost:19000"))
         .credentials("admin", "admin123").build()
-        .putObject(PutObjectArgs.builder().bucket("uploads").object(storageKey)
-            .contentType("video/mp4")
-            .stream(new ByteArrayInputStream(bytes), bytes.length, -1).build());
+        .statObject(StatObjectArgs.builder().bucket("uploads").object(storageKey).build());
+    assertEquals(4, object.size());
   }
 
   private static void provisionStorage(String token) {
