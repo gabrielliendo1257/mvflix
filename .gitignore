@@ -37,3 +37,4 @@ build/
 
 ### Local scripts (contienen secretos locales) ###
 scripts/*.local.sh
+e2e/logs/
